@@ -1,32 +1,50 @@
+{-# LANGUAGE GADTs #-}
+
+{-@ LIQUID "--counter-examples" @-}
+{-@ LIQUID "--exact-data-cons" @-}
+{-@ LIQUID "--higherorder" @-}
+{-@ LIQUID "--reflection" @-}
+{-@ LIQUID "--ple" @-}
+{-@ LIQUID "--prune-unsorted" @-}
+{-@ LIQUID "--short-names" @-}
+
 module STLC where
 
 import qualified Data.Set as S
 
-{-@ LIQUID "--reflection" @-}
+---------------------------------------------------------------------------
+----- | PRELIMINARIES
+---------------------------------------------------------------------------
 
-{-# LANGUAGE GADTs #-}
-
------ PRELIMINARIES
-
-{-@ measure prop : a -> b @-}
+{-@ measure prop :: a -> b @-}
 {-@ type ProofOf E = { v:_ | prop v = E } @-}
 
+type Proof = ()
+
+--TODO: will classes and instances make anything easier or harder?
 --class HasVars a where
 --    free  :: a -> S.Set Vname
 --    subst :: Vname -> 
 
------ TERMS
+---------------------------------------------------------------------------
+----- | TERMS of our language
+---------------------------------------------------------------------------
+  ---   Refinement Level: Names, Terms (in FO), FO Predicates, SMT Formulae
 
 type Vname = String
 
+data Term = Ic Int                    -- 0, 1, ...
+          | Iv Vname                  -- x, y, z; interpreted over Z
+  deriving (Show)
+
 data Pred = Bc Bool                   -- True, False
-          | Bv Vname                  -- x, y, z; interpreted over Z?
-          | Ic Int                    -- 0, 1, ...
           | And Pred Pred
           | Or Pred Pred
           | Not Pred
+          | Leq Term Term
+          | Eq Term Term
           -- and uninterpreted functions?
-          -- and anything else eneeded?
+          -- and anything else eneeded? don't seem to need Boolean vars
   deriving (Show)
 
 data Form = P Pred                    -- p
@@ -34,47 +52,54 @@ data Form = P Pred                    -- p
           | Impl Vname Base Pred Form -- \forall x:b. p => c
   deriving (Show)
 
-{-@ reflect fv @-}
-fv :: Pred -> S.Set Vname
-fv (Bc _)      = S.empty
-fv (Bv x)      = S.singleton x
-fv (Ic _)      = S.empty
-fv (And p1 p2) = S.union (fv p1) (fv p2)
-fv (Or p1 p2)  = S.union (fv p1) (fv p2)
-fv (Not p1)    = fv p1
-
-{-@ refelct isTermValue @-}
-isTermValue :: Pred -> Bool
-isTermValue (Bv _) = True
+{-@ reflect isTermValue @-}
+isTermValue :: Term -> Bool
 isTermValue (Ic _) = True
 isTermValue _      = False
 
+{-@ reflect vars @-}
+vars :: Term -> S.Set Vname
+vars (Iv x) = S.singleton x
+vars _      = S.empty
+
+{-@ reflect fv @-}
+fv :: Pred -> S.Set Vname
+fv (Bc _)      = S.empty
+fv (And p1 p2) = S.union (fv p1) (fv p2)
+fv (Or p1 p2)  = S.union (fv p1) (fv p2)
+fv (Not p1)    = fv p1
+fv (Leq t1 t2) = S.union (vars t1) (vars t2)
+fv (Eq  t1 t2) = S.union (vars t1) (vars t2)
+
+{-@ reflect bval @-} -- only defined if no free vars
+{-@ bval :: { p:Pred | fv p = S.empty } -> Bool @-}
+bval :: Pred -> Bool
+bval (Bc b)                = b
+bval (And p1 p2)           = (bval p1) && (bval p2)
+bval (Or  p1 p2)           = (bval p1) || (bval p2)
+bval (Not p1)              = not (bval p1)
+bval (Leq (Ic n1) (Ic n2)) = n1 <= n2
+bval (Eq  (Ic n1) (Ic n2)) = n1 == n2
+
 {-@ reflect bsubst @-}
-bsubst :: Vname -> Vname -> Pred -> Pred
-bsubst x y (Bc b)             = Bc b
-bsubst x y (Bv z) | z == x    = Bv y
-                  | otherwise = Bv z
-bsubst x y (Ic c)             = Ic c
-bsubst x y (And p1 p2)        = And (bsubst x y p1) (bsubst x y p2)
-bsubst x y (Or p1 p2)         = Or  (bsubst x y p1) (bsubst x y p2)
-bsubst x y (Not p)            = Not (bsubst x y p)
+bsubst :: Vname -> Term -> Pred -> Pred
+bsubst x t (Bc b)             = Bc b
+bsubst x t (And p1 p2)        = And (bsubst x t p1) (bsubst x t p2)
+bsubst x t (Or p1 p2)         = Or  (bsubst x t p1) (bsubst x t p2)
+bsubst x t (Not p)            = Not (bsubst x t p)
+bsubst x t (Leq t1 t2)        = Leq (tmsubst x t t1) (tmsubst x t t2)
+bsubst x t (Eq  t1 t2)        = Eq  (tmsubst x t t1) (tmsubst x t t2)
 
-{-@ reflect bsubstc @-}
-bsubstc :: Vname -> Int -> Pred -> Pred
-bsubstc x c (Bc b)             = Bc b
-bsubstc x c (Bv z) | z == x    = Ic c
-                  | otherwise  = Bv z
-bsubstc x c (Ic c')            = Ic c'
-bsubstc x c (And p1 p2)        = And (bsubstc x y p1) (bsubstc x y p2)
-bsubstc x c (Or p1 p2)         = Or  (bsubstc x y p1) (bsubstc x y p2)
-bsubstc x c (Not p)            = Not (bsubstc x y p)
+{-@ reflect tmsubst @-}
+tmsubst :: Vname -> Term -> Term -> Term
+tmsubst x (Iv y) (Iv z) | z == x    = Iv y
+                        | otherwise = Iv z
+tmsubst x (Ic n) (Iv z)             = Ic n
+tmsubst x _      (Ic c)             = Ic c
 
-
--- TODO: do i need operational semantics for boolean predicates?
-
---data Val  = VC Int                -- Constant c
---          | VV Vname              -- x
---          | VLambda Vname Expr    -- \x.e
+-- TODO: do i need BEvalsTo in addition to just bval?
+  
+  ---   Term level expressions 
 
 data Expr = C Int                -- Constant c
           | V Vname              -- x
@@ -97,14 +122,15 @@ subst :: Vname -> Expr -> Expr -> Expr
 subst x v (C n)              = C n
 subst x v (V y) | x == y     = v
                 | otherwise  = V y -- TODO ensure no clashes with bound var names
-subst x v (Lambda y e)       = Lambda y (subst x e_x e)
+subst x v (Lambda y e)       = Lambda y (subst x v e)
 subst x v (App e v')         = App (subst x v e) (subst x v v')
 subst x v (Let y e1 e2)      = Let y (subst x v e1) (subst x v e2)
 subst x v (Annot e t)        = Annot (subst x v e) t
 
------ TYPES
+  ---   TYPES
 
 data Base = TInt
+  deriving (Show)
 
 data Type = TBase   Base                 -- b
           | TRefn   Base Vname Pred      -- b{v : r}
@@ -112,14 +138,25 @@ data Type = TBase   Base                 -- b
           | TExists Vname Type Type      -- \exists x:t_x.t
   deriving (Show)
 
-type Env = [(Vname, Type)]	
+data Env = Empty                         -- type Env = [(Vname, Type)]	
+         | Cons Vname Type Env
+  deriving (Show)
 
 -- do we really want a separate Bare Type datatype?
 data BType = BTBase Base                 -- b
            | BTFunc BType BType          -- t -> t'
   deriving (Show)
 
-type BEnv = [(Vname, BType)]
+data BEnv = BEmpty                       -- type BEnv = [(Vname, BType)]
+          | BCons Vname BType BEnv
+  deriving (Show) 
+
+{-@ measure tsize @-}
+tsize :: Type -> Int
+tsize (TBase b)	        = 0
+tsize (TRefn b v r)     = 0
+tsize (TFunc x t_x t)   = (tsize t) + 1
+tsize (TExists x t_x t) = (tsize t) + 1
 
 {-@ reflect erase @-}
 erase :: Type -> BType
@@ -131,17 +168,21 @@ erase (TExists x t_x t) = (erase t)
 {-@ reflect free @-} -- TODO: verify this
 free :: Type -> S.Set Vname
 free (TBase b)          = S.empty
-free (TRefn b v r)      = S.delete v (fv r) 
-free (TFunc x t_x t)    = S.union (free t_x) (S.delete x (free t))
-free (TExists x t_x t)  = S.union (free t_x) (S.delete x (free t))
+free (TRefn b v r)      = S.difference (fv r) (S.singleton v)
+free (TFunc x t_x t)    = S.union (free t_x) (S.difference (free t) (S.singleton x))
+free (TExists x t_x t)  = S.union (free t_x) (S.difference (free t) (S.singleton x))
 
 -- assuming no collisions with bound vars - TODO fix this
 {-@ reflect tsubst @-}
-tsubst :: Vname -> Vname -> Type -> Type
-tsubst x y (TBase b)         = TBase b
-tsubst x y (TRefn b v r)     = TRefn b v (bsubst x y r)
-tsubst x y (TFunc z t_z t)   = TFunc z (tsubst x y t_z) (tsubst x y t)
-tsubst x y (TExists z t_Z t) = TExists z (tsubst x y t_z) (tsubst x y t)
+{-@ tsubst :: Vname -> { v:Expr | isValue v } -> t:Type  
+                    -> { t':Type | tsize t' <= tsize t && tsize t' >= 0 } @-}
+tsubst :: Vname -> Expr -> Type -> Type
+tsubst x _ (TBase b)         = TBase b
+tsubst x (C n) (TRefn b v r) = TRefn b v (bsubst x (Ic n) r)
+tsubst x (V y) (TRefn b v r) = TRefn b v (bsubst x (Iv y) r)
+tsubst x _     (TRefn b v r) = TRefn b v r
+tsubst x v (TFunc z t_z t)   = TFunc z (tsubst x v t_z) (tsubst x v t)
+tsubst x v (TExists z t_z t) = TExists z (tsubst x v t_z) (tsubst x v t)
 
 ----- OPERATIONAL SEMANTICS (Small Step)
 -- E-App1 e e1 -> e' e1 if e->e'
@@ -192,24 +233,32 @@ data EvalsTo where
                -> ProofOf ( EvalsTo e2 e3 ) -> ProofOf( EvalsTo e1 e3 ) @-} -- @-} 
   
 -- EvalsToP is the transitive/reflexive closure of StepP:
-{-@ lemma_evals_trans :: e1:Expr -> e2:Expr -> e3:Expr -> ProofOf( EvalsToP e1 e2)
-                    -> ProofOf( EvalsToP e2 e3) -> ProofOf( EvalsToP e1 e3) @-} 
+{-@ lemma_evals_trans :: e1:Expr -> e2:Expr -> e3:Expr -> ProofOf( EvalsTo e1 e2)
+                    -> ProofOf( EvalsTo e2 e3) -> ProofOf( EvalsTo e1 e3) @-} 
 lemma_evals_trans :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo -> EvalsTo
 lemma_evals_trans e1 e2 e3 (Refl _e1) p_e2e3 = p_e2e3
 lemma_evals_trans e1 e2 e3 (AddStep _e1 e p_e1e _e2 p_ee2) p_e2e3 = p_e1e3
   where
     p_e1e3 = AddStep e1 e p_e1e e3 p_ee3
-    p_ee3  = lemma_evals_trans e e2 e3 p_ee2 pe2e3
+    p_ee3  = lemma_evals_trans e e2 e3 p_ee2 p_e2e3
 
-{-@ lemma_app_many :: e:Expr -> e':Expr -> v:Expr -> ProofOf(EvalsTo e e')
-                       -> ProofOf(EvalsTo (App e v) (App e' v)) @-}
+{-@ lemma_app_many :: e:Expr -> e':Expr -> v':Expr -> ProofOf(EvalsTo e e')
+                       -> ProofOf(EvalsTo (App e v') (App e' v')) @-}
 lemma_app_many :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
 lemma_app_many e e' v (Refl _e) = Refl (App e v)
 lemma_app_many e e' v (AddStep _e e1 s_ee1 _e' p_e1e') = p_ev_e'v
   where
     p_ev_e'v  = AddStep (App e v) (App e1 v) s_ev_e1v (App e' v) p_e1v_e'v
-    s_ev_e1v  = EApp1 e e' s_ee1 v 
+    s_ev_e1v  = EApp1 e e1 s_ee1 v 
     p_e1v_e'v = lemma_app_many e1 e' v p_e1e' 
+
+data BEvalsToP where
+    BEvalsTo :: Pred -> Pred -> BEvalsToP
+
+data BEvalsTo where
+    BvalTo :: Pred -> BEvalsTo
+{-@ data BEvalsTo where
+    BvalTo :: { p:Pred | bval p } -> ProofOf( BEvalsTo p (Bc True)) @-}
 
 ----- the Bare-Typing Relation and the Typing Relation
 
@@ -230,7 +279,7 @@ data HasBType where
     BTVar :: g:BEnv -> x:Vname -> {b:BType | elem (x,b) g} -> ProofOf(HasBType g e b)
  |  BTCon :: g:BEnv -> c:Int -> ProofOf(HasBType g c (BTBase TInt))
  |  BTAbs :: g:BEnv -> x:Vname -> b:BType -> e:Expr -> b':BType
-                -> ProofOf(HasBType (g ++ (x,b)) e b')
+                -> ProofOf(HasBType (BCons x b g) e b')
                 -> ProofOf(HasBType g (Lambda x e) (BTFunc b b'))
  |  BTApp :: g:BEnv -> e:Expr -> x:Vname -> b:BType -> b':BType
                 -> ProofOf(HasBType g e (BTFunc b b')) 
@@ -238,13 +287,13 @@ data HasBType where
                 -> ProofOf(HasBType g (App e e') b')
  |  BTLet :: g:BEnv -> e_x:Expr -> b:BType -> ProofOf(HasBType g e_x b)
                 -> x:Vname -> e:Expr -> b':BType 
-                -> ProofOf(HasBType (g ++ (x,b)) e b')
+                -> ProofOf(HasBType (BCons x b g) e b')
                 -> ProofOf(HasBType g (Let x e_x e) b')
  |  BTAnn :: g:BEnv -> e:Expr -> b:BType -> t:Type -> ProofOf(HasBType g e b)
                 -> ProofOf(HasBType g (Annot e t) b)            @-} -- @-}
 
 {-@ assume lemma_soundness :: e:Expr -> e':Expr -> ProofOf(EvalsTo e e') -> b:BType
-                        -> ProofOf(HasBType [] e b) -> ProofOf(HasBType [] e' b) @-}
+                   -> ProofOf(HasBType BEmpty e b) -> ProofOf(HasBType BEmpty e' b) @-}
 lemma_soundness :: Expr -> Expr -> EvalsTo -> BType -> HasBType -> HasBType
 lemma_soundness e e' p_ee' b p_eb = undefined
 
@@ -266,7 +315,7 @@ data HasType where
     TVar :: g:Env -> x:Vname -> { t:Type | elem (x,t) g } -> ProofOf(HasType g e t)
  |  TCon :: g:Env -> c:Int -> ProofOf(HasType g c (TBase TInt))
  |  TAbs :: g:Env -> x:Vname -> t_x:Type -> e:Expr -> t:Type
-                -> ProofOf(HasType (g ++ (x,t_x)) e t)
+                -> ProofOf(HasType (Cons x t_x g) e t)
                 -> ProofOf(HasType g (Lambda x e) (TFunc x t_x t))
  |  TApp :: g:Env -> e:Expr -> x:Vname -> t_x:Type -> t:Type
                 -> ProofOf(HasType g e (TFunc x t_x t)) 
@@ -274,7 +323,7 @@ data HasType where
                 -> ProofOf(HasType g (App e e') (TExists x t_x t))
  |  TLet :: g:Env -> e_x:Expr -> t_x:Type -> ProofOf(HasType g e_x t_x)
                 -> x:Vname -> e:Expr -> t:Type 
-                -> ProofOf(HasType (g ++ (x,t_x)) e t)
+                -> ProofOf(HasType (Cons x t_x g) e t)
                 -> ProofOf(HasType g (Let x e_x e) t)
  |  TAnn :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
                 -> ProofOf(HasType g (Annot e t) t)
@@ -282,7 +331,7 @@ data HasType where
                 -> ProofOf(Subtype g s t) -> ProofOf(HasType g e t) @-} -- @-}
 
 data SubtypeP where
-    Subtype :: Env -> Type -> Type -> Subtype
+    Subtype :: Env -> Type -> Type -> SubtypeP
 
 data Subtype where
     SBase :: Env -> Vname -> Base -> Pred -> Vname -> Pred -> Entails -> Subtype
@@ -291,36 +340,45 @@ data Subtype where
     -- TODO: Is this the form of [S-WITN] that we need?
     SWitn :: Env -> Vname -> Type -> HasType -> Type -> Vname -> Type
                -> Subtype -> Subtype
-    SBind :: Env -> Vname -> Type -> Type -> Type -> Subtype -> Subtype
+    SBind :: Env -> Vname -> Type -> HasType -> Type -> Type -> Subtype -> Subtype
 
 {-@ data Subtype where
     SBase :: g:Env -> v1:Vname -> b:Base -> p1:Pred -> v2:Vname -> p2:Pred
-               -> ProofOf(Entails (g ++ (v1, TRefn b v1 p)) (bsubst v2 v1 p2))
+               -> ProofOf(Entails ( Cons v1 (TRefn b v1 p1) g) (bsubst v2 (Iv v1) p2))
                -> ProofOf(Subtype g (TRefn b v1 p1) (TRefn b v2 p2))
  |  SFunc :: g:Env -> x1:Vname -> s1:Type -> x2:Vname -> s2:Type
                -> ProofOf(Subtype g s2 s1) -> t1:Type -> t2:Type
-               -> ProofOf(Subtype (g ++ (x2,s2)) (subst x1 x2 t1) t2)
+               -> ProofOf(Subtype (Cons x2 s2 g) (tsubst x1 x2 t1) t2)
+               -> ProofOf(Subtype g (TFunc x1 s1 t1) (TFunc x2 s2 t2))
  |  SWitn :: g:Env -> y:Vname -> t_x:Type -> ProofOf(HasType g y t_x) -> t:Type 
                -> x:Vname -> t':Type -> ProofOf(Subtype g t (tsubst x y t'))
                -> ProofOf(Subtype g t (TExists x t_x t'))
  |  SBind :: g:Env -> x:Vname -> t_x:Type -> ProofOf(HasType g x t_x) -> t:Type
                -> { t':Type | not S.elem x (free t') } 
-               -> ProofOf(Subtype (g ++ (x,t_x)) t t')
+               -> ProofOf(Subtype (Cons x t_x g) t t')
                -> ProofOf(Subtype g (TExists x t_x t) t')
 @-}
 
---TODO: How do I add ENT-EMP: |- c if SMTValid(c) ?
+data SMTValidP where --dummy SMT Validity certificates
+    SMTValid :: Form -> SMTValidP
+
+data SMTValid where
+    SMTProp :: Pred -> SMTValid
+{-@ data SMTValid where
+    SMTProp :: { p:Pred | fv p == S.empty && bval p } -> ProofOf(SMTValid (P p)) @-}
+
 data EntailsP where
     Entails :: Env -> Form -> EntailsP
 
 data Entails where
-    -- EntEmp ::
+    EntEmp :: Form -> SMTValid -> Entails
     EntExt :: Env -> Vname -> Base -> Pred -> Form -> Entails -> Entails
 
 {-@ data Entails where
-    EntExt :: g:Env -> v:Vname -> b:Base -> p:Pred -> c:Form
+    EntEmp :: c:Form -> ProofOf(SMTValid c) -> ProofOf(Entails BEmpty c)
+ |  EntExt :: g:Env -> v:Vname -> b:Base -> p:Pred -> c:Form
                -> ProofOf(Entails g (Impl v b p c))
-               -> ProofOf(Entails (g ++ (x, TRefn b v p)) c)  @-}
+               -> ProofOf(Entails (Cons x (TRefn b v p) g) c)  @-} -- @-}
 
 data DenotesP where 
     Denotes :: Type -> Expr -> DenotesP    -- e \in [[t]]
@@ -334,22 +392,29 @@ data Denotes where
     DExis :: Vname -> Type -> Type -> Expr -> HasBType
               -> Expr -> Denotes -> Denotes -> Denotes
 {-@ data Denotes where
-    DBase :: b:Base -> e:Expr -> ProofOf(HasBType [] e b) 
+    DBase :: b:Base -> e:Expr -> ProofOf(HasBType BEmpty e (BTBase b)) 
               -> ProofOf(Denotes (TBase b) e)
-  | DRefn :: b:Base -> x:Vname -> p:Pred -> e:Expr -> ProofOf(HasBType [] e b)
-              -> (v:Int -> ProofOf(EvalsTo e (C v)) 
-                        -> ProofOf(BEvalsTo (bsubstc x v p) (Bc True)) )
+  | DRefn :: b:Base -> x:Vname -> p:Pred -> e:Expr 
+              -> ProofOf(HasBType BEmpty e (BTBase b))
+              -> (v':Int -> ProofOf(EvalsTo e (C v')) 
+                        -> ProofOf(BEvalsTo (bsubst x (Ic v') p) (Bc True))) 
               -> ProofOf(Denotes (TRefn b x p) e)
   | DFunc :: x:Vname -> t_x:Type -> t:Type -> e:Expr 
-              -> ProofOf(HasBType [] e (erase (TFunc x t_x t)))
-              -> ({ v:Expr | isValue v } -> ProofOf(Denotes t_x v)
-                        -> ProofOf(Denotes (tsubst x v t) (App e v)) )
+              -> ProofOf(HasBType BEmpty e (erase (TFunc x t_x t)))
+              -> ({ v':Expr | isValue v' } -> ProofOf(Denotes t_x v')
+                        -> ProofOf(Denotes (tsubst x v' t) (App e v')) )
               -> ProofOf(Denotes (TFunc x t_x t) e)
   | DExis :: x:Vname -> t_x:Type -> t:Type -> e:Expr 
-              -> ProofOf(HasBType [] e (erase t)) 
-              -> { v:Expr | isValue v } -> ProofOf(Denotes t_x v)
-              -> ProofOf(Denotes (tsubst x v t) e)
+              -> ProofOf(HasBType BEmpty e (erase t)) 
+              -> { v':Expr | isValue v' } -> ProofOf(Denotes t_x v')
+              -> ProofOf(Denotes (tsubst x v' t) e)
               -> ProofOf(Denotes (TExists x t_x t) e)  @-} 
+
+-- old version of DRefn, in case I want to bring back BEvalsTo
+-- | DRefn :: b:Base -> x:Vname -> p:Pred -> e:Expr -> ProofOf(HasBType [] e b)
+--              -> (v:Int -> ProofOf(EvalsTo e (C v)) 
+--                        -> ProofOf(BEvalsTo (bsubst x (Ic v) p) (Bc True)) )
+--              -> ProofOf(Denotes (TRefn b x p) e)
 
 -- TODO: Still need closing substitutions
 -- TODO: Still need denotations of environments
@@ -357,27 +422,31 @@ data Denotes where
 -- Lemma 1 in the Pen and Paper version (Preservation of Denotations)
 -- If e ->* e' then e in [[t]] iff e' in [[t]]
 {-@ lemma1_fwd :: e:Expr -> e':Expr -> ProofOf(EvalsTo e e') -> t:Type
-                   -> ProofOf(Denotes t e) -> ProofOf(Denotes t e') @-}
+                   -> ProofOf(Denotes t e) -> ProofOf(Denotes t e') / [tsize t] @-}
 lemma1_fwd :: Expr -> Expr -> EvalsTo -> Type -> Denotes -> Denotes
-lemma1_fwd e e' p_ee' (TBase b) (DBase _b _e p_eb) = DBase b e p_e'b
+lemma1_fwd e e' p_ee' (TBase _b) (DBase b _e p_eb) = DBase b e' p_e'b
   where 
-    p_e'b              = lemma_soundness e e' p_ee' b p_eb
-lemma1_fwd e e' p_ee' (TRefn b x p) (DRefn _b _x _p _e p_eb predicate) = den_te'
+    p_e'b              = lemma_soundness e e' p_ee' (BTBase b) p_eb
+lemma1_fwd e e' p_ee' (TRefn _b _x _p) (DRefn b x p _e p_eb predicate) = den_te'
   where
-    den_te'            = DRefn b x p e' p_e'b predicate'
-    p_e'b              = lemma_soundness e e' p_ee' b p_eb
-    predicate' v p_e'v = predicate v (lemma_evals_trans e e' v p_ee' e_e'v)
-lemma1_fwd e e' p_ee' (TFunc x t_x t) (DFunc _x _tx _t _e p_ebt app_den) = den_te'
+    den_te'            = DRefn b x p e' p_e'b predicate2
+    p_e'b              = lemma_soundness e e' p_ee' (BTBase b) p_eb
+    {-@ predicate2 :: w:Int -> ProofOf(EvalsTo e' (C w))
+                            -> ProofOf( BEvalsTo (bsubst x (Ic w) p) (Bc True)) @-}
+    predicate2 :: Int -> EvalsTo -> BEvalsTo
+    predicate2 v p_e'v = predicate v (lemma_evals_trans e e' (C v) p_ee' p_e'v)
+lemma1_fwd e e' p_ee' (TFunc _x _tx _t) (DFunc x t_x t _e p_ebt app_den) = den_te'
   where
     den_te'          = DFunc x t_x t e' p_e'bt app_den'
-    p_e'bt           = lemma_soundness e e' p_ee' (erase (TFunc x t_x t))
+    p_e'bt           = lemma_soundness e e' p_ee' (erase (TFunc x t_x t)) p_ebt
     app_den' v d_txv = lemma1_fwd (App e v) (App e' v) p_ev_e'v (tsubst x v t) dtev
-    p_ev_e'v         = (lemma_app_many e e' v p_ee')
-    dtev             = app_den v d_txv 
-lemma1_fwd e e' p_ee' (TExists x t_x t) (DExis _x _tx _t _e p_ebt v d_txv d_te) = d_te'
+      where
+        p_ev_e'v     = (lemma_app_many e e' v p_ee')
+        dtev         = app_den v d_txv 
+lemma1_fwd e e' p_ee' (TExists _x _tx _t) (DExis x t_x t _e p_ebt v d_txv d_te) = d_te'
   where
     d_te'     = DExis x t_x t e' p_e'bt v d_txv den_te'
-    p_e'bt    = lemma_soundness e e' p_ee' (erase (TExists x t_x t))
+    p_e'bt    = lemma_soundness e e' p_ee' (erase (TExists x t_x t)) p_ebt
     den_te'   = lemma1_fwd e e' p_ee' (tsubst x v t) d_te
 
 {-@ lemma1_bck :: e:Expr -> e':Expr -> ProofOf(EvalsTo e e') -> t:Type
