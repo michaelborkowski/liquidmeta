@@ -1,8 +1,8 @@
 {-# LANGUAGE GADTs #-}
 
-{-@ LIQUID "--counter-examples" @-}
-{-@ LIQUID "--exact-data-cons" @-}
-{-@ LIQUID "--higherorder" @-}
+--{-@ LIQUID "--counter-examples" @-}
+--{-@ LIQUID "--exact-data-cons" @-}
+--{-@ LIQUID "--higherorder" @-}
 {-@ LIQUID "--reflection" @-}
 {-@ LIQUID "--ple" @-}
 {-@ LIQUID "--prune-unsorted" @-}
