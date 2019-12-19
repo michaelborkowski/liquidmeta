@@ -3,6 +3,7 @@
 --{-@ LIQUID "--counter-examples" @-}
 --{-@ LIQUID "--exact-data-cons" @-}
 --{-@ LIQUID "--higherorder" @-}
+{-@ LIQUID "--no-totality" @-}
 {-@ LIQUID "--reflection" @-}
 {-@ LIQUID "--ple" @-}
 {-@ LIQUID "--prune-unsorted" @-}
