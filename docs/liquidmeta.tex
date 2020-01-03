@@ -57,14 +57,14 @@
 
 \title{Liquid Meta(l)}
 \author{\textsc{Michael Borkowski} \\ (summarizing joint work with {\sc Ranjit Jhala} and {\sc Niki Vazou})}
-\date{December 27, 2019}
+\date{January 2, 2020}
 
 \maketitle
 \thispagestyle{empty}
 
 \section{Our language $\lambda_1$}
 
-We work with a simply typed lambda calculus which is augmented by refinement types, dependent function types, and existential types. Our language is based on $\lambda$ in [Jhala] and $\lambda^U$ in [Vazou].
+We work with a simply typed lambda calculus which is augmented by refinement types, dependent function types, and existential types. Our language is based on $\lambda$ in [Jhala] and $\lambda^H$ in [Vazou].
 
 We start with the syntax of term-level expressions in our language:
 
@@ -102,7 +102,7 @@ Next, we give the syntax of the types and binding environments used in our langu
                    &dependent\; function\\
                    &\;\;|\quad \exists\, x\bind t_x.\, t 
                    &existential\\ \\
-{\sf Refinements} \quad r :&= \{v\col p\} 
+{\sf Refinements} \quad r :&= \{x\col p\} 
 \end{align*}
 \begin{align*}
 {\sf Environments} \quad \Gamma :&=\;\; \varnothing
@@ -118,7 +118,7 @@ Next, we give the syntax of the Boolean predicates and constraints involved in r
                    {\kern 3 em}& expressions\; of\; type\; {\sf Bool} \\ \\
 {\sf Constraints} \;\; c :&=\;\: p  {\kern 3 em}& predicates\\
                    &\;\;|\quad c_1 \wedge c_2 & conjunction\\
-                   &\;\;|\quad \forall\, x:b.\, p \Rightarrow c
+                   &\;\;|\quad\forall\, x\bind b.\, p\Rightarrow c
                    &implication
 \end{align*}
 Our definition of predicates above departs from the languages of [Jhala] by allowing predicates to be arbitrary expressions from the main language (which are Boolean typed under the appropriate binding environment).
@@ -169,8 +169,8 @@ ty(n) :=&\; \Int
 The type judgments in the language $\lambda_1$ will be denoted $\vdash$ with a colon between term and type. For clarity, we distinguish between this and other judgments by using $\vdash$ with a subscript in most other settings. For instance, the judgement $\Gamma \vdash_w t$ says that type $t$ is well-formed in environment $\Gamma$:
 
 \begin{mathpar}
-\inferrule*[Right=WF-Base]{\Gamma, v\bind b \vdash e : \Bool}
-{\Gamma \vdash_w b\{v\col e\}}\and
+\inferrule*[Right=WF-Base]{\Gamma, x\bind b \vdash e : \Bool}
+{\Gamma \vdash_w b\{x\col e\}}\and
 \inferrule*[Right=WF-Func]
 {\Gamma \vdash_w t_x \qquad \Gamma, x\bind t_x \vdash_w t}
 {\Gamma \vdash_w x\bind t_x \rightarrow t} \\
@@ -204,8 +204,8 @@ The last rule, {\sc T-Sub}, uses the subtyping judgement $\Gamma \vdash s <: t$.
 
 \begin{mathpar}
 \inferrule*[Right=S-Base]
-{\Gamma, v_1\bind b\{v_1\col p_1\} \vdash_e p_2[v_1/v_2]}
-{\Gamma \vdash b\{v_1\col p_1\} <: b\{v_2\col p_2\}} \and 
+{\Gamma, x_1\bind b\{x_1\col p_1\} \vdash_e p_2[x_1/x_2]}
+{\Gamma \vdash b\{x_1\col p_1\} <: b\{x_2\col p_2\}} \and 
 \inferrule*[Right=S-Func]
 {\Gamma \vdash s_2 <: s_1 \quad \Gamma, x_2\bind s_2 \vdash t_1[x_2/x_1] <: t_2}
 {\Gamma \vdash x_1\bind s_1 \rightarrow t_1 <: x_2\bind s_2\rightarrow t_2} \and
@@ -217,15 +217,25 @@ The last rule, {\sc T-Sub}, uses the subtyping judgement $\Gamma \vdash s <: t$.
 {\Gamma \vdash \exists\, x\bind t_x.\, t <: t'}
 \end{mathpar}
 
-The first rule above, {\sc S-Base}, uses the entailment judgement $\Gamma \vdash_e c$ which states that constraint $c$ is valid (as a first-order sentence) when universally quantified over all variables bound in environment $\Gamma$.
-Let {\sc Valid}(c) denote the property that constraint $c$ is a valid first-order {\em sentence}. We give the inference rules for the entailment judgement:
+The first rule above, {\sc S-Base}, uses the entailment judgement $\Gamma \vdash_e c$ which states that constraint $c$ is valid (in the sense of a first-order sentence) when universally quantified over all variables bound in environment $\Gamma$.
+%Let {\sc Valid}(c) denote the property that constraint $c$ is a valid first-order {\em sentence}. 
+We give the inference rules for the entailment judgement:
 
 \begin{mathpar}
-\inferrule*[Right=Ent-Emp]{\textsc{Valid}(c)}
-{\varnothing \vdash_e c} \and
+\inferrule*[Right=Ent-EmpP]{p \many \true}
+{\varnothing \vdash_e p} \and\and
+\inferrule*[Right=Ent-EmpI]
+{\forall\, \theta.\,
+ \theta \in \lb b\{x\col p\}\rb\Rightarrow \varnothing\vdash_e \theta(c) }
+{\varnothing \vdash_e \forall\, x\bind b.\, p \Rightarrow c} \\
+\inferrule*[Right=Ent-EmpC]
+{\Gamma \vdash_e c_1 \quad \Gamma \vdash_e c_2}
+{\Gamma \vdash_e c_1 \wedge c_2 } \and
+%\inferrule*[Right=Ent-Emp]{\textsc{Valid}(c)}
+%{\varnothing \vdash_e c} \and
 \inferrule*[Right=Ent-Ext]
-{\Gamma \vdash_e \forall\, v\bind p \Rightarrow c}
-{\Gamma, v\bind b\{v\col p\} \vdash_e c}
+{\Gamma \vdash_e \forall\, x\bind b.\, p \Rightarrow c}
+{\Gamma, x\bind b\{x\col p\} \vdash_e c}
 \end{mathpar}
 
 
@@ -248,10 +258,10 @@ We start our development of the meta-theory by giving a definition of {\em type 
 \,\wedge\, ({\rm if}\, e \many v \,{\rm then}\, p[v/x] \many {\tt true})\} \\
 \lb x\bind t_x \rightarrow t\rb \,&:= 
 \{ e \,|\; (\varnothing \vdash_B e : \lfloor t_x\rfloor \rightarrow \lfloor t\rfloor ) \,\wedge\,
-( \forall\, v \in \lb t_x \rb.\, e\; v \in \lb t[v/x] \rb)\} \\
+( \forall\, e_x \in \lb t_x \rb.\, e\; e_x \in \lb t[e_x/x] \rb)\} \\
 \lb \exists\, x\bind t_x .\, t\rb \,&:= 
 \{ e \,|\; (\varnothing \vdash_B e : \lfloor t\rfloor ) \,\wedge\,
-( \exists\, v \in \lb t_x \rb.\, e \in \lb t[v/x] \rb)\}
+( \exists\, e_x \in \lb t_x \rb.\, e \in \lb t[e_x/x] \rb)\}
 \end{align*}
 
 We also have the concept of the denotation of an environment $\Gamma$; we intuitively define this to be the set of all sequences of expression bindings for the variables in $\Gamma$ such that the expressions respect the denotations of the types of the corresponding variables.
@@ -275,8 +285,8 @@ Then we can formally define the denotation of an environment:
 In this section, we seek to prove the operational soundness of our language $\lambda_1$.
 Our proof of the soundness theorem begins with several helping lemmas.
 
-\begin{lemma}{
-If $e \hookrightarrow^* e'$ then $e \in \lb t\rb$ iff $e' \in \lb t\rb$.}
+\begin{lemma}{(Preservation of Denotations)
+If $e \hookrightarrow^* e'$ then $e \in \lb t\rb$ iff $e' \in \lb t\rb$.}\label{pres-den}
 \end{lemma}
 \begin{proof}
 We proceed by a case split on the definition of the denotation of a type; in other words, we use induction on the size of type $t$ (the number of arrows or existential quantifiers appearing in $t$).
@@ -308,49 +318,71 @@ Finally, suppose $t \equiv \exists\, x\bind t_x.\, t'$. We have $e \in \lb t \rb
 $e \in \lb t'[v/x]\rb$. Then by induction $e \in \lb t'[v/x]\rb$ if and only if $e' \in \lb t'[v/x]\rb$. By definition, $e' \in \lb t\rb$ if and only if there exists $v \in \lb t_x\rb$ such that $e'\in\lb t'[v/x]\rb$, which completes the proof.
 \end{proof}
 
-
-\begin{lemma}{ (Type Denotations) Our typing and subtyping relations are sound with respect to the denotational semantics of our types:\\
-1. If $\Gamma \vdash t_1 <: t_2$ then $\forall \theta. \theta \in \lb \Gamma \rb \Rightarrow \lb\theta(t_1)\rb \subseteq \lb\theta(t_2)\rb$.\\
-2. If $\Gamma \vdash e : t$ then $\forall \theta. \theta \in \lb \Gamma \rb \Rightarrow \theta(e) \in \lb\theta(t)\rb.$
-}	
+\begin{lemma}{(Declarative Entailments) Our entailment judgement is sound with respect to the denotations of the environment:
+If $\Gamma \vdash_e c$, then $\forall\, \theta.\, \theta \in \lb\Gamma\rb \Rightarrow \varnothing \vdash_e \theta(c)$.}
+\label{decl-impl}
 \end{lemma}
 
-\begin{comment}
+\begin{proof} We proceed by induction on (the length of) $\Gamma$. In the base case $\Gamma = \varnothing$, so $\theta(c) = c$ and the result is vacuous.
+In the inductive case, suppose we have $\Gamma', x\bind t \vdash_e c$.
+By inversion of {\sc Ent-Ext}, we must have that $t \equiv b\{x\col p\}$ and $\Gamma' \vdash_e \forall\,x\bind b.\, p \Rightarrow c$. By the inductive hypothesis, for any $\theta' \in \lb\Gamma'\rb$, $\varnothing \vdash_e \theta'(\forall\, x\bind b.\, p \Rightarrow c)$, or equivalently, $\varnothing \vdash_e \forall\, x\bind b.\, \theta'(p) \Rightarrow \theta'(c)$. By inversion of {\sc Ent-EmpI}, we have for all $\theta'' = (x\mapsto e) \in \lb b\{x\col p\}\rb$, $\varnothing \vdash_e \theta'(c)[e/x]$. Therefore, for any $\theta \in \lb \Gamma', x\bind t\rb$, if we write $\theta=(\theta', x\mapsto e)$ we have $\varnothing \vdash_e \theta(c)$.
+\end{proof}
+
+
+\begin{lemma}{(Type Denotations) Our typing and subtyping relations are sound with respect to the denotational semantics of our types:\\
+1. If $\Gamma \vdash t_1 <: t_2$ then $\forall \theta. \theta \in \lb \Gamma \rb \Rightarrow \lb\theta(t_1)\rb \subseteq \lb\theta(t_2)\rb$.\\
+2. If $\Gamma \vdash e : t$ then $\forall \theta. \theta \in \lb \Gamma \rb \Rightarrow \theta(e) \in \lb\theta(t)\rb.$
+}\label{type-denote}
+\end{lemma}
+
 \begin{proof}
 (1) Suppose $\Gamma \vdash t_1 <: t_2$. We proceed by induction on the derivation tree of the subtyping relation.
 
 {\bf Case} $\textsc{Sub-Base}$: We have that 
-$\Gamma \vdash b\{v_1\col p_1\} <: b\{v_2\col p_2\}$ where $t_1 \equiv b\{v_1\col p_1\}$ and $t_2 \equiv b\{v_2\col p_2\}$.
+$\Gamma \vdash b\{x_1\col p_1\} <: b\{x_2\col p_2\}$ where $t_1 \equiv b\{x_1\col p_1\}$ and $t_2 \equiv b\{x_2\col p_2\}$.
 By inversion, 
-\[\Gamma; v_1\bind b\{v_1\col p_1\} \vdash p_2[v_1/v_2].\] 
+\[\Gamma; x_1\bind b\{x_1\col p_1\} \vdash p_2[x_1/x_2].\] 
 By inversion of {\sc Ent-Ext} we have 
-\begin{equation}\Gamma \vdash \forall\, v_1\bind b.\, p_1 \Rightarrow p_2[v_1/v_2]
+\begin{equation}\Gamma \vdash \forall\, x_1\bind b.\, p_1 \Rightarrow p_2[x_1/x_2]
 .\end{equation}
+By Lemma \ref{decl-impl} we have
+\[
+\forall\,\theta.\,\theta\in\lb\Gamma\rb \Rightarrow 
+\varnothing \vdash_e \theta(\forall\, x_1\bind b.\, p_1 \Rightarrow p_2[x_1/x_2])
+,\]
+or equivalently
+\begin{equation}
+\forall\,\theta.\,\theta\in\lb\Gamma\rb \Rightarrow 
+\varnothing \vdash_e \forall\, x_1\bind b.\, \theta(p_1) \Rightarrow \theta(p_2)[x_1/x_2]
+\end{equation}
+By inversion of rule {\sc Ent-EmpI}, we have
+\begin{equation}
+\forall\,\theta.\,\theta\in\lb\Gamma\rb \Rightarrow 
+\forall\, (x_1\mapsto e)\in \lb b\{x_1\col \theta(p_1)\}\rb \Rightarrow \varnothing \vdash_e \theta(p_2)[x_1/x_2][e/x_1].
+\end{equation}
+Then by inversion of rule {\sc Ent-EmpP}, we obtain
+\begin{equation}\label{3.1.0}
+\forall\,\theta.\,\theta\in\lb\Gamma\rb \Rightarrow 
+\forall\, (x_1\mapsto e)\in \lb b\{x_1\col \theta(p_1)\}\rb \Rightarrow \theta(p_2)[e/x_2] \many \true.
+\end{equation}
 We need to show $\forall \theta.\; 
 \theta \in \lb \Gamma \rb \Rightarrow 
-\lb\theta(b\{v_1:p_1\})\rb \subseteq \lb\theta(b\{v_2:p_2\})\rb.$
+\lb\theta(b\{x_1:p_1\})\rb \subseteq \lb\theta(b\{x_2:p_2\})\rb.$
 Equivalently,
-\begin{align}
+\begin{align}\label{3.1.1}
 \forall\theta.\,\theta\in\lb\Gamma\rb \Rightarrow&
 \{ e \,|\, \varnothing \vdash_B e:b \;\wedge\; 
-  ({\rm if}\, e \many v \,{\rm then}\, \theta(p_1[v/v_1]) \many \true)\}\\
+  ({\rm if}\, e \many v \,{\rm then}\, \theta(p_1[v/x_1]) \many \true)\}\\
 \subseteq &\{ e \,|\, \varnothing \vdash_B e:b \;\wedge\; 
-  ({\rm if}\, e \many v \,{\rm then}\, \theta(p_2[v/v_2]) \many \true)\}
+  ({\rm if}\, e \many v \,{\rm then}\, \theta(p_2[v/x_2]) \many \true)\}\label{3.1.2}
 \end{align}
 Let $\theta \in \lb\Gamma\rb$ be a closing substitution and
-let $e$ a term in set (2), and suppose $e \many v$. Then $\theta(p_1[v/v_1]) \many \true$. 
-Validity of the implication (1) is defined by the property that for all closing substitutions $\theta'$ in the denotation of $\Gamma$ extended by $v_1 : b$ ($v_1$ is the variable being universally quantified over in (1)) we have that if $\theta'(p_1) \many \true$ then $\theta'(p_2[v_1/v_2]) \many \true$. That is,
-\begin{equation}
-\forall\theta'.\, \theta' \in \lb\Gamma,v_1:b\rb \Rightarrow
-(\theta'(p_1) \many \true) \Rightarrow (\theta'(p_2[v_1/v_2]) \many \true)
-\end{equation}
+let $e$ a term in set (\ref{3.1.1}), and suppose $e \many v$. Then $\theta(p_1[v/x_1]) \many \true$, and so $\theta' = (\theta, x_1 \mapsto v) \in \lb\Gamma, b\{ x_1\col \theta(p_1)\}\rb$.
+From (\ref{3.1.0}) we have
+$\theta(p_2[v/x_2]) = \theta(p_2)[v/x_2] \many \true$,
+and so $e$ lies in set (\ref{3.1.2}), thus proving the desired containment.
 
-Let $\theta' = (\theta,v_1\mapsto v)$. Then $\theta'(p_1) = \theta(p_1[v/v_1]) \many \true$.
-From (4) we have
-$\theta(p_2[v/v_2]) = \theta((p_2[v_1/v_2])[v/v_1])
-= \theta'(p_2[v_1/v_2]) \many \true$,
-and so $e$ lies in set (3) proving the desired containment.
-
+\begin{comment}
 {\bf Case} $\textsc{Sub-Fun}$: We have that
 $\Gamma \vdash x_1:s_1 \rightarrow t'_1 <: x_2:s_2 \rightarrow t'_2$ where $t_1 \equiv x_1:s_1 \rightarrow t'_1$ and $t_2 \equiv x_2:s_2 \rightarrow t'_2$. By inversion
 \[
@@ -442,11 +474,11 @@ $\theta(\letin{x}{e_1}{e_2}) \many \theta(e_2[e_1/x])$, so by Lemma 1,
 \]
 However, by our original judgment $\Gamma \vdash e : t_2$, we see that $x$ cannot be free in $t_2$ and thus
 $\theta(e) \in \lb\theta(t_2[e_1/x])\rb = \lb\theta(t_2)\rb$ as desired.
-\end{comment--}
+\end{comment}
 \end{proof}
 
 
-%\begin{comment}
+\begin{comment}
 \begin{lemma}(The Substitution Lemma) If $\Gamma \vdash e_x : t_x$ then\\
 1. If $\Gamma, x:t_x, \Gamma' \vdash t_1 <: t_2$ then
 \[
