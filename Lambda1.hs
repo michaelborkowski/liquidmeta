@@ -40,6 +40,21 @@ data Prim = And | Or | Not
           | Eq  | Eqn Int
   deriving (Show)
 
+{-@ inline expects_bool @-}
+expects_bool :: Prim -> Bool
+expects_bool And = True
+expects_bool Or  = True
+expects_bool Not = True
+expects_bool _   = False
+
+{-@ inline expects_int @-}
+expects_int :: Prim -> Bool
+expects_int Leq      = True    
+expects_int (Leqn _) = True
+expects_int Eq       = True
+expects_int (Eqn _)  = True
+expects_int _        = False
+
 data Expr = Bc Bool              -- True, False
           | Ic Int               -- 0, 1, 2, ...
           | Prim Prim            -- built-in primitive functions 
@@ -58,6 +73,16 @@ isValue (Prim _)     = True
 isValue (V _)        = True
 isValue (Lambda _ _) = True
 isValue _            = False
+
+{-@ inline is_bc @-}
+is_bc :: Expr -> Bool
+is_bc (Bc _) = True
+is_bc _      = False
+
+{-@ inline is_ic @-}
+is_ic :: Expr -> Bool
+is_ic (Ic _) = True
+is_ic _      = False
 
 {-@ reflect subst @-}
 --{-@ subst :: Vname -> { v:Expr | isValue v } -> Expr -> Expr @-}
@@ -154,7 +179,7 @@ free (TExists x t_x t)  = S.union (free t_x) (S.difference (free t) (S.singleton
 {-@ tsubst :: Vname -> Expr -> t:Type  
                     -> { t':Type | tsize t' <= tsize t && tsize t' >= 0 } @-}
 tsubst :: Vname -> Expr -> Type -> Type
-tsubst x _ (TBase b)           = TBase b
+tsubst x _   (TBase b)         = TBase b
 tsubst x e_x (TRefn b v r)     = TRefn b v (subst x e_x r)
 tsubst x e_x (TFunc z t_z t)   = TFunc z (tsubst x e_x t_z) (tsubst x e_x t)
 tsubst x e_x (TExists z t_z t) = TExists z (tsubst x e_x t_z) (tsubst x e_x t)
@@ -162,6 +187,7 @@ tsubst x e_x (TExists z t_z t) = TExists z (tsubst x e_x t_z) (tsubst x e_x t)
 ----- OPERATIONAL SEMANTICS (Small Step)
 
 {-@ reflect delta @-}
+{-@ delta :: p:Prim -> { e:Expr | (is_bc e && expects_bool p) || (is_ic e && expects_int p) } -> Expr @-}
 delta :: Prim -> Expr -> Expr
 delta And (Bc True)   = Lambda "x" (V "x")
 delta And (Bc False)  = Lambda "x" (Bc False)
@@ -300,13 +326,16 @@ data WFTypeP where
     WFType :: Env -> Type -> WFTypeP
 
 data WFType where 
-    WFBase :: Env -> Vname -> Base -> Pred -> HasType -> WFType
+    WFBase :: Env -> Base -> WFType
+    WFRefn :: Env -> Vname -> Base -> Pred -> HasType -> WFType
     WFFunc :: Env -> Vname -> Type -> WFType -> Type -> WFType -> WFType
     WFExis :: Env -> Vname -> Type -> WFType -> Type -> WFType -> WFType
 
 {-@ data WFType where
-    WFBase :: g:Env -> v:Vname -> b:Base -> p:Pred 
-               -> ProofOf(HasType (Cons v b g) p (TBase b)) -> ProofOf(WFType g (TRefn v b p))
+    WFBase :: g:Env -> b:Base -> ProofOf(WFType g (TBase b))
+ |  WFRefn :: g:Env -> x:Vname -> b:Base -> p:Pred 
+               -> ProofOf(HasType (Cons x b g) p (TBase TBool)) 
+               -> ProofOf(WFType g (TRefn v b p))
  |  WFFunc :: g:Env -> x:Vname -> t_x:Type -> ProofOf(WFType g t_x) -> t:Type
                -> ProofOf(WFType (Cons x t_x g) t) -> ProofOf(WFType g (TFunc x t_x t))
  |  WFExis :: g:Env -> x:Vname -> t_x:Type -> ProofOf(WFType g t_x) -> t:Type
@@ -371,37 +400,46 @@ data Subtype where
                -> ProofOf(Subtype g (TRefn b v1 p1) (TRefn b v2 p2))
  |  SFunc :: g:Env -> x1:Vname -> s1:Type -> x2:Vname -> s2:Type
                -> ProofOf(Subtype g s2 s1) -> t1:Type -> t2:Type
-               -> ProofOf(Subtype (Cons x2 s2 g) (tsubst x1 x2 t1) t2)
+               -> ProofOf(Subtype (Cons x2 s2 g) (tsubst x1 (V x2) t1) t2)
                -> ProofOf(Subtype g (TFunc x1 s1 t1) (TFunc x2 s2 t2))
  |  SWitn :: g:Env -> e:Expr -> t_x:Type -> ProofOf(HasType g e t_x) -> t:Type 
-               -> x:Vname -> t':Type -> ProofOf(Subtype g t (tsubst x y t'))
+               -> x:Vname -> t':Type -> ProofOf(Subtype g t (tsubst x e t'))
                -> ProofOf(Subtype g t (TExists x t_x t'))
  |  SBind :: g:Env -> x:Vname -> t_x:Type -> t:Type -> { t':Type | not S.elem x (free t') } 
                -> ProofOf(Subtype (Cons x t_x g) t t')
                -> ProofOf(Subtype g (TExists x t_x t) t')
 @-}
 
-data SMTValidP where --dummy SMT Validity certificates
-    SMTValid :: Form -> SMTValidP
-
-data SMTValid where
-    SMTProp :: Pred -> EvalsTo -> SMTValid
-{-@ data SMTValid where
-    SMTProp :: { p:Pred | fv p == S.empty } -> ProofOf(EvalsTo p (Bc True))
-               -> ProofOf(SMTValid (P p)) @-}
+--data SMTValidP where --dummy SMT Validity certificates
+--    SMTValid :: Form -> SMTValidP
+--
+--data SMTValid where
+--    SMTProp :: Pred -> EvalsTo -> SMTValid
+--{-@ data SMTValid where
+--    SMTProp :: { p:Pred | fv p == S.empty } -> ProofOf(EvalsTo p (Bc True))
+--               -> ProofOf(SMTValid (P p)) @-}
 
 data EntailsP where
     Entails :: Env -> Form -> EntailsP
 
 data Entails where
-    EntEmp :: Form -> SMTValid -> Entails
-    EntExt :: Env -> Vname -> Base -> Pred -> Form -> Entails -> Entails
+    EntEmpP :: Pred -> EvalsTo -> Entails
+    EntEmpI :: Base -> Vname -> Pred -> Form  
+                -> (CSubst -> DenotesEnv -> Entails) -> Entails
+    EntEmpC :: Env -> Form -> Entails -> Form -> Entails -> Entails
+    EntExt  :: Env -> Vname -> Base -> Pred -> Form -> Entails -> Entails
 
 {-@ data Entails where
-    EntEmp :: c:Form -> ProofOf(SMTValid c) -> ProofOf(Entails BEmpty c)
- |  EntExt :: g:Env -> v:Vname -> b:Base -> p:Pred -> c:Form
-               -> ProofOf(Entails g (Impl v b p c))
-               -> ProofOf(Entails (Cons x (TRefn b v p) g) c)  @-} -- @-}
+    EntEmpP :: p:Pred -> ProofOf(EvalsTo p (Bc True)) -> ProofOf(Entails Empty p)
+ |  EntEmpI :: b:Base -> x:Vname -> p:Pred -> c:Form 
+               -> (th:CSubst -> ProofOf(DenotesEnv (Cons x (TRefn b x p) Empty) th)
+                       -> ProofOf(Entails Empty (cfsubst th c)) )
+               -> ProofOf(Entails Empty (Impl x b p c))
+ |  EntEmpC :: g:Env -> c1:Form -> ProofOf(Entails g c1) -> c2: Form -> ProofOf(Entails g c2)
+               -> ProofOf(Entails g (FAnd c1 c2))
+ |  EntExt :: g:Env -> x:Vname -> b:Base -> p:Pred -> c:Form
+               -> ProofOf(Entails g (Impl x b p c))
+               -> ProofOf(Entails (Cons x (TRefn b x p) g) c)  @-} -- @-}
 
 data DenotesP where 
     Denotes :: Type -> Expr -> DenotesP    -- e \in [[t]]
@@ -436,11 +474,16 @@ data Denotes where
 -- TODO: Still need closing substitutions
 type CSubst = [(Vname, Expr)]
 
-{-@ reflect csubst @-}
-csubst :: Vname -> CSubst -> Expr
-csubst x []                           = (V x)
-csubst x ((y, e) : binds) | x == y    = e
-                          | otherwise = csubst x binds
+--{-@ reflect csubst @-}
+--csubst :: CSubst -> Expr -> Expr
+--csubst x []                           = (V x)
+--csubst x ((y, e) : binds) | x == y    = e
+--                          | otherwise = csubst x binds
+
+
+--- reflect cfsubst @-}
+
+--- reflect ctsubst @-}
 
 --{-@ reflect theta @-}
 --theta :: Type -> CSubst -> Type

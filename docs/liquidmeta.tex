@@ -5,18 +5,7 @@
 \usepackage{textcomp,stmaryrd}
 \usepackage{mathpartir} 
 
-% Setup the problem environment
-%\makeatletter
-%\newenvironment{problem}{\@startsection
-%	{section}
-%	{1}
-%	{-.2em}
-%	{-3.5ex plus -1ex minus -.2ex}
-%	{2.3ex plus .2ex}
-%	{\pagebreak[3] \large\bf\noindent{Problem }}
-%	}
-%	{\begin{center}\large\bf \ldots\ldots\ldots\end{center}}
-%\makeatother
+\allowdisplaybreaks
 
 \newtheorem{theorem}{Theorem}%[section]
 \newtheorem{lemma}[theorem]{Lemma}
@@ -36,7 +25,7 @@
 \setlength\textheight{648pt}
 
 \newcommand{\eps}{\varepsilon}
-\newcommand{\bind}{\hspace{0.1em}{:}\hspace{0.1em}} %x:t w/o space
+\newcommand{\bind}{\hspace{0.05em}{:}\hspace{0.05em}} %x:t w/o space
 \newcommand{\col}{\mathbin{:}}       % e : t with a little space
 \newcommand{\lb}{\llbracket}         % [[
 \newcommand{\rb}{\rrbracket}         % ]]
@@ -48,23 +37,25 @@
 \newcommand{\Int}{{\sf Int}}
 \newcommand{\Bool}{{\sf Bool}}
 
+\newcommand{\existype}[3]{\exists\, #1\bind #2.\, #3}
+\newcommand{\functype}[3]{#1\bind #2 \rightarrow #3}
 \newcommand{\foralltheta}{\forall\theta.\,\theta\in\lb\Gamma\rb}
-\newcommand{\letin}[3]{{\tt let}\,#1=#2\,{\tt in}\,#3}
+\newcommand{\letin}[3]{{\tt let}\,#1\hspace{0.1em}{=}\hspace{0.1em}#2\,{\tt in}\,#3}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
 
-\title{Liquid Meta(l)}
+\title{Liquid Meta}
 \author{\textsc{Michael Borkowski} \\ (summarizing joint work with {\sc Ranjit Jhala} and {\sc Niki Vazou})}
-\date{January 2, 2020}
+\date{January 9, 2020}
 
 \maketitle
 \thispagestyle{empty}
 
 \section{Our language $\lambda_1$}
 
-We work with a simply typed lambda calculus which is augmented by refinement types, dependent function types, and existential types. Our language is based on $\lambda$ in [Jhala] and $\lambda^H$ in [Vazou].
+We work with a simply typed lambda calculus with call-by-value semantics which is augmented by refinement types, dependent function types, and existential types. Our language is based on the language $\lambda$ in Jhala's forthcoming manuscript [Jhala] and incorporates some aspects from the $\lambda^H$ of Vazou et al [VSJ$^+$14]. The existential types were used in a similar setting by Knowles and Flanagan [KF09].
 
 We start with the syntax of term-level expressions in our language:
 
@@ -82,7 +73,6 @@ We start with the syntax of term-level expressions in our language:
                    &\;\;|\quad e_1 \leq e_2,\; e_1 = e_2
                          & built{\rm -}in\; primitives
 \end{align*}
-
 \begin{align*}
 {\sf Expressions} \;\;\; e :&=\;\: v {\kern 5 em}& values \\
 	                &\;\;|\quad e_1\; e_2 & applications \\
@@ -102,9 +92,9 @@ Next, we give the syntax of the types and binding environments used in our langu
                    &dependent\; function\\
                    &\;\;|\quad \exists\, x\bind t_x.\, t 
                    &existential\\ \\
-{\sf Refinements} \quad r :&= \{x\col p\} 
-\end{align*}
-\begin{align*}
+{\sf Refinements} \quad r :&= \{x\col p\}  \\ \\
+%\end{align*}
+%\begin{align*}
 {\sf Environments} \quad \Gamma :&=\;\; \varnothing
                    {\kern 5em}& empty \\
                    &\;\;|\quad \Gamma, x\bind t & bind\;variable\\
@@ -137,11 +127,10 @@ $c\; v_1\; v_2 \many \delta(\delta(c,v_1),v_2)$. Currying gives us unary relatio
 \delta(\vee,{\tt false}) &:= \lambda x.\, x &
   \delta(m\!\!=, n) &:= {\tt bval}(m = n) \\ 
 \delta(\neg,\true) &:= {\tt false}\\
-\delta(\neg,{\tt false}) &:= \true \\
+\delta(\neg,{\tt false}) &:= \true 
 \end{align*}
 
-Now we give the reduction rules for the small-step semantics. In what follows, $e$ and its variants refer to an arbitrary expression, $v$ refers to a value, $x$ to a variable, and $c$  refers to a built-in primitive.\\ \\ \\
-
+Now we give the reduction rules for the small-step semantics. In what follows, $e$ and its variants refer to an arbitrary expression, $v$ refers to a value, $x$ to a variable, and $c$  refers to a built-in primitive.
 \begin{mathpar}
 \inferrule*[Right=E-Prim]{  }{c\; v \step \delta(c,v)} \and
 \inferrule*[Right=E-App1]{e \step e'}{e\; e_1 \step e'\; e_1} \\
@@ -156,32 +145,21 @@ Now we give the reduction rules for the small-step semantics. In what follows, $
 \end{mathpar}
 
 Next, we define the typing rules of our $\lambda_1$.
-As with the reduction rules, we take the type of our built-in primitives to be external to our language. We denote by $ty(c)$ the function that specifies them: 
-\begin{align*}
-ty(\wedge) = ty(\vee) :=&\; 	\Bool \rightarrow \Bool \rightarrow \Bool\\
-ty(\neg) :=&\; \Bool \rightarrow \Bool\\
-ty(\leq) = ty(=) :=&\; \Int \rightarrow \Int \rightarrow \Bool\\
-ty(m\!\!\leq) = ty(m\!\!=) :=&\; \Int \rightarrow \Bool \\
-ty(\true) = ty({\tt false}) :=&\; \Bool\\
-ty(n) :=&\; \Int 
-\end{align*}
-
 The type judgments in the language $\lambda_1$ will be denoted $\vdash$ with a colon between term and type. For clarity, we distinguish between this and other judgments by using $\vdash$ with a subscript in most other settings. For instance, the judgement $\Gamma \vdash_w t$ says that type $t$ is well-formed in environment $\Gamma$:
 
 \begin{mathpar}
-\inferrule*[Right=WF-Base]{\Gamma, x\bind b \vdash e : \Bool}
-{\Gamma \vdash_w b\{x\col e\}}\and
+\inferrule*[Right=WF-Base]{ }{\Gamma \vdash_w b}\and
+\inferrule*[Right=WF-Refn]{\Gamma, x\bind b \vdash e : \Bool}
+{\Gamma \vdash_w b\{x\col e\}}\\
 \inferrule*[Right=WF-Func]
 {\Gamma \vdash_w t_x \qquad \Gamma, x\bind t_x \vdash_w t}
-{\Gamma \vdash_w x\bind t_x \rightarrow t} \\
+{\Gamma \vdash_w x\bind t_x \rightarrow t} \and
 \inferrule*[Right=WF-Exis]
 {\Gamma \vdash_w t_x \qquad \Gamma, x\bind t_x \vdash_w t}
-{\Gamma \vdash_w \exists\, x\bind t_x .\, t} \\
+{\Gamma \vdash_w \exists\, x\bind t_x .\, t} 
 \end{mathpar}
 
-
-Now we give the rules for the typing judgements:
-
+Now we give the rules for the typing judgements. As with the reduction rules, we take the type of our built-in primitives to be external to our language. We denote by $ty(c)$ the function that specifies the most specific type possible for $c$. More details on $ty(c)$ are given in the next section.
 \begin{mathpar}
 \inferrule*[Right=T-Prim]{ty(c) = t}{\Gamma \vdash c : t} \and
 \inferrule*[Right=T-Var]{x\bind t \in \Gamma}{\Gamma \vdash x:t}\and
@@ -210,10 +188,10 @@ The last rule, {\sc T-Sub}, uses the subtyping judgement $\Gamma \vdash s <: t$.
 {\Gamma \vdash s_2 <: s_1 \quad \Gamma, x_2\bind s_2 \vdash t_1[x_2/x_1] <: t_2}
 {\Gamma \vdash x_1\bind s_1 \rightarrow t_1 <: x_2\bind s_2\rightarrow t_2} \and
 \inferrule*[Right=S-Witn]
-{\Gamma \vdash y : t_x \qquad \Gamma \vdash t <: t'[y/x]}
+{\Gamma \vdash e_x : t_x \qquad \Gamma \vdash t <: t'[e_x/x]}
 {\Gamma \vdash t <: \exists\, x\bind t_x.\, t'} \and
 \inferrule*[Right=S-Bind]
-{\Gamma, x\bind t_x \vdash t <: t' \quad x \not\in free(t)}
+{\Gamma, x\bind t_x \vdash t <: t' \quad x \not\in free(t')}
 {\Gamma \vdash \exists\, x\bind t_x.\, t <: t'}
 \end{mathpar}
 
@@ -249,8 +227,13 @@ For clarity, we distinguish between different typing judgments with a subscript.
 \lfloor \exists\, x\bind t_x.\, t\rfloor := \lfloor t\rfloor
 \]
 
-We start our development of the meta-theory by giving a definition of {\em type denotations}. Roughly speaking, the denotation of a type $t$ is the class of expressions $e$ with the correct underlying base type such that if $e$ evaluates to a value, then this value satisfies the refinement predicates that appear within the structure of $t$. We formalize this notion with a recursive definition:
+To simplify the meta-theory, we follow [VSJ$^+$14] in extending our language with a non-value expression $\bot$, which does not evaluate but which has any refinement type:
+\begin{mathpar}
+\inferrule*[Right=T-Bot]{\Gamma \vdash_w b\{x \col p\}}{\Gamma \vdash \bot : b\{x\col p\}}	
+\end{mathpar}
+We define a predicate {\sf BotLess}$(e)$ which holds if and only if the expression $e$ does not contain $\bot$.
 
+We start our development of the meta-theory by giving a definition of {\em type denotations}. Roughly speaking, the denotation of a type $t$ is the class of expressions $e$ with the correct underlying base type such that if $e$ evaluates to a value, then this value satisfies the refinement predicates that appear within the structure of $t$. We formalize this notion with a recursive definition:
 \begin{align*}
 \lb b \rb \,&:= \{ e \;|\; \varnothing \vdash_B e : b\}\\
 \lb b\{x\col p\}\rb \,&:= 
@@ -263,6 +246,32 @@ We start our development of the meta-theory by giving a definition of {\em type 
 \{ e \,|\; (\varnothing \vdash_B e : \lfloor t\rfloor ) \,\wedge\,
 ( \exists\, e_x \in \lb t_x \rb.\, e \in \lb t[e_x/x] \rb)\}
 \end{align*}
+The addition of $\bot$ guarantees that all denotations are non-empty.\begin{comment}
+\begin{lemma}\label{non-empty}
+Let $t$ be a type such that $\Gamma \vdash_w t$. Then there exists a term $e$ such that for every $\theta \in \lb \Gamma \rb$, we have $e \in \lb \theta(t)\rb$. In particular, if $\varnothing \vdash_w t$, then $\lb t \rb \neq \varnothing$.
+\end{lemma}
+\begin{proof} We proceed by induction on the derivation of $\Gamma \vdash_w t$(i.e. on the structure of the type $t$).
+
+{\bf Case} {\sc WF-Base}: This follows trivially because $b$ has no free variables and for each base type, $\lb b\rb \neq \varnothing$.
+
+{\bf Case} {\sc WF-Refn}: We have $\Gamma \vdash_w t$ and $t \equiv b\{x\col p\}$. Let $e = \bot$. Then for any $\theta \in \lb\Gamma\rb$, $\bot \in \lb b\{x \col \theta(p)\}\rb = \lb\theta(t)\rb$ by definition.
+
+{\bf Case} {\sc WF-Func}: We have $\Gamma \vdash_w t$ and $t \equiv \functype{x}{t_x}{t'}$. By inversion we have
+\begin{equation}
+\Gamma \vdash_w t_x \quad {\rm and} \quad \Gamma, x\bind t_x \vdash_w t'.
+\end{equation}
+By the inductive hypothesis, there exists some term $e'$ such that for any $\theta' \in \lb \Gamma, x\bind t_x \rb$ we have $e' \in \lb\theta'(t')\rb$. Set $e = \lambda x.\, e'$. Let $\theta \in \lb\Gamma\rb$ and let $e_x \in \lb \theta(t_x) \rb$. Then $(\theta, x\mapsto e_x) \in \lb\Gamma, x\bind t_x\rb$ and so we have $e\; e_x$
+\end{proof}
+\end{comment}
+We can formalize the above intuition that type denotations capture terms that diverge with the following lemma:
+\begin{lemma}\label{denote-diverge}
+Let $t$ be a type such that $\varnothing \vdash_w t$ and $e$ be an expression such that $\varnothing \vdash_B e : \lfloor t \rfloor$ but there does not exist any value $v$ such that $e \many v$. Then $e \in \lb t \rb$; moreover, such an $e$ always exists so in particular $\lb t \rb \neq \varnothing$.
+\end{lemma}
+\begin{proof}
+We prove this by induction on the structure of type $t$. The cases that $t \equiv b$, a base type, or $t \equiv b\{x\col p\}$ follow trivially from the definition of $\lb t \rb$ (we can take $e = \bot$). In the next case, suppose $t \equiv \functype{x}{t_x}{t'}$. Let $e_x \in \lb t_x \rb$. We note that $e\; e_x$ cannot reduce to a value: the only rule that we can ever apply is {\sc E-App1} because $e$ is not a value and for any $e'$ such that $e \many e'$, $e'$ is also not a value. Thus we can never apply {\sc E-Prim}, {\sc E-App2}, or {\sc E-AppAbs} and no expression of the form $e'\; e_x$ is ever a value. Then by induction we have that $e\; e_x \in \lb t[e_x/x]\rb$ and so $e \in \lb\functype{x}{t_x}{t'}\rb$. To show that $\lb\functype{x}{t_x}{t'}\rb \neq \varnothing$, we use the inductive hypothesis to get an $e_x \in \lb t_x \rb$ and use it again to get a term $e' \in \lb t'[e_x/x] \rb$ that doesn't evaluate to a value. Set $e = \lambda x.\, e'$. Then $\varnothing \vdash_B e : \lfloor t_x \rfloor \rightarrow \lfloor t' \rfloor$ and for any $\hat e \in \lb t_x \rb$, either $\hat e$ doesn't evaluate to a value (in which case $e\; \hat e$ doesn't evaluate to a value either and so $e\; \hat e \in \lb t'[e_x/x]\rb$ by induction) or $\hat e \many \hat v$ for some value $\hat v$. Then $e\; \hat e \many e\; \hat v \step e'[v/x] = e' \in \lb t'[e_x/x]\rb$ and so by Lemma \ref{pres-den} $e\; \hat e \in \lb t'[e_x/x]\rb$. Therefore $e \in \lb t\rb$.
+
+In the final case, suppose $t\equiv \existype{x}{t_x}{t'}$. By the inductive hypothesis, there exists some $e_x \in \lb t_x \rb$. Suppose that $\varnothing \vdash_B e : t'$ and that $e$ doesn't evaluate to a value. Then by induction we have that $e \in \lb t'[e_x/x]\rb$ so $e \in \lb\existype{x}{t_x}{t'}\rb$. Finally, to show that such an $e$ must exist, we have by the inductive hypothesis that there must exists some $e\in\lb t'[e_x/x]\rb$ that does not evaluate to a value, and so $e\in \lb\existype{x}{t_x}{t'}\rb$ as well.
+\end{proof}
 
 We also have the concept of the denotation of an environment $\Gamma$; we intuitively define this to be the set of all sequences of expression bindings for the variables in $\Gamma$ such that the expressions respect the denotations of the types of the corresponding variables.
 A closing substitution is just a sequence of expression bindings to variables:
@@ -279,6 +288,25 @@ Then we can formally define the denotation of an environment:
 \lb \Gamma \rb := \{ \theta = (x_1 \mapsto e_1,\ldots, x_n \mapsto e_n) \; | \;
 \forall\, (x:t) \in \Gamma.\, \theta(x) \in \lb\theta(t)\rb \}.
 \]
+
+For each built-in primitive constant or function $c$ we define $ty(c)$ to include the most specific possible refinement type for $c$.
+\begin{align*}
+ty(\true) :=&\; \Bool\{ x : x = \true \}\\
+ty({\tt false}) :=&\; \Bool\{ x : x = {\tt false}\}\\
+ty(3) :=&\; \Int\{ x : x = 3\} \\
+ty(n) :=&\; \Int\{ x : x = n\} \\
+ty(\wedge) :=&\; 	x\bind\Bool \rightarrow y\bind\Bool \rightarrow \Bool\{ v : v = x \wedge y\}\\
+ty(\neg) :=&\; x\bind\Bool \rightarrow \Bool\{ y : y = \neg x\}\\
+ty(\leq) :=&\; x\bind\Int \rightarrow y\bind\Int \rightarrow \Bool\{v : v = (x \leq y)\}\\
+ty(m\!\!\leq) :=&\; n\bind\Int \rightarrow \Bool\{v : v = (m \leq n)\} 
+\end{align*}
+and similarly for $ty(\vee)$, $ty(=)$, and $ty(m\!\!=)$. Note that we use $m\!\!\leq$ to represent an arbitrary member of the infinite family of primitives $0\!\!\leq,\, 1\!\!\leq,\, 2\!\!\leq,\ldots$. Then by the definitions above we get our primitive typing lemma:
+\begin{lemma}(Primitive Typing) For every primitive $c$, $\varnothing \vdash c : ty(c)$ and \label{prim-typing} 
+\begin{enumerate}
+\item If $ty(c) = b\{x \col p\}$, then $c \in \lb ty(c) \rb$ and for all $c'$ such that $c' \neq c$, $c' \not\in \lb ty(c)\rb$.
+\item If $ty(c) = \functype{x}{t_x}{t}$, then for each $v \in \lb t_x\rb$, $\delta(c,v)$ is defined and $\delta(c,v) \in \lb t[v/x] \rb$. Thus $c \in \lb ty(c) \rb$.
+\end{enumerate}
+\end{lemma}
 
 \section{Meta-theory}
 
@@ -317,33 +345,42 @@ We appeal to the determinism of the operations semantics: by hypothesis, $e \man
 Finally, suppose $t \equiv \exists\, x\bind t_x.\, t'$. We have $e \in \lb t \rb$ if and only if there exists some $v \in \lb t_x \rb$ such that 
 $e \in \lb t'[v/x]\rb$. Then by induction $e \in \lb t'[v/x]\rb$ if and only if $e' \in \lb t'[v/x]\rb$. By definition, $e' \in \lb t\rb$ if and only if there exists $v \in \lb t_x\rb$ such that $e'\in\lb t'[v/x]\rb$, which completes the proof.
 \end{proof}
-
-\begin{lemma}{(Declarative Entailments) Our entailment judgement is sound with respect to the denotations of the environment:
-If $\Gamma \vdash_e c$, then $\forall\, \theta.\, \theta \in \lb\Gamma\rb \Rightarrow \varnothing \vdash_e \theta(c)$.}
+\begin{lemma}{(Declarative Entailments) Our entailment judgement is sound with respect to the denotations of the environment: If
+$\Gamma \vdash_e c$, then $\forall\, \theta.\, \theta \in \lb\Gamma\rb \Rightarrow \varnothing \vdash_e \theta(c)$.}
+%\begin{lemma}{(Declarative Entailments) Our entailment judgement is sound with respect to the denotations of the environment:
+%$\Gamma \vdash_e c$ if and only if $\forall\, \theta.\, \theta \in \lb\Gamma\rb \Rightarrow \varnothing \vdash_e \theta(c)$.}TODO TODO: fix this 
 \label{decl-impl}
 \end{lemma}
 
-\begin{proof} We proceed by induction on (the length of) $\Gamma$. In the base case $\Gamma = \varnothing$, so $\theta(c) = c$ and the result is vacuous.
+\begin{proof} %(``$\Rightarrow$" direction) 
+We proceed by induction on (the length of) $\Gamma$. In the base case $\Gamma = \varnothing$, so $\theta(c) = c$ and the result is vacuous.
 In the inductive case, suppose we have $\Gamma', x\bind t \vdash_e c$.
 By inversion of {\sc Ent-Ext}, we must have that $t \equiv b\{x\col p\}$ and $\Gamma' \vdash_e \forall\,x\bind b.\, p \Rightarrow c$. By the inductive hypothesis, for any $\theta' \in \lb\Gamma'\rb$, $\varnothing \vdash_e \theta'(\forall\, x\bind b.\, p \Rightarrow c)$, or equivalently, $\varnothing \vdash_e \forall\, x\bind b.\, \theta'(p) \Rightarrow \theta'(c)$. By inversion of {\sc Ent-EmpI}, we have for all $\theta'' = (x\mapsto e) \in \lb b\{x\col p\}\rb$, $\varnothing \vdash_e \theta'(c)[e/x]$. Therefore, for any $\theta \in \lb \Gamma', x\bind t\rb$, if we write $\theta=(\theta', x\mapsto e)$ we have $\varnothing \vdash_e \theta(c)$.
-\end{proof}
 
+%(``$\Leftarrow$" direction) We again proceed by induction on the length of $\Gamma$. The base case follows trivially because $\theta(c)=c$ when $\Gamma = \varnothing$. In the inductive case, suppose we have $\Gamma \equiv \Gamma', x\bind t$ and for all $\theta \in \lb \Gamma \rb$ we have $\varnothing \vdash_e \theta(c)$. 
+%We can argue by induction on the derivation tree of $\varnothing \vdash_e \theta(c)$ that....
+%Let $\theta \in \lb\Gamma\rb$ arbitrary and let
+%Write $\theta = (\theta', x\mapsto e)$ where $e \in \lb \theta(t)\rb = \lb\theta'(t)\rb$ because $x$ cannot appear free in $t$. 
+\end{proof}
 
 \begin{lemma}{(Type Denotations) Our typing and subtyping relations are sound with respect to the denotational semantics of our types:\\
 1. If $\Gamma \vdash t_1 <: t_2$ then $\forall \theta. \theta \in \lb \Gamma \rb \Rightarrow \lb\theta(t_1)\rb \subseteq \lb\theta(t_2)\rb$.\\
 2. If $\Gamma \vdash e : t$ then $\forall \theta. \theta \in \lb \Gamma \rb \Rightarrow \theta(e) \in \lb\theta(t)\rb.$
-}\label{type-denote}
+}\label{type-denote}\\
+3. TODO: Do I need to prove that well-formedness is sound too?
 \end{lemma}
 
-\begin{proof}
+The proof is by mutual induction on the derivation trees of the respective subtyping and typing judgements. The need for mutual induction contrasts with Lemma 4 of [VSJ$^+$14] and comes from the appearance of the typing judgement $\Gamma \vdash e_x : t_x $ in the antecedent of rule {\sc S-Witn}.
+     
+\begin{proof} 
 (1) Suppose $\Gamma \vdash t_1 <: t_2$. We proceed by induction on the derivation tree of the subtyping relation.
 
 {\bf Case} $\textsc{Sub-Base}$: We have that 
 $\Gamma \vdash b\{x_1\col p_1\} <: b\{x_2\col p_2\}$ where $t_1 \equiv b\{x_1\col p_1\}$ and $t_2 \equiv b\{x_2\col p_2\}$.
 By inversion, 
-\[\Gamma; x_1\bind b\{x_1\col p_1\} \vdash p_2[x_1/x_2].\] 
+\[\Gamma; x_1\bind b\{x_1\col p_1\} \vdash_e  p_2[x_1/x_2].\] 
 By inversion of {\sc Ent-Ext} we have 
-\begin{equation}\Gamma \vdash \forall\, x_1\bind b.\, p_1 \Rightarrow p_2[x_1/x_2]
+\begin{equation}\Gamma \vdash_e \forall\, x_1\bind b.\, p_1 \Rightarrow p_2[x_1/x_2]
 .\end{equation}
 By Lemma \ref{decl-impl} we have
 \[
@@ -382,12 +419,11 @@ From (\ref{3.1.0}) we have
 $\theta(p_2[v/x_2]) = \theta(p_2)[v/x_2] \many \true$,
 and so $e$ lies in set (\ref{3.1.2}), thus proving the desired containment.
 
-\begin{comment}
 {\bf Case} $\textsc{Sub-Fun}$: We have that
-$\Gamma \vdash x_1:s_1 \rightarrow t'_1 <: x_2:s_2 \rightarrow t'_2$ where $t_1 \equiv x_1:s_1 \rightarrow t'_1$ and $t_2 \equiv x_2:s_2 \rightarrow t'_2$. By inversion
+$\Gamma \vdash x_1\bind s_1 \rightarrow t'_1 <: x_2\bind s_2 \rightarrow t'_2$ where $t_1 \equiv x_1\bind s_1 \rightarrow t'_1$ and $t_2 \equiv x_2\bind s_2 \rightarrow t'_2$. By inversion of this rule,
 \[
 \Gamma \vdash s_2 <: s_1 \;\;\;\;{\rm and}\;\;\;\;
-\Gamma,x_2:s_2 \vdash t'_1[x_2/x_1] <: t'_2
+\Gamma,x_2\bind s_2 \vdash t'_1[x_2/x_1] <: t'_2
 \]
 By the inductive hypothesis,
 \[
@@ -395,110 +431,182 @@ By the inductive hypothesis,
 \lb\theta(s_2)\rb \subseteq\lb\theta(s_1)\rb 
 \]
 and
-\[
-\forall\theta.\, \theta \in \lb\Gamma, x_2:s_2\rb \Rightarrow
+\begin{equation}\label{3.2.0}
+\forall\theta.\, \theta \in \lb\Gamma, x_2\bind s_2\rb \Rightarrow
 \lb\theta(t'_1[x_2/x_1])\rb \subseteq\lb\theta(t'_2)\rb 
-\]
+\end{equation}
 We need to show $\forall \theta.\; 
 \theta \in \lb \Gamma \rb \Rightarrow 
-\lb\theta(x_1:s_1\rightarrow t'_1)\rb \subseteq \lb\theta(x_2:s_2\rightarrow t'_2)\rb.$
+\lb\theta(x_1\bind s_1\rightarrow t'_1)\rb \subseteq \lb\theta(x_2\bind s_2\rightarrow t'_2)\rb.$
 Equivalently,
-\begin{align}
+\begin{align} \label{3.2.1}
 \forall\theta.\,\theta\in\lb\Gamma\rb \Rightarrow&
-\{ e \,|\, \varnothing \vdash_B e:\lfloor s_1\rightarrow t'_1\rfloor \;\wedge\; 
-  (\forall v \in \lb \theta(s_1)\rb.\, e\,v \in\lb \theta(t'_1[v/x_1])\rb)\}\\
-\subseteq &\{ e \,|\, \varnothing \vdash_B e:\lfloor s_2\rightarrow t'_2\rfloor \;\wedge\; 
-  (\forall v \in \lb \theta(s_2)\rb.\, e\,v \in\lb \theta(t'_2[v/x_2])\rb)\}
+\{ e \,|\, \varnothing \vdash_B e:\lfloor s_1\rfloor \rightarrow \lfloor t'_1\rfloor \;\wedge\; 
+  (\forall\, e' \in \lb \theta(s_1)\rb.\, e\,e' \in\lb \theta(t'_1[e'/x_1])\rb)\}\\
+\subseteq &\{ e \,|\, \varnothing \vdash_B e:\lfloor s_2\rfloor \rightarrow \lfloor t'_2\rfloor \;\wedge\; 
+  (\forall\, e' \in \lb \theta(s_2)\rb.\, e\,e' \in\lb \theta(t'_2[e'/x_2])\rb)\}\label{3.2.2}
 \end{align}
-Let $e$ a term in set (4) and let $v \in \lb \theta(s_2)\rb$. Then by induction, $v \in \lb \theta(s_1)\rb$. So $(e\, v) \in \lb(\theta(t'_1[v/x_1])\rb$. But we also have that 
-$\lb \theta(t'_1[v/x_2])\rb \subseteq \lb \theta(t'_2[v/x_2])\rb$ and so $e$ is in set (5).)
+Fix $\theta \in \lb\Gamma\rb$ and let $e$ be a term in set (\ref{3.2.1}) and let $e' \in \lb \theta(s_2)\rb$. Then by induction, $e' \in \lb \theta(s_1)\rb$. So $(e\, e') \in \lb(\theta(t'_1[e'/x_1])\rb$. Let $\theta' = (\theta, x_2 \mapsto e')$. From (\ref{3.2.0}) we also have that 
+$\lb\theta'(t'_1[x_2/x_1])\rb \subseteq \lb\theta'(t'_2)\rb$.
+But $\theta'(t'_1[x_2/x_1]) = \theta(t'_1[x_2/x_1])[e'/x_2] = \theta(t'_1[e'/x_1])$ and $\theta'(t'_2) = \theta(t'_2)[e'/x_2]$.
+Therefore  $(e\; e') \in \lb \theta(t'_1[e'/x_2])\rb \subseteq \lb \theta(t'_2[e'/x_2])\rb$ and so $e$ is in set (\ref{3.2.2}) as desired.
+
+{\bf Case} $\textsc{Sub-Witn}$: We have that
+$\Gamma \vdash t_1 <: \exists\, x\bind t_x.\, t'_2$ where $t_2 \equiv \exists\, x\bind t_x.\, t'_2$. By inversion, there exists some term $e_x$ such that
+\[
+\Gamma \vdash e_x : t_x \quad {\rm and} \quad \Gamma \vdash t_1 <: t'_2[e_x/x].
+\]
+By the inductive hypothesis, we have
+\begin{equation}\label{3.3.1}
+\forall\, \theta.\, \theta\in \lb\Gamma\rb \Rightarrow \lb \theta(t_1) \rb \subseteq \lb \theta(t'_2[e_x/x]) \rb 
+\end{equation}
+and by mutual induction we also have
+\[
+\forall\, \theta.\, \theta\in \lb\Gamma\rb \Rightarrow \theta(e_x) \in \lb\theta(t_x)\rb.
+\]
+We need to show that $\forall\, \theta$, if $\theta \in \lb\Gamma\rb$, then $\lb\theta(t_1)\rb \subseteq \lb \theta(\exists\, x\bind t_x.\, t'_2)\rb$. Fix some $\theta \in \lb\Gamma\rb.$ Then
+\begin{equation} \label{3.3.2}
+\lb \theta(\exists\, x\bind t_x.\, t'_2)\rb
+= \{ e \,|\, \varnothing \vdash_B e : \lfloor \theta(t'_2)\rfloor \;\wedge\; 
+  (\exists\, e' \in \lb \theta(t_x)\rb.\, e \in\lb \theta(t'_2)[e'/x]\rb)\}
+\end{equation}
+because $\theta(\exists\, x\bind t_x.\, t'_2) = \exists\, x\bind\theta(t_x).\, \theta(t'_2).$
+Let $e \in \lb\theta(t_1)\rb$ and set $e' = \theta(e_x) \in \lb\theta(t_x)\rb.$ Then by (\ref{3.3.1}), $e \in \lb\theta(t'_2[e_x/x])\rb$ and by definition of the denotation of a type, in every case $\varnothing \vdash_B e : \lfloor \theta(t'_2[e_x/x])\rfloor = \lfloor\theta(t'_2)\rfloor$. We conclude by noting $\theta(t'_2[e_x/x]) = \theta(t'_2)[e'/x]$ and so $e$ is in the right hand side of (\ref{3.3.2}).
+
+{\bf Case} $\textsc{Sub-Bind}$: We have that $\Gamma \vdash \exists\, x\bind t_x.\, t'_1 <: t_2$ where $t_1 \equiv \exists\, x\bind t_x.\, t'_1$. By inversion we have
+\[
+\Gamma, x\bind t_x\vdash t'_1 <: t_2 \quad {\rm and}\quad x \not\in free(t_2).
+\]
+By the inductive hypothesis, we have
+\begin{equation}
+\forall\,\theta.\, \theta\in\lb\Gamma,x\bind t_x\rb \Rightarrow \lb\theta(t'_1)\rb \subseteq \lb\theta(t_2)\rb.
+\label{3.4.1}	
+\end{equation}
+We need to show that for every $\theta \in \lb\Gamma\rb$ that it holds that $\lb \theta(\exists\, x\bind t_x.\, t'_1)\rb \subseteq \lb\theta(t_2)\rb$. Fix some $\theta \in \lb\Gamma\rb$ and let $e \in \lb \theta(\exists\, x\bind t_x.\, t'_1)\rb$. By definition, $\theta(\exists\, x\bind t_x.\, t'_1) = \exists\, x\bind \theta(t_x).\, \theta(t'_1)$ so
+\begin{equation}\label{3.4.2}
+\lb \theta(\existype{x}{t_x}{t'_1})\rb = \{ e \,|\, \varnothing \vdash_B e: \lfloor\theta(t'_1)\rfloor \;\wedge\; (\exists\, e' \in \lb\theta(t_x)\rb.\, e \in \lb\theta(t'_1)[e'/x]\rb)\}.
+\end{equation}
+Take $e'$ as in (\ref{3.4.2}) and let $\theta' = (\theta, x\mapsto e')$. We note that $\theta' \in \lb\Gamma,x\bind t_x\rb$ because $\theta'(x) = e' \in \lb\theta(t_x)\rb = \lb\theta'(t_x)\rb$ where the last equality follows from the fact that $x$ cannot appear free in $t_x$. Then $e \in \lb\theta'(t'_1)\rb$, so from (\ref{3.4.1}) we can conclude $e \in \lb\theta'(t_2)\rb = \lb\theta(t_2)\rb$ because $x$ does not appear free in $t_2$ so $\theta'(t_2)=\theta(t_2)$. \\
 
 (2) Suppose $\Gamma \vdash e : t$. We proceed by induction on the derivation tree of the typing relation.
 
-{\bf Case} {\sc Syn-Var}: We have $\Gamma \vdash e : t$ where $e \equiv x$. By inversion, $(x:t) \in \Gamma$. Then for any $\theta \in \lb\Gamma\rb,$ we have by definition $\theta(x) \in \lb \theta(t)\rb$ as desired.
+{\bf Case} {\sc T-Prim}: We have $\Gamma \vdash e : t$ where $e \equiv c$, a built-in primitive function or constant. By inversion, $ty(c) = t$. Let $\theta \in \lb \Gamma \rb$.
+In one case $t \equiv b\{x\col p\}$; then by Lemma \ref{prim-typing} on constants, $\theta(c) = c \in \lb ty(c)\rb = \lb \theta(ty(c))\rb$. In the other case, $ty(c) \equiv \functype{x}{t_x}{t'}$; by Lemma \ref{prim-typing},
+$\delta(c,v) \in \lb t'[v/x]\rb$ for any $v \in \lb t_x\rb.$ There are no free variables in $c$ or $t$ so again $\theta(c) \in \lb\theta(ty(c))\rb$.
 
-{\bf Case} {\sc Syn-Con}: We have $\Gamma \vdash e : t$ where $e \equiv c$, a constant. By inversion, ${\sf prim}(c) = t$, the typing function for constants. In one case ${\sf prim}(c) \equiv b\{x:p\}$; then by definition/assumptions on constants, $\theta(c) = c \in \lb{\sf prim}(c)\rb$. In the other case, ${\sf prim}(c) \equiv x:t_x\rightarrow t'$; by definition of constants, 
-$\delta(c,v) \in \lb t'[v/x]\rb$ for any $v \in \lb t_x\rb.$So again $\theta(c) \in \lb{\sf prim}(c)\rb$.
+{\bf Case} {\sc T-Var}: We have $\Gamma \vdash e : t$ where $e \equiv x$. By inversion, $(x\bind t) \in \Gamma$. Then for any $\theta \in \lb\Gamma\rb,$ we have by definition $\theta(x) \in \lb \theta(t)\rb$ as desired.
 
-{\bf Case} {\sc Syn-Ann}: We have $\Gamma \vdash e : t$ where $e \equiv (e':t)$. By inversion, $\Gamma \vdash e' : t$ and by the inductive hypothesis, $\theta(e') \in \lb\theta(t)\rb$. By the operational semantics of type annotations, $\theta(e) = \theta(e') \in \lb\theta(t)\rb$.
-
-{\bf Case} {\sc Syn-App}: We have $\Gamma \vdash e : t$ where $e \equiv e'\, y$ and $t \equiv t'[y/x]$. By inversion,
-$\Gamma \vdash e' : (x:s \rightarrow t')$ and $\Gamma \vdash y : s$. 
-By the inductive hypothesis we have 
-\begin{equation}\forall \theta.\, \theta\in\lb\Gamma\rb \Rightarrow 
-\theta(e') \in \lb\theta(x:s \rightarrow t')\rb\end{equation}
-and
-\begin{equation}
-\forall \theta.\, \theta \in \lb\Gamma\rb \Rightarrow
-\theta(y) \in \lb\theta(s)\rb.
-\end{equation}
-From (6), we have that for all $\theta \in \lb\Gamma\rb$ 
-and for all $v \in \lb\theta(s)\rb$, $\theta(e')\, v \in \lb \theta(t'[v/x])\rb$. In particular, 
-$\theta(e') \theta(y) \in \lb\theta(t'[y/x])\rb$. But of course, $\theta(e) = \theta(e')\theta(y) \in \lb\theta(t)\rb$.
-
-{\bf Case} {\sc Chk-Syn}: We have $\Gamma \vdash e : t $ and by inversion, we have $\Gamma \vdash e : s$ and $\Gamma \vdash s <: t$ for some type $s$. 
-By the inductive hypothesis, $\foralltheta \Rightarrow \theta(e) \in \lb\theta(s)\rb$ and by part (1) of the Lemma, $\foralltheta \Rightarrow \lb\theta(s)\rb \subseteq \lb\theta(t)\rb$. Then we conclude that $\foralltheta \Rightarrow \theta(e) \in \lb\theta(t)\rb$.
-
-{\bf Case} {\sc Chk-Lam}: We have $\Gamma \vdash e : t$ where $e \equiv \lambda x.e'$ and $t \equiv x:t_1 \rightarrow t_2$. By inversion, $\Gamma,x:t_1 \vdash e' : t_2$ and by the inductive hypothesis,
-\begin{equation}\forall\theta'.\, \theta' \in \lb\Gamma,x:t_1\rb \Rightarrow \theta'(e') \in \lb\theta'(t_2)\rb.\end{equation}
-Let $\theta \in \lb\Gamma\rb$ and let $v \in \lb t_1\rb$ be a value. Then 
-\[(\theta,x\mapsto \theta(v)) \in \lb\Gamma,x:t_1\rb
+{\bf Case} {\sc T-Abs}: We have $\Gamma \vdash e : t$ where $e \equiv \lambda x.e'$ and $t \equiv \functype{x}{t_x}{t'}$. By inversion, $\Gamma,x\bind t_x \vdash e' : t'$ and by the inductive hypothesis,
+\begin{equation}\label{3.7.1}
+\forall\theta'.\, \theta' \in \lb\Gamma,x\bind t_x\rb \Rightarrow \theta'(e') \in \lb\theta'(t')\rb.\end{equation}
+Let $\theta \in \lb\Gamma\rb$ and let $e_x \in \lb \theta(t_x)\rb$. Then let
+\[\theta' := (\theta,x\mapsto e_x) \in \lb\Gamma,x\bind t_x\rb.
 \] 
-because we chose $\theta(x) = \theta(v) \in \lb\theta(t_1)\rb$.
-Then from (8), 
-\[
-\theta(e'[v/x]) = (\theta, x\mapsto \theta(v))(e')
-\in\lb(\theta,x\mapsto\theta(v))(t_2)\rb = \lb\theta(t_2[v/x])\rb.
-\]
-Then because $e\, v = e'[v/x]$, we have $\theta(e\, v) \in \lb\theta(t_2[v/x])\rb$. We also know 
-$\varnothing \vdash_B e : \lfloor t_1 \rightarrow t_2 \rfloor$.
-Thus by definition of the denotation of a (dependent) function type, we conclude that $e \in \lb\theta(t)\rb$ and because $\theta$ was chosen arbitrarily, we can quantify over $\theta$ and write $\foralltheta \Rightarrow \theta(e) \in \lb\theta(t)\rb.$
+%because we chose $\theta(x) = \theta(v) \in \lb\theta(t_1)\rb$.
+Then from (\ref{3.7.1}), 
+\begin{equation}\label{3.7.2}
+\theta(e')[e_x/x] = \theta'(e') \in \lb\theta'(t')\rb = \lb\theta(t')[e_x/x]\rb.
+\end{equation}
 
-{\bf Case} {\sc Chk-Let}: We have $\Gamma \vdash e : t$ where
-$e \equiv \letin{x}{e_1}{e_2}$ and $t \equiv t_2$.
-By inversion, we have $\Gamma \vdash e_1 : t_1$ and $(\Gamma,x:t_1) \vdash e_2 : t_2$
-for some $t_1$. Then by the inductive hypothesis we have
+We need to show that for every $\theta \in \lb\Gamma\rb$, it holds that 
+\begin{align*}
+\theta(e) \in \lb \theta(&\functype{x}{t_x}{t'}) \rb = \lb \functype{x}{\theta(t_x)}{\theta(t')}\rb\\
+=&\; \{ \hat{e} \;|\; (\varnothing \vdash_B {\hat e} : \lfloor t_x \rfloor \rightarrow \lfloor t' \rfloor) \wedge ( \forall\, \hat e_x \in \lb \theta(t_x) \rb.\; \hat e \; \hat e_x \in \lb\theta(t')[\hat e_x/x] \rb) \}
+\end{align*}
+We have $\varnothing \vdash_B \theta(e) : \lfloor t_x \rfloor \rightarrow \lfloor t' \rfloor$ because substitutions do not affect bare types, only the refinement predicates.
+We have
+$\theta(e)\; e_x = (\lambda x.\theta(e'))\; e_x.$
+There are two cases for $e_x$: first, if $e_x$ does not evaluate to any value then the only reduction rules we can ever apply are {\sc E-App1} and {\sc E-App2} and so $\theta(e)\; e_x$ can never evaluate to a value. By Lemma \ref{denote-diverge} we have that $\theta(e)\; e_x \in \lb t'[e_x/x]\rb$. In the other case suppose that there exists some value such that $e_x \many v_x$. Then 
+$\theta(e)\; e_x = (\lambda x.\theta(e'))\; e_x \many (\lambda x.\theta(e'))\; v_x \step \theta(e')[v_x/x] \in \lb \theta(t')[v_x/x]\rb$. 
+By a forthcoming lemma (TODO: this), $\lb\theta(t')[v_x/x]\rb \subseteq \lb\theta(t')[e_x/x]\rb$. Then by Lemma \ref{denote-diverge} we conclude that $\theta(e)\; e_x \in \lb\theta(t')[e_x/x]\rb$ and so $\theta(e) \in \lb\theta(t)\rb$.
+
+{\bf Case} {\sc T-App}: We have $\Gamma \vdash e : t$ where $e \equiv e'\; e_x$ and $t \equiv \existype{x}{t_x}{t'}$. By inversion,
+$\Gamma \vdash e' : \functype{x}{t_x}{t'}$ and $\Gamma \vdash e_x : t_x$. 
+By the inductive hypothesis we have
+\begin{equation}\label{3.8.1}
+\forall \theta.\, \theta\in\lb\Gamma\rb \Rightarrow 
+\theta(e') \in \lb\theta(\functype{x}{t_x}{t'})\rb\end{equation}
+and
+\begin{equation}\label{3.8.2}
+\forall \theta.\, \theta \in \lb\Gamma\rb \Rightarrow
+\theta(e_x) \in \lb\theta(t_x)\rb.
+\end{equation}
+From (\ref{3.8.1}), we have that for all $\theta \in \lb\Gamma\rb$, $\theta(e')\; \theta(e_x) \in \lb\theta(t')[\theta(e_x)/x]\rb$. Thus
+\begin{equation}
+\theta(e) = \theta(e')\; \theta(e_x) \in \lb \existype{x}{\theta(t_x)}{\theta(t')}\rb = \lb\theta(\existype{x}{t_x}{t'})\rb
+.\end{equation}
+
+{\bf Case} {\sc T-Let}: We have $\Gamma \vdash e : t$ where
+$e \equiv \letin{x}{e_x}{e'}$.
+By inversion, we have $\Gamma \vdash e_x : t_x$,\; $(\Gamma,x\bind t_x) \vdash e' : t$, and $\Gamma \vdash_w t$
+for some $t_x$. Then by the inductive hypothesis we have
 \[
-\foralltheta \Rightarrow \theta(e_1) \in \lb\theta(t_1)\rb
+\foralltheta \Rightarrow \theta(e_x) \in \lb\theta(t_x)\rb
 \] and 
-\begin{equation}\forall\theta'.\, \theta' \in \lb\Gamma,x:t_1\rb \Rightarrow \theta'(e_2) \in \lb\theta'(t_2)\rb.\end{equation}
-Let $\theta \in \lb\Gamma\rb$. Then $(\theta, x\mapsto\theta(e_1))\in \lb\Gamma,x:t_1\rb$ because we chose $\theta(x) = \theta(e_1) \in \lb\theta(t_1)\rb$. Then from (9),
+\begin{equation}\label{3.9.1}
+\forall\theta'.\, \theta' \in \lb\Gamma,x\bind t_x\rb \Rightarrow \theta'(e') \in \lb\theta'(t)\rb.\end{equation}
+Let $\theta \in \lb\Gamma\rb$. There are two cases for the semantics of $e_x$. In the case that there exists some value $v_x$ such that $\theta(e_x) \many v_x$, let $\theta' = (\theta, x\mapsto v_x)\in \lb\Gamma,x\bind t_x\rb$ because we chose $\theta'(x) = v_x \in \lb\theta(t_x)\rb$. 
+From the operational semantics $\theta(\letin{x}{e_x}{e'}) = \letin{x}{\theta(e_x)}{\theta(e')} \many \letin{x}{v_x}{\theta(e')} \step \theta(e')[v_x/x]$. 
+Then from (\ref{3.9.1}),
 \[
-\theta(e_2[e_1/x]) = (\theta,x\mapsto\theta(e_1))(e_2)
-\in \lb(\theta,x\mapsto\theta(e_1))(t_2)\rb = \lb\theta(t_2[e_1/x])\rb
+\theta(e')[v_x/x] = \theta'(e') \in \lb\theta'(t)\rb = \lb\theta(t)[v_x/x]\rb = \lb\theta(t)\rb,
 \]
-From the operational semantics $\letin{x}{e_1}{e_2} \hookrightarrow e_2[e_1/x]$ which implies
-$\theta(\letin{x}{e_1}{e_2}) \many \theta(e_2[e_1/x])$, so by Lemma 1,
-\[
-\theta(\letin{x}{e_1}{e_2}) \in \lb\theta(t_2[e_1/x])\rb.
-\]
-However, by our original judgment $\Gamma \vdash e : t_2$, we see that $x$ cannot be free in $t_2$ and thus
-$\theta(e) \in \lb\theta(t_2[e_1/x])\rb = \lb\theta(t_2)\rb$ as desired.
-\end{comment}
+where the last equality follows from the fact that the judgement $\Gamma \vdash_w t$ implies $\varnothing \vdash_w \theta(t)$ by part 3 of this lemma, which in turn implies that $x$ cannot be free in $\theta(t)$.
+The above implies
+$\theta(e) \many \theta(e')[v_x/x]$, so by Lemma \ref{pres-den}, $\theta(e) \in \lb\theta(t)\rb$.
+
+In the second case, $\theta(e_x)$ does not reduce to any value. In that case, the only rule we can ever apply to $\theta(e) = \letin{x}{\theta(e_x)}{\theta(e')}$ is {\sc E-Let} so $\theta(e)$ never reduces to a value, and by Lemma \ref{denote-diverge} $\theta(e) \in \lb\theta(t)\rb$.
+
+{\bf Case} {\sc T-Ann}: We have $\Gamma \vdash e : t$ where $e \equiv (e'\col t)$. By inversion, $\Gamma \vdash e' : t$ and by the inductive hypothesis, $\theta(e') \in \lb\theta(t)\rb$. By the operational semantics of type annotations, 
+$\theta(e) = (\theta(e')\col\theta(t)) \step \theta(e') \in \lb\theta(t)\rb$, so we conclude that $\theta(e) \in \lb\theta(t)\rb$ by Lemma \ref{pres-den}.
+
+{\bf Case} {\sc T-Sub}: We have $\Gamma \vdash e : t $ and by inversion, we have $\Gamma \vdash e : s$ and $\Gamma \vdash s <: t$ for some type $s$. 
+By the inductive hypothesis, $\foralltheta \Rightarrow \theta(e) \in \lb\theta(s)\rb$ and by mutual induction, part 1 of the Lemma gives us that  $\foralltheta \Rightarrow \lb\theta(s)\rb \subseteq \lb\theta(t)\rb$. Then we conclude that $\foralltheta \Rightarrow \theta(e) \in \lb\theta(t)\rb$.
+
+{\bf Case} {\sc T-Bot}: We have $\Gamma \vdash \bot : t$ where $t \equiv b\{x \col p\}$. Then because $\bot$ cannot evaluate, we have that $\bot \in \lb b\{x\col \theta(p)\}\rb = \lb \theta(t)\rb$.
 \end{proof}
 
 
-\begin{comment}
 \begin{lemma}(The Substitution Lemma) If $\Gamma \vdash e_x : t_x$ then\\
-1. If $\Gamma, x:t_x, \Gamma' \vdash t_1 <: t_2$ then
+1. If $\Gamma, x\bind t_x, \Gamma' \vdash t_1 <: t_2$ then
 \[
 \Gamma, \Gamma'[e_x/x] \vdash t_1[e_x/x] <: t_2[e_x/x].
 \]
-2. If $\Gamma, x:t_x, \Gamma' \vdash e : t$ then
+2. If $\Gamma, x\bind t_x, \Gamma' \vdash e : t$ then
 \[
 \Gamma, \Gamma'[e_x/x] \vdash e[e_x/x] : t[e_x/x].
 \]
 \end{lemma}
 \begin{proof}
-(1) Suppose $\Gamma \vdash e_x:t_x$ and $\Gamma, x:t_x ,\Gamma' \vdash t_1 <: t_2$. We proceed by induction on the derivation tree of the subtyping relation.
+(1) Suppose $\Gamma \vdash e_x:t_x$ and $\Gamma, x\bind t_x ,\Gamma' \vdash t_1 <: t_2$. We proceed by mutual induction on the derivation tree of the subtyping relation.
 
 {\bf Case} $\textsc{Sub-Base}$: We have that 
-$\Gamma,x:t_x,\Gamma' \vdash b\{v_1:p_1\} <: b\{v_2:p_2\}$ where $t_1 \equiv b\{v_1:p_1\}$ and $t_2 \equiv b\{v_2:p_2\}$.
+$\Gamma,x\bind t_x,\Gamma' \vdash b\{x_1\col p_1\} <: b\{x_2\col p_2\}$ where $t_1 \equiv b\{x_1\col p_1\}$ and $t_2 \equiv b\{x_2\col p_2\}$.
 By inversion, 
-\[\Gamma,x:t_x,\Gamma',v_1:b\{p_1\} \vdash p_2[v_1/v_2].\] 
+\[\Gamma,x\bind t_x,\Gamma',x_1\bind b\{x_1\col p_1\} \vdash p_2[x_1/x_2].\] 
 By inversion of {\sc Ent-Ext} we have 
 \begin{equation}\label{311}
-\Gamma,x:t_x,\Gamma' \vdash \forall v_1:b.\; p_1 \Rightarrow p_2[v_1/v_2].\end{equation}
+\Gamma,x\bind t_x,\Gamma' \vdash \forall x_1\bind b.\; p_1 \Rightarrow p_2[x_1/x_2].\end{equation}
+By Lemma \ref{decl-impl}, we have
+\begin{align}
+\forall\, \theta^*.\, \theta^* \in \lb \Gamma,x\bind t_x,\Gamma'\rb \Rightarrow \varnothing \;&\vdash_e \theta^*(\forall x_1\bind b.\; p_1 \Rightarrow p_2[x_1/x_2]) \\
+&= \forall\, x_1\bind b.\, \theta^*(p_1) \Rightarrow \theta^*(p_2)[x_1/x_2].
+\end{align}
+
+Let $e_x$ be an expression such that $\Gamma \vdash e_x : t_x$.
+The above is equivalent to:
+\[
+\forall\, \theta, \theta'.\, (\theta, x \mapsto \theta(e_x), \theta') \in \lb\Gamma, x\bind t_x, \Gamma'\rb \Rightarrow \big( \varnothing \vdash_e
+\forall\, x_1\bind b.\, \theta'(\theta(p_1)[\theta(e_x)/x]) \Rightarrow \theta'(\theta(p_2)[\theta(e_x)/x]))[x_1/x_2] \big)
+\]
+or equivalently,
+\begin{equation}
+\forall\, \theta, \theta'.\, (\theta, \theta') \in \lb\Gamma, \Gamma'[e_x/x]\rb \Rightarrow \big(\varnothing \vdash_e
+\forall\, x_1\bind b.\, (\theta, \theta')(p_1[e_x/x]) \Rightarrow (\theta,\theta')(p_2[e_x/x][x_1/x_2])\big)
+\end{equation}
+
+TODO: can't finish this one yet.
+\begin{comment}
 The validity of the implication in (\ref{311}) means that
 \begin{equation}\label{312}
 \forall\theta^*. \theta^*\in\lb\Gamma,x:t_x,\Gamma',v_1:b\rb \Rightarrow
@@ -542,6 +650,8 @@ By {\sc Sub-Base},
 We know $t_1[e_x/x] = b\{v_1 : p_1[e_x/x]\}$ and likewise $t_2[e_x/x] = b\{v_2:p_2[e_x/x]\}$.
 Therefore, we conclude that 
 $\Gamma,\Gamma'[e_x/x] \vdash t_1[e_x/x] <: t_2[e_x/x].$
+\end{comment}
+\begin{comment}
 
 {\bf Case} $\textsc{Sub-Fun}$: We have that
 $\Gamma, x:t_x,\Gamma' \vdash x_1:s_1 \rightarrow t'_1 <: x_2:s_2 \rightarrow t'_2$ where $t_1 \equiv x_1:s_1 \rightarrow t'_1$ and $t_2 \equiv x_2:s_2 \rightarrow t'_2$. By inversion
@@ -661,7 +771,9 @@ which we can write as
 \[
 \Gamma,\Gamma'[e_x/x] \vdash (\letin{y}{e_1}{e_2})[e_x/x]:t_2[e_x/x]
 \] to complete the proof of the final case.
+\end{comment}
 \end{proof}
+\begin{comment}
 
 % Seems like I can do without this one
 %\begin{lemma}{
@@ -701,7 +813,7 @@ $\varnothing \vdash e'_1 : (x:s \rightarrow t_1)$. By rule {\sc Syn-App}, $\varn
 {\bf Case} {\sc Chk-Let}: We have $\varnothing \vdash e : t$ where $e \equiv (\letin{x}{e_1}{e_2})$ and $t \equiv t_2$. By inversion,
 $\varnothing \vdash e_1 : t_1$ and $(x:t_1)\vdash e_2 : t_2$. By the substitution lemma (substituting for $\varnothing \vdash e_1 : t_1$), we have $\varnothing \vdash e_2[e_1/x] : t_2[e_1/x]$. By the operational semantics $e \hookrightarrow e_2[e_1/x]$ and by determinism $e' \equiv e_2[e_1/x]$. Examining $\varnothing \vdash e : t$, we see that $x$ cannot appear free in $t\equiv t_2$ so we conclude $\varnothing \vdash e' : t$.
 	
-\end{proof}
+\end{proof}\begin{comment}
 
 \begin{theorem}\label{progress}
 (The Progress Theorem) If $\varnothing \vdash e : t$ then either $e$ is a value or there exists a term $e'$ such that $e \hookrightarrow$ e'.
@@ -733,4 +845,14 @@ $e \equiv (\letin{x}{e_1}{e_2})$ and $t \equiv t_2$. By the operational semantic
 % this comes later, I think
 %\begin{theorem}(The Approximation Theorem) %\end{theorem}
 %\begin{proof}\end{proof}
+\newpage
+General Todo list:
+\begin{itemize}
+	\item does having call-by-value (non-lazy) semantics affect wha the definitions of denotations of types ($\lb \; \rb$) ought to be? Should any expressions being substituted into types become values?
+	\item In Lemma 5, case {\sc T-Abs} requires some additional lemma like: if $e \many v$ then $\lb t[v/x] \rb \subseteq \lb t[e/x] \rb$
+	\item Lemma 5 needs a part (3): If $\Gamma \vdash_w t$ then $\foralltheta \Rightarrow \varnothing \vdash_w \theta(t)$.
+	\item Lemma 6 needs a part (3): If $\Gamma, x\bind t_x, \Gamma' \vdash_w t$ and $\Gamma \vdash e_x : t_x$ then $\Gamma, \Gamma'[e_x/x] \vdash_w t[e_x/x]$.
+	\item The entailment rules don't quite seem to fit with the denotation definitions. Can't prove case {\sc S-Base} in the Substitution Lemma (Lemma 6).
+	
+\end{itemize}
 \end{document}
