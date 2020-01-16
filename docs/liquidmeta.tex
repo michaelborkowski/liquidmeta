@@ -146,7 +146,6 @@ Now we give the reduction rules for the small-step semantics. In what follows, $
 
 Next, we define the typing rules of our $\lambda_1$.
 The type judgments in the language $\lambda_1$ will be denoted $\vdash$ with a colon between term and type. For clarity, we distinguish between this and other judgments by using $\vdash$ with a subscript in most other settings. For instance, the judgement $\Gamma \vdash_w t$ says that type $t$ is well-formed in environment $\Gamma$:
-
 \begin{mathpar}
 \inferrule*[Right=WF-Base]{ }{\Gamma \vdash_w b}\and
 \inferrule*[Right=WF-Refn]{\Gamma, x\bind b \vdash e : \Bool}
@@ -157,6 +156,12 @@ The type judgments in the language $\lambda_1$ will be denoted $\vdash$ with a c
 \inferrule*[Right=WF-Exis]
 {\Gamma \vdash_w t_x \qquad \Gamma, x\bind t_x \vdash_w t}
 {\Gamma \vdash_w \exists\, x\bind t_x .\, t} 
+\end{mathpar}
+
+The judgement $\vdash_w \Gamma$ says that the environment $\Gamma$ is well formed, meaning that variables are only bound to well-formed types:
+\begin{mathpar}
+\inferrule*[Right=WFE-Empty]{ }{\vdash_w \varnothing} \and
+\inferrule*[Right=WFE-Bind]{\Gamma \vdash_w t_x \quad \vdash_w \Gamma}{\vdash_w \Gamma, x\bind t_x}
 \end{mathpar}
 
 Now we give the rules for the typing judgements. As with the reduction rules, we take the type of our built-in primitives to be external to our language. We denote by $ty(c)$ the function that specifies the most specific type possible for $c$. More details on $ty(c)$ are given in the next section.
@@ -195,29 +200,35 @@ The last rule, {\sc T-Sub}, uses the subtyping judgement $\Gamma \vdash s <: t$.
 {\Gamma \vdash \exists\, x\bind t_x.\, t <: t'}
 \end{mathpar}
 
-The first rule above, {\sc S-Base}, uses the entailment judgement $\Gamma \vdash_e c$ which states that constraint $c$ is valid (in the sense of a first-order sentence) when universally quantified over all variables bound in environment $\Gamma$.
-%Let {\sc Valid}(c) denote the property that constraint $c$ is a valid first-order {\em sentence}. 
-We give the inference rules for the entailment judgement:
+The first rule above, {\sc S-Base}, uses the entailment judgement $\Gamma \vdash_e p$ which (roughly) states that predicate $p$ is valid (in the sense of a logical formula) when universally quantified over all variables bound in environment $\Gamma$.
+We give the inference rule for the entailment judgement:
 
 \begin{mathpar}
-\inferrule*[Right=Ent-EmpP]{p \many \true}
-{\varnothing \vdash_e p} \and\and
-\inferrule*[Right=Ent-EmpI]
-{\forall\, \theta.\,
- \theta \in \lb b\{x\col p\}\rb\Rightarrow \varnothing\vdash_e \theta(c) }
-{\varnothing \vdash_e \forall\, x\bind b.\, p \Rightarrow c} \\
-\inferrule*[Right=Ent-EmpC]
-{\Gamma \vdash_e c_1 \quad \Gamma \vdash_e c_2}
-{\Gamma \vdash_e c_1 \wedge c_2 } \and
+\inferrule*[Right=Ent-Pred]
+{\forall\, \theta.\, \theta\in \lb\Gamma\rb \Rightarrow \theta(p) \many \true}
+{\Gamma \vdash_e p} \and
+%\inferrule*[Right=Ent-EmpI]
+%{\forall\, \theta.\, \theta \in \lb b\{x\col p\}\rb\Rightarrow \varnothing\vdash_e \theta(c) }
+%{\varnothing \vdash_e \forall\, x\bind b.\, p \Rightarrow c} \\
+\end{mathpar}
+
+The constraints in the grammar above are only used in the algorithmic typing rules. The constraints represent SMT instances that capture a predicate and its binding environment.
+
+\begin{mathpar}
+\inferrule*[Right=Ent-Emp]{p \many \true}
+{\textsf{SMT}(p)} \and
+\inferrule*[Right=Ent-Conj]
+{\textsf{SMT}(c_1) \quad \textsf{SMT}(c_2) }
+{\textsf{SMT}(c_1) \wedge {\sf SMT}(c_2)} \\
 %\inferrule*[Right=Ent-Emp]{\textsc{Valid}(c)}
 %{\varnothing \vdash_e c} \and
-\inferrule*[Right=Ent-Ext]
-{\Gamma \vdash_e \forall\, x\bind b.\, p \Rightarrow c}
-{\Gamma, x\bind b\{x\col p\} \vdash_e c}
+\inferrule*[Right=Ent-Witn]
+{\textsf{SMT}(\forall\, x\bind b.\, p \Rightarrow c)}
+{\textsf{SMT}(p[v/x] \Rightarrow c[v/x])}
 \end{mathpar}
 
 
-\section{Preliminaries}
+\section{Preliminaries}   %%%%%%%%%%% 2222222222222 %%%%%%%%
 
 For clarity, we distinguish between different typing judgments with a subscript.  The type judgments in the underlying typed lambda calculus will be denoted by $\vdash_B$ and a colon before the type. In order to speak about the base type underlying some type, we define a function that erases refinements in types:
 \[
@@ -227,11 +238,13 @@ For clarity, we distinguish between different typing judgments with a subscript.
 \lfloor \exists\, x\bind t_x.\, t\rfloor := \lfloor t\rfloor
 \]
 
+\begin{comment}
 To simplify the meta-theory, we follow [VSJ$^+$14] in extending our language with a non-value expression $\bot$, which does not evaluate but which has any refinement type:
 \begin{mathpar}
 \inferrule*[Right=T-Bot]{\Gamma \vdash_w b\{x \col p\}}{\Gamma \vdash \bot : b\{x\col p\}}	
 \end{mathpar}
 We define a predicate {\sf BotLess}$(e)$ which holds if and only if the expression $e$ does not contain $\bot$.
+\end{comment}
 
 We start our development of the meta-theory by giving a definition of {\em type denotations}. Roughly speaking, the denotation of a type $t$ is the class of expressions $e$ with the correct underlying base type such that if $e$ evaluates to a value, then this value satisfies the refinement predicates that appear within the structure of $t$. We formalize this notion with a recursive definition:
 \begin{align*}
@@ -241,12 +254,14 @@ We start our development of the meta-theory by giving a definition of {\em type 
 \,\wedge\, ({\rm if}\, e \many v \,{\rm then}\, p[v/x] \many {\tt true})\} \\
 \lb x\bind t_x \rightarrow t\rb \,&:= 
 \{ e \,|\; (\varnothing \vdash_B e : \lfloor t_x\rfloor \rightarrow \lfloor t\rfloor ) \,\wedge\,
-( \forall\, e_x \in \lb t_x \rb.\, e\; e_x \in \lb t[e_x/x] \rb)\} \\
+( \forall\, v_x \in \lb t_x \rb.\, e\; v_x \in \lb t[v_x/x] \rb)\} \\
 \lb \exists\, x\bind t_x .\, t\rb \,&:= 
 \{ e \,|\; (\varnothing \vdash_B e : \lfloor t\rfloor ) \,\wedge\,
-( \exists\, e_x \in \lb t_x \rb.\, e \in \lb t[e_x/x] \rb)\}
+( \exists\, v_x \in \lb t_x \rb.\, e \in \lb t[v_x/x] \rb)\}
 \end{align*}
-The addition of $\bot$ guarantees that all denotations are non-empty.\begin{comment}
+
+%The addition of $\bot$ guarantees that all denotations are non-empty.
+\begin{comment}
 \begin{lemma}\label{non-empty}
 Let $t$ be a type such that $\Gamma \vdash_w t$. Then there exists a term $e$ such that for every $\theta \in \lb \Gamma \rb$, we have $e \in \lb \theta(t)\rb$. In particular, if $\varnothing \vdash_w t$, then $\lb t \rb \neq \varnothing$.
 \end{lemma}
@@ -263,6 +278,7 @@ Let $t$ be a type such that $\Gamma \vdash_w t$. Then there exists a term $e$ su
 By the inductive hypothesis, there exists some term $e'$ such that for any $\theta' \in \lb \Gamma, x\bind t_x \rb$ we have $e' \in \lb\theta'(t')\rb$. Set $e = \lambda x.\, e'$. Let $\theta \in \lb\Gamma\rb$ and let $e_x \in \lb \theta(t_x) \rb$. Then $(\theta, x\mapsto e_x) \in \lb\Gamma, x\bind t_x\rb$ and so we have $e\; e_x$
 \end{proof}
 \end{comment}
+\begin{comment}
 We can formalize the above intuition that type denotations capture terms that diverge with the following lemma:
 \begin{lemma}\label{denote-diverge}
 Let $t$ be a type such that $\varnothing \vdash_w t$ and $e$ be an expression such that $\varnothing \vdash_B e : \lfloor t \rfloor$ but there does not exist any value $v$ such that $e \many v$. Then $e \in \lb t \rb$; moreover, such an $e$ always exists so in particular $\lb t \rb \neq \varnothing$.
@@ -271,7 +287,8 @@ Let $t$ be a type such that $\varnothing \vdash_w t$ and $e$ be an expression su
 We prove this by induction on the structure of type $t$. The cases that $t \equiv b$, a base type, or $t \equiv b\{x\col p\}$ follow trivially from the definition of $\lb t \rb$ (we can take $e = \bot$). In the next case, suppose $t \equiv \functype{x}{t_x}{t'}$. Let $e_x \in \lb t_x \rb$. We note that $e\; e_x$ cannot reduce to a value: the only rule that we can ever apply is {\sc E-App1} because $e$ is not a value and for any $e'$ such that $e \many e'$, $e'$ is also not a value. Thus we can never apply {\sc E-Prim}, {\sc E-App2}, or {\sc E-AppAbs} and no expression of the form $e'\; e_x$ is ever a value. Then by induction we have that $e\; e_x \in \lb t[e_x/x]\rb$ and so $e \in \lb\functype{x}{t_x}{t'}\rb$. To show that $\lb\functype{x}{t_x}{t'}\rb \neq \varnothing$, we use the inductive hypothesis to get an $e_x \in \lb t_x \rb$ and use it again to get a term $e' \in \lb t'[e_x/x] \rb$ that doesn't evaluate to a value. Set $e = \lambda x.\, e'$. Then $\varnothing \vdash_B e : \lfloor t_x \rfloor \rightarrow \lfloor t' \rfloor$ and for any $\hat e \in \lb t_x \rb$, either $\hat e$ doesn't evaluate to a value (in which case $e\; \hat e$ doesn't evaluate to a value either and so $e\; \hat e \in \lb t'[e_x/x]\rb$ by induction) or $\hat e \many \hat v$ for some value $\hat v$. Then $e\; \hat e \many e\; \hat v \step e'[v/x] = e' \in \lb t'[e_x/x]\rb$ and so by Lemma \ref{pres-den} $e\; \hat e \in \lb t'[e_x/x]\rb$. Therefore $e \in \lb t\rb$.
 
 In the final case, suppose $t\equiv \existype{x}{t_x}{t'}$. By the inductive hypothesis, there exists some $e_x \in \lb t_x \rb$. Suppose that $\varnothing \vdash_B e : t'$ and that $e$ doesn't evaluate to a value. Then by induction we have that $e \in \lb t'[e_x/x]\rb$ so $e \in \lb\existype{x}{t_x}{t'}\rb$. Finally, to show that such an $e$ must exist, we have by the inductive hypothesis that there must exists some $e\in\lb t'[e_x/x]\rb$ that does not evaluate to a value, and so $e\in \lb\existype{x}{t_x}{t'}\rb$ as well.
-\end{proof}
+\end{proof} 
+\end{comment}
 
 We also have the concept of the denotation of an environment $\Gamma$; we intuitively define this to be the set of all sequences of expression bindings for the variables in $\Gamma$ such that the expressions respect the denotations of the types of the corresponding variables.
 A closing substitution is just a sequence of expression bindings to variables:
@@ -301,16 +318,55 @@ ty(\leq) :=&\; x\bind\Int \rightarrow y\bind\Int \rightarrow \Bool\{v : v = (x \
 ty(m\!\!\leq) :=&\; n\bind\Int \rightarrow \Bool\{v : v = (m \leq n)\} 
 \end{align*}
 and similarly for $ty(\vee)$, $ty(=)$, and $ty(m\!\!=)$. Note that we use $m\!\!\leq$ to represent an arbitrary member of the infinite family of primitives $0\!\!\leq,\, 1\!\!\leq,\, 2\!\!\leq,\ldots$. Then by the definitions above we get our primitive typing lemma:
-\begin{lemma}(Primitive Typing) For every primitive $c$, $\varnothing \vdash c : ty(c)$ and \label{prim-typing} 
+\begin{lemma}(Primitive Typing) For every primitive $c$, 
 \begin{enumerate}
+\item $\varnothing \vdash c : ty(c)$ and $\varnothing \vdash_w ty(c)$.  
 \item If $ty(c) = b\{x \col p\}$, then $c \in \lb ty(c) \rb$ and for all $c'$ such that $c' \neq c$, $c' \not\in \lb ty(c)\rb$.
-\item If $ty(c) = \functype{x}{t_x}{t}$, then for each $v \in \lb t_x\rb$, $\delta(c,v)$ is defined and $\delta(c,v) \in \lb t[v/x] \rb$. Thus $c \in \lb ty(c) \rb$.
-\end{enumerate}
+\item If $ty(c) = \functype{x}{t_x}{t}$, then for each $v \in \lb t_x\rb$, $\delta(c,v)$ is defined and we have both $\varnothing \vdash \delta(c,v) : t[v/x] $ and $\delta(c,v) \in \lb t[v/x] \rb$. Thus $c \in \lb ty(c) \rb$.
+\end{enumerate}\label{prim-typing}
 \end{lemma}
 
-\section{Meta-theory}
+\section{Meta-theory}  %%%%%%%%%%%%%%% 333333333333 %%%%%%%%%%%%%
 
-In this section, we seek to prove the operational soundness of our language $\lambda_1$.
+In this section, we seek to prove the operational soundness of our language $\lambda_1$. We begin by proving several standard properties and basic facts used later on.
+
+\begin{lemma}\label{step-determ}
+The operational semantics of $\lambda_1$ are deterministic: For every expression $e$ there exists at most one term $e'$ such that $e \step e'$.
+\end{lemma}
+
+\begin{lemma}\label{weakenings}
+(Weakenings of Judgments) For any environment $\Gamma$ and $x \not\in dom(\Gamma)$:
+\begin{enumerate}
+\item If $\Gamma \vdash e : t$ then $\Gamma, x\bind t_x \vdash e :  t$.
+\item If $\Gamma \vdash s <: t$ then $\Gamma, x\bind t_x \vdash s <: t$.
+\item If $\Gamma \vdash_e p$ then $\Gamma, x\bind t_x \vdash_e p$.
+\item If $\Gamma \vdash_w t$ then $\Gamma, x\bind t_x \vdash_w t$.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+The proof is by mutual induction on the derivation tree of each type of judgement.
+
+(1) {\bf TODO}
+
+(2) {\bf TODO}
+
+(3) {\bf TODO}
+
+(4) {\bf TODO}
+\end{proof}
+
+
+\begin{lemma}\label{sub-refl}
+(Reflexivity of $<:$) If $\Gamma \vdash_w t$ and $t$ is not a base type, then $\Gamma \vdash t <: t$.
+\end{lemma} {\bf TODO: Write up the proof from my notes}
+
+\begin{proof} We proceed by induction of the structure of the derivation of $\Gamma \vdash_w t$.
+
+{\bf Case} {\sc WF-Refn}: In the base case, we have....
+	
+\end{proof}
+
+
 Our proof of the soundness theorem begins with several helping lemmas.
 
 \begin{lemma}{(Preservation of Denotations)
@@ -345,10 +401,10 @@ We appeal to the determinism of the operations semantics: by hypothesis, $e \man
 Finally, suppose $t \equiv \exists\, x\bind t_x.\, t'$. We have $e \in \lb t \rb$ if and only if there exists some $v \in \lb t_x \rb$ such that 
 $e \in \lb t'[v/x]\rb$. Then by induction $e \in \lb t'[v/x]\rb$ if and only if $e' \in \lb t'[v/x]\rb$. By definition, $e' \in \lb t\rb$ if and only if there exists $v \in \lb t_x\rb$ such that $e'\in\lb t'[v/x]\rb$, which completes the proof.
 \end{proof}
+
+\begin{comment}
 \begin{lemma}{(Declarative Entailments) Our entailment judgement is sound with respect to the denotations of the environment: If
 $\Gamma \vdash_e c$, then $\forall\, \theta.\, \theta \in \lb\Gamma\rb \Rightarrow \varnothing \vdash_e \theta(c)$.}
-%\begin{lemma}{(Declarative Entailments) Our entailment judgement is sound with respect to the denotations of the environment:
-%$\Gamma \vdash_e c$ if and only if $\forall\, \theta.\, \theta \in \lb\Gamma\rb \Rightarrow \varnothing \vdash_e \theta(c)$.}TODO TODO: fix this 
 \label{decl-impl}
 \end{lemma}
 
@@ -362,6 +418,7 @@ By inversion of {\sc Ent-Ext}, we must have that $t \equiv b\{x\col p\}$ and $\G
 %Let $\theta \in \lb\Gamma\rb$ arbitrary and let
 %Write $\theta = (\theta', x\mapsto e)$ where $e \in \lb \theta(t)\rb = \lb\theta'(t)\rb$ because $x$ cannot appear free in $t$. 
 \end{proof}
+\end{comment}
 
 \begin{lemma}{(Type Denotations) Our typing and subtyping relations are sound with respect to the denotational semantics of our types:\\
 1. If $\Gamma \vdash t_1 <: t_2$ then $\forall \theta. \theta \in \lb \Gamma \rb \Rightarrow \lb\theta(t_1)\rb \subseteq \lb\theta(t_2)\rb$.\\
@@ -566,17 +623,6 @@ By the inductive hypothesis, $\foralltheta \Rightarrow \theta(e) \in \lb\theta(s
 {\bf Case} {\sc T-Bot}: We have $\Gamma \vdash \bot : t$ where $t \equiv b\{x \col p\}$. Then because $\bot$ cannot evaluate, we have that $\bot \in \lb b\{x\col \theta(p)\}\rb = \lb \theta(t)\rb$.
 \end{proof}
 
-
-\begin{lemma}(The Substitution Lemma) If $\Gamma \vdash e_x : t_x$ then\\
-1. If $\Gamma, x\bind t_x, \Gamma' \vdash t_1 <: t_2$ then
-\[
-\Gamma, \Gamma'[e_x/x] \vdash t_1[e_x/x] <: t_2[e_x/x].
-\]
-2. If $\Gamma, x\bind t_x, \Gamma' \vdash e : t$ then
-\[
-\Gamma, \Gamma'[e_x/x] \vdash e[e_x/x] : t[e_x/x].
-\]
-\end{lemma}
 \begin{proof}
 (1) Suppose $\Gamma \vdash e_x:t_x$ and $\Gamma, x\bind t_x ,\Gamma' \vdash t_1 <: t_2$. We proceed by mutual induction on the derivation tree of the subtyping relation.
 
@@ -773,85 +819,174 @@ which we can write as
 \] to complete the proof of the final case.
 \end{comment}
 \end{proof}
-\begin{comment}
 
-% Seems like I can do without this one
-%\begin{lemma}{
-%If $e \hookrightarrow e'$ then $\varnothing \vdash t[e'/x] <: t[e/x]$. %}
-%\end{lemma}
-%\begin{proof}By case split on the derivation of the subtyping judgment?
-	%\end{proof}
 
-\begin{theorem}(The Preservation Theorem)
-If $\varnothing \vdash e : t$ and $e \hookrightarrow e'$, then $\varnothing \vdash e' : t$.	
-\end{theorem}
-\begin{proof} We proceed by induction on the derivation tree of the judgment $\varnothing \vdash e : t$.
 
-{\bf Case} {\sc Syn-Var}: Holds trivially because if $e \equiv x$ then there does not exist $e'$ such that $x \hookrightarrow e'$.
 
-{\bf Case} {\sc Syn-Con}: Holds trivially because if $e \equiv c$ then there does not exist $e'$ such that $c \hookrightarrow e'$.
 
-{\bf Case} {\sc Syn-Ann}: We have $\varnothing \vdash e : t$ where $e \equiv (e_1 : t)$ and $e \hookrightarrow e'$. By inversion,
-$\varnothing \vdash e_1 : t$. By Theorem \ref{progress} there exists $e'_1$ such that $e_1 \hookrightarrow e'_1$. By the inductive hypothesis, $\varnothing \vdash e'_1 : t$.
-By rule {\sc Syn-Ann}, $\varnothing \vdash (e'_1 : t) : t$. By the operational semantics $(e_1 : t) \hookrightarrow (e'_1 : t)$ and by determinism of the operational semantics $e' \equiv (e'_1 : t)$.
 
-{\bf Case} {\sc Syn-App}: We have $\varnothing \vdash e : t$ where $e \equiv e_1\, v$ and $t \equiv t_1[v/x]$ for some variable $x$ and value $v$. By inversion, $\varnothing \vdash e_1 : (x:s \rightarrow t_1)$ and $\varnothing \vdash v : s$ for some type $s$. We split on three cases for the structure of $e_1$.
 
-First, consider $e_1 \equiv c$, then by the definitions of constants $e' = \delta(c,v)$ and $\varnothing \vdash \delta(c,v) : t_1[v/x]$ as desired.
 
-Second, consider $e_1 \equiv \lambda x.e_2$. By determinism of the operational semantics, $e' \equiv e_2 [v/x]$. By inversion (of {\sc Chk-Lam}) on $\varnothing \vdash \lambda x.e_2 : (x:s \rightarrow t_1)$ we have $x:s \vdash e_2 : t_1$. By the substitution lemma (substituing for $\varnothing \vdash v :s$), we have
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage {\sc All the recent work goes here} 
+
+
+\begin{lemma}(The Substitution Lemma) If $\Gamma \vdash e_x : t_x$ then\\
+1. If $\Gamma, x\bind t_x, \Gamma' \vdash t_1 <: t_2$ then
 \[
-\varnothing \vdash e_2[v/x] : t_1[v/x].
+\Gamma, \Gamma'[e_x/x] \vdash t_1[e_x/x] <: t_2[e_x/x].
 \]
-Finally, consider $e_1$ not a value. Then by Theorem \ref{progress}, there exists an $e'_1$ such that $e_1 \hookrightarrow e'_1$. By determinism of the operational semantics, $e' \equiv e'_1\, v$. By the inductive hypothesis,
-$\varnothing \vdash e'_1 : (x:s \rightarrow t_1)$. By rule {\sc Syn-App}, $\varnothing \vdash e'_1\, v : t_1[v/x]$, which is the same as $\varnothing \vdash e' : t$.
+2. If $\Gamma, x\bind t_x, \Gamma' \vdash e : t$ then
+\[
+\Gamma, \Gamma'[e_x/x] \vdash e[e_x/x] : t[e_x/x].
+\]
+3. If $\Gamma, x\bind t_x, \Gamma' \vdash_w t$ then
+\[
+\Gamma, \Gamma'[e_x/x] \vdash_w t[e_x/x]
+\]
+\end{lemma}
 
-{\bf Case} {\sc Chk-Syn}: We have $\varnothing \vdash e : t$. By inversion $\varnothing \vdash e : s$ and $\varnothing \vdash s <: t$ for some type $s$. By the inductive hypothesis $\varnothing \vdash e' : s$. By rule {\sc Chk-Syn}, $\varnothing \vdash e' : t$.
-
-{\bf Case} {\sc Chk-Lam}: Holds trivially because if $e \equiv \lambda x.e_1$ then there does not exist any $e'$ such that $\lambda x.e_1 \hookrightarrow e'$.
-
-{\bf Case} {\sc Chk-Let}: We have $\varnothing \vdash e : t$ where $e \equiv (\letin{x}{e_1}{e_2})$ and $t \equiv t_2$. By inversion,
-$\varnothing \vdash e_1 : t_1$ and $(x:t_1)\vdash e_2 : t_2$. By the substitution lemma (substituting for $\varnothing \vdash e_1 : t_1$), we have $\varnothing \vdash e_2[e_1/x] : t_2[e_1/x]$. By the operational semantics $e \hookrightarrow e_2[e_1/x]$ and by determinism $e' \equiv e_2[e_1/x]$. Examining $\varnothing \vdash e : t$, we see that $x$ cannot appear free in $t\equiv t_2$ so we conclude $\varnothing \vdash e' : t$.
+\begin{proof}
+We proceed by mutual induction 	
 	
-\end{proof}\begin{comment}
+	
+	
+	
+\end{proof}
+
+\begin{lemma}\label{types-wf}
+(Well-formedness of types in judgements) 
+If $\Gamma \vdash e: t$ and $\vdash_{w} \Gamma$ then $\Gamma \vdash_w t$.
+\end{lemma}
+
+\begin{proof} 
+We proceed by induction on the derivation tree of the judgment $\varnothing \vdash e : t$.
+
+{\bf Case} {\sc T-Prim}: We have $e \equiv c$. By inversion, $t = ty(c)$ and by Lemma \ref{prim-typing} we have $\varnothing \vdash_ w ty(c)$. By repeated application of Lemma \ref{weakenings}, we have $\Gamma \vdash_w ty(c)$. 
+
+{\bf Case} {\sc T-Var}: We have $\Gamma \vdash e : t$ where $e \equiv x$. By inversion, $x\bind t \in \Gamma$, so we can write $\Gamma \equiv \Gamma', x\bind t,\Gamma''$ and by repeated inversion of {\sc WFE-Bind}, $\vdash_w \Gamma',x\bind t$ and inverting again we get $\Gamma' \vdash_w t$. Inductively applying Lemma \ref{weakenings} gives us $\Gamma \vdash_w t$.
+
+{\bf Case} {\sc T-Abs}: We have $\Gamma \vdash e : t$ where $e \equiv \lambda x.\, e'$ and $t \equiv \functype{x}{t_x}{t'}$. By inversion, we have $\Gamma, x\bind t_x \vdash e : t'$ and $\Gamma \vdash_w t_x$. By the inductive hypothesis, we have $\Gamma, x\bind t_x \vdash_W t'$. By rule {\sc WF-Func} we have $\Gamma \vdash_w \functype{x}{t_x}{t'}$.
+
+{\bf Case} {\sc T-App}: We have $\Gamma \vdash e : t$ where $e \equiv e_1\; e_2$ and $t \equiv \existype{x}{t_x}{t'}.$ By inversion, $\Gamma \vdash e_1 : \functype{x}{t_x}{t'}$ and $\Gamma \vdash e_2 : t_x$. By the inductive hypothesis we have $\Gamma \vdash_w \functype{x}{t_x}{t'}$ and $\Gamma \vdash_w t_x$. By inverting rule {\sc WF-Func} (on the former judgement), we have $\Gamma \vdash_w t_x$ and $\Gamma,x\bind t_x \vdash_w t'$. By rule {\sc WF-Exis}, $\Gamma \vdash_w \existype{x}{t_x}{t'}$.
+
+{\bf Case} {\sc T-Let}: We have $\Gamma \vdash e : t$ where $e \equiv \letin{x}{e_x}{e'}$. By inversion we have, in particular, that $\Gamma \vdash_w t$.
+
+{\bf Case} {\sc T-Ann}: We have $\Gamma \vdash e : t$ where $e \equiv e'\col t$. By inversion we have $\Gamma \vdash e' : t$ and by the inductive hypothesis we conclude $\Gamma \vdash_w t$.
+
+{\bf Case} {\sc T-Sub}: We have $\Gamma \vdash e : t$. By inversion we have, in particular, $\Gamma \vdash_w t$.
+\end{proof}
+
+
+\begin{lemma}\label{witness-sub}
+(Witnesses and subtyping) If $\Gamma \vdash e_x : t_x$ and $\Gamma, x\bind t_x \vdash_w t'$ then $\Gamma \vdash t'[e_x/x] <: \existype{x}{t_x}{t'}$.
+\end{lemma}
+\begin{proof}
+By Lemma \ref{sub-refl}, we have that $\Gamma \vdash t' <: t'$ and by the Substitution Lemma we have $\Gamma \vdash t'[e_x/x] <: t'[e_x/x]$.  Applying rule {\sc S-Witn} (with $t\equiv \existype{x}{t_x}{t'}$), we get $\Gamma \vdash t'[e_x/x] <: \existype{x}{t_x}{t'}$.
+\end{proof}
+
 
 \begin{theorem}\label{progress}
 (The Progress Theorem) If $\varnothing \vdash e : t$ then either $e$ is a value or there exists a term $e'$ such that $e \hookrightarrow$ e'.
-	
-\end{theorem}
+\end{theorem} {\bf NB: This theorem is bottomless.}
+
 \begin{proof} We proceed by induction on the derivation tree of the judgment $\varnothing \vdash e : t$.
 
-{\bf Case} {\sc Syn-Var}: This case cannot occur because $\Gamma = \varnothing$.
+{\bf Case} {\sc T-Prim}: This case holds trivially because $e \equiv c$ is a value.
 
-{\bf Case} {\sc Syn-Con}: This case holds trivially because $e \equiv c$ is a value.
+{\bf Case} {\sc T-Var}: This case cannot occur because $\Gamma = \varnothing$.
 
-{\bf Case} {\sc Syn-Ann}: We have $\varnothing \vdash e : t$ where $e \equiv (e_1:t)$. By inversion, $\varnothing \vdash e_1 : t$. By the inductive hypothesis either $e_1 \equiv v$ a value or there exists $e'_1$ such that $e_1 \hookrightarrow e'_1$. In the former case $(v:t) \hookrightarrow v$ and in the latter case $(e_1:t) \hookrightarrow (e'_1:t)$ 
-(or is the former case the only possibility because $\hookrightarrow$ needs to be deterministic?).
+{\bf Case} {\sc T-Abs}: This case holds trivially because $e \equiv \lambda x.e'$ is a value.
 
-{\bf Case} {\sc Syn-App}: We have $\varnothing \vdash e : t$ where $e \equiv e_1\, v$ and $t \equiv t_1[v/x]$. By inversion, $\varnothing \vdash e_1 : (x:s \rightarrow t_1)$ and $\varnothing \vdash v : s$ for some type $s$. We split on three cases for the structure of $e_1$.
+{\bf Case} {\sc T-App}: We have $\varnothing \vdash e : t$ where $e \equiv e_1\; e_2$ and $t \equiv \existype{x}{t_x}{t'}$. By inversion, $\varnothing \vdash e_1 : \functype{x}{t_x}{t'}$ and $\varnothing \vdash e_2 : t_x$ for some type $s$. We split on five cases for the structure of $e_1$ and $e_2$.
 
-First, consider $e_1 \equiv c$, then by the definitions of constants $e \equiv c\, v \hookrightarrow \delta(c,v)$.
-Second, consider $e_1 \equiv \lambda x.e_2$. Then by the operational semantics, $\lambda x.e_2 \; v \hookrightarrow e_2[v/x]$.
-Finally, consider $e_1$ not a value. Then by the inductive hypothesis there exists $e'_1$ such that $e_1 \hookrightarrow e'_1$. By the operational semantics, $e_1\; v \hookrightarrow e_2\; v$.
+First, consider $e_1 \equiv c$ and $e_2 \equiv v$; then by rule {\sc E-Prim} $e \equiv c\; v \hookrightarrow \delta(c,v)$, which is defined by Lemma \ref{prim-typing}.
+Second, consider $e_1 \equiv c$ and $e_2$ not a value. By the inductive hypothesis (applied to $\varnothing \vdash e_2 : t_x$), there exists a term $e'_2$ such that $e_2 \step e'_2$. Thus $e_1\; e_2 \step e_1 \; e'_2$ by rule {\sc E-App1}.
 
-{\bf Case} {\sc Chk-Syn}: We have $\varnothing \vdash e : t$. By inversion, $\varnothing e : s$ and $\varnothing s <: t$ for some type $s$. By the inductive hypothesis, either $e$ is a value or there exists $e'$ such that $e \hookrightarrow e'$ and we are done.
+Third, consider $e_1 \equiv \lambda x.e'_1$ and $e_2 \equiv v$. Then by the operational semantics, $\lambda x.e_2 \; v \step e_2[v/x]$. Fourth, consider $e_1 \equiv \lambda x.e'_1$ and $e_2$ not a value. By the inductive hypothesis, there exists a term $e'_2$ such that $e_2 \step e'_2$. Thus $e_1\; e_2 \step e_1 \; e'_2$ by {\sc E-App1} again.
 
-{\bf Case} {\sc Chk-Lam}: This case holds trivially because $e \equiv \lambda x.e_1$ is a value.
+This exhausts all possible cases in which $e_1$ could be a value in the empty environment. So, finally, consider $e_1$ not a value. Then by the inductive hypothesis there exists $e'_1$ such that $e_1 \hookrightarrow e'_1$. By the operational semantics, $e_1\; e_2 \hookrightarrow e'_1\; e_2$.
 
-{\bf Case} {\sc Chk-Let}: We have $\varnothing \vdash e : t$ where
-$e \equiv (\letin{x}{e_1}{e_2})$ and $t \equiv t_2$. By the operational semantics, we have $e \hookrightarrow e_2[e_1/x]$.
+{\bf Case} {\sc T-Let}: We have $\varnothing \vdash e : t$ where
+$e \equiv (\letin{x}{e_1}{e_2})$. By inversion, $\varnothing \vdash e_1:t_x$ and $x\bind t_x\vdash e_2: t$. First, suppose that $e_1 \equiv v$. Then by rule {\sc T-LetV}, $\letin{x}{v}{e_2} \step e_2[v/x]$. Second, suppose that $e_1$ is not a value. Then by the inductive hypothesis (applied to judgement $\varnothing \vdash e_1:t_x$), there exists a term $e'_1$ such that $e_1 \step e'_1$. Then by rule {\sc E-Let} we have $\letin{x}{e_1}{e_2} \step \letin{x}{e'_1}{e_2}$.
+
+{\bf Case} {\sc T-Ann}: We have $\varnothing \vdash e : t$ where $e \equiv (e_1\col t)$. By inversion, $\varnothing \vdash e_1 : t$. By the inductive hypothesis either $e_1 \equiv v$ a value or there exists $e'_1$ such that $e_1 \hookrightarrow e'_1$. In the former case $(v\col t) \hookrightarrow v$ and in the latter case $(e_1\col t) \hookrightarrow (e'_1\col t)$.
+
+{\bf Case} {\sc T-Sub}: We have $\varnothing \vdash e : t$. By inversion, $\varnothing \vdash e : s$, $\varnothing \vdash s <: t$, and $\varnothing \vdash_w t$ for some type $s$. By the inductive hypothesis, either $e$ is a value or there exists $e'$ such that $e \hookrightarrow e'$ and we are done.
 \end{proof}
-\end{comment}
-% this comes later, I think
-%\begin{theorem}(The Approximation Theorem) %\end{theorem}
-%\begin{proof}\end{proof}
+
+\begin{theorem}(The Preservation Theorem)
+If $\varnothing \vdash e : t$ and $e \hookrightarrow e'$, then $\varnothing \vdash e' : t$.	
+\end{theorem} {\bf NB: This theorem is bottomless. I need to prove the substitution lemma. I need to prove that the types in all judgements are well-formed. I need to prove that $<:$ is reflexive}
+\begin{proof} We proceed by induction on the derivation tree of the judgment $\varnothing \vdash e : t$.
+
+{\bf Case} {\sc T-Con}: Holds trivially because if $e \equiv c$ then there does not exist $e'$ such that $c \hookrightarrow e'$.
+
+{\bf Case} {\sc T-Var}: Holds trivially because if $e \equiv x$ then there does not exist $e'$ such that $x \hookrightarrow e'$.
+
+{\bf Case} {\sc T-Abs}: Holds trivially because if $e \equiv \lambda x.e_1$ then there does not exist any $e'$ such that $\lambda x.e_1 \hookrightarrow e'$.
+
+{\bf Case} {\sc T-App}: We have $\varnothing \vdash e : t$ where $e \equiv e_1\; e_2$ and $t \equiv \existype{x}{t_x}{t'}$ for some variable $x$ and type $t_x$. By inversion, $\varnothing \vdash e_1 : \functype{x}{t_x}{t'}$ and $\varnothing \vdash e_2 : t_x$. We split on five cases for the structure of $e_1$ and $e_2$.
+
+First, consider $e_1 \equiv c$ and $e_2 \equiv v$; then by the semantics $e' = \delta(c,v)$ and by Lemma \ref{prim-typing}, we have $\varnothing \vdash \delta(c,v) : t'[v/x]$ because n. By Lemma \ref{types-wf}, we have $\varnothing \vdash_w \existype{x}{t_x}{t'}$ and by inverting {\sc WF-Exis} we have $x\bind t_x \vdash_w t'$. By Lemma \ref{witness-sub}, $\varnothing \vdash t'[v/x] <: \existype{x}{t_x}{t'}$, and so by rule {\sc T-Sub}, $\varnothing \vdash \delta(c,v) : \existype{x}{t_x}{t'} $.
+
+Second, consider $e_1 \equiv c$ and $e_2$ not a value. By Theorem \ref{progress}, there exists a term $e'_2$ such that $e_2 \step e'_2$. By rule {\sc E-App2}, $c\; e_2 \step c\; e'_2$ and by the determinism of the operational semantics, $e' \equiv c\; e'_2$.
+By the inductive hypothesis, $\varnothing \vdash e'_2 : t_x$. We conclude by {\sc T-App} that $\varnothing \vdash e' : \existype{x}{t_x}{t'}$.
+
+Third, consider $e_1 \equiv \lambda x.e'_1$ and $e_2 \equiv v$. Then $e_1\; e_2 \step e'_1[v/x]$ and by determinism of the operational semantics, $e' \equiv e'_1[v/x]$. By inversion of {\sc T-Abs}, we have $x\bind t_x \vdash e'_1 : t'$, and by the substitution lemma we have $\varnothing \vdash e'_1[v/x] : t'[v/x]$. By Lemma \ref{types-wf}, we have $\varnothing \vdash_w \existype{x}{t_x}{t'}$ and by inverting {\sc WF-Exis} we have $x\bind t_x \vdash_w t'$. By Lemma \ref{witness-sub}, $\varnothing \vdash t'[v/x] <: \existype{x}{t_x}{t'}$, and so by rule {\sc T-Sub}, $\varnothing \vdash e' : \existype{x}{t_x}{t'}$.
+
+Fourth, consider $e_1 \equiv \lambda x.e'_1$ and $e_2$ not a value. By Theorem \ref{progress}, there exists a term $e'_2$ such that $e_2 \step e'_2$. By rule {\sc E-App2}, $(\lambda x.e'_1)\; e_2 \step (\lambda x.e'_1)\; e'_2$ and by the determinism of the operational semantics, $e' \equiv (\lambda x.e'_1)\; e'_2$.
+By the inductive hypothesis, $\varnothing \vdash e'_2 : t_x$. We conclude by {\sc T-App} that $\varnothing \vdash e' : \existype{x}{t_x}{t'}$.
+
+This exhausts all possible cases in which $e_1$ could be a value in the empty environment. So, finally, consider $e_1$ not a value.
+Then by Theorem \ref{progress}, there exists an $e'_1$ such that $e_1 \hookrightarrow e'_1$. By determinism of the operational semantics, $e' \equiv e'_1\; e_2$. By the inductive hypothesis,
+$\varnothing \vdash e'_1 : \existype{x}{t_x}{t'}$. By rule {\sc Syn-App}, $\varnothing \vdash e' : \existype{x}{t_x}{t'}$.
+
+{\bf Case} {\sc T-Let}: We have $\varnothing \vdash e : t$ where $e \equiv (\letin{x}{e_1}{e_2})$ and $t \equiv t_2$. By inversion,
+$\varnothing \vdash e_1 : t_1$,\quad $x\bind t_1\vdash e_2 : t_2$, and $\varnothing \vdash_w t_2$ for some type $t_1$. 
+First suppose that $e_1$ is not a value. Then by Theorem \ref{progress}, there exists some term $e'_1$ such that $e_1 \step e'_1$. By Rule {\sc E-Let}, $\letin{x}{e_1}{e_2} \step \letin{x}{e'_1}{e_2}$, and by determinism of the operational semantics, $e' \equiv \letin{x}{e'_1}{e_2}$. By the inductive hypothesis, $\varnothing \vdash e_1 : t_1$. Then by {\sc T-Let}, $\varnothing \vdash e' : t_2$.
+
+Second, suppose that $e_1 \equiv v$, for some value $v$. Then by rule {\sc E-LetV}, $\letin{x}{v}{e_2}\step e_2[v/x]$. By determinism of the operational semantics, $e' \equiv e_2[v/x]$. By the substitution lemma, $\varnothing \vdash e_2[v/x] : t_2[v/x]$. But by $\varnothing vdash_w t_2$, we know that $x$ does not appear free in $t_2$ so $t_2[v/x] = t_2$ and $\varnothing \vdash e' : t_2$.
+
+{\bf Case} {\sc T-Ann}: We have $\varnothing \vdash e : t$ where $e \equiv (e_1 : t)$ and $e \hookrightarrow e'$. By inversion,
+$\varnothing \vdash e_1 : t$. By Theorem \ref{progress} there exists $e'_1$ such that $e_1 \hookrightarrow e'_1$. By rule {\sc E-Ann} $(e_1 : t) \hookrightarrow (e'_1 : t)$ and by the determinism of the operational semantics we must have $e' \equiv (e'_1 : t)$. Then by the inductive hypothesis, $\varnothing \vdash e'_1 : t$. By rule {\sc Syn-Ann}, $\varnothing \vdash (e'_1 : t) : t$. 
+
+{\bf Case} {\sc T-Sub}: We have $\varnothing \vdash e : t$. By inversion $\varnothing \vdash e : s$ and $\varnothing \vdash s <: t$ for some type $s$, and also $\varnothing \vdash_w t$. By the inductive hypothesis $\varnothing \vdash e' : s$. By rule {\sc Chk-Syn}, $\varnothing \vdash e' : t$.
+\end{proof}
+
+\section{Algorithmic Typing} %%%%%%%% 444444 %%%%%%%%%%%%%%
+
+\begin{lemma}\label{SMT-Entails}
+(Denotational Soundness of SMT) If $\Gamma \vdash p$ then $\Gamma \vdash_e p$.
+\end{lemma}
+
+
 \newpage
 General Todo list:
 \begin{itemize}
 	\item does having call-by-value (non-lazy) semantics affect wha the definitions of denotations of types ($\lb \; \rb$) ought to be? Should any expressions being substituted into types become values?
 	\item In Lemma 5, case {\sc T-Abs} requires some additional lemma like: if $e \many v$ then $\lb t[v/x] \rb \subseteq \lb t[e/x] \rb$
 	\item Lemma 5 needs a part (3): If $\Gamma \vdash_w t$ then $\foralltheta \Rightarrow \varnothing \vdash_w \theta(t)$.
-	\item Lemma 6 needs a part (3): If $\Gamma, x\bind t_x, \Gamma' \vdash_w t$ and $\Gamma \vdash e_x : t_x$ then $\Gamma, \Gamma'[e_x/x] \vdash_w t[e_x/x]$.
 	\item The entailment rules don't quite seem to fit with the denotation definitions. Can't prove case {\sc S-Base} in the Substitution Lemma (Lemma 6).
 	
 \end{itemize}

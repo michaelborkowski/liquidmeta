@@ -12,16 +12,15 @@
 module Lambda1 where
 
 import Data.Foldable
+import Language.Haskell.Liquid.ProofCombinators
 import qualified Data.Set as S
 
 ---------------------------------------------------------------------------
 ----- | PRELIMINARIES
 ---------------------------------------------------------------------------
 
-{-@ measure prop :: a -> b @-}
-{-@ type ProofOf E = { v:_ | prop v = E } @-}
-
-type Proof = ()
+{-@ measure proposition :: a -> b @-}
+{-@ type ProofOf E = { v:_ | proposition v = E } @-}
 
 --TODO: will classes and instances make anything easier or harder?
 --class HasVars a where
@@ -38,7 +37,7 @@ type Vname = String
 data Prim = And | Or | Not
           | Leq | Leqn Int 
           | Eq  | Eqn Int
-  deriving (Show)
+  deriving (Eq, Show)
 
 {-@ inline expects_bool @-}
 expects_bool :: Prim -> Bool
@@ -63,7 +62,8 @@ data Expr = Bc Bool              -- True, False
           | App Expr Expr        -- e e'  TODO or does this become e v ??
           | Let Vname Expr Expr  -- let x = e1 in e2
           | Annot Expr Type      -- e : t
-  deriving (Show)
+          | Crash
+  deriving (Eq, Show)
 
 {-@ reflect isValue @-}
 isValue :: Expr -> Bool
@@ -72,6 +72,7 @@ isValue (Ic _)       = True
 isValue (Prim _)     = True
 isValue (V _)        = True
 isValue (Lambda _ _) = True
+isValue Crash        = True
 isValue _            = False
 
 {-@ inline is_bc @-}
@@ -96,6 +97,7 @@ subst x e_x (Lambda y e)       = Lambda y (subst x e_x e)
 subst x e_x (App e e')         = App (subst x e_x e) (subst x e_x e')
 subst x e_x (Let y e1 e2)      = Let y (subst x e_x e1) (subst x e_x e2)
 subst x e_x (Annot e t)        = Annot (subst x e_x e) t
+subst x e_x Crash              = Crash
 
   ---   Refinement Level: Names, Terms (in FO), FO Predicates, SMT Formulae
 type Pred = Expr
@@ -122,27 +124,29 @@ fv (Lambda x e) = S.difference (fv e) (S.singleton x)
 fv (App e e')   = S.union (fv e) (fv e')
 fv (Let x ex e) = S.union (fv ex) (S.difference (fv e) (S.singleton x))
 fv (Annot e t)  = fv e
+fv (Crash)      = S.empty
 
   ---   TYPES
 
 data Base = TBool
           | TInt
-  deriving (Show)
+  deriving (Eq, Show)
 
 data Type = TBase   Base                 -- b
-          | TRefn   Base Vname Pred      -- b{v : r}
+          | TRefn   Base Vname Pred      -- b{x : p}
           | TFunc   Vname Type Type      -- x:t_x -> t
           | TExists Vname Type Type      -- \exists x:t_x.t
-  deriving (Show)
+  deriving (Eq, Show)
 
 data Env = Empty                         -- type Env = [(Vname, Type)]	
          | Cons Vname Type Env
   deriving (Show)
 
---{-@ reflect in_env @-}
---in_env :: Vname -> Type -> Env -> Bool
---in_env x t Empty         = False
---in_env x t (Cons y t' g) | x == y && 
+{-@ reflect in_env @-}
+in_env :: Vname -> Env -> Bool
+in_env x Empty                    = False
+in_env x (Cons y t g) | x == y    = True
+                      | otherwise = in_env x g
 
 -- do we really want a separate Bare Type datatype?
 data BType = BTBase Base                 -- b
@@ -157,8 +161,8 @@ data BEnv = BEmpty                       -- type BEnv = [(Vname, BType)]
 tsize :: Type -> Int
 tsize (TBase b)	        = 0
 tsize (TRefn b v r)     = 0
-tsize (TFunc x t_x t)   = (tsize t) + 1
-tsize (TExists x t_x t) = (tsize t) + 1
+tsize (TFunc x t_x t)   = (tsize t_x) + (tsize t) + 1
+tsize (TExists x t_x t) = (tsize t_x) + (tsize t) + 1
 
 {-@ reflect erase @-}
 erase :: Type -> BType
@@ -187,7 +191,7 @@ tsubst x e_x (TExists z t_z t) = TExists z (tsubst x e_x t_z) (tsubst x e_x t)
 ----- OPERATIONAL SEMANTICS (Small Step)
 
 {-@ reflect delta @-}
-{-@ delta :: p:Prim -> { e:Expr | (is_bc e && expects_bool p) || (is_ic e && expects_int p) } -> Expr @-}
+--{-@ delta :: p:Prim -> { e:Expr | (is_bc e && expects_bool p) || (is_ic e && expects_int p) } -> Expr @-}
 delta :: Prim -> Expr -> Expr
 delta And (Bc True)   = Lambda "x" (V "x")
 delta And (Bc False)  = Lambda "x" (Bc False)
@@ -199,6 +203,7 @@ delta Leq      (Ic n) = Prim (Leqn n)
 delta (Leqn n) (Ic m) = Bc (n <= m)
 delta Eq       (Ic n) = Prim (Eqn n)
 delta (Eqn n)  (Ic m) = Bc (n == m)
+delta _ _             = Crash
 
 -- E-Prim c v -> delta(c,v)
 -- E-App1 e e1 -> e' e1 if e->e'
@@ -344,6 +349,18 @@ data WFType where
  
 -- TODO: Well-formedness of Environments
 
+data WFEnvP where
+    WFEnv :: Env -> WFEnvP
+
+data WFEnv where
+    WFEEmpty :: WFEnv
+    WFEBind  :: Env -> WFEnv -> Vname -> Type -> WFType -> WFEnv
+
+{-@ data WFEnv where
+    WFEEmpty :: ProofOf(WFEnv Empty)
+ |  WFEBind  :: g:Env -> ProofOf(WFEnv g) -> x:Vname -> t:Type -> ProofOf(WFType g t)
+                -> ProofOf(WFEnv (Cons x t g)) @-} -- @-}
+
 data HasTypeP where
     HasType :: Env -> Expr -> Type -> HasTypeP -- HasType G e t means G |- e : t
 
@@ -389,7 +406,6 @@ data Subtype where
     SBase :: Env -> Vname -> Base -> Pred -> Vname -> Pred -> Entails -> Subtype
     SFunc :: Env -> Vname -> Type -> Vname -> Type -> Subtype
                -> Type -> Type -> Subtype -> Subtype
-    -- TODO: Is this the form of [S-WITN] that we need?
     SWitn :: Env -> Expr -> Type -> HasType -> Type -> Vname -> Type
                -> Subtype -> Subtype
     SBind :: Env -> Vname -> Type -> Type -> Type -> Subtype -> Subtype
@@ -418,28 +434,29 @@ data Subtype where
 --{-@ data SMTValid where
 --    SMTProp :: { p:Pred | fv p == S.empty } -> ProofOf(EvalsTo p (Bc True))
 --               -> ProofOf(SMTValid (P p)) @-}
+--    EntEmpP :: Pred -> EvalsTo -> Entails
+--    EntEmpI :: Base -> Vname -> Pred -> Form  
+--                -> (CSubst -> DenotesEnv -> Entails) -> Entails
+--    EntEmpC :: Env -> Form -> Entails -> Form -> Entails -> Entails
+--    EntEmpP :: p:Pred -> ProofOf(EvalsTo p (Bc True)) -> ProofOf(Entails Empty p)
+-- |  EntEmpI :: b:Base -> x:Vname -> p:Pred -> c:Form 
+--               -> (th:CSubst -> ProofOf(DenotesEnv (Cons x (TRefn b x p) Empty) th)
+--                       -> ProofOf(Entails Empty (cfsubst th c)) )
+--               -> ProofOf(Entails Empty (Impl x b p c))
+-- |  EntEmpC :: g:Env -> c1:Form -> ProofOf(Entails g c1) -> c2: Form -> ProofOf(Entails g c2)
+--               -> ProofOf(Entails g (FAnd c1 c2))
 
 data EntailsP where
-    Entails :: Env -> Form -> EntailsP
+    Entails :: Env -> Pred -> EntailsP
 
 data Entails where
-    EntEmpP :: Pred -> EvalsTo -> Entails
-    EntEmpI :: Base -> Vname -> Pred -> Form  
-                -> (CSubst -> DenotesEnv -> Entails) -> Entails
-    EntEmpC :: Env -> Form -> Entails -> Form -> Entails -> Entails
-    EntExt  :: Env -> Vname -> Base -> Pred -> Form -> Entails -> Entails
+    EntExt  :: Env -> Pred -> (CSubst -> DenotesEnv -> EvalsTo) -> Entails
 
 {-@ data Entails where
-    EntEmpP :: p:Pred -> ProofOf(EvalsTo p (Bc True)) -> ProofOf(Entails Empty p)
- |  EntEmpI :: b:Base -> x:Vname -> p:Pred -> c:Form 
-               -> (th:CSubst -> ProofOf(DenotesEnv (Cons x (TRefn b x p) Empty) th)
-                       -> ProofOf(Entails Empty (cfsubst th c)) )
-               -> ProofOf(Entails Empty (Impl x b p c))
- |  EntEmpC :: g:Env -> c1:Form -> ProofOf(Entails g c1) -> c2: Form -> ProofOf(Entails g c2)
-               -> ProofOf(Entails g (FAnd c1 c2))
- |  EntExt :: g:Env -> x:Vname -> b:Base -> p:Pred -> c:Form
-               -> ProofOf(Entails g (Impl x b p c))
-               -> ProofOf(Entails (Cons x (TRefn b x p) g) c)  @-} -- @-}
+    EntExt :: g:Env -> p:Pred 
+               -> (th:CSubst -> ProofOf(DenotesEnv g th) 
+                             -> ProofOf(EvalsTo (csubst th p) (Bc True)) )
+               -> ProofOf(Entails g p) @-} 
 
 data DenotesP where 
     Denotes :: Type -> Expr -> DenotesP    -- e \in [[t]]
@@ -498,6 +515,35 @@ data DenotesEnv where
 --{-@ data DenotesEnv where 
 --    DEnv :: g:Env -> th:CSubst ->     Denotes (theta t th) (csubst x th)
 
+-- -- -- -- -- -- -- -- ---
+-- Basic Facts and Lemmas -
+-- -- -- -- -- -- -- -- ---
+
+
+-- Determinism of the Operational Semantics
+--    helping lemma?
+{-@ lem_sem_det :: e:Expr -> e1:Expr -> ProofOf(Step e e1)
+                   -> e2:Expr -> ProofOf(Step e e2) -> { x:_ | e1 == e2 } @-}
+lem_sem_det :: Expr -> Expr -> Step -> Expr -> Step -> Proof
+lem_sem_det e@(App (Prim c) w) e1 (EPrim c1 w1) e2 (EPrim c2 w2) 
+    = () ? (e1 === (delta c1 w1)) ? (e2 === (delta c2 w2)) ? ((App (Prim c1) w1) === e)
+--lem_sem_det (App (Prim _) _) e1 p1@(EPrim _ _)  e2 p2@(EPrim _ _) = () 
+--lem_sem_det e e1 p1@(EPrim And (Bc False)) e2 p2@(EPrim And (Bc False)) = () 
+--lem_sem_det e e1 p1@(EPrim Or (Bc True))   e2 p2@(EPrim Or (Bc True)) = () 
+--lem_sem_det e e1 p1@(EPrim Or (Bc False))  e2 p2@(EPrim Or (Bc False)) = () 
+--lem_sem_det e e1 p1@(EPrim Not (Bc True))  e2 p2@(EPrim Not (Bc True)) = () 
+--lem_sem_det e e1 p1@(EPrim Not (Bc False)) e2 p2@(EPrim Not (Bc False)) = () 
+--lem_sem_det e e1 p1@(EPrim Leq (Ic n))     e2 p2@(EPrim Leq (Ic _n)) 
+--  = () ? ((App (Prim Leq) (Ic n)) === e === (App (Prim Leq) (Ic _n))) 
+--lem_sem_det e e1 p1@(EPrim (Leqn n) (Ic m)) e2 p2@(EPrim (Leqn _n) (Ic _m)) = () 
+--lem_sem_det e e1 p1@(EPrim Eq (Ic n))      e2 p2@(EPrim Eq (Ic _n)) = () 
+--lem_sem_det e e1 p1@(EPrim (Eqn n) (Ic m))  e2 p2@(EPrim (Eqn _n) (Ic _m)) = () 
+--lem_sem_det e e1 p1@(EPrim _ _) e2 p2@(EPrim _ _) = () 
+
+lem_sem_det e e' (EApp1 e1 e1' p_e1e1' e2) e'' (EApp1 _e1 e1'' p_e1e1'' _e2)
+      = () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''  
+
+  -- e = e1 e2, e' = e1' e2, e'' = e1'' e2
 
 -- Lemma 1 in the Pen and Paper version (Preservation of Denotations)
 -- If e ->* e' then e in [[t]] iff e' in [[t]]
@@ -529,7 +575,19 @@ lemma1_fwd e e' p_ee' (TExists _x _tx _t) (DExis x t_x t _e p_ebt v d_txv d_te) 
     p_e'bt    = lemma_soundness e e' p_ee' (erase (TExists x t_x t)) p_ebt
     den_te'   = lemma1_fwd e e' p_ee' (tsubst x v t) d_te
 
-{-@ lemma1_bck :: e:Expr -> e':Expr -> ProofOf(EvalsTo e e') -> t:Type
-                   -> ProofOf(Denotes t e') -> ProofOf(Denotes t e) @-}
-lemma1_bck :: Expr -> Expr -> EvalsTo -> Type -> Denotes -> Denotes
-lemma1_bck = undefined
+--{-@ lemma1_bck :: e:Expr -> e':Expr -> ProofOf(EvalsTo e e') -> t:Type
+--                   -> ProofOf(Denotes t e') -> ProofOf(Denotes t e) @-}
+--lemma1_bck :: Expr -> Expr -> EvalsTo -> Type -> Denotes -> Denotes
+--lemma1_bck = undefined
+
+
+-- the big theorems
+{-@ thm_progress :: { e:Expr | not (isValue e) } -> t:Type 
+                   -> ProofOf(HasType Empty e t)  
+                   -> { p:_ | proposition(snd p) == Step e (fst p) } @-}
+thm_progress :: Expr -> Type -> HasType -> (Expr,Step) 
+thm_progress _c _b (TBC Empty _) = undefined
+thm_progress _c _b (TIC Empty _) = undefined
+thm_progress _x _t (TVar Empty _ _) = undefined
+thm_progress _c _t (TPrm Empty _) = undefined
+--thm_progress _e _t (TApp BEmpty e1 x t_x t _proof e2 _proof2) = 
