@@ -6,7 +6,7 @@
 {-@ LIQUID "--no-totality" @-}
 {-@ LIQUID "--reflection" @-}
 {-@ LIQUID "--ple" @-}
-{-@ LIQUID "--prune-unsorted" @-}
+--{-@ LIQUID "--prune-unsorted" @-}
 {-@ LIQUID "--short-names" @-}
 
 module Lambda1 where
@@ -39,20 +39,30 @@ data Prim = And | Or | Not
           | Eq  | Eqn Int
   deriving (Eq, Show)
 
-{-@ inline expects_bool @-}
-expects_bool :: Prim -> Bool
-expects_bool And = True
-expects_bool Or  = True
-expects_bool Not = True
-expects_bool _   = False
+{-@ reflect eqP @-}
+eqP :: Prim -> Prim -> Bool
+eqP And And = True
+eqP Or  Or  = True
+eqP Not Not = True
+eqP Leq Leq = True
+eqP (Leqn n) (Leqn n') = (n == n')
+eqP Eq  Eq  = True
+eqP (Eqn n)  (Eqn n')  = (n == n')
 
-{-@ inline expects_int @-}
-expects_int :: Prim -> Bool
-expects_int Leq      = True    
-expects_int (Leqn _) = True
-expects_int Eq       = True
-expects_int (Eqn _)  = True
-expects_int _        = False
+{-@ inline expectsBool @-}
+expectsBool :: Prim -> Bool
+expectsBool And = True
+expectsBool Or  = True
+expectsBool Not = True
+expectsBool _   = False
+
+{-@ inline expectsInt @-}
+expectsInt :: Prim -> Bool
+expectsInt Leq      = True    
+expectsInt (Leqn _) = True
+expectsInt Eq       = True
+expectsInt (Eqn _)  = True
+expectsInt _        = False
 
 data Expr = Bc Bool              -- True, False
           | Ic Int               -- 0, 1, 2, ...
@@ -65,7 +75,20 @@ data Expr = Bc Bool              -- True, False
           | Crash
   deriving (Eq, Show)
 
-{-@ reflect isValue @-}
+{-@ reflect eq @-}
+eq :: Expr -> Expr -> Bool
+eq (Bc b)       (Bc b')         = (b == b')
+eq (Ic n)       (Ic n')         = (n == n')
+eq (Prim p)     (Prim p')       = eqP p p'
+eq (V x)        (V y)           = (x == y)
+eq (Lambda x e) (Lambda x' e')  = (x == x') && (eq e e')
+eq (App e1 e2)  (App e1' e2')   = (eq e1 e1') && (eq e2 e2')
+eq (Let x ex e) (Let x' ex' e') = (x == x') && (eq ex ex') && (eq e e')
+eq (Annot e t)  (Annot e' t')   = (eq e e') && (eqT t t')
+eq Crash        Crash           = True
+eq _            _               = False
+
+{-@ inline isValue @-}
 isValue :: Expr -> Bool
 isValue (Bc _)       = True
 isValue (Ic _)       = True
@@ -75,16 +98,27 @@ isValue (Lambda _ _) = True
 isValue Crash        = True
 isValue _            = False
 
-{-@ inline is_bc @-}
-is_bc :: Expr -> Bool
-is_bc (Bc _) = True
-is_bc _      = False
+{-@ inline isBc @-}
+isBc :: Expr -> Bool
+isBc (Bc _) = True
+isBc _      = False
 
-{-@ inline is_ic @-}
-is_ic :: Expr -> Bool
-is_ic (Ic _) = True
-is_ic _      = False
+{-@ inline isIc @-}
+isIc :: Expr -> Bool
+isIc (Ic _) = True
+isIc _      = False
+{-
+{-@ inline getBool @-}
+{-@ getBool :: { e:Expr | isBc e } -> Bool @-}
+getBool :: Expr -> Bool
+getBool (Bc True)  = True
+getBool (Bc False) = False
 
+{-@ inline getInt @-}
+{-@ getInt :: {e:Expr | isIc e } -> Int @-}
+getInt :: Expr -> Int
+getInt (Ic n) = n
+-}
 {-@ reflect subst @-}
 --{-@ subst :: Vname -> { v:Expr | isValue v } -> Expr -> Expr @-}
 subst :: Vname -> Expr -> Expr -> Expr
@@ -132,6 +166,12 @@ data Base = TBool
           | TInt
   deriving (Eq, Show)
 
+{-@ reflect eqB @-}
+eqB :: Base -> Base -> Bool
+eqB TBool TBool = True
+eqB TInt  TInt  = True
+eqB _     _     = False
+
 data Type = TBase   Base                 -- b
           | TRefn   Base Vname Pred      -- b{x : p}
           | TFunc   Vname Type Type      -- x:t_x -> t
@@ -141,6 +181,13 @@ data Type = TBase   Base                 -- b
 data Env = Empty                         -- type Env = [(Vname, Type)]	
          | Cons Vname Type Env
   deriving (Show)
+
+{-@ reflect eqT @-}
+eqT :: Type -> Type -> Bool
+eqT (TBase b)        (TBase b')          = eqB b b'
+eqT (TRefn b x p)    (TRefn b' x' p')    = (eqB b b') && (x == x') && (eq p p')
+eqT (TFunc x tx t)   (TFunc x' tx' t')   = (x == x') && (eqT tx tx') && (eqT t t')
+eqT (TExists x tx t) (TExists x' tx' t') = (x == x') && (eqT tx tx') && (eqT t t')
 
 {-@ reflect in_env @-}
 in_env :: Vname -> Env -> Bool
@@ -161,8 +208,8 @@ data BEnv = BEmpty                       -- type BEnv = [(Vname, BType)]
 tsize :: Type -> Int
 tsize (TBase b)	        = 0
 tsize (TRefn b v r)     = 0
-tsize (TFunc x t_x t)   = (tsize t_x) + (tsize t) + 1
-tsize (TExists x t_x t) = (tsize t_x) + (tsize t) + 1
+tsize (TFunc x t_x t)   = (tsize t) + 1
+tsize (TExists x t_x t) = (tsize t) + 1
 
 {-@ reflect erase @-}
 erase :: Type -> BType
@@ -189,9 +236,31 @@ tsubst x e_x (TFunc z t_z t)   = TFunc z (tsubst x e_x t_z) (tsubst x e_x t)
 tsubst x e_x (TExists z t_z t) = TExists z (tsubst x e_x t_z) (tsubst x e_x t)
 
 ----- OPERATIONAL SEMANTICS (Small Step)
+{-
+delta p w = case (expectsBool p, isBc w) of
+    (True, True) -> deltaB p (getBool w)
+    (_, _) -> case (expectsInt p, isIc w) of
+        (True, True) -> deltaI p (getInt w)
+        (_, _) -> Crash 
+
+{-@ inline deltaB @-}
+{-@ deltaB :: { p:Prim | expectsBool p} -> Bool -> Expr @-}
+deltaB And b   = Lambda "x" (if b then (V "x") else (Bc False))
+deltaB Or  b   = Lambda "x" (if b then (Bc True) else (V "X"))
+deltaB Not b   = Bc (not b)
+
+
+{-@ inline deltaI @-}
+{-@ deltaI :: { p:Prim | expectsInt p} -> Int -> Expr @-}
+deltaI :: Prim -> Int -> Expr
+deltaI Leq      n = Prim (Leqn n)
+deltaI (Leqn n) m = Bc (n <= m)
+deltaI Eq       n = Prim (Eqn n)
+deltaI (Eqn n)  m = Bc (n == m)
+-}
 
 {-@ reflect delta @-}
---{-@ delta :: p:Prim -> { e:Expr | (is_bc e && expects_bool p) || (is_ic e && expects_int p) } -> Expr @-}
+{-@ delta :: p:Prim -> { e:Expr | isValue e } -> Expr @-}
 delta :: Prim -> Expr -> Expr
 delta And (Bc True)   = Lambda "x" (V "x")
 delta And (Bc False)  = Lambda "x" (Bc False)
@@ -244,6 +313,11 @@ data Step where
  |  EAnn  :: e:Expr -> e':Expr -> ProofOf( Step e e' )
                  -> t:Type -> ProofOf(Step (Annot e t) (Annot e' t))
  |  EAnnV :: { v:Expr | isValue v } -> t:Type -> ProofOf( Step (Annot v t) v) @-}
+
+{-@ inline isEPrim @-}
+isEPrim :: Step -> Bool
+isEPrim (EPrim {}) = True
+isEPrim _          = False
 
 data EvalsToP where
     EvalsTo :: Expr -> Expr -> EvalsToP
@@ -521,12 +595,91 @@ data DenotesEnv where
 
 
 -- Determinism of the Operational Semantics
---    helping lemma?
+
+{-@ lem_value_stuck :: e:Expr -> e':Expr -> ProofOf(Step e e') 
+                   -> { proof:_ | not (isValue e) } @-}
+lem_value_stuck :: Expr -> Expr -> Step -> Proof
+lem_value_stuck (App _ _)   e' (EPrim _ _)      = ()
+lem_value_stuck (App _ _)   e' (EApp1 _ _ _ _)  = ()
+lem_value_stuck (App _ _)   e' (EApp2 _ _ _ _)  = ()
+lem_value_stuck (App _ _)   e' (EAppAbs _ _ _)  = ()
+lem_value_stuck (Let _ _ _) e' (ELet _ _ _ _ _) = ()
+lem_value_stuck (Let _ _ _) e' (ELetV _ _ _)    = ()
+lem_value_stuck (Annot _ _) e' (EAnn _ _ _ _)   = ()
+lem_value_stuck (Annot _ _) e' (EAnnV _ _)      = ()
+
+--    helping lemma
+{-@ lem_too_simple :: c1:Prim -> { w1:Expr | isValue w1} -> { c2:Prim | c1 == c2}
+                   -> { w2:Expr | isValue w2 && w1 == w2 }
+                   -> { proof:_ | delta c1 w1 == delta c2 w2 } @-}
+lem_too_simple :: Prim -> Expr -> Prim -> Expr -> Proof
+lem_too_simple c1 w1 c2 w2 = ()
+
+-- c:Prim, b:Bool, e:Expr | e = App Prim c Bc b, Step e e'
+--   then e' == delta c (Bc b)
+
+{-@ lem_simpler :: c:Prim -> { w:Expr | isValue w } -> e':Expr
+                   -> ProofOf(Step (App (Prim c) w) e')
+                   -> { proof:_ | eq e' (delta c w) } @-}
+lem_simpler :: Prim -> Expr -> Expr -> Step -> Proof
+--lem_simpler c b (App (Prim _c_) (Bc _b_)) e' (EPrim _c _b) = ()
+--lem_simpler c w (Lambda _ _) (EPrim _ _) = ()
+--lem_simpler c w (Bc _)       (EPrim _ _) = ()
+--lem_simpler c w (Prim _)     (EPrim _ _) = ()
+--lem_simpler c w (Crash)      (EPrim _ _) = ()
+lem_simpler And (Bc True)  e'@(Lambda "x" (V "x"))      (EPrim And (Bc True))  
+    = e' === Lambda "x" (V "x") === delta And (Bc True) *** QED
+lem_simpler And (Bc False) (Lambda "x" (Bc False)) (EPrim And (Bc False)) = ()
+lem_simpler And _ Crash (EPrim And _) = ()
+--lem_simpler Or  w (App (Prim Or)  _) e' (EPrim Or _) = ()
+--lem_simpler Not w (App (Prim Not) _) e' (EPrim Not _) = ()
+--lem_simpler Leq w (App (Prim Leq) _) e' (EPrim Leq _) = ()
+--lem_simpler (Leqn n) w (App (Prim (Leqn _n_)) _) e' (EPrim (Leqn _n) _) = ()
+--lem_simpler Eq       w (App (Prim Eq)  _)        e' (EPrim Eq _) = ()
+--lem_simpler (Eqn n)  w (App (Prim (Eqn _n_)) _)  e' (EPrim (Eqn _n) _) = ()
+
+{-
+{-@ lem_simple2 :: c:Prim -> { w:Expr | isValue w} -> { e:Expr | e == App (Prim c) w }
+                   -> e':Expr -> ProofOf(Step e e') 
+                   -> { proof:_ | e' == delta c w } @-}
+lem_simple2 :: Prim -> Expr -> Expr -> Expr -> Step -> Proof
+--lem_simple2 c b (App (Prim _c_) (Bc _b_)) e' (EPrim _c _b) = ()
+lem_simple2 c w (App (Prim _c) _w) (Lambda _ _) (EPrim _ _) = ()
+lem_simple2 c w (App (Prim _c) _w) (Bc _)       (EPrim _ _) = ()
+lem_simple2 c w (App (Prim _c) _w) (Prim _)     (EPrim _ _) = ()
+lem_simple2 c w (App (Prim _c) _w) (Crash)      (EPrim _ _) = () -}
+--lem_simple2 And w (App (Prim And) _) e' (EPrim And _) = ()
+--lem_simple2 Or  w (App (Prim Or)  _) e' (EPrim Or _) = ()
+--lem_simple2 Not w (App (Prim Not) _) e' (EPrim Not _) = ()
+--lem_simple2 Leq w (App (Prim Leq) _) e' (EPrim Leq _) = ()
+--lem_simple2 (Leqn n) w (App (Prim (Leqn _n_)) _) e' (EPrim (Leqn _n) _) = ()
+--lem_simple2 Eq       w (App (Prim Eq)  _)        e' (EPrim Eq _) = ()
+--lem_simple2 (Eqn n)  w (App (Prim (Eqn _n_)) _)  e' (EPrim (Eqn _n) _) = ()
+
+--{-@ lem_delta_det1 :: c:Prim -> b:Bool
+--                   -> e1:Expr -> ProofOf(Step (App (Prim c) (Bc b)) e1)
+--                   -> { proof:_ | e1 == delta c (Bc b) } @-}
+--lem_delta_det1 :: Prim -> Bool -> Expr -> Step -> Proof
+--lem_delta_det1 And b e1 (EPrim c1 (Bc _b1))  
+--    = e1 ? (lem_simple And (Bc b) c1 (Bc _b1)) 
+--  === delta And (Bc b) *** QED 
+--                   -> e2:Expr -> ProofOf(Step (App (Prim c) (Bc b)) e2)
+
+--  = e1 === delta c1 w1 === delta And w === delta c2 w2 === e2 *** QED
+--lem_delta_det Or  w e1 (EPrim c1 w1) e2 (EPrim c2 w2) = ()
+--lem_delta_det Not w e1 (EPrim c1 w1) e2 (EPrim c2 w2) = ()
+--lem_delta_det Leq (Ic n) e1 (EPrim Leq (Ic _n1)) e2 (EPrim Leq (Ic _n2)) = ()
+--lem_delta_det (Leqn n) w e1 (EPrim c1 w1) e2 (EPrim c2 w2) = ()
+--lem_delta_det Eq  w e1 (EPrim c1 w1) e2 (EPrim c2 w2) = ()
+--lem_delta_det (Eqn n) w e1 (EPrim c1 w1) e2 (EPrim c2 w2) = ()
+
 {-@ lem_sem_det :: e:Expr -> e1:Expr -> ProofOf(Step e e1)
                    -> e2:Expr -> ProofOf(Step e e2) -> { x:_ | e1 == e2 } @-}
 lem_sem_det :: Expr -> Expr -> Step -> Expr -> Step -> Proof
-lem_sem_det e@(App (Prim c) w) e1 (EPrim c1 w1) e2 (EPrim c2 w2) 
-    = () ? (e1 === (delta c1 w1)) ? (e2 === (delta c2 w2)) ? ((App (Prim c1) w1) === e)
+--lem_sem_det e@(App (Prim c) w) e1 (EPrim c1 w1) e2 (EPrim c2 w2) 
+--    = () ? (e1 === (delta c1 w1)) ? (e2 === (delta c2 w2)) ? ((App (Prim c1) w1) === e)
+
+
 --lem_sem_det (App (Prim _) _) e1 p1@(EPrim _ _)  e2 p2@(EPrim _ _) = () 
 --lem_sem_det e e1 p1@(EPrim And (Bc False)) e2 p2@(EPrim And (Bc False)) = () 
 --lem_sem_det e e1 p1@(EPrim Or (Bc True))   e2 p2@(EPrim Or (Bc True)) = () 
@@ -584,7 +737,8 @@ lemma1_fwd e e' p_ee' (TExists _x _tx _t) (DExis x t_x t _e p_ebt v d_txv d_te) 
 -- the big theorems
 {-@ thm_progress :: { e:Expr | not (isValue e) } -> t:Type 
                    -> ProofOf(HasType Empty e t)  
-                   -> { p:_ | proposition(snd p) == Step e (fst p) } @-}
+                   -> (Expr, Step)<\e' -> { v : Step | proposition v == Step e e'}> @-}
+--                   -> { p:_ | proposition(snd p) == Step e (fst p) } @-}
 thm_progress :: Expr -> Type -> HasType -> (Expr,Step) 
 thm_progress _c _b (TBC Empty _) = undefined
 thm_progress _c _b (TIC Empty _) = undefined
