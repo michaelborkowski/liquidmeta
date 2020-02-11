@@ -9,7 +9,7 @@
 
 module Lambda1 where
 
-import Prelude hiding (foldr)
+import Prelude hiding (foldr,max)
 import Language.Haskell.Liquid.ProofCombinators
 import qualified Data.Set as S
 
@@ -19,6 +19,10 @@ import qualified Data.Set as S
 
 {-@ measure propOf :: a -> b @-}
 {-@ type ProofOf E = { proofObj:_ | propOf proofObj = E } @-}
+
+{-@ inline max @-}
+max :: Int -> Int -> Int
+max x y = if x >= y then x else y
 
 {-@ reflect foldr @-}
 foldr :: (a -> b -> b) -> b -> [a] -> b
@@ -37,7 +41,7 @@ foldr f i (x:xs) = f x (foldr f i xs)
 
 type Vname = String
 
-data Prim = And | Or | Not
+data Prim = And | Or | Not | Eqv
           | Leq | Leqn Int 
           | Eq  | Eqn Int
   deriving (Eq, Show)
@@ -73,8 +77,8 @@ isIc :: Expr -> Bool
 isIc (Ic _) = True
 isIc _      = False
 
-{-@ reflect subst @-}
---{-@ subst :: Vname -> { v:Expr | isValue v } -> Expr -> Expr @-}
+{-@ reflect subst @-} -- TODO: should v be a value only?
+{-@ subst :: Vname -> v:Expr -> e:Expr -> e':Expr @-} -- @-}
 subst :: Vname -> Expr -> Expr -> Expr
 subst x e_x (Bc b)                    = Bc b
 subst x e_x (Ic n)                    = Ic n
@@ -122,8 +126,8 @@ data Base = TBool
           | TInt
   deriving (Eq, Show)
 
-data Type = TBase   Base                 -- b
-          | TRefn   Base Vname Pred      -- b{x : p}
+data Type = {-TBase   Base                 -- b
+        |-} TRefn   Base Vname Pred      -- b{x : p}
           | TFunc   Vname Type Type      -- x:t_x -> t
           | TExists Vname Type Type      -- \exists x:t_x.t
   deriving (Eq, Show)
@@ -168,21 +172,26 @@ bound_inB x t (BCons y t' g) | x == y    = (t == t')
 {-@ measure tsize @-}
 {-@ tsize :: Type -> { v:Int | v >= 0 } @-}
 tsize :: Type -> Int
-tsize (TBase b)	        = 0
+--tsize (TBase b)	        = 0
 tsize (TRefn b v r)     = 0
 tsize (TFunc x t_x t)   = (tsize t) + 1
 tsize (TExists x t_x t) = (tsize t) + 1
 
 {-@ reflect erase @-}
 erase :: Type -> BType
-erase (TBase b)         = BTBase b
+--erase (TBase b)         = BTBase b
 erase (TRefn b v r)     = BTBase b
 erase (TFunc x t_x t)   = BTFunc (erase t_x) (erase t)
 erase (TExists x t_x t) = (erase t)
 
+{-@ reflect erase_env @-}
+erase_env :: Env -> BEnv
+erase_env Empty        = BEmpty
+erase_env (Cons x t g) = BCons x (erase t) (erase_env g)
+
 {-@ reflect free @-} -- TODO: verify this
 free :: Type -> S.Set Vname
-free (TBase b)          = S.empty
+--free (TBase b)          = S.empty
 free (TRefn b v r)      = S.difference (fv r) (S.singleton v)
 free (TFunc x t_x t)    = S.union (free t_x) (S.difference (free t) (S.singleton x))
 free (TExists x t_x t)  = S.union (free t_x) (S.difference (free t) (S.singleton x))
@@ -192,7 +201,7 @@ free (TExists x t_x t)  = S.union (free t_x) (S.difference (free t) (S.singleton
 {-@ tsubst :: Vname -> Expr -> t:Type  
                     -> { t':Type | tsize t' <= tsize t && tsize t' >= 0 } @-}
 tsubst :: Vname -> Expr -> Type -> Type
-tsubst x _   (TBase b)         = TBase b
+--tsubst x _   (TBase b)         = TBase b
 tsubst x e_x (TRefn b v r)     = TRefn b v (subst x e_x r)
 tsubst x e_x (TFunc z t_z t)   
   | x == z                     = TFunc z t_z t
@@ -204,14 +213,16 @@ tsubst x e_x (TExists z t_z t)
 ----- OPERATIONAL SEMANTICS (Small Step)
 
 {-@ reflect delta @-}
-{-@ delta :: p:Prim -> { e:Expr | isValue e } -> Expr @-}
+{-@ delta :: p:Prim -> { e:Expr | isValue e } ->  e':Expr @-}
 delta :: Prim -> Expr -> Expr
-delta And (Bc True)   = Lambda "x" (V "x")
-delta And (Bc False)  = Lambda "x" (Bc False)
-delta Or  (Bc True)   = Lambda "x" (Bc True)
-delta Or  (Bc False)  = Lambda "x" (V "x")
+delta And (Bc True)   = Lambda "y" (V "y")
+delta And (Bc False)  = Lambda "y" (Bc False)
+delta Or  (Bc True)   = Lambda "y" (Bc True)
+delta Or  (Bc False)  = Lambda "y" (V "y")
 delta Not (Bc True)   = Bc False
 delta Not (Bc False)  = Bc True
+delta Eqv (Bc True)   = Lambda "y" (V "y")
+delta Eqv (Bc False)  = Lambda "y" (App (Prim Not) (V "y"))
 delta Leq      (Ic n) = Prim (Leqn n)
 delta (Leqn n) (Ic m) = Bc (n <= m)
 delta Eq       (Ic n) = Prim (Eqn n)
@@ -296,16 +307,6 @@ lemma_app_many e e' v (AddStep _e e1 s_ee1 _e' p_e1e') = p_ev_e'v
 
 ----- the Bare-Typing Relation and the Typing Relation
 
-{-@ reflect ty @-} -- TODO: this conflicts with the current metatheory
-ty :: Prim -> Type
-ty And      = TFunc "x" (TBase TBool) (TFunc "y" (TBase TBool) (TBase TBool))
-ty Or       = TFunc "x" (TBase TBool) (TFunc "y" (TBase TBool) (TBase TBool))
-ty Not      = TFunc "x" (TBase TBool) (TBase TBool)
-ty Leq      = TFunc "x" (TBase TInt) (TFunc "y" (TBase TInt) (TBase TInt))
-ty (Leqn _) = TFunc "x" (TBase TInt) (TBase TBool)
-ty Eq       = TFunc "x" (TBase TInt) (TFunc "y" (TBase TInt) (TBase TInt))
-ty (Eqn _)  = TFunc "x" (TBase TInt) (TBase TBool)
-
 data HasBTypeP where
     HasBType :: BEnv -> Expr -> BType -> HasBTypeP 
 
@@ -315,7 +316,7 @@ data HasBType where
     BTVar :: BEnv -> Vname -> BType -> HasBType
     BTPrm :: BEnv -> Prim -> HasBType
     BTAbs :: BEnv -> Vname -> BType -> Expr -> BType -> HasBType -> HasBType
-    BTApp :: BEnv -> Expr -> Vname -> BType -> BType -> HasBType 
+    BTApp :: BEnv -> Expr -> BType -> BType -> HasBType 
               -> Expr -> HasBType -> HasBType
     BTLet :: BEnv -> Expr -> BType -> HasBType -> Vname -> Expr
               -> BType -> HasBType -> HasBType
@@ -329,7 +330,7 @@ data HasBType where
  |  BTAbs :: g:BEnv -> x:Vname -> b:BType -> e:Expr -> b':BType
                 -> ProofOf(HasBType (BCons x b g) e b')
                 -> ProofOf(HasBType g (Lambda x e) (BTFunc b b'))
- |  BTApp :: g:BEnv -> e:Expr -> x:Vname -> b:BType -> b':BType
+ |  BTApp :: g:BEnv -> e:Expr -> b:BType -> b':BType
                 -> ProofOf(HasBType g e (BTFunc b b')) 
                 -> e':Expr -> ProofOf(HasBType g e' b) 
                 -> ProofOf(HasBType g (App e e') b')
@@ -349,21 +350,21 @@ data WFTypeP where
     WFType :: Env -> Type -> WFTypeP
 
 data WFType where 
-    WFBase :: Env -> Base -> WFType
-    WFRefn :: Env -> Vname -> Base -> Pred -> HasType -> WFType
+    --WFBase :: Env -> Base -> WFType
+    WFRefn :: Env -> Vname -> Base -> Pred -> HasBType -> WFType
     WFFunc :: Env -> Vname -> Type -> WFType -> Type -> WFType -> WFType
     WFExis :: Env -> Vname -> Type -> WFType -> Type -> WFType -> WFType
 
 {-@ data WFType where
-    WFBase :: g:Env -> b:Base -> ProofOf(WFType g (TBase b))
- |  WFRefn :: g:Env -> x:Vname -> b:Base -> p:Pred 
-               -> ProofOf(HasType (Cons x (TBase b) g) p (TBase TBool)) 
+    WFRefn :: g:Env -> x:Vname -> b:Base -> p:Pred 
+               -> ProofOf(HasBType (BCons x (BTBase b) (erase_env g)) p (BTBase TBool)) 
                -> ProofOf(WFType g (TRefn b x p))
  |  WFFunc :: g:Env -> x:Vname -> t_x:Type -> ProofOf(WFType g t_x) -> t:Type
                -> ProofOf(WFType (Cons x t_x g) t) -> ProofOf(WFType g (TFunc x t_x t))
  |  WFExis :: g:Env -> x:Vname -> t_x:Type -> ProofOf(WFType g t_x) -> t:Type
                -> ProofOf(WFType (Cons x t_x g) t) -> ProofOf(WFType g (TExists x t_x t)) @-} 
--- @-}
+-- @-} 
+    -- WFBase :: g:Env -> b:Base -> ProofOf(WFType g (TBase b))
  
 -- TODO: Well-formedness of Environments
 
@@ -395,9 +396,11 @@ data HasType where -- TODO: Indicate in notes/latex where well-formedness used
     TAnn :: Env -> Expr -> Type -> HasType -> HasType
     TSub :: Env -> Expr -> Type -> HasType -> Type -> WFType -> Subtype -> HasType
 
+--   TBC  :: g:Env -> b:Bool -> ProofOf(HasType g (Bc b) (TBase TBool))
+--   TIC  :: g:Env -> n:Int -> ProofOf(HasType g (Ic n) (TBase TInt))
 {-@ data HasType where
-    TBC  :: g:Env -> b:Bool -> ProofOf(HasType g (Bc b) (TBase TBool))
- |  TIC  :: g:Env -> n:Int -> ProofOf(HasType g (Ic n) (TBase TInt))
+    TBC  :: g:Env -> b:Bool -> ProofOf(HasType g (Bc b) (tybc b))
+ |  TIC  :: g:Env -> n:Int -> ProofOf(HasType g (Ic n) (tyic n))
  |  TVar :: g:Env -> x:Vname -> { t:Type | bound_in x t g } -> ProofOf(HasType g (V x) t)
  |  TPrm :: g:Env -> c:Prim -> ProofOf(HasType g (Prim c) (ty c))
  |  TAbs :: g:Env -> x:Vname -> t_x:Type -> ProofOf(WFType g t_x) -> e:Expr -> t:Type
@@ -415,7 +418,176 @@ data HasType where -- TODO: Indicate in notes/latex where well-formedness used
                 -> ProofOf(HasType g (Annot e t) t)
  |  TSub :: g:Env -> e:Expr -> s:Type -> ProofOf(HasType g e s) -> t:Type 
                 -> ProofOf(WFType g t)-> ProofOf(Subtype g s t) -> ProofOf(HasType g e t) @-}
--- @-}
+
+{-@ reflect tybc @-} -- Refined Constant Typing
+tybc :: Bool -> Type
+tybc True  = TRefn TBool "v" (App (App (Prim Eqv) (V "v")) (Bc True))
+tybc False = TRefn TBool "v" (App (App (Prim Eqv) (V "v")) (Bc False))
+
+{-@ reflect tyic @-}
+tyic :: Int -> Type
+tyic n = TRefn TInt "v" (App (App (Prim Eq) (V "v")) (Ic n))
+
+{-@ reflect ty @-} -- Primitive Typing
+ty :: Prim -> Type
+ty And      = TFunc "x" (TRefn TBool "x" (Bc True)) 
+                  (TFunc "y" (TRefn TBool "y" (Bc True)) 
+                      (TRefn TBool "z" 
+                          (App (App (Prim Eqv) (V "z")) 
+                               (App (App (Prim And) (V "x")) (V "y")) )))
+ty Or       = TFunc "x" (TRefn TBool "x" (Bc True)) 
+                  (TFunc "y" (TRefn TBool "y" (Bc True)) 
+                      (TRefn TBool "z" 
+                          (App (App (Prim Eqv) (V "z")) 
+                               (App (App (Prim Or) (V "x")) (V "y")) )))
+ty Not      = TFunc "x" (TRefn TBool "x" (Bc True)) 
+                  (TRefn TBool "z"
+                      (App (App (Prim Eqv) (V "z")) 
+                           (App (Prim Not) (V "x")) ))
+ty Eqv      = TFunc "x" (TRefn TBool "x" (Bc True))
+                  (TFunc "y" (TRefn TBool "y" (Bc True))  
+                      (TRefn TBool "z"
+                          (App (App (Prim Eqv) (V "z"))
+                               (App (App (Prim Or) 
+                                    (App (App (Prim And) (V "x")) (V "y")))
+                                    (App (App (Prim And) (App (Prim Not) (V "x")))
+                                         (App (Prim Not) (V "y")))))))
+ty Leq      = TFunc "x" (TRefn TInt "x" (Bc True)) 
+                  (TFunc "y" (TRefn TInt "y" (Bc True)) 
+                      (TRefn TBool "z"
+                          (App (App (Prim Eqv) (V "z"))
+                               (App (App (Prim Leq) (V "x")) (V "y")) )))
+ty (Leqn n) = TFunc "y" (TRefn TInt "y" (Bc True)) 
+                  (TRefn TBool "z"
+                      (App (App (Prim Eqv) (V "z"))
+                           (App (App (Prim Leq) (Ic n)) (V "y")) )) 
+ty Eq       = TFunc "x" (TRefn TInt "x" (Bc True)) 
+                  (TFunc "y" (TRefn TInt "y" (Bc True)) 
+                      (TRefn TBool "z"
+                          (App (App (Prim Eqv) (V "z"))
+                               (App (App (Prim Eq) (V "x")) (V "y")) )))
+ty (Eqn n)  = TFunc "y" (TRefn TInt "y" (Bc True)) 
+                  (TRefn TBool "z"
+                      (App (App (Prim Eqv) (V "z"))
+                           (App (App (Prim Eq) (Ic n)) (V "y")) ))
+
+-- Constant and Primitive Typing Lemmas
+-- Lemma. Well-Formedness of Primitive/Constant Types
+{-@ lem_wf_tybc :: b:Bool -> ProofOf(WFType Empty (tybc b)) @-}
+lem_wf_tybc :: Bool -> WFType
+lem_wf_tybc True  = WFRefn Empty "v" TBool pred pf_pr_bool
+  where
+     pred       = (App (App (Prim Eqv) (V "v")) (Bc True))
+     g          = (BCons "v" (BTBase TBool) BEmpty)
+     --{-@ pf_pr_bool :: ProofOf(HasBType (BCons "v" (BTBase TBool) BEmpty) pred (BTBase TBool)) @-}
+     pf_eqv_v   = BTApp g (Prim Eqv) (BTBase TBool) (BTFunc (BTBase TBool) (BTBase TBool)) (BTPrm g Eqv) (V "v") (BTVar g "v" (BTBase TBool))
+     pf_pr_bool = BTApp g (App (Prim Eqv) (V "v")) (BTBase TBool) (BTBase TBool) pf_eqv_v (Bc True) (BTBC g True)
+lem_wf_tybc False  = WFRefn Empty "v" TBool pred pf_pr_bool
+  where
+     pred       = (App (App (Prim Eqv) (V "v")) (Bc False))
+     g          = (BCons "v" (BTBase TBool) BEmpty)
+     --{-@ pf_pr_bool :: ProofOf(HasBType (BCons "v" (BTBase TBool) BEmpty) pred (BTBase TBool)) @-}
+     pf_eqv_v   = BTApp g (Prim Eqv) (BTBase TBool) (BTFunc (BTBase TBool) (BTBase TBool)) (BTPrm g Eqv) (V "v") (BTVar g "v" (BTBase TBool))
+     pf_pr_bool = BTApp g (App (Prim Eqv) (V "v")) (BTBase TBool) (BTBase TBool) pf_eqv_v (Bc False) (BTBC g False)
+
+{-@ lem_wf_tyic :: n:Int -> ProofOf(WFType Empty (tyic n)) @-}
+lem_wf_tyic :: Int -> WFType
+lem_wf_tyic n = WFRefn Empty "v" TInt pred pf_pr_bool
+  where
+    pred        = (App (App (Prim Eq) (V "v")) (Ic n))
+    g           = (BCons "v" (BTBase TInt) BEmpty)
+    pf_eq_v     = BTApp g (Prim Eq) (BTBase TInt) (BTFunc (BTBase TInt) (BTBase TBool)) (BTPrm g Eq) (V "v") (BTVar g "v" (BTBase TInt))
+    pf_pr_bool  = BTApp g (App (Prim Eq) (V "v")) (BTBase TInt) (BTBase TBool) pf_eq_v (Ic n) (BTIC g n)
+
+{-@ pf_base_wf :: g:Env -> b:Base -> x:Vname -> ProofOf(WFType g (TRefn b x (Bc True))) @-}
+pf_base_wf :: Env -> Base -> Vname -> WFType
+pf_base_wf g b x = WFRefn g x b (Bc True) (BTBC (BCons x (BTBase b) (erase_env g)) True) 
+
+{-@ lem_wf_ty :: c:Prim -> ProofOf(WFType Empty (ty c)) @-}
+lem_wf_ty :: Prim -> WFType
+lem_wf_ty And      = WFFunc Empty "x" (TRefn TBool "x" (Bc True)) (pf_base_wf Empty TBool "x")
+                                      middle_type pf_middle_wf
+  where
+    pred         = (App (App (Prim Eqv) (V "z")) (App (App (Prim And) (V "x")) (V "y")) )
+    g            = BCons "z" (BTBase TBool) (BCons "y" (BTBase TBool) 
+                                            (BCons "x" (BTBase TBool) BEmpty))
+    pf_eqv_v     = BTApp g (Prim Eqv) (BTBase TBool) (BTFunc (BTBase TBool) (BTBase TBool))
+                        (BTPrm g Eqv) (V "z") (BTVar g "z" (BTBase TBool))
+    pf_and_x     = BTApp g (Prim And) (BTBase TBool) (BTFunc (BTBase TBool) (BTBase TBool))
+                        (BTPrm g And) (V "x") (BTVar g "x" (BTBase TBool))
+    pf_and_xy    = BTApp g (App (Prim And) (V "x")) (BTBase TBool) (BTBase TBool)
+                        pf_and_x (V "y") (BTVar g "y" (BTBase TBool))
+    pf_pred_bool = BTApp g (App (Prim Eqv) (V "z")) (BTBase TBool) (BTBase TBool) pf_eqv_v
+                        (App (App (Prim And) (V "x")) (V "y")) pf_and_xy
+  --g1           = Cons "z" (TRefn TBool "z" (Bc True)) (Cons "y" (TRefn TBool "y" (Bc True))
+  --                                                (Cons "x" (TRefn TBool "x" (Bc True))))   
+    g1           = Cons "y" (TRefn TBool "y" (Bc True))
+                                                 (Cons "x" (TRefn TBool "x" (Bc True)) Empty)
+    g2           = Cons "x" (TRefn TBool "x" (Bc True)) Empty
+    inner_type   = TRefn TBool "z" pred
+    pf_inner_wf  = WFRefn g1 "z" TBool pred pf_pred_bool
+    middle_type  = TFunc "y" (TRefn TBool "y" (Bc True)) inner_type 
+    pf_middle_wf = WFFunc g2 "y" (TRefn TBool "y" (Bc True)) (pf_base_wf g2 TBool "y")
+                                 inner_type pf_inner_wf 
+{-
+ty Or       = TFunc "x" (TRefn TBool "x" (Bc True)) 
+                  (TFunc "y" (TRefn TBool "y" (Bc True)) 
+                      (TRefn TBool "z" 
+                          (App (App (Prim Eqv) (V "z")) 
+                               (App (App (Prim Or) (V "x")) (V "y")) )))
+ty Not      = TFunc "x" (TRefn TBool "x" (Bc True)) 
+                  (TRefn TBool "z"
+                      (App (App (Prim Eqv) (V "z")) 
+                           (App (Prim Not) (V "x")) ))
+ty Eqv      = TFunc "x" (TRefn TBool "x" (Bc True))
+                  (TFunc "y" (TRefn TBool "y" (Bc True))  
+                      (TRefn TBool "z"
+                          (App (App (Prim Eqv) (V "z"))
+                               (App (App (Prim Or) 
+                                    (App (App (Prim And) (V "x")) (V "y")))
+                                    (App (App (Prim And) (App (Prim Not) (V "x")))
+                                         (App (Prim Not) (V "y")))))))
+ty Leq      = TFunc "x" (TRefn TInt "x" (Bc True)) 
+                  (TFunc "y" (TRefn TInt "y" (Bc True)) 
+                      (TRefn TBool "z"
+                          (App (App (Prim Eqv) (V "z"))
+                               (App (App (Prim Leq) (V "x")) (V "y")) )))
+ty (Leqn n) = TFunc "y" (TRefn TInt "y" (Bc True)) 
+                  (TRefn TBool "z"
+                      (App (App (Prim Eqv) (V "z"))
+                           (App (App (Prim Leq) (Ic n)) (V "y")) )) 
+ty Eq       = TFunc "x" (TRefn TInt "x" (Bc True)) 
+                  (TFunc "y" (TRefn TInt "y" (Bc True)) 
+                      (TRefn TBool "z"
+                          (App (App (Prim Eqv) (V "z"))
+                               (App (App (Prim Eq) (V "x")) (V "y")) )))
+ty (Eqn n)  = TFunc "y" (TRefn TInt "y" (Bc True)) 
+                  (TRefn TBool "z"
+                      (App (App (Prim Eqv) (V "z"))
+                           (App (App (Prim Eq) (Ic n)) (V "y")) ))
+
+ |  TLet :: g:Env -> e_x:Expr -> t_x:Type -> ProofOf(HasType g e_x t_x)
+                -> x:Vname -> e:Expr -> t:Type -> ProofOf(WFType g t)
+                -> ProofOf(HasType (Cons x t_x g) e t)
+                -> ProofOf(HasType g (Let x e_x e) t)
+ |  TAnn :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
+                -> ProofOf(HasType g (Annot e t) t)
+ |  TSub :: g:Env -> e:Expr -> s:Type -> ProofOf(HasType g e s) -> t:Type 
+                -> ProofOf(WFType g t)-> ProofOf(Subtype g s t) -> ProofOf(HasType g e t) -}
+
+{-{-@ reflect ty_simple @-} -- TODO: this conflicts with the current metatheory
+ty_simple :: Prim -> Type
+ty_simple And      = TFunc "x" (TBase TBool) (TFunc "y" (TBase TBool) (TBase TBool))
+ty_simple Or       = TFunc "x" (TBase TBool) (TFunc "y" (TBase TBool) (TBase TBool))
+ty_simple Not      = TFunc "x" (TBase TBool) (TBase TBool)
+ty_simple Eqv      = TFunc "x" (TBase TBool) (TFunc "y" (TBase TBool) (TBase TBool))
+ty_simple Leq      = TFunc "x" (TBase TInt) (TFunc "y" (TBase TInt) (TBase TInt))
+ty_simple (Leqn _) = TFunc "x" (TBase TInt) (TBase TBool)
+ty_simple Eq       = TFunc "x" (TBase TInt) (TFunc "y" (TBase TInt) (TBase TInt))
+ty_simple (Eqn _)  = TFunc "x" (TBase TInt) (TBase TBool)
+
+{-@ lem_ty_simple :: g:Env -> c:Prim -> ProofOf(HasType g (Prim c) (ty_simple c)) @-}
+lem_typ_simple :: Env -> Prim -> HasType-}
 
 data SubtypeP where
     Subtype :: Env -> Type -> Type -> SubtypeP
@@ -444,6 +616,22 @@ data Subtype where
                -> ProofOf(Subtype g (TExists x t_x t) t')
 @-}
 
+-- Lemma. Subtyping is reflexive TODO TODO TODO
+
+{-
+{-@ lem_simple_type_app :: g:Env -> e:Expr -> x:Vname -> t_x:Type -> t:Type
+               -> ProofOf(HasType g e (TFunc x t_x t))
+               -> e':Expr -> ProofOf(HasType g e t_x)
+               -> { t':Type | not Set_mem x (free t') } -> ProofOf(WFType g t') 
+               -> ProofOf(Subtype (Cons x t_x g) t t') 
+               -> ProofOf(HasType g (App e e') t') @-}
+lem_simple_type_app :: Env -> Expr -> Vname -> Type -> Type -> HasType
+               -> Expr -> HasType -> Type -> WFType -> Subtype -> HasType
+lem_simple_type_app g e x t_x t p_e_txt e' p_e'_tx t' p_g_t' p_t_t'
+    = TSub g (App e e') (TExists x t_x t) p_ee'_txt t' p_g_t' p_t_t'
+      where
+        p_ee'_txt = TApp g e x t_x t p_e_txt e' p_e'_tx
+-}
 --data SMTValidP where --dummy SMT Validity certificates
 --    SMTValid :: Form -> SMTValidP
 --
@@ -480,7 +668,7 @@ data DenotesP where
     Denotes :: Type -> Expr -> DenotesP    -- e \in [[t]]
 
 data Denotes where
-    DBase :: Base -> Expr -> HasBType -> Denotes
+--    DBase :: Base -> Expr -> HasBType -> Denotes
     DRefn :: Base -> Vname -> Pred -> Expr -> HasBType 
               -> (Expr -> EvalsTo -> EvalsTo) -> Denotes
     DFunc :: Vname -> Type -> Type -> Expr -> HasBType
@@ -488,9 +676,7 @@ data Denotes where
     DExis :: Vname -> Type -> Type -> Expr -> HasBType
               -> Expr -> Denotes -> Denotes -> Denotes
 {-@ data Denotes where
-    DBase :: b:Base -> e:Expr -> ProofOf(HasBType BEmpty e (BTBase b)) 
-              -> ProofOf(Denotes (TBase b) e)
-  | DRefn :: b:Base -> x:Vname -> p:Pred -> e:Expr 
+    DRefn :: b:Base -> x:Vname -> p:Pred -> e:Expr 
               -> ProofOf(HasBType BEmpty e (BTBase b))
               -> ({v':Expr | isValue v'} -> ProofOf(EvalsTo e v') 
                         -> ProofOf(EvalsTo (subst x v' p) (Bc True))) 
@@ -506,6 +692,8 @@ data Denotes where
               -> ProofOf(Denotes (tsubst x v' t) e)
               -> ProofOf(Denotes (TExists x t_x t) e)  @-} 
 
+    --DBase :: b:Base -> e:Expr -> ProofOf(HasBType BEmpty e (BTBase b)) 
+    --          -> ProofOf(Denotes (TBase b) e)
 -- TODO: Still need closing substitutions
 type CSubst = [(Vname, Expr)]
 
@@ -565,58 +753,101 @@ data DenotesEnv where
 {-@ lem_value_stuck :: e:Expr -> e':Expr -> ProofOf(Step e e') 
                    -> { proof:_ | not (isValue e) } @-}
 lem_value_stuck :: Expr -> Expr -> Step -> Proof
-lem_value_stuck (App _ _)   e' (EPrim _ _)      = ()
-lem_value_stuck (App _ _)   e' (EApp1 _ _ _ _)  = ()
-lem_value_stuck (App _ _)   e' (EApp2 _ _ _ _)  = ()
-lem_value_stuck (App _ _)   e' (EAppAbs _ _ _)  = ()
-lem_value_stuck (Let _ _ _) e' (ELet _ _ _ _ _) = ()
-lem_value_stuck (Let _ _ _) e' (ELetV _ _ _)    = ()
-lem_value_stuck (Annot _ _) e' (EAnn _ _ _ _)   = ()
-lem_value_stuck (Annot _ _) e' (EAnnV _ _)      = ()
+lem_value_stuck e  e' (EPrim _ _)      
+    = case e of 
+        (App _ _)    -> ()
+        (_)          -> impossible ""
+lem_value_stuck e  e' (EApp1 _ _ _ _)  
+    = case e of 
+        (App _ _)    -> ()
+        (_)          -> impossible ""
+lem_value_stuck e  e' (EApp2 _ _ _ _)  
+    = case e of 
+        (App _ _)    -> ()
+        (_)          -> impossible ""
+lem_value_stuck e  e' (EAppAbs _ _ _)  
+    = case e of 
+        (App _ _)    -> ()
+        (_)          -> impossible ""
+lem_value_stuck e  e' (ELet _ _ _ _ _) 
+    = case e of 
+        (Let _ _ _)  -> ()
+        (_)          -> impossible ""
+lem_value_stuck e  e' (ELetV _ _ _)    
+    = case e of 
+        (Let _ _ _)  -> ()
+        (_)          -> impossible ""
+lem_value_stuck e  e' (EAnn _ _ _ _)   
+    = case e of 
+        (Annot _ _)  -> ()
+        (_)          -> impossible ""
+lem_value_stuck e  e' (EAnnV _ _)      
+    = case e of 
+        (Annot _ _)  -> ()
+        (_)          -> impossible ""
 
 {-@ lem_sem_det :: e:Expr -> e1:Expr -> ProofOf(Step e e1)
                    -> e2:Expr -> ProofOf(Step e e2) -> { x:_ | e1 == e2 } @-}
 lem_sem_det :: Expr -> Expr -> Step -> Expr -> Step -> Proof
---lem_sem_det e@(App (Prim c) w) e1 (EPrim c1 w1) e2 (EPrim c2 w2) = ()
---    = () ? (e1 === (delta c1 w1)) ? (e2 === (delta c2 w2)) ? ((App (Prim c1) w1) === e)
-lem_sem_det e e1 p1@(EPrim _ _) e2 p2@(EPrim _ _) = () 
-lem_sem_det e e' (EApp1 e1 e1' p_e1e1' e2) e'' (EApp1 _e1 e1'' p_e1e1'' _e2)
-      = () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''  
-  -- e = e1 e2, e' = e1' e2, e'' = e1'' e2
-lem_sem_det e e' (EApp2 e1 e1' p_e1e1' v1) e'' (EApp2 _ e1'' p_e1e1'' _) 
-      = () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''
-lem_sem_det e e1 (EAppAbs x e' v) e2 (EAppAbs _x _e' _v) = ()
-{-lem_sem_det e e1 (EPrim {}) e2 (EApp1 {}) = impossible ""
-lem_sem_det e e1 (EPrim {}) e2 (EApp2 {}) = impossible ""
-lem_sem_det e e1 (EPrim {}) e2 (EAppAbs {}) = impossible ""
-lem_sem_det e e1 (EApp1 {}) e2 (EPrim {}) = impossible ""
-lem_sem_det e e1 (EApp1 {}) e2 (EApp2 {}) = impossible ""
-lem_sem_det e e1 (EApp1 {}) e2 (EAppAbs {}) = impossible ""
-lem_sem_det e e1 (EApp2 {}) e2 (EPrim {}) = impossible ""
-lem_sem_det e e1 (EApp2 {}) e2 (EApp1 {}) = impossible ""
-lem_sem_det e e1 (EApp2 {}) e2 (EAppAbs {}) = impossible ""
-lem_sem_det e e1 (EAppAbs {}) e2 (EPrim {}) = impossible ""
-lem_sem_det e e1 (EAppAbs {}) e2 (EApp1 {}) = impossible ""
-lem_sem_det e e1 (EAppAbs {}) e2 (EApp2 {}) = impossible "" -}
-lem_sem_det e e1 (ELet e_x e_x' p_ex_ex' x e1') e2 (ELet _ex e_x'' p_ex_ex'' _x e2') 
-      = () ? lem_sem_det e_x e_x' p_ex_ex' e_x'' p_ex_ex''
-lem_sem_det e e1 (ELetV x v e') e2 (ELetV _ _ _) = ()
---lem_sem_det e e1 (ELet {}) e2 (ELetV {}) = impossible ""
---lem_sem_det e e1 (ELetV {}) e2 (ELet {}) = impossible ""
-lem_sem_det e e1 (EAnn e' e1' p_e_e1' t) e2 (EAnn _e' e2' p_e_e2' _t)
-      = () ? lem_sem_det e' e1' p_e_e1' e2' p_e_e2'
-lem_sem_det e e1 (EAnnV v t) e2 (EAnnV _v _t) = ()
---lem_sem_det e e1 (EAnn {}) e2 (EAnnV {}) = impossible ""
---lem_sem_det e e1 (EAnnV {}) e2 (EAnn {}) = impossible ""
+lem_sem_det e e1 p1@(EPrim _ _) e2 p2  -- e = App (Prim c) w
+    = case p2 of    
+        (EPrim _ _)            -> ()            
+        (EApp1 f f' p_f_f' f1) -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EApp2 f f' p_f_f' v)  -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EAppAbs {})           -> impossible "OK"
+        (_)                    -> impossible ""
+lem_sem_det e e' (EApp1 e1 e1' p_e1e1' e2) e'' pf_e_e''
+    = case pf_e_e'' of
+        (EPrim _ _)                 -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (EApp1 _e1 e1'' p_e1e1'' _) -> () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''  
+        (EApp2 g g' p_g_g' v)       -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (EAppAbs {})                -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (_)                         -> impossible "" 
+    -- e = e1 e2, e' = e1' e2, e'' = e1'' e2
+lem_sem_det e e' (EApp2 e1 e1' p_e1e1' v1) e'' pf_e_e''
+    = case pf_e_e'' of
+        (EPrim _ _)                 -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (EApp1 _v1 v1' p_v1v1' _)   -> impossible ("by lem" ? lem_value_stuck _v1 v1' p_v1v1')
+        (EApp2 _ e1'' p_e1e1'' _)   -> () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''
+        (EAppAbs {})                -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (_)                         -> impossible ""
+    -- e = v1 e1, e' = v1 e1', e'' = v1 e1''
+lem_sem_det e e1 (EAppAbs x e' v) e2 pf_e_e2
+    = case pf_e_e2 of 
+        (EPrim {})                  -> impossible ""
+        (EApp1 f f' p_f_f' _)       -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EApp2 f f' p_f_f' _)       -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EAppAbs _x _e' _v)         -> ()
+        (_)                         -> impossible ""
+lem_sem_det e e1 (ELet e_x e_x' p_ex_ex' x e1') e2 pf_e_e2
+    = case pf_e_e2 of 
+        (ELet _ e_x'' p_ex_ex'' _x _) -> () ? lem_sem_det e_x e_x' p_ex_ex' e_x'' p_ex_ex''
+        (ELetV _ _ _)                 -> impossible ("by" ? lem_value_stuck e_x e_x' p_ex_ex')
+        (_)                           -> impossible ""
+lem_sem_det e e1 (ELetV x v e') e2 pf_e_e2
+    = case pf_e_e2 of 
+        (ELet e_x e_x' p_ex_ex' _x _) -> impossible ("by" ? lem_value_stuck e_x e_x' p_ex_ex')
+        (ELetV _ _ _)                 -> ()
+        (_)                           -> impossible ""
+lem_sem_det e e1 (EAnn e' e1' p_e_e1' t) e2 pf_e_e2
+    = case pf_e_e2 of
+        (EAnn _e' e2' p_e_e2' _t) -> () ? lem_sem_det e' e1' p_e_e1' e2' p_e_e2'
+        (EAnnV {})                -> impossible ("by lem" ? lem_value_stuck e' e1' p_e_e1')
+        (_)                       -> impossible ""
+lem_sem_det e e1 (EAnnV v t) e2 pf_e_e2
+    = case pf_e_e2 of 
+        (EAnn e' e1' p_e_e1' t)   -> impossible ("by lem" ? lem_value_stuck e' e1' p_e_e1')
+        (EAnnV _v _t)             -> ()
+        (_)                       -> impossible "" 
 
 -- Lemma 1 in the Pen and Paper version (Preservation of Denotations)
 -- If e ->* e' then e in [[t]] iff e' in [[t]]
 {-@ lemma1_fwd :: e:Expr -> e':Expr -> ProofOf(EvalsTo e e') -> t:Type
                    -> ProofOf(Denotes t e) -> ProofOf(Denotes t e') / [tsize t] @-}
 lemma1_fwd :: Expr -> Expr -> EvalsTo -> Type -> Denotes -> Denotes
-lemma1_fwd e e' p_ee' (TBase _b) (DBase b _e p_eb) = DBase b e' p_e'b
+{-lemma1_fwd e e' p_ee' (TBase _b) (DBase b _e p_eb) = DBase b e' p_e'b
   where 
-    p_e'b              = lemma_soundness e e' p_ee' (BTBase b) p_eb
+    p_e'b              = lemma_soundness e e' p_ee' (BTBase b) p_eb-}
 lemma1_fwd e e' p_ee' (TRefn _b _x _p) (DRefn b x p _e p_eb predicate) = den_te'
   where
     den_te'            = DRefn b x p e' p_e'b predicate2
