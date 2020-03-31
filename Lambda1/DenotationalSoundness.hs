@@ -199,8 +199,6 @@ lem_denote_sound_typ g e t (TVar1 g' x _t) (WFEBind _ wf_g' _ _ p_g'_t) th den_g
         -> Hex { in_cs = th, in_exp = e, in_typ = t,
                  val = w, evals = ev_the_v', den = den_tht_thx }
              where
-               --{-@ value :: { z:Value | Set_emp (freeBV z) } @-}
-               --value     = v
                ev_the_v' = Refl w `withProof` lem_den_nofv w (ctsubst th' t) den_tht_thx
                                   `withProof` lem_csubst_nofv th' w
                                   `withProof` toProof ( csubst (CCons x w th') (FV x)
@@ -218,13 +216,6 @@ lem_denote_sound_typ g e t (TVar2 g' x _t p_x_t y t_y)
         -> Hex { in_cs = th, in_exp = e, in_typ = t,
                  val = thx, evals = ev_the_v', den = den_tht_thx }
             where
-          --thx         = csubst th (FV x)
-          {- @ thx :: { v:Expr | isValue v && Set_emp (freeBV v) } @-} 
-          {- @ (Value, (EvalsTo, Denotes))<{\v' pfs -> 
-                     (propOf (fst pfs) == EvalsTo (csubst th e) v') &&
-                     (propOf (snd pfs) == Denotes (ctsubst th t) v')}> @-}
-          {- @  pfs :: ({ pf1:EvalsTo | propOf pf1 == EvalsTo (csubst th e) thx}, 
-                       { pf2:Denotes | propOf pf2 == Denotes (ctsubst th t) thx}) @-}
               {-@  thx :: { z:Value | Set_emp (freeBV z) } @-}
               (Hex _ _ _ thx pf1 pf2) = lem_denote_sound_typ g' e t p_x_t wf_g' th' den_g'_th' 
               p_g'_t      = lem_typing_wf g' (FV x) t p_x_t wf_g' 
