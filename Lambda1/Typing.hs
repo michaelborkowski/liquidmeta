@@ -230,6 +230,40 @@ data HasType where -- TODO: Indicate in notes/latex where well-formedness used
                 -> ProofOf(WFType g t) -> ProofOf(Subtype g s t) 
                 -> ProofOf(HasType g e t) @-} -- @-}
 
+{-@ lem_freeBV_unbind_empty :: x:Vname -> y:Vname -> { e:Expr | Set_emp (freeBV (unbind x y e)) }
+	-> { pf:_ | Set_emp (freeBV e) || freeBV e == Set_sng x } @-}
+lem_freeBV_unbind_empty :: Vname -> Vname -> Expr -> Proof
+lem_freeBV_unbind_empty x y e = toProof ( S.empty === freeBV (unbind x y e)
+                                      === S.difference (freeBV e) (S.singleton x) )
+
+-- Lemma. If G |- e : t, then Set_emp (freeBV e)
+{-@ lem_freeBV_empty :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
+                              -> { pf:_ | Set_emp (freeBV e) } @-}
+lem_freeBV_empty :: Env -> Expr -> Type -> HasType -> Proof
+lem_freeBV_empty g e t (TBC _g b)    = ()
+lem_freeBV_empty g e t (TIC _g n)    = ()
+lem_freeBV_empty g e t (TVar1 _ x _) = ()
+lem_freeBV_empty g e t (TVar2 g' x _ p_x_t y s) 
+    = () ? lem_freeBV_empty g' e t p_x_t 
+lem_freeBV_empty g e t (TPrm _g c)   = ()
+lem_freeBV_empty g e t (TAbs _g x t_x p_g_tx e' t' y p_yg_e'_t') 
+    | freeBV e' ==  (S.empty)       =  () ? lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t')
+    | freeBV e' ==  (S.singleton x) =  () ? lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t')
+    | otherwise                     =  impossible ( "lol" ? lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t')
+                                              ? lem_freeBV_unbind_empty x y e')
+lem_freeBV_empty g e t (TApp _g e' x t_x t' p_e'_txt' e_x p_ex_tx) 
+    = () ? lem_freeBV_empty g e' (TFunc x t_x t') p_e'_txt'
+         ? lem_freeBV_empty g e_x t_x p_ex_tx
+lem_freeBV_empty g e t (TLet _g e_x t_x p_ex_tx x e' t' p_g_t' y p_yg_e'_t') 
+    = () ? lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t')
+         ? lem_freeBV_empty g e_x t_x p_ex_tx
+         ? lem_freeBV_unbind_empty x y e'
+lem_freeBV_empty g e t (TAnn _g e' _ p_e'_t) 
+    = () ? lem_freeBV_empty g e' t p_e'_t
+lem_freeBV_empty g e t (TSub _g _e s p_e_s _t p_g_t p_s_t) 
+    = () ? lem_freeBV_empty g e s p_e_s
+
+
 {-- TODO: refactor without impossible
 {-@ simpleTVar :: g:Env -> { x:Vname | in_env x g } -> { t:Type | bound_in x t g } 
                 -> ProofOf(HasType g (FV x) t) @-}
@@ -450,6 +484,11 @@ lem_ctsubst_head_not_free x v_x th t = toProof ( ctsubst (CCons x v_x th) t
                                              === ctsubst th (tsubFV x v_x t)
                                              === ctsubst th t )
 
+{-@ assume lem_csubst_app :: th:CSubst -> e:Expr -> e':Expr 
+               -> { pf:_ | csubst th (App e e') == App (csubst th e) (csubst th e') } @-}
+lem_csubst_app :: CSubst -> Expr -> Expr -> Proof
+lem_csubst_app th e e' = undefined
+
 {-@ lem_ctsubst_refn :: th:CSubst -> b:Base -> x:Vname -> p:Expr
                -> { pf:_ | ctsubst th (TRefn b x p) == TRefn b x (csubst th p) } @-}
 lem_ctsubst_refn :: CSubst -> Base -> Vname -> Expr -> Proof
@@ -560,13 +599,41 @@ data Entails where
                              -> ProofOf(EvalsTo (csubst th p) (Bc True)) )
                -> ProofOf(Entails g p) @-} 
 
+-- We say the proposition ValueDenoted e t holds if there exists a value v such that
+--     * e \many v, and
+--     * v \in [[ t ]].
+data ValueDenotedP where
+    ValueDenoted :: Expr -> Type -> ValueDenotedP
+
+{-@ data ValueDenoted where 
+    ValDen :: e:Expr -> t:Type -> v:Value -> ProofOf(EvalsTo e v)
+                                  -> ProofOf(Denotes t v) -> ProofOf(ValueDenoted e t) @-}
+data ValueDenoted where     
+    ValDen :: Expr -> Type -> Expr -> EvalsTo -> Denotes -> ValueDenoted
+
+{- @ data Hex a b c d e f <p :: a -> b -> c -> d -> e -> f -> Bool>
+       = Hex { in_cs :: a, in_exp :: b, in_typ :: c,
+                 val :: d, evals :: e, den :: f<p in_cs in_exp in_typ val evals> } @-}
+--data Hex a b c d e f = Hex { in_cs :: a,  in_exp :: b, in_typ :: c,
+--                               val :: d, evals :: e, den :: f }
+
+{- @ type ValueDenoted = Hex <{\th e t v pf_evl pf_den -> isValue v && Set_emp (freeBV v)
+                                      && (propOf pf_evl == EvalsTo (csubst th e) v)
+                                     && (propOf pf_den == Denotes (ctsubst th t) v) }>
+                            CSubst Expr Type Expr EvalsTo Denotes @-}
+--type ValueDenoted     = Hex CSubst Expr Type Expr EvalsTo Denotes
+{-              -> ( v_x:Value -> ProofOf(Denotes t_x v_x)
+                    -> (Value, (EvalsTo, Denotes))
+                       <{\v' pfs -> (propOf (fst pfs) == EvalsTo (App v v_x) v')
+                                 && (propOf (snd pfs) == Denotes (tsubBV x v_x t) v')}>) -}
+
 data DenotesP where 
     Denotes :: Type -> Expr -> DenotesP    -- e \in [[t]]
 
 data Denotes where
     DRefn :: Base -> Vname -> Pred -> Expr -> HasBType -> EvalsTo -> Denotes
     DFunc :: Vname -> Type -> Type -> Expr -> HasBType
-              -> (Expr -> Denotes -> (Expr, (EvalsTo, Denotes))) -> Denotes
+              -> (Expr -> Denotes -> ValueDenoted) -> Denotes
     DExis :: Vname -> Type -> Type -> Expr -> HasBType
               -> Expr -> Denotes -> Denotes -> Denotes
 {-@ data Denotes where
@@ -577,9 +644,7 @@ data Denotes where
   | DFunc :: x:Vname -> t_x:Type -> t:Type -> v:Value  
               -> ProofOf(HasBType BEmpty v (erase (TFunc x t_x t)))
               -> ( v_x:Value -> ProofOf(Denotes t_x v_x)
-                    -> (Value, (EvalsTo, Denotes))
-                       <{\v' pfs -> (propOf (fst pfs) == EvalsTo (App v v_x) v')
-                                 && (propOf (snd pfs) == Denotes (tsubBV x v_x t) v')}>)
+                             -> ProofOf(ValueDenoted (App v v_x) (tsubBV x v_x t)) ) 
               -> ProofOf(Denotes (TFunc x t_x t) v)
   | DExis :: x:Vname -> t_x:Type -> t:Type -> v:Value 
               -> ProofOf(HasBType BEmpty v (erase t)) 
@@ -610,14 +675,14 @@ get_btyp_from_den t v (DExis _ _ _ _ pf_v_b _ _ _) = pf_v_b
 
 {-@ get_obj_from_dfunc :: x:Vname -> s:Type -> t:Type -> v:Value 
         -> ProofOf(Denotes (TFunc x s t) v) -> v':Value 
-        -> ProofOf(Denotes s v')   
-        -> (Value, (EvalsTo, Denotes))<{\v'' pfs -> (propOf (fst pfs) == EvalsTo (App v v') v'')
-                                            && (propOf (snd pfs) == Denotes (tsubBV x v' t) v'') }> @-}
-get_obj_from_dfunc :: Vname -> Type -> Type -> Expr -> Denotes -> Expr 
-                                            -> Denotes -> (Expr, (EvalsTo, Denotes))
+        -> ProofOf(Denotes s v') -> ProofOf(ValueDenoted (App v v') (tsubBV x v' t)) @-}  
+get_obj_from_dfunc :: Vname -> Type -> Type -> Expr -> Denotes 
+                                    -> Expr -> Denotes -> ValueDenoted
 get_obj_from_dfunc x s t v (DFunc _ _ _ _ _ prover) v' den_s_v' = prover v' den_s_v' 
 
 
+{-      -> (Value, (EvalsTo, Denotes))<{\v'' pfs -> (propOf (fst pfs) == EvalsTo (App v v') v'')
+                                            && (propOf (snd pfs) == Denotes (tsubBV x v' t) v'') }> @-}
 
 -- Denotations of Environments, [[g]]. There are two cases:
 --   1. [[ Empty ]] = { CEmpty }.

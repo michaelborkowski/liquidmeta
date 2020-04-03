@@ -111,3 +111,23 @@ lemma_app_many e e' v (AddStep _e e1 s_ee1 _e' p_e1e') = p_ev_e'v
     s_ev_e1v  = EApp1 e e1 s_ee1 v 
     p_e1v_e'v = lemma_app_many e1 e' v p_e1e' 
 
+{-@ lemma_app_many2 :: v:Value -> e:Expr -> e':Expr -> ProofOf(EvalsTo e e')
+                       -> ProofOf(EvalsTo (App v e) (App v e')) @-}
+lemma_app_many2 :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_app_many2 v e e' (Refl _e) = Refl (App v e)
+lemma_app_many2 v e e' (AddStep _e e1 s_ee1 _e' p_e1e') = p_ve_ve'
+  where
+    p_ve_ve'  = AddStep (App v e) (App v e1) s_ve_ve1 (App v e') p_ve1_ve'
+    s_ve_ve1  = EApp2 e e1 s_ee1 v 
+    p_ve1_ve' = lemma_app_many2 v e1 e' p_e1e' 
+
+{-@ lemma_app_both_many :: e:Expr -> v:Value -> ProofOf(EvalsTo e v)
+                             -> e':Expr -> v':Value -> ProofOf(EvalsTo e' v')
+                             -> ProofOf(EvalsTo (App e e') (App v v')) @-}
+lemma_app_both_many :: Expr -> Expr -> EvalsTo -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_app_both_many e v ev_e_v e' v' ev_e'_v' = ev_ee'_vv'
+  where
+    ev_ee'_ve' = lemma_app_many  e v  e' ev_e_v
+    ev_ve'_vv' = lemma_app_many2 v e' v' ev_e'_v'
+    ev_ee'_vv' = lemma_evals_trans (App e e') (App v e') (App v v') 
+                                   ev_ee'_ve' ev_ve'_vv'

@@ -142,11 +142,13 @@ subFV x e_x (Let y e1 e2)             = Let y (subFV x e_x e1) (subFV x e_x e2)
 subFV x e_x (Annot e t)               = Annot (subFV x e_x e) (tsubFV x e_x t) -- TODO not 100%
 subFV x e_x Crash                     = Crash
 
+--                                    Set_sub (freeBV e') (freeBV e) && 
+--                                    Set_sub (freeBV e) (Set_cup (Set_sng x) (freeBV e')) } @-}
 {-@ reflect subBV @-} -- x is a BOUND var  
 {-@ subBV :: x:Vname ->  v:Value -> e:Expr 
                      -> { e':Expr | Set_sub (fv e) (fv e') &&
-                                    Set_sub (fv e') (Set_cup (fv e) (fv v)) } @-}
---                                    (Set_mem x (fv e) || e == e') } @-}
+                                    Set_sub (fv e') (Set_cup (fv e) (fv v)) &&
+                                    freeBV e' == Set_dif (freeBV e) (Set_sng x) } @-}
 subBV :: Vname -> Expr -> Expr -> Expr
 subBV x e_x (Bc b)                    = Bc b
 subBV x e_x (Ic n)                    = Ic n
@@ -182,7 +184,6 @@ lem_subFV_value y v_y Crash        = ()
 {-@ lem_subBV_value :: x:Vname -> v_x:Value -> { v:Expr | not (Set_mem x (freeBV v)) }
                 -> { pf:_ | subBV x v_x v == v } @-} -- TODO do i actually use this TODO ?
 lem_subBV_value :: Vname -> Expr -> Expr -> Proof
---lem_subBV_value x v_x v = undefined
 lem_subBV_value x v_x (Bc _)       = ()
 lem_subBV_value x v_x (Ic _)       = ()
 lem_subBV_value x v_x (Prim _)     = ()
@@ -202,10 +203,13 @@ lem_subBV_value x v_x (Annot e t)  = () ? lem_subBV_value x v_x e
 lem_subBV_value x v_x Crash        = ()
 
 
+--                                   Set_sub (freeBV e') (freeBV e) &&
+--                                   Set_sub (freeBV e) (Set_cup (Set_sng x) (freeBV e')) } @-}
 {-@ reflect unbind @-} -- unbind converts (BV x) to (FV y) in e
-{-@ unbind :: Vname -> y:Vname -> e:Expr 
+{-@ unbind :: x:Vname -> y:Vname -> e:Expr 
                     -> { e':Expr | Set_sub (fv e) (fv e') && 
-                                   Set_sub (fv e') (Set_cup (Set_sng y) (fv e)) } @-}
+                                   Set_sub (fv e') (Set_cup (Set_sng y) (fv e)) &&
+                                   freeBV e' == Set_dif (freeBV e) (Set_sng x) } @-}
 unbind :: Vname -> Vname -> Expr -> Expr
 unbind x y e = subBV x (FV y) e
 
@@ -442,11 +446,14 @@ tsubFV x e_x (TFunc z t_z t)   = TFunc   z (tsubFV x e_x t_z) (tsubFV x e_x t)
 tsubFV x e_x (TExists z t_z t) = TExists z (tsubFV x e_x t_z) (tsubFV x e_x t)
 
 
+--                                   Set_sub (tfreeBV t') (tfreeBV t) &&
+--                                   Set_sub (tfreeBV t) (Set_cup (Set_sng x) (tfreeBV t'))  } @-}
 {-@ reflect tsubBV @-}
-{-@ tsubBV :: Vname -> e_x:Value -> t:Type  
+{-@ tsubBV :: x:Vname -> v_x:Value -> t:Type  
                     -> { t':Type | tlen t' <= tlen t && tlen t' >= 0 &&
                                    Set_sub (free t) (free t') &&
-                                   Set_sub (free t') (Set_cup (fv e_x) (free t))} @-}
+                                   Set_sub (free t') (Set_cup (fv v_x) (free t)) &&
+                                   tfreeBV t' == Set_dif (tfreeBV t) (Set_sng x) } @-}
 tsubBV :: Vname -> Expr -> Type -> Type
 tsubBV x e_x (TRefn b y r)     
   | x == y                     = TRefn b y r
@@ -473,10 +480,13 @@ lem_tsubBV_inval x v_x (TExists z t_z t)
     | otherwise = () ? lem_tsubBV_inval x v_x t_z
                      ? lem_tsubBV_inval x v_x t
 
+--                                      Set_sub (tfreeBV t') (tfreeBV t) &&
+--                                     Set_sub (tfreeBV t) (Set_cup (Set_sng x) (tfreeBV t')) } @-}
 {-@ reflect unbindT @-}
 {-@ unbindT :: x:Vname -> y:Vname -> t:Type 
                        -> { t':Type | Set_sub (free t) (free t') &&
-                                      Set_sub (free t') (Set_cup (Set_sng y) (free t)) } @-}
+                                      Set_sub (free t') (Set_cup (Set_sng y) (free t)) &&
+                                      tfreeBV t' == Set_dif (tfreeBV t) (Set_sng x) } @-} 
 unbindT :: Vname -> Vname -> Type -> Type
 unbindT x y t = tsubBV x (FV y) t
 
