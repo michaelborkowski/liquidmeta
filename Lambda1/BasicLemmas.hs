@@ -70,7 +70,7 @@ lem_value_stuck e  e' (EAnnV _ _)
         (Annot _ _)  -> ()
         (_)          -> impossible ""
 
-{-@ lem_value_refl :: v:Value -> v':Value -> ProofOf(EvalsTo v v')
+{-@ lem_value_refl :: { v:Expr | isValue v } -> v':Expr -> ProofOf(EvalsTo v v')
                 -> { pf:_ | v == v' } @-}
 lem_value_refl :: Expr -> Expr -> EvalsTo -> Proof
 lem_value_refl v v' (Refl _v) = ()
@@ -269,14 +269,14 @@ lem_change_var_wf g x t_x g' t p_t_wf@(WFExis gg z t_z p_tz_wf t' z' p_z'_t'_wf)
 lem_weaken_btyp :: BEnv -> BEnv -> Expr -> BType -> HasBType -> Vname -> BType -> HasBType
 lem_weaken_btyp g g' e t (BTBC _g b)      x t_x = BTBC  (concatB (BCons x t_x g) g') b
 lem_weaken_btyp g g' e t (BTIC _g n)      x t_x = BTIC  (concatB (BCons x t_x g) g') n
-lem_weaken_btyp g g' e t p_y_ty@(BTVar1 _g y t_y) x t_x 
+lem_weaken_btyp g g' e t p_y_ty@(BTVar1 gg y t_y) x t_x 
     = case g' of 
-        (BEmpty)           -> BTVar2 (BCons y t_y _g) y t_y p_y_ty x t_x
+        (BEmpty)           -> BTVar2 (BCons y t_y gg) y t_y p_y_ty x t_x
         (BCons _y _ty g'') -> BTVar1 (concatB (BCons x t_x g) g'') y t_y 
 -- (g; g' == _g, z:t_z) |- y : t_y
-lem_weaken_btyp g g' e t p_y_ty@(BTVar2 _g y t_y p_gg'_y_ty z t_z) x t_x
+lem_weaken_btyp g g' e t p_y_ty@(BTVar2 gg y t_y p_gg'_y_ty z t_z) x t_x
     = case g' of
-        (BEmpty)           -> BTVar2 (BCons z t_z _g) y t_y p_y_ty x t_x
+        (BEmpty)           -> BTVar2 (BCons z t_z gg) y t_y p_y_ty x t_x
         (BCons _z _tz g'') -> BTVar2 (concatB (BCons x t_x g) g'') 
                                   (y `withProof` lem_in_env_concatB g g'' y
                                      `withProof` lem_in_env_concatB (BCons x t_x g) g'' y) t_y
@@ -318,6 +318,10 @@ lem_weaken_btyp g g' e bt (BTAnn _g e' _bt lt p_e'_bt) x t_x
     = BTAnn (concatB (BCons x t_x g) g') e' bt 
             (lt `withProof` lem_binds_cons_concatB g g' x t_x)
             (lem_weaken_btyp g g' e' bt p_e'_bt x t_x)
+
+-- -- -- -- -- -- -- -- -- -- -- -- -- ---
+-- Consequences of the Typing Judgments --
+-- -- -- -- -- -- -- -- -- -- -- -- -- ---
 
 {-@ lem_weaken_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
             -> t:Type -> ProofOf(WFType (concatE g g') t)
@@ -368,6 +372,14 @@ lem_weaken_wf g g' t p_t_wf@(WFExis gg y t_y p_ty_wf t' y' p_y'_t'_wf) x t_x p_t
                                   `withProof` lem_in_env_concat (Cons x t_x g) g' y'')
 
 
+{-@ assume lem_weaken_typ :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+                             -> e:Expr -> t:Type -> ProofOf(HasType (concatE g g') e t)
+                             -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) }
+                             -> t_x:Type -> ProofOf(HasType (concatE (Cons x t_x g) g') e t) @-}
+lem_weaken_typ :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType          
+lem_weaken_typ g g' e t p_e_t x t_x = undefined
+
+
 {-@ lem_typing_wf :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
                       -> ProofOf(WFEnv g) -> ProofOf(WFType g t) @-} 
 lem_typing_wf :: Env -> Expr -> Type -> HasType -> WFEnv -> WFType
@@ -399,4 +411,101 @@ lem_typing_wf g e t (TLet _g e_x t_x p_ex_tx x e' _t p_g_t y p_e'_t) p_wf_g = p_
 lem_typing_wf g e t (TAnn _g e' _t p_e'_t) p_wf_g
     = lem_typing_wf g e' t p_e'_t p_wf_g
 lem_typing_wf g e t (TSub _g _e s p_e_s _t p_g_t p_s_t) p_wf_g = p_g_t
+
+
+-- Lemma. If G |- e : t, then Set_emp (freeBV e)
+{-@ lem_freeBV_unbind_empty :: x:Vname -> y:Vname -> { e:Expr | Set_emp (freeBV (unbind x y e)) }
+	-> { pf:_ | Set_emp (freeBV e) || freeBV e == Set_sng x } @-}
+lem_freeBV_unbind_empty :: Vname -> Vname -> Expr -> Proof
+lem_freeBV_unbind_empty x y e = toProof ( S.empty === freeBV (unbind x y e)
+                                      === S.difference (freeBV e) (S.singleton x) )
+
+{-@ lem_tfreeBV_unbindT_empty :: x:Vname -> y:Vname -> { t:Type | Set_emp (tfreeBV (unbindT x y t)) }
+        -> { pf:_ | Set_emp (tfreeBV t) || tfreeBV t == Set_sng x } @-}
+lem_tfreeBV_unbindT_empty :: Vname -> Vname -> Type -> Proof
+lem_tfreeBV_unbindT_empty x y t = toProof ( S.empty === tfreeBV (unbindT x y t)
+                                        === S.difference (tfreeBV t) (S.singleton x) )
+
+{-@ lem_freeBV_emptyB :: g:BEnv -> e:Expr -> t:BType -> ProofOf(HasBType g e t)
+                              -> { pf:_ | Set_emp (freeBV e) } @-}
+lem_freeBV_emptyB :: BEnv -> Expr ->  BType -> HasBType -> Proof 
+lem_freeBV_emptyB g e t (BTBC _g b)    = ()
+lem_freeBV_emptyB g e t (BTIC _g n)    = ()
+lem_freeBV_emptyB g e t (BTVar1 _ x _) = ()
+lem_freeBV_emptyB g e t (BTVar2 g' x _ p_x_t y s)
+    = () ? lem_freeBV_emptyB g' e t p_x_t
+lem_freeBV_emptyB g e t (BTPrm _g c)   = ()
+lem_freeBV_emptyB g e t (BTAbs _g x t_x e' t' y p_yg_e'_t')
+    = () ? lem_freeBV_unbind_empty x y (e' ? lem_freeBV_emptyB (BCons y t_x g) (unbind x y e')
+                                                               t' p_yg_e'_t')
+lem_freeBV_emptyB g e t (BTApp _g e' t_x t' p_e'_txt' e_x p_ex_tx)
+    = () ? lem_freeBV_emptyB g e' (BTFunc t_x t') p_e'_txt'
+         ? lem_freeBV_emptyB g e_x t_x p_ex_tx
+lem_freeBV_emptyB g e t (BTLet _g e_x t_x p_ex_tx x e' t' y p_yg_e'_t')
+    = () ? lem_freeBV_emptyB g e_x t_x p_ex_tx
+         ? lem_freeBV_unbind_empty x y (e' ? lem_freeBV_emptyB (BCons y t_x g) (unbind x y e')
+                                                               t' p_yg_e'_t')
+lem_freeBV_emptyB g e t (BTAnn _g e' _t t1 p_e'_t) 
+    = () ? lem_freeBV_emptyB g e' t p_e'_t
+
+-- Lemma. If G |- e : t, then Set_emp (freeBV e)
+{-@ lem_freeBV_empty :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t) -> ProofOf(WFEnv g)
+                              -> { pf:_ | Set_emp (freeBV e) && Set_emp (tfreeBV t) } @-}
+lem_freeBV_empty :: Env -> Expr -> Type -> HasType -> WFEnv -> Proof
+lem_freeBV_empty g e t (TBC _g b) p_g_wf   = ()
+lem_freeBV_empty g e t (TIC _g n) p_g_wf   = ()
+lem_freeBV_empty g e t (TVar1 _ x _) p_g_wf 
+    = case (p_g_wf) of
+        (WFEEmpty)                        -> impossible ""
+        (WFEBind g' p_g'_wf _x _t p_g'_t) -> lem_tfreeBV_empty g' t p_g'_t p_g'_wf
+lem_freeBV_empty g e t (TVar2 g' x _ p_x_t y s) p_g_wf
+    = case (p_g_wf) of
+        (WFEEmpty)                        -> impossible ""
+        (WFEBind _g' p_g'_wf _ _s p_g'_s) -> lem_freeBV_empty g' e t p_x_t p_g'_wf
+lem_freeBV_empty g e t (TPrm _g c) p_g_wf  = () ? lem_freeBV_prim_empty c
+lem_freeBV_empty g e t (TAbs _g x t_x p_g_tx e' t' y p_yg_e'_t') p_g_wf
+    = () ? lem_tfreeBV_empty g t_x p_g_tx p_g_wf
+         ? lem_freeBV_unbind_empty x y (e' ? pf_unbinds_empty)
+         ? lem_tfreeBV_unbindT_empty x y (t' ? pf_unbinds_empty)
+        where
+          p_yg_wf = WFEBind g p_g_wf y t_x p_g_tx
+          {-@ pf_unbinds_empty :: { pf:_ | Set_emp (freeBV (unbind x y e')) 
+                                        && Set_emp (tfreeBV (unbindT x y t')) } @-}
+          pf_unbinds_empty = lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t') 
+                                              p_yg_e'_t' p_yg_wf
+lem_freeBV_empty g e t (TApp _g e' x t_x t' p_e'_txt' e_x p_ex_tx) p_g_wf
+    = () ? lem_freeBV_empty g e' (TFunc x t_x t') p_e'_txt' p_g_wf
+         ? lem_freeBV_empty g e_x t_x p_ex_tx p_g_wf
+lem_freeBV_empty g e t (TLet _g e_x t_x p_ex_tx x e' _t p_g_t y p_yg_e'_t) p_g_wf
+    = () ? lem_freeBV_empty g e_x t_x p_ex_tx p_g_wf
+         ? lem_freeBV_unbind_empty x y  (e' ? lem_freeBV_empty (Cons y t_x g) (unbind x y e')
+                                                               (unbindT x y t) p_yg_e'_t p_yg_wf)
+         ? lem_tfreeBV_empty g t p_g_t p_g_wf
+        where
+          p_g_tx = lem_typing_wf g e_x t_x p_ex_tx p_g_wf
+          p_yg_wf = WFEBind g p_g_wf y t_x p_g_tx
+lem_freeBV_empty g e t (TAnn _g e' _ p_e'_t) p_g_wf 
+    = () ? lem_freeBV_empty g e' t p_e'_t p_g_wf
+lem_freeBV_empty g e t (TSub _g _e s p_e_s _t p_g_t p_s_t) p_g_wf
+    = () ? lem_freeBV_empty g e s p_e_s p_g_wf
+         ? lem_tfreeBV_empty g t p_g_t p_g_wf
+
+{-@ lem_tfreeBV_empty :: g:Env -> t:Type -> ProofOf(WFType g t) -> ProofOf(WFEnv g)
+                               -> { pf:Proof | Set_emp (tfreeBV t) } @-}
+lem_tfreeBV_empty :: Env -> Type -> WFType -> WFEnv -> Proof
+lem_tfreeBV_empty g t (WFRefn _g x b p y p_yg_p_bl) p_g_wf
+    = () ? lem_freeBV_unbind_empty x y (p ? lem_freeBV_emptyB (BCons y (BTBase b) (erase_env g))
+                                                              (unbind x y p) (BTBase TBool) p_yg_p_bl) 
+lem_tfreeBV_empty g t (WFFunc _g x t_x p_g_tx t' y p_yg_t') p_g_wf
+    = () ? lem_tfreeBV_empty g t_x p_g_tx p_g_wf
+         ? lem_tfreeBV_unbindT_empty x y (t' ? lem_tfreeBV_empty (Cons y t_x g) (unbindT x y t')
+                                                                 p_yg_t' p_yg_wf)
+        where
+          p_yg_wf = WFEBind g p_g_wf y t_x p_g_tx
+lem_tfreeBV_empty g t (WFExis _g x t_x p_g_tx t' y p_yg_t') p_g_wf
+    = () ? lem_tfreeBV_empty g t_x p_g_tx p_g_wf
+         ? lem_tfreeBV_unbindT_empty x y (t' ? lem_tfreeBV_empty (Cons y t_x g) (unbindT x y t')
+                                                                 p_yg_t' p_yg_wf)
+        where
+          p_yg_wf = WFEBind g p_g_wf y t_x p_g_tx
 

@@ -22,7 +22,7 @@ import Typing
 -- force these into scope
 semantics = (Step, EvalsTo)
 typing = (HasBType, HasType, WFType, WFEnv, Subtype)
-denotations = (Entails, Denotes, DenotesEnv)
+denotations = (Entails, Denotes, DenotesEnv, ValueDenoted)
 
 {-
 -- Constant and Primitive Typing Lemmas
@@ -224,6 +224,48 @@ lem_wf_ty g' (Eqn n) = WFFunc g' 2 (TRefn TInt 5 (Bc True)) (pf_base_wf g' TInt 
     pf_inner_wf  = WFRefn g1 3 TBool (refn_pred (Eqn n)) pf_refn_eqn
 -}
 
+{-@ assume lem_delta_typ :: g:Env -> c:Prim -> v:Value -> x:Vname -> t_x:Type 
+        -> { t':Type | ty(c) == TFunc x t_x t' } -> ProofOf(HasType g v t_x)
+        -> { pf:_ | propOf pf == HasType g (delta c v) (tsubBV x v t') &&
+                    not ((delta c v) == Crash) } @-}
+lem_delta_typ :: Env -> Prim -> Expr -> Vname -> Type -> Type -> HasType -> HasType
+lem_delta_typ g c v x t_x t' den_tx_v = undefined
+
+{-@ assume lem_delta_typ1 :: g:Env -> c:Prim -> v:Value -> x:Vname -> t_x:Type 
+        -> { t':Type | ty(c) == TFunc x t_x t' } -> ProofOf(Denotes t_x v)
+        -> { pf:_ | propOf pf == HasType g (delta c v) (tsubBV x v t') &&
+                    not ((delta c v) == Crash) } @-}
+lem_delta_typ1 :: Env -> Prim -> Expr -> Vname -> Type -> Type -> Denotes -> HasType
+lem_delta_typ1 g c v x t_x t' den_tx_v = undefined
+
+-- also Denotes t[v/x] delta(c,v)
+
+{-@ lem_freeBV_prim_empty :: c:Prim -> { pf:_ | Set_emp (freeBV (Prim c)) && 
+                                                Set_emp (tfreeBV (ty c)) } @-}
+lem_freeBV_prim_empty :: Prim -> Proof
+lem_freeBV_prim_empty And      = ()
+lem_freeBV_prim_empty Or       = ()
+lem_freeBV_prim_empty Not      = ()
+lem_freeBV_prim_empty Eqv      = ()
+lem_freeBV_prim_empty Leq      = ()
+lem_freeBV_prim_empty (Leqn n) = ()
+lem_freeBV_prim_empty Eq       = ()
+lem_freeBV_prim_empty (Eqn n)  = ()
+
+{-@ assume lem_tsubFV_tybc :: x:Vname -> v_x:Value -> b:Bool
+        -> { pf:_ | tsubFV x v_x (tybc b) == tybc b } @-}
+lem_tsubFV_tybc :: Vname -> Expr -> Bool -> Proof
+lem_tsubFV_tybc x v_x b = undefined
+
+{-@ assume lem_tsubFV_tyic :: x:Vname -> v_x:Value -> n:Int
+        -> { pf:_ | tsubFV x v_x (tyic n) == tyic n } @-}
+lem_tsubFV_tyic :: Vname -> Expr -> Int -> Proof
+lem_tsubFV_tyic x v_x n = undefined
+
+{-@ assume lem_tsubFV_ty :: x:Vname -> v_x:Value -> c:Prim
+        -> { pf:_ | tsubFV x v_x (ty c) == ty c } @-}
+lem_tsubFV_ty :: Vname -> Expr -> Prim -> Proof
+lem_tsubFV_ty x v_x c = undefined
 
 -- Lemma. Denotations of Primitive/Constant Types
 {-@ assume lem_den_tybc :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th)

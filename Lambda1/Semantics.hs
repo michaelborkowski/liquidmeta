@@ -131,3 +131,23 @@ lemma_app_both_many e v ev_e_v e' v' ev_e'_v' = ev_ee'_vv'
     ev_ve'_vv' = lemma_app_many2 v e' v' ev_e'_v'
     ev_ee'_vv' = lemma_evals_trans (App e e') (App v e') (App v v') 
                                    ev_ee'_ve' ev_ve'_vv'
+
+{-@ lemma_let_many :: x:Vname -> e_x:Expr -> e_x':Expr -> e:Expr 
+        -> ProofOf(EvalsTo e_x e_x') -> ProofOf(EvalsTo (Let x e_x e) (Let x e_x' e)) @-}
+lemma_let_many :: Vname -> Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_let_many x e_x e_x' e (Refl _ex)                               = Refl (Let x e_x e)
+lemma_let_many x e_x e_x' e (AddStep _ex e_x1 s_exex1 _ex' p_ex1ex') = p_let_let'
+  where
+    s_let_let1  = ELet e_x e_x1 s_exex1 x e
+    p_let1_let' = lemma_let_many x e_x1 e_x' e p_ex1ex'
+    p_let_let'  = AddStep (Let x e_x e) (Let x e_x1 e) s_let_let1 (Let x e_x' e) p_let1_let'
+
+{-@ lemma_annot_many :: e:Expr -> e':Expr -> t:Type -> ProofOf(EvalsTo e e')
+                         -> ProofOf(EvalsTo (Annot e t) (Annot e' t)) @-}
+lemma_annot_many :: Expr -> Expr -> Type -> EvalsTo -> EvalsTo
+lemma_annot_many e e' t (Refl _e) = Refl (Annot e t)
+lemma_annot_many e e' t (AddStep _e e1 s_ee1 _e' p_e1e') = p_et_e't
+  where
+    s_et_e1t  = EAnn e e1 s_ee1 t
+    p_e1t_e't = lemma_annot_many e1 e' t p_e1e'
+    p_et_e't  = AddStep (Annot e t) (Annot e1 t) s_et_e1t (Annot e' t) p_e1t_e't

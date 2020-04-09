@@ -787,11 +787,21 @@ lem_erase_concat :: Env -> Env -> Proof
 lem_erase_concat g Empty         = ()
 lem_erase_concat g (Cons x t g') = () ? lem_erase_concat g g'
 
+
+-- -- -- -- -- -- -- -- -- -- -- --
+-- Substitutions in Environments --
+-- -- -- -- -- -- -- -- -- -- -- --
+
 {-@ reflect esubFV @-}
 {-@ esubFV :: x:Vname -> v:Value -> g:Env -> { g':Env | binds g == binds g' } @-}
 esubFV :: Vname -> Expr -> Env -> Env
 esubFV x e_x Empty          = Empty
 esubFV x e_x (Cons z t_z g) = Cons z (tsubFV x e_x t_z) (esubFV x e_x g)
+
+{-@ lem_in_env_esub :: g:Env -> x:Vname -> v_x:Value -> y:Vname
+        -> { pf:_ | in_env y (esubFV x v_x g) <=> in_env y g } @-}
+lem_in_env_esub :: Env -> Vname -> Expr -> Vname -> Proof
+lem_in_env_esub g x v_x y = undefined  
 
 {-@ lem_erase_esubFV :: x:Vname -> v:Expr -> g:Env
         -> { pf:_ | erase_env (esubFV x v g) == erase_env g } @-}

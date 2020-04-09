@@ -64,7 +64,7 @@ data HasBType where
                 -> ProofOf(HasBType (BCons y b g) (unbind x y e) b')
                 -> ProofOf(HasBType g (Let x e_x e) b')
  |  BTAnn  :: g:BEnv -> e:Expr -> b:BType 
-                -> { t1:Type | (erase t1 == b) && Set_sub (free t1) (bindsB g) }
+                -> { t1:Type | (erase t1 == b) && Set_sub (free t1) (bindsB g) && Set_emp (tfreeBV t1) }
                 -> ProofOf(HasBType g e b) -> ProofOf(HasBType g (Annot e t1) b)  @-} 
 
 -- TODO: refactor without impossible
@@ -230,40 +230,47 @@ data HasType where -- TODO: Indicate in notes/latex where well-formedness used
                 -> ProofOf(WFType g t) -> ProofOf(Subtype g s t) 
                 -> ProofOf(HasType g e t) @-} -- @-}
 
-{-@ lem_freeBV_unbind_empty :: x:Vname -> y:Vname -> { e:Expr | Set_emp (freeBV (unbind x y e)) }
-	-> { pf:_ | Set_emp (freeBV e) || freeBV e == Set_sng x } @-}
-lem_freeBV_unbind_empty :: Vname -> Vname -> Expr -> Proof
-lem_freeBV_unbind_empty x y e = toProof ( S.empty === freeBV (unbind x y e)
-                                      === S.difference (freeBV e) (S.singleton x) )
-
--- Lemma. If G |- e : t, then Set_emp (freeBV e)
-{-@ lem_freeBV_empty :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
-                              -> { pf:_ | Set_emp (freeBV e) } @-}
-lem_freeBV_empty :: Env -> Expr -> Type -> HasType -> Proof
-lem_freeBV_empty g e t (TBC _g b)    = ()
-lem_freeBV_empty g e t (TIC _g n)    = ()
-lem_freeBV_empty g e t (TVar1 _ x _) = ()
-lem_freeBV_empty g e t (TVar2 g' x _ p_x_t y s) 
-    = () ? lem_freeBV_empty g' e t p_x_t 
-lem_freeBV_empty g e t (TPrm _g c)   = ()
-lem_freeBV_empty g e t (TAbs _g x t_x p_g_tx e' t' y p_yg_e'_t') 
-    | freeBV e' ==  (S.empty)       =  () ? lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t')
-    | freeBV e' ==  (S.singleton x) =  () ? lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t')
-    | otherwise                     =  impossible ( "lol" ? lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t')
-                                              ? lem_freeBV_unbind_empty x y e')
-lem_freeBV_empty g e t (TApp _g e' x t_x t' p_e'_txt' e_x p_ex_tx) 
-    = () ? lem_freeBV_empty g e' (TFunc x t_x t') p_e'_txt'
-         ? lem_freeBV_empty g e_x t_x p_ex_tx
-lem_freeBV_empty g e t (TLet _g e_x t_x p_ex_tx x e' t' p_g_t' y p_yg_e'_t') 
-    = () ? lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t')
-         ? lem_freeBV_empty g e_x t_x p_ex_tx
-         ? lem_freeBV_unbind_empty x y e'
-lem_freeBV_empty g e t (TAnn _g e' _ p_e'_t) 
-    = () ? lem_freeBV_empty g e' t p_e'_t
-lem_freeBV_empty g e t (TSub _g _e s p_e_s _t p_g_t p_s_t) 
-    = () ? lem_freeBV_empty g e s p_e_s
-
-
+{- @ assume lem_typ_to_btyp :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
+                             -> ProofOf(HasBType (erase_env g) e (erase t)) @-}
+{-lem_typ_to_btyp :: Env -> Expr -> Type -> HasType -> HasBType
+lem_typ_to_btyp g e t (TBC _g b) = BTBC (erase_env g) b
+lem_typ_to_btyp g e t (TIC _g n) = BTIC (erase_env g) n
+lem_freeBV_empty g e t (TVar1 _ x _) p_g_wf
+    = case (p_g_wf) of
+        (WFEEmpty)                        -> impossible ""
+        (WFEBind g' p_g'_wf _x _t p_g'_t) -> lem_tfreeBV_empty g' t p_g'_t p_g'_wf
+lem_freeBV_empty g e t (TVar2 g' x _ p_x_t y s) p_g_wf
+    = case (p_g_wf) of
+        (WFEEmpty)                        -> impossible ""
+        (WFEBind _g' p_g'_wf _ _s p_g'_s) -> lem_freeBV_empty g' e t p_x_t p_g'_wf
+lem_freeBV_empty g e t (TPrm _g c) p_g_wf  = () ? lem_freeBV_prim_empty c
+lem_freeBV_empty g e t (TAbs _g x t_x p_g_tx e' t' y p_yg_e'_t') p_g_wf
+    = () ? lem_tfreeBV_empty g t_x p_g_tx p_g_wf
+         ? lem_freeBV_unbind_empty x y (e' ? pf_unbinds_empty)
+         ? lem_tfreeBV_unbindT_empty x y (t' ? pf_unbinds_empty)
+        where
+          p_yg_wf = WFEBind g p_g_wf y t_x p_g_tx
+          {-@ pf_unbinds_empty :: { pf:_ | Set_emp (freeBV (unbind x y e'))
+                                          && Set_emp (tfreeBV (unbindT x y t')) } @-}
+          pf_unbinds_empty = lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t')
+                                              p_yg_e'_t' p_yg_wf
+lem_freeBV_empty g e t (TApp _g e' x t_x t' p_e'_txt' e_x p_ex_tx) p_g_wf
+    = () ? lem_freeBV_empty g e' (TFunc x t_x t') p_e'_txt' p_g_wf
+         ? lem_freeBV_empty g e_x t_x p_ex_tx p_g_wf
+lem_freeBV_empty g e t (TLet _g e_x t_x p_ex_tx x e' _t p_g_t y p_yg_e'_t) p_g_wf
+    = () ? lem_freeBV_empty g e_x t_x p_ex_tx p_g_wf
+         ? lem_freeBV_unbind_empty x y  (e' ? lem_freeBV_empty (Cons y t_x g) (unbind x y e')
+                                                               (unbindT x y t) p_yg_e'_t p_yg_wf)
+         ? lem_tfreeBV_empty g t p_g_t p_g_wf
+        where
+          p_g_tx = lem_typing_wf g e_x t_x p_ex_tx p_g_wf
+          p_yg_wf = WFEBind g p_g_wf y t_x p_g_tx
+lem_freeBV_empty g e t (TAnn _g e' _ p_e'_t) p_g_wf
+    = () ? lem_freeBV_empty g e' t p_e'_t p_g_wf
+lem_freeBV_empty g e t (TSub _g _e s p_e_s _t p_g_t p_s_t) p_g_wf
+    = () ? lem_freeBV_empty g e s p_e_s p_g_wf
+         ? lem_tfreeBV_empty g t p_g_t p_g_wf
+-}
 {-- TODO: refactor without impossible
 {-@ simpleTVar :: g:Env -> { x:Vname | in_env x g } -> { t:Type | bound_in x t g } 
                 -> ProofOf(HasType g (FV x) t) @-}
@@ -444,9 +451,10 @@ ctsubst (CCons x v th) t = ctsubst th (tsubFV x v t)
 
   --- various distributive properties of csubst and ctsubst
 
-{-@ assume lem_csubst_bc :: th:CSubst -> b:Bool -> { pf:_ | csubst th (Bc b) == Bc b } @-}
+{-@ lem_csubst_bc :: th:CSubst -> b:Bool -> { pf:_ | csubst th (Bc b) == Bc b } @-}
 lem_csubst_bc :: CSubst -> Bool -> Proof
-lem_csubst_bc th b = undefined
+lem_csubst_bc (CEmpty)       b = ()
+lem_csubst_bc (CCons x v th) b = () ? lem_csubst_bc th b
 
 {-@ assume lem_csubst_ic :: th:CSubst -> n:Int -> { pf:_ | csubst th (Ic n) == Ic n } @-}
 lem_csubst_ic :: CSubst -> Int -> Proof
@@ -455,6 +463,24 @@ lem_csubst_ic th n = undefined
 {-@ assume lem_csubst_prim :: th:CSubst -> c:Prim -> { pf:_ | csubst th (Prim c) == Prim c } @-}
 lem_csubst_prim :: CSubst -> Prim -> Proof
 lem_csubst_prim th c = undefined
+
+{-@ lem_csubst_lambda :: th:CSubst -> x:Vname 
+        -> e:Expr -> { pf:_ | csubst th (Lambda x e) == Lambda x (csubst th e) } @-}
+lem_csubst_lambda :: CSubst -> Vname -> Expr -> Proof
+lem_csubst_lambda (CEmpty)       x e = ()
+lem_csubst_lambda (CCons y v th) x e = () ? lem_csubst_lambda th x (subFV y v e)
+
+{-@ lem_csubst_let :: th:CSubst -> x:Vname -> e_x:Expr -> e:Expr 
+        -> { pf:_ | csubst th (Let x e_x e) == Let x (csubst th e_x) (csubst th e) } @-}
+lem_csubst_let :: CSubst -> Vname -> Expr -> Expr -> Proof
+lem_csubst_let (CEmpty)       x e_x e = ()
+lem_csubst_let (CCons y v th) x e_x e = () ? lem_csubst_let th x (subFV y v e_x) (subFV y v e)
+
+{-@ lem_csubst_annot :: th:CSubst -> e:Expr
+        -> t:Type -> { pf:_ | csubst th (Annot e t) == Annot (csubst th e) (ctsubst th t) } @-}
+lem_csubst_annot :: CSubst -> Expr -> Type -> Proof
+lem_csubst_annot (CEmpty)       e t = ()
+lem_csubst_annot (CCons y v th) e t = () ? lem_csubst_annot th (subFV y v e) (tsubFV y v t)
 
 {-@ assume lem_csubst_nofv :: th:CSubst -> { e:Expr | Set_emp (fv e) }
         -> { pf:_ | csubst th e == e } @-}
@@ -469,6 +495,16 @@ lem_ctsubst_nofree :: CSubst -> Type -> Proof
 lem_ctsubst_nofree th t = undefined
 --lem_ctsubst_nofree (CEmpty)       t = ()
 --lem_ctsubst_nofree (CCons x v th) t = () ? lem_ctsubst_nofree th t
+
+{-@ assume lem_csubst_freeBV :: th:CSubst -> e:Expr
+        -> { pf:_ | freeBV (csubst th e) == freeBV e } @-}
+lem_csubst_freeBV :: CSubst -> Expr -> Proof
+lem_csubst_freeBV th e = undefined
+
+{-@ assume lem_ctsubst_tfreeBV :: th:CSubst -> t:Type
+        -> { pf:_ | tfreeBV (ctsubst th t) == tfreeBV t } @-}
+lem_ctsubst_tfreeBV :: CSubst -> Type -> Proof
+lem_ctsubst_tfreeBV th t = undefined
 
 {-@ lem_csubst_value :: th:CSubst -> v:Value  
         -> { pf:_ | isValue (csubst th v) && Set_emp (freeBV (csubst th v)) } @-}
@@ -524,6 +560,16 @@ lem_csubst_subBV x v b pf_v_b (CCons y v_y th) p
                    (y `withProof` lem_fv_bound_in_benv BEmpty v (BTBase b) pf_v_b y) v_y p
          ? lem_csubst_subBV x v b pf_v_b th (subFV y v_y p)
 
+{-@ lem_csubst_subBV1 :: x:Vname -> v:Value -> bt:BType 
+           -> ProofOf(HasBType BEmpty v bt) -> th:CSubst -> p:Expr
+           -> { pf:_ | csubst th (subBV x v p) == subBV x v (csubst th p) } @-}
+lem_csubst_subBV1 :: Vname -> Expr -> BType -> HasBType -> CSubst -> Expr -> Proof
+lem_csubst_subBV1 x v bt pf_v_b (CEmpty)         p = ()
+lem_csubst_subBV1 x v bt pf_v_b (CCons y v_y th) p 
+    = () ? lem_commute_subFV_subBV1 x v 
+                   (y `withProof` lem_fv_bound_in_benv BEmpty v bt pf_v_b y) v_y p
+         ? lem_csubst_subBV1 x v bt pf_v_b th (subFV y v_y p)
+
 {-@ lem_ctsubst_tsubBV1 :: x:Vname -> v:Value -> bt:BType
            -> ProofOf(HasBType BEmpty v bt) -> th:CSubst -> t:Type
            -> { pf:_ | ctsubst th (tsubBV x v t) == tsubBV x v (ctsubst th t) } @-}
@@ -544,6 +590,18 @@ lem_csubst_and_unbind x y v b pf_v_b th p = toProof ( csubst (CCons y v th) (unb
                                                     ? lem_subFV_unbind x y v p
                                                   === csubst th (subBV x v p)
                                                     ? lem_csubst_subBV x v b pf_v_b th p
+                                                  === subBV x v (csubst th p) )
+
+{-@ lem_csubst_and_unbind1 :: x:Vname -> y:Vname 
+           -> v:Value -> bt:BType -> ProofOf(HasBType BEmpty v bt)
+           -> th:CSubst -> { p:Expr | not (Set_mem y (fv p)) }
+           -> { pf:_ | csubst (CCons y v th) (unbind x y p) == subBV x v (csubst th p) } @-}
+lem_csubst_and_unbind1 :: Vname -> Vname -> Expr -> BType -> HasBType -> CSubst -> Expr -> Proof
+lem_csubst_and_unbind1 x y v b pf_v_b th p = toProof ( csubst (CCons y v th) (unbind x y p)
+                                                  === csubst th (subFV y v (unbind x y p))
+                                                    ? lem_subFV_unbind x y v p
+                                                  === csubst th (subBV x v p)
+                                                    ? lem_csubst_subBV1 x v b pf_v_b th p
                                                   === subBV x v (csubst th p) )
 
 {-@ lem_ctsubst_and_unbindT :: x:Vname -> y:Vname
@@ -701,3 +759,14 @@ data DenotesEnv where
                -> v:Value -> ProofOf(Denotes (ctsubst th t) v)
                -> ProofOf(DenotesEnv (Cons x t g) (CCons x v th)) @-}
 
+-- TODO: fill in this gap later.
+{-@ assume lem_typing_hasbtype ::  g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
+        -> ProofOf(HasBType (erase_env g) e (erase t)) @-}
+lem_typing_hasbtype :: Env -> Expr -> Type -> HasType -> HasBType
+lem_typing_hasbtype g e t p_e_t = undefined  
+
+-- Lemma? If we have G |- e : t and th \in [[G]] then BEmpty |-_B th(e) : erase(t)
+{-@ assume lem_csubst_hasbtype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
+        -> th:CSubst -> ProofOf(DenotesEnv g th) -> ProofOf(HasBType BEmpty (csubst th e) (erase t)) @-} 
+lem_csubst_hasbtype :: Env -> Expr -> Type -> HasType -> CSubst -> DenotesEnv -> HasBType
+lem_csubst_hasbtype g e t p_e_t th den_g_th = undefined
