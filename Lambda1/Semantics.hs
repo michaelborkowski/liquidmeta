@@ -1,26 +1,32 @@
 {-# LANGUAGE GADTs #-}
 
---{-@ LIQUID "--higherorder" @-}
-{- @ LIQUID "--diff"        @-}
-{-@ LIQUID "--no-termination" @-}
-{-@ LIQUID "--no-totality" @-}
+{-  @ LIQUID "--no-termination" @-}
+{-  @ LIQUID "--no-totality" @-}
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
 
 module Semantics where
 
---import Control.Exception (assert)
 import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Syntax
-
+import Environments
 
 --------------------------------------------------------------------------
 ----- | OPERATIONAL SEMANTICS (Small Step)
 --------------------------------------------------------------------------
+
+-- E-Prim c v -> delta(c,v)
+-- E-App1 e e1 -> e' e1 if e->e'
+-- E-App2 v e  -> v e'  if e->e'
+-- E-AppAbs (\x. e) v -> e[v/x]
+-- E-Let  let x=e_x in e -> let x=e'_x in e if e_x->e'_x
+-- E-LetV let x=v in e -> e[v/x]
+-- E-Ann   e:t -> e':t  if e->e'
+-- E-AnnV  v:t -> v
 
 {-@ reflect delta @-}
 {-@ delta :: p:Prim -> e:Value ->  e':Expr @-}
@@ -38,16 +44,6 @@ delta (Leqn n) (Ic m) = Bc (n <= m)
 delta Eq       (Ic n) = Prim (Eqn n)
 delta (Eqn n)  (Ic m) = Bc (n == m)
 delta _ _             = Crash
-
--- E-Prim c v -> delta(c,v)
--- E-App1 e e1 -> e' e1 if e->e'
--- E-App2 v e  -> v e'  if e->e'
--- E-AppAbs (\x. e) v -> e[v/x]
--- E-Let  let x=e_x in e -> let x=e'_x in e if e_x->e'_x
--- E-LetV let x=v in e -> e[v/x]
--- E-Ann   e:t -> e':t  if e->e'
--- E-AnnV  v:t -> v
---       Other possibilities: use contexts instead? E-Ctx 
 
 data StepP where
     Step :: Expr -> Expr -> StepP
