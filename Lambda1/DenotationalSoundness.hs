@@ -16,7 +16,10 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Syntax
+import Environments
 import Semantics
+import BareTyping
+import WellFormedness
 import Typing
 import Primitives
 import BasicLemmas
@@ -50,7 +53,7 @@ lem_denote_sound_sub g t1 t2 (SBase _g x1 b p1 x2 p2 y pf_ent_p2) p_g_wf p_g_t1 
                                  -- th' = (y |-> v, th) \in [[ Cons y t1 g ]]
                   den_g'_th'    = DExt g th den_g_th y t1 val den_t1_v
                   pf_th'_p2v_tt = ev_thp2_tt th' den_g'_th' 
-                                    `withProof` lem_csubst_and_unbind x2 y val b pf_v_b' th p2
+                                    `withProof` lem_csubst_and_unbind x2 y val (BTBase b) pf_v_b' th p2
 lem_denote_sound_sub g t1 t2  -----------------------------------
 --lem_denote_sound_sub g t1@(TFunc _ _ _) t2@(TFunc _ _ _)  -----------------------------------
              p_t1_t2@(SFunc _g x1 s1 x2 s2 p_g_s2_s1 t1' t2' y p_g'_t1_t2) p_g_wf p_g_t1 p_g_t2
@@ -63,12 +66,12 @@ lem_denote_sound_sub g t1 t2  -----------------------------------
           (WFFunc _ _ _s1 p_g_s1 _t1' z p_zg_t1') = p_g_t1
           (WFFunc _ _ _s2 p_g_s2 _t2' w p_wg_t2') = p_g_t2 
           _p_yg_t1'    = lem_change_var_wf g z s1 Empty (unbindT x1 z t1') p_zg_t1' y
-                                    `withProof` lem_unbindT_and_tsubFV x1 z y t1'
+                                    `withProof` lem_tsubFV_unbindT x1 z (FV y) t1'
           {-@ p_yg_t1' :: ProofOf(WFType (Cons y s2 g) (unbindT x1 y t1')) @-}
           p_yg_t1'     = lem_subtype_in_env_wf g Empty y s2 s1 p_g_s2_s1 (unbindT x1 y t1') _p_yg_t1'
           {-@ p_yg_t2' :: ProofOf(WFType (Cons y s2 g) (unbindT x2 y t2')) @-}
           p_yg_t2'     = lem_change_var_wf g w s2 Empty (unbindT x2 w t2') p_wg_t2' y
-                                    `withProof` lem_unbindT_and_tsubFV x2 w y t2'
+                                    `withProof` lem_tsubFV_unbindT x2 w (FV y) t2'
           pf_v_er_t2   = pf_v_er_t1 `withProof` lem_erase_th_sub g t1 t2 p_t1_t2 th
                                     `withProof` lem_ctsubst_func th x1 s1 t1'
                                     `withProof` lem_ctsubst_func th x2 s2 t2'
@@ -114,7 +117,7 @@ lem_denote_sound_sub g t1 t2 -- @(TExists x t_x t')  ---------------------------
         where -- By the inductive hypothesis and mutual induction:
           (WFExis _ _ _tx _ _ y _p_yg_t2') = p_g_t2 ? toProof ( t2 === TExists x t_x t2' )
           {-@ p_yg_t2' :: ProofOf(WFType (concatE (Cons y t_x g) Empty) (unbindT x y t2')) @-}
-          p_yg_t2' = _p_yg_t2' --`withProof` lem_unbindT_and_tsubFV x w y t2'
+          p_yg_t2' = _p_yg_t2' --`withProof` lem_tsubFV_unbindT x w (FV y) t2'
           {-@ p_g_t2'vx :: ProofOf(WFType g (tsubBV x v_x t2')) @-}
           p_g_t2'vx = lem_subst_wf g Empty y v_x t_x p_vx_tx (unbindT x y t2') p_yg_t2'
                               `withProof` lem_tsubFV_unbindT x y v_x t2' 
@@ -151,7 +154,7 @@ lem_denote_sound_sub g t1 t2 -- @(TExists x t_x t') t2 -------------------------
               g'         = Cons y t_x g
               p_g'_wf    = WFEBind g p_g_wf y t_x p_g_tx
               p_g'_t'    = lem_change_var_wf g w t_x Empty (unbindT x w t') p_wg_t' y
-                              `withProof` lem_unbindT_and_tsubFV x w y t' 
+                              `withProof` lem_tsubFV_unbindT x w (FV y) t' 
               p_g'_t2    = lem_weaken_wf g Empty t2 p_g_t2 y t_x p_g_tx
               th'        = CCons y v_x th
               den_g'_th' = DExt g th den_g_th y t_x v_x den_thtx_vx
@@ -275,7 +278,7 @@ lem_denote_sound_typ g e t p_e_t@(TAbs _g x t_x p_g_tx e' t' y p_yg_e'_t') p_g_w
                                           (WFEBind g p_g_wf y t_x p_g_tx) th' den_g'_th'
           step_vvx_th'e' = EAppAbs x (csubst th e') v_x  
           ev_vvx_v'      = AddStep (App v v_x) (subBV x v_x (csubst th e')) step_vvx_th'e'
-                                   v' (ev_th'e'_v' ? lem_csubst_and_unbind1 x y v_x (erase t_x) 
+                                   v' (ev_th'e'_v' ? lem_csubst_and_unbind x y v_x (erase t_x) 
                                                                            pf_vx_er_tx th e')
 
 lem_denote_sound_typ g e t p_e_t@(TApp _g e' x t_x t' p_e_txt' e_x p_ex_tx) p_g_wf th den_g_th
@@ -327,7 +330,7 @@ lem_denote_sound_typ g e t (TLet _g e_x t_x p_ex_tx x e' _t p_g_t y p_yg_e'_t) p
       step_vxthe'_th'e'  = ELetV x v_x (csubst th e')
       ev_vxthe'_v        = AddStep (Let x v_x (csubst th e')) (subBV x v_x (csubst th e'))
                                    step_vxthe'_th'e' v 
-                                   (ev_th'e'_v ? lem_csubst_and_unbind1 x y v_x (erase t_x) 
+                                   (ev_th'e'_v ? lem_csubst_and_unbind x y v_x (erase t_x) 
                                                      p_vx_er_tx th e')
       ev_the_v           = lemma_evals_trans (csubst th e) (Let x v_x (csubst th e')) v
                                       (ev_the_vxthe' ? lem_csubst_let th x e_x e') ev_vxthe'_v

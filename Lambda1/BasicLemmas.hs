@@ -16,6 +16,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Syntax
+import Environments
 import Semantics
 import Typing
 import Primitives
@@ -168,7 +169,7 @@ lem_change_var_btyp g x t_x g' e t p_e_t@(BTAbs gg z b e' b' z' p_z'_e'_b') y
     = BTAbs (concatB (BCons y t_x g) g') z b (subFV x (FV y) e') b' 
             (z'' `withProof` lem_fv_bound_in_benv (concatB (BCons x t_x g) g') e t p_e_t z'')
             (lem_change_var_btyp g x t_x (BCons z'' b g') (unbind z z'' e') b' 
-                (p_z''_e'_b' `withProof` lem_unbind_and_subFV z z' z''
+                (p_z''_e'_b' `withProof` lem_subFV_unbind z z' (FV z'')
 --                      ((e' `withProof` lem_fv_subset e' e)
                         (e' `withProof` lem_fv_bound_in_benv (concatB (BCons x t_x g) g')
                                                           e t p_e_t z'))
@@ -188,7 +189,7 @@ lem_change_var_btyp g x t_x g' e t p_e_t@(BTLet gg e_z t_z p_ez_tz z e' t' z' p_
             (lem_change_var_btyp g x t_x g' e_z t_z p_ez_tz y) z (subFV x (FV y) e') t' 
             (z'' `withProof` lem_fv_bound_in_benv (concatB (BCons x t_x g) g') e t p_e_t z'')
             (lem_change_var_btyp g x t_x (BCons z'' t_z g') (unbind z z'' e') t' 
-                (p_z''_e'_t' `withProof` lem_unbind_and_subFV z z' z'' 
+                (p_z''_e'_t' `withProof` lem_subFV_unbind z z' (FV z'')
                         (e' `withProof` lem_fv_bound_in_benv (concatB (BCons x t_x g) g')
                                                           e t p_e_t z'))
                 y `withProof` lem_commute_subFV_unbind x y z z'' e')
@@ -215,7 +216,7 @@ lem_change_var_wf g x t_x g' t p_t_wf@(WFRefn gg z b p z' p_z'_p_b) y
              (z'' `withProof` lem_free_bound_in_env (concatE (Cons x t_x g) g') t p_t_wf z'')
              (lem_change_var_btyp (erase_env g) x (erase t_x) 
                   (BCons z'' (BTBase b) (erase_env g')) (unbind z z'' p) (BTBase TBool) 
-                  (p_z''_p_b `withProof` lem_unbind_and_subFV z z' z''
+                  (p_z''_p_b `withProof` lem_subFV_unbind z z' (FV z'')
                        (p `withProof` lem_free_bound_in_env (concatE (Cons x t_x g) g') 
                                                             t p_t_wf z'))
                   y `withProof` lem_commute_subFV_unbind x y z z'' p
@@ -233,7 +234,7 @@ lem_change_var_wf g x t_x g' t p_t_wf@(WFFunc gg z t_z p_tz_wf t' z' p_z'_t'_wf)
              (lem_change_var_wf g x t_x g' t_z p_tz_wf y) (tsubFV x (FV y) t') 
              (z'' `withProof` lem_free_bound_in_env (concatE (Cons x t_x g) g') t p_t_wf z'')
              (lem_change_var_wf g x t_x (Cons z'' t_z g') (unbindT z z'' t') 
-                 (p_z''_t'_wf `withProof` lem_unbindT_and_tsubFV z z' z'' 
+                 (p_z''_t'_wf `withProof` lem_tsubFV_unbindT z z' (FV z'')
                       (t' `withProof` lem_free_bound_in_env (concatE (Cons x t_x g) g') 
                                                         t p_t_wf z'))
                  y `withProof` lem_commute_tsubFV_unbindT x y z z'' t')
@@ -249,7 +250,7 @@ lem_change_var_wf g x t_x g' t p_t_wf@(WFExis gg z t_z p_tz_wf t' z' p_z'_t'_wf)
              (lem_change_var_wf g x t_x g' t_z p_tz_wf y) (tsubFV x (FV y) t') 
              (z'' `withProof` lem_free_bound_in_env (concatE (Cons x t_x g) g') t p_t_wf z'')
              ((lem_change_var_wf g x t_x (Cons z'' t_z g') (unbindT z z'' t') 
-                  (p_z''_t'_wf `withProof` lem_unbindT_and_tsubFV z z' z'' 
+                  (p_z''_t'_wf `withProof` lem_tsubFV_unbindT z z' (FV z'') 
                       (t' `withProof` lem_free_bound_in_env (concatE (Cons x t_x g) g') 
                                                         t p_t_wf z'))
                   y `withProof` lem_commute_tsubFV_unbindT x y z z'' t') -- this the key
@@ -287,7 +288,7 @@ lem_weaken_btyp g g' e t p_e_t@(BTAbs gg y t_y e' t' y' p_y'_e'_t') x t_x
     = BTAbs (concatB (BCons x t_x g) g') y t_y e' t' 
                (y'' `withProof` lem_fv_bound_in_benv (concatB g g') e t p_e_t y'')
                (lem_weaken_btyp g (BCons y'' t_y g') (unbind y y'' e') t' 
-                       (p_y''_e'_t' `withProof` lem_unbind_and_subFV y y' y'' e')
+                       (p_y''_e'_t' `withProof` lem_subFV_unbind y y' (FV y'') e')
 --                       (e' `withProof` lem_fv_bound_in_benv (concatB g g') e t p_e_t y'))
                        x t_x) 
         where
@@ -305,7 +306,7 @@ lem_weaken_btyp g g' e t p_e_t@(BTLet gg e_y t_y p_ey_ty y e' t' y' p_y'_e'_t') 
                (lem_weaken_btyp g g' e_y t_y p_ey_ty x t_x) y e' t' 
                (y'' `withProof` lem_fv_bound_in_benv (concatB g g') e t p_e_t y'')
                (lem_weaken_btyp g (BCons y'' t_y g') (unbind y y'' e') t' 
-                       (p_y''_e'_t' `withProof` lem_unbind_and_subFV y y' y'' e')
+                       (p_y''_e'_t' `withProof` lem_subFV_unbind y y' (FV y'') e')
 --                        (e' `withProof` lem_fv_bound_in_benv (concatB g g') e t p_e_t y'))
                        x t_x)
         where
@@ -336,7 +337,7 @@ lem_weaken_wf g g' t p_t_wf@(WFRefn _g y b p y' pf_p_bl) x t_x p_tx
                                 `withProof` lem_free_bound_in_env (concatE g g') t p_t_wf y'') 
           (lem_weaken_btyp (erase_env g) (BCons y'' (BTBase b) (erase_env g')) 
                (unbind y y'' p) (BTBase TBool) 
-               (pf_y''_p_bl `withProof` lem_unbind_and_subFV y y' y'' p) 
+               (pf_y''_p_bl `withProof` lem_subFV_unbind y y' (FV y'') p) 
                            x (erase t_x))
         where
           y''         = fresh_var (concatE (Cons x t_x g) g')
@@ -349,7 +350,7 @@ lem_weaken_wf g g' t p_t_wf@(WFFunc _g y t_y p_ty_wf t' y' p_y'_t'_wf) x t_x p_t
              t_y (lem_weaken_wf g g' t_y p_ty_wf x t_x p_tx)
              t' (y'' `withProof` lem_free_bound_in_env (concatE g g') t p_t_wf y'')
              (lem_weaken_wf g (Cons y'' t_y g') (unbindT y y'' t') 
-                         (p_y''_t'_wf `withProof` lem_unbindT_and_tsubFV y y' y'' t')
+                         (p_y''_t'_wf `withProof` lem_tsubFV_unbindT y y' (FV y'') t')
                          x t_x p_tx)
         where
           y''         = fresh_var(concatE (Cons x t_x g) g')
@@ -362,7 +363,7 @@ lem_weaken_wf g g' t p_t_wf@(WFExis gg y t_y p_ty_wf t' y' p_y'_t'_wf) x t_x p_t
              t_y (lem_weaken_wf g g' t_y p_ty_wf x t_x p_tx)
              t' (y'' `withProof` lem_free_bound_in_env (concatE g g') t p_t_wf y'')
              (lem_weaken_wf g (Cons y'' t_y g') (unbindT y y'' t')
-                         (p_y''_t'_wf `withProof` lem_unbindT_and_tsubFV y y' y''  t')
+                         (p_y''_t'_wf `withProof` lem_tsubFV_unbindT y y' (FV y'')  t')
                          x t_x p_tx)
         where
           y''         = fresh_var (concatE (Cons x t_x g) g')
@@ -411,6 +412,54 @@ lem_typing_wf g e t (TLet _g e_x t_x p_ex_tx x e' _t p_g_t y p_e'_t) p_wf_g = p_
 lem_typing_wf g e t (TAnn _g e' _t p_e'_t) p_wf_g
     = lem_typing_wf g e' t p_e'_t p_wf_g
 lem_typing_wf g e t (TSub _g _e s p_e_s _t p_g_t p_s_t) p_wf_g = p_g_t
+
+
+{-@ lem_typing_hasbtype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
+        -> ProofOf(WFEnv g) -> ProofOf(HasBType (erase_env g) e (erase t)) @-}
+lem_typing_hasbtype :: Env -> Expr -> Type -> HasType -> WFEnv -> HasBType
+lem_typing_hasbtype g e t (TBC _g b) p_g_wf     = BTBC (erase_env g) b
+lem_typing_hasbtype g e t (TIC _g n) p_g_wf     = BTIC (erase_env g) n
+lem_typing_hasbtype g e t (TVar1 g' x _) p_g_wf = BTVar1 (erase_env g') x (erase t)
+lem_typing_hasbtype g e t (TVar2 g' x _ p_x_t y s) p_g_wf
+    = BTVar2 (erase_env g') x (erase t) p_x_er_t y (erase s) 
+        where
+          (WFEBind _ p_g'_wf _ _ _) = p_g_wf
+          p_x_er_t = lem_typing_hasbtype g' e t p_x_t p_g'_wf
+lem_typing_hasbtype g e t (TPrm _g c) p_g_wf    = BTPrm (erase_env g) c
+lem_typing_hasbtype g e t (TAbs _g x t_x p_g_tx e' t' y p_yg_e'_t') p_g_wf
+    = BTAbs (erase_env g) x (erase t_x) e' (erase t') y p_yg_e'_er_t'
+        where
+          p_yg_wf       = WFEBind g p_g_wf y t_x p_g_tx
+          p_yg_e'_er_t' = lem_typing_hasbtype (Cons y t_x g) (unbind x y e')
+                                              (unbindT x y t') p_yg_e'_t' p_yg_wf
+lem_typing_hasbtype g e t (TApp _g e' x t_x t' p_e'_txt' e_x p_ex_tx) p_g_wf
+    = BTApp (erase_env g) e' (erase t_x) (erase t') p_e'_er_txt' e_x p_ex_er_tx
+        where
+          p_e'_er_txt' = lem_typing_hasbtype g e' (TFunc x t_x t') p_e'_txt' p_g_wf
+          p_ex_er_tx   = lem_typing_hasbtype g e_x t_x p_ex_tx p_g_wf
+lem_typing_hasbtype g e t (TLet _g e_x t_x p_ex_tx x e' _t p_g_t y p_yg_e'_t) p_g_wf
+    = BTLet (erase_env g) e_x (erase t_x) p_ex_er_tx x e' (erase t) y p_yg_e'_er_t
+        where
+          p_g_tx       = lem_typing_wf g e_x t_x p_ex_tx p_g_wf
+          p_yg_wf      = WFEBind g p_g_wf y t_x p_g_tx
+          p_yg_e'_er_t = lem_typing_hasbtype (Cons y t_x g) (unbind x y e') t 
+                                             p_yg_e'_t p_yg_wf
+          p_ex_er_tx   = lem_typing_hasbtype g e_x t_x p_ex_tx p_g_wf         
+lem_typing_hasbtype g e t (TAnn _g e' _ p_e'_t) p_g_wf
+    = BTAnn (erase_env g) e' (erase t) --t 
+            (t ? lem_free_subset_binds g t p_t_wf p_g_wf)
+            (lem_typing_hasbtype g e' t p_e'_t p_g_wf)
+        where
+          p_t_wf = lem_typing_wf g e' t p_e'_t p_g_wf
+lem_typing_hasbtype g e t (TSub _g _e s p_e_s _t p_g_t p_s_t) p_g_wf
+    = lem_typing_hasbtype g e s p_e_s ? lem_erase_subtype g s t p_s_t p_g_wf
+
+
+-- Lemma? If we have G |- e : t and th \in [[G]] then BEmpty |-_B th(e) : erase(t)
+{-@ assume lem_csubst_hasbtype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
+        -> th:CSubst -> ProofOf(DenotesEnv g th) -> ProofOf(HasBType BEmpty (csubst th e) (erase t)) @-} 
+lem_csubst_hasbtype :: Env -> Expr -> Type -> HasType -> CSubst -> DenotesEnv -> HasBType
+lem_csubst_hasbtype g e t p_e_t th den_g_th = undefined
 
 
 -- Lemma. If G |- e : t, then Set_emp (freeBV e)

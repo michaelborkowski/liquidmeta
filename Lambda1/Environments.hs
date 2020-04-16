@@ -30,6 +30,12 @@ withProof x _ = x
 max :: Int -> Int -> Int
 max x y = if x >= y then x else y
 
+{-@ lem_union_subset :: a:S.Set Vname -> b:S.Set Vname 
+        -> { c:S.Set Vname | Set_sub a c && Set_sub b c }
+        -> { pf:_ | Set_sub (Set_cup a b) c } @-}
+lem_union_subset :: S.Set Vname -> S.Set Vname -> S.Set Vname -> Proof
+lem_union_subset a b c = ()
+
 ---------------------------------------------------------------------------
 ----- | SYNTAX, continued
 ---------------------------------------------------------------------------

@@ -65,7 +65,50 @@ data HasBType where
                 -> { t1:Type | (erase t1 == b) && Set_sub (free t1) (bindsB g) && Set_emp (tfreeBV t1) }
                 -> ProofOf(HasBType g e b) -> ProofOf(HasBType g (Annot e t1) b)  @-} 
 
--- TODO: refactor without impossible
+{-@ measure btypSize @-}
+{-@ btypSize :: HasBType -> { v:Int | v >= 0 } @-}
+btypSize :: HasBType -> Int
+btypSize (BTBC {})                           = 1
+btypSize (BTIC {})                           = 1
+btypSize (BTVar1 {})                         = 1
+btypSize (BTVar2 _ _ _ p_x_b _ _)            = (btypSize p_x_b)   + 1
+btypSize (BTPrm {})                          = 1
+btypSize (BTAbs _ _ _ _ _ _ p_e_b')          = (btypSize p_e_b')  + 1
+btypSize (BTApp _ _ _ _ p_e_bb' _ p_e'_b)    = (btypSize p_e_bb') + (btypSize p_e'_b) + 1
+btypSize (BTLet _ _ _ p_ex_b _ _ _ _ p_e_b') = (btypSize p_ex_b)  + (btypSize p_e_b') + 1
+btypSize (BTAnn _ _ _ _ p_e_b)               = (btypSize p_e_b)   + 1
+
+{-
+{-@ reflect isBTyped @-}
+isBTyped :: BEnv -> Expr -> BType -> Bool
+isBTyped g (Bc b) t         = t == BTBase TBool
+isBTyped g (Ic n) t         = t == BTBase TInt
+isBTyped g (Prim c) t       = t == erase (ty c)
+isBTyped g (BV x) t         = False
+isBTyped g (FV x) t         = bound_inB x t g
+isBTyped g (Lambda x e) t   = case t of 
+  (BTBase _)      -> False
+  (BTFunc t_x t') -> isBTyped (BCons x t_x g) e t'
+isBTyped g (App e e') t
+isBTyped g (Let x e_x e') t
+isBTyped g (App e liqt) t
+isBtyped g Crash t
+
+{-@ makeHasBType :: g:BEnv -> { e:Expr | isBTyped g e } -> t:BType
+        -> ProofOf(HasBType g e t) @-}
+makeHasBType :: BEnv -> Expr -> BType -> HasBType
+makeHasBType g (Bc b) t         = BTBC g b
+makeHasBType g (Ic n) t         = BTIC g n
+makeHasBType g (Prim c) t       = BTPrm g c
+makeHasBType g (BV x) t
+makeHasBType g (FV x) t
+makeHasBType g (Lambda x e) t
+makeHasBType g (App e e') t
+makeHasBType g (Let x e_x e') t .
+makeHasBType g (App e liqt) t
+makeHasBtype g Crash t
+-}
+
 {-@ simpleBTVar :: g:BEnv -> { x:Vname | in_envB x g} -> { t:BType | bound_inB x t g } 
                 -> ProofOf(HasBType g (FV x) t) @-}
 simpleBTVar :: BEnv -> Vname -> BType -> HasBType
@@ -99,6 +142,24 @@ lem_fv_bound_in_benv g e t (BTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') x
 lem_fv_bound_in_benv g e t (BTAnn _g e' _t ann_t p_e'_t) x 
     = () ? lem_fv_bound_in_benv g e' t p_e'_t x
 
+{-@ lem_fv_subset_bindsB :: g:BEnv -> e:Expr -> t:BType -> ProofOf(HasBType g e t)
+                -> { pf:_ | Set_sub (fv e) (bindsB g) } @-}
+lem_fv_subset_bindsB :: BEnv -> Expr -> BType -> HasBType -> Proof
+lem_fv_subset_bindsB g e t (BTBC _g b)       = ()
+lem_fv_subset_bindsB g e t (BTIC _g n)       = ()
+lem_fv_subset_bindsB g e t (BTVar1 _ y _t)   = ()
+lem_fv_subset_bindsB g e t (BTVar2 _ y _t p_y_t z t') = ()
+lem_fv_subset_bindsB g e t (BTPrm _g c)      = ()
+lem_fv_subset_bindsB g e t (BTAbs _g y t_y e' t' y' p_e'_t')  
+    = () ? lem_fv_subset_bindsB (BCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_fv_subset_bindsB g e t (BTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) 
+    = () ? lem_fv_subset_bindsB g e1 (BTFunc t_y t') p_e1_tyt' 
+         ? lem_fv_subset_bindsB g e2 t_y p_e2_ty 
+lem_fv_subset_bindsB g e t (BTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')  
+    = () ? lem_fv_subset_bindsB g e_y t_y p_ey_ty 
+         ? lem_fv_subset_bindsB (BCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_fv_subset_bindsB g e t (BTAnn _g e' _t ann_t p_e'_t) 
+    = () ? lem_fv_subset_bindsB g e' t p_e'_t 
 
 -------------------------------------------------------------------------
 ----- | REFINEMENT TYPES of BUILT-IN PRIMITIVES
@@ -177,4 +238,21 @@ ty (Eqn n)  = TFunc 2 (TRefn TInt 5 (Bc True))
                   (TRefn TBool 3
                       (App (App (Prim Eqv) (BV 3))
                            (App (App (Prim Eq) (Ic n)) (BV 2)) ))
+{-
+{-@ lem_base_bools :: v:Value -> ProofOf(HasBType BEmpty v (BTBase TBool))
+        -> { pf:_ | v == (Bc True) || v == (Bc False) } @-}
+lem_base_bools :: Value -> HasBType -> Proof
+lem_base_bools v pf = () 
 
+
+{-@ lem_delta_typ :: c:Prim -> v:Value -> t_x:BType -> t':BType
+        -> ProofOf(HasBType BEmpty (Prim c) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
+        -> { pf:_ | propOf pf == HasBType BEmpty (delta c v) t' &&
+                    not ((delta c v) == Crash) } @-}
+lem_delta_typ :: BEnv -> Prim -> Expr -> BType -> BType
+                     -> HasBType -> HasBType -> HasBType
+lem_delta_typ g And v t_x t' p_c_txt' p_v_tx 
+  = case t' of
+      (BTFunc (BTBase TBool) (BTBase TBool)) -> BTLambda BEmpty 1 (BTBase TBool)
+lem_delta_typ g And (Bc False) t_x t' p_c_txt' p_v_tx = BTLambda 
+-}

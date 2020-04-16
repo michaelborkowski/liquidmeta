@@ -16,6 +16,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Syntax
+import Environments
 import Semantics
 import Typing
 
@@ -224,19 +225,29 @@ lem_wf_ty g' (Eqn n) = WFFunc g' 2 (TRefn TInt 5 (Bc True)) (pf_base_wf g' TInt 
     pf_inner_wf  = WFRefn g1 3 TBool (refn_pred (Eqn n)) pf_refn_eqn
 -}
 
-{-@ assume lem_delta_typ :: g:Env -> c:Prim -> v:Value -> x:Vname -> t_x:Type 
-        -> { t':Type | ty(c) == TFunc x t_x t' } -> ProofOf(HasType g v t_x)
+-- only true that (ty c) <: t  -- do i ned sub trans too?
+{- @ lem_prim_tyc_sub :: g:Env -> c:Prim -> t:Type -> ProofOf(HasType g (Prim c) t)
+                              -> ProofOf(Subtype g (ty c) t) @-}
+{-lem_prim_tyc_sub :: Env -> Prim -> Type -> HasType -> Subtype
+lem_prim_tyc_sub g c t (TPrm _ _)                = lem_subtype_refl g t
+lem_prim_tyc_sub g c t (TSub _ _ s p_pc_s _ _ _) = () ? lem_prim_tyc_sub g c s p_pc_s
+lem_prim_tyc_sub g c t _                         = impossible "no more matches"
+-}
+
+{-@ assume lem_delta_typ :: g:Env -> c:Prim -> v:Value -> x:Vname -> t_x:Type -> t':Type
+        -> ProofOf(HasType g (Prim c) (TFunc x t_x t')) -> ProofOf(HasType g v t_x)
         -> { pf:_ | propOf pf == HasType g (delta c v) (tsubBV x v t') &&
                     not ((delta c v) == Crash) } @-}
-lem_delta_typ :: Env -> Prim -> Expr -> Vname -> Type -> Type -> HasType -> HasType
+lem_delta_typ :: Env -> Prim -> Expr -> Vname -> Type -> Type 
+                     -> HasType -> HasType -> HasType
 lem_delta_typ g c v x t_x t' den_tx_v = undefined
 
-{-@ assume lem_delta_typ1 :: g:Env -> c:Prim -> v:Value -> x:Vname -> t_x:Type 
+{- @ assume lem_delta_typ1 :: g:Env -> c:Prim -> v:Value -> x:Vname -> t_x:Type 
         -> { t':Type | ty(c) == TFunc x t_x t' } -> ProofOf(Denotes t_x v)
         -> { pf:_ | propOf pf == HasType g (delta c v) (tsubBV x v t') &&
                     not ((delta c v) == Crash) } @-}
-lem_delta_typ1 :: Env -> Prim -> Expr -> Vname -> Type -> Type -> Denotes -> HasType
-lem_delta_typ1 g c v x t_x t' den_tx_v = undefined
+--lem_delta_typ1 :: Env -> Prim -> Expr -> Vname -> Type -> Type -> Denotes -> HasType
+--lem_delta_typ1 g c v x t_x t' den_tx_v = undefined
 
 -- also Denotes t[v/x] delta(c,v)
 

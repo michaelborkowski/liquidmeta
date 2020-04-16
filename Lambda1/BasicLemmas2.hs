@@ -16,6 +16,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Syntax
+import Environments
 import Semantics
 import Typing
 import Primitives
@@ -56,15 +57,6 @@ lem_witness_sub g v_x t_x p_vx_tx x t' y p_yg_t' = undefined
 -- Part of the Substitution Lemma --
 -- -- -- -- -- -- -- -- -- -- -- ---
 
-{-@ assume lem_subst_btyp :: g:BEnv -> { g':BEnv | Set_emp (Set_cap (bindsB g) (bindsB g')) }
-        -> { x:Vname | (not (in_envB x g)) && not (in_envB x g') } -> v_x:Value
-        -> t_x:BType -> ProofOf(HasBType g v_x t_x) -> e:Expr -> t:BType
-        -> ProofOf(HasBType (concatB (BCons x t_x g) g') e t)
-        -> ProofOf(HasBType (concatB g g') (subFV x v_x e) t) @-}
-lem_subst_btyp :: BEnv -> BEnv -> Vname -> Expr -> BType -> HasBType 
-        -> Expr -> BType -> HasBType -> HasBType
-lem_subst_btyp g g' x v_x t_x p_vx_tx e t p_e_t = undefined
-
 {-@ assume lem_subtype_in_env_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
       -> { x:Vname | (not (in_env x g)) && not (in_env x g') }
       -> s_x:Type -> t_x:Type -> ProofOf(Subtype g s_x t_x) -> t:Type
@@ -75,11 +67,12 @@ lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx t p_gtxg'_t = undefined
 
 {-@ lem_subst_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
-            -> t_x:Type -> ProofOf(HasType g v_x t_x) -> t:Type 
+            -> t_x:Type -> ProofOf(HasType g v_x t_x) 
+            -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) -> t:Type 
             -> ProofOf(WFType (concatE (Cons x t_x g) g') t) 
             -> ProofOf(WFType (concatE g (esubFV x v_x g')) (tsubFV x v_x t)) @-}
-lem_subst_wf :: Env -> Env -> Vname -> Expr -> Type -> HasType -> Type -> WFType -> WFType
-lem_subst_wf g g' x v_x t_x p_vx_tx t (WFRefn _env z b p y_ p_env'_p_bl) -- _env = g'; x:tx; g
+lem_subst_wf :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv -> Type -> WFType -> WFType
+lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t (WFRefn _env z b p y_ p_env'_p_bl) -- _env = g'; x:tx; g
   = WFRefn (concatE g (esubFV x v_x g')) z b (subFV x v_x p) y 
            p_ygg'_pvx_bl 
       where
@@ -87,7 +80,9 @@ lem_subst_wf g g' x v_x t_x p_vx_tx t (WFRefn _env z b p y_ p_env'_p_bl) -- _env
                            ? lem_in_env_concat g  g' y_
                            ? lem_in_env_concat (Cons x t_x g) g' y_
                            ? lem_fv_bound_in_benv (erase_env g) v_x (erase t_x) p_vx_er_tx y_
-        p_vx_er_tx    = (lem_typing_hasbtype g v_x t_x p_vx_tx)
+        p_xg_wf       = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+        (WFEBind _ p_g_wf _ _ _) = p_xg_wf
+        p_vx_er_tx    = (lem_typing_hasbtype g v_x t_x p_vx_tx p_g_wf)
         p_ygg'_pvx_bl = lem_subst_btyp (erase_env g) (BCons y (BTBase b) (erase_env g')) 
                            (x ? lem_in_env_concatB (erase_env g) (erase_env g') x
                               ? lem_in_env_concatB (erase_env g) (BCons y (BTBase b) (erase_env g')) x)
@@ -96,7 +91,7 @@ lem_subst_wf g g' x v_x t_x p_vx_tx t (WFRefn _env z b p y_ p_env'_p_bl) -- _env
                            ? lem_commute_subFV_subBV1 z (FV y) x v_x p
                            ? lem_erase_concat g (esubFV x v_x g')
                            ? lem_erase_esubFV x v_x g'
-lem_subst_wf g g' x v_x t_x p_vx_tx t (WFFunc _env z t_z p_env_tz t' y_ p_yenv_t')
+lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t (WFFunc _env z t_z p_env_tz t' y_ p_yenv_t')
   = WFFunc (concatE g (esubFV x v_x g')) z (tsubFV x v_x t_z) p_g'g_tzvx (tsubFV x v_x t') y p_yg'g_t'vx
       where
         {- @ y :: { yy:Vname | t == TFunc z t_z t' } @-}
@@ -106,15 +101,18 @@ lem_subst_wf g g' x v_x t_x p_vx_tx t (WFFunc _env z t_z p_env_tz t' y_ p_yenv_t
                          ? lem_in_env_concat (Cons x t_x g) g' y_
                          ? lem_fv_bound_in_benv (erase_env g) v_x (erase t_x) p_vx_er_tx y_
                          ---- ? lem_binds_esubFV g' x v_x  ----
-        p_vx_er_tx  = lem_typing_hasbtype g v_x t_x p_vx_tx
-        p_g'g_tzvx  = lem_subst_wf g g'              x v_x t_x p_vx_tx t_z p_env_tz
-        p_yg'g_t'vx = lem_subst_wf g (Cons y t_z g') x v_x t_x p_vx_tx (unbindT z y t')  
+        p_xg_wf     = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+        (WFEBind _ p_g_wf _ _ _) = p_xg_wf
+        p_yenv_wf   = WFEBind (concatE (Cons x t_x g) g') p_env_wf y t_z p_env_tz
+        p_vx_er_tx  = lem_typing_hasbtype g v_x t_x p_vx_tx p_g_wf
+        p_g'g_tzvx  = lem_subst_wf g g'              x v_x t_x p_vx_tx p_env_wf  t_z p_env_tz
+        p_yg'g_t'vx = lem_subst_wf g (Cons y t_z g') x v_x t_x p_vx_tx p_yenv_wf (unbindT z y t')  
                          (p_yenv_t' ? lem_erase_concat (Cons x t_x g) g')
                          ? lem_commute_tsubFV_tsubBV1 z (FV y) x v_x t'
                          -- ? toProof ( t === TFunc z t_z t' ) --
                          -- ? lem_erase_concat g (esubFV x v_x g') --
                          -- ? lem_erase_esubFV x v_x g' --
-lem_subst_wf g g' x v_x t_x p_vx_tx t (WFExis _env z t_z p_env_tz t' y_ p_yenv_t')
+lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t (WFExis _env z t_z p_env_tz t' y_ p_yenv_t')
   = WFExis (concatE g (esubFV x v_x g')) z (tsubFV x v_x t_z) p_g'g_tzvx (tsubFV x v_x t') y p_yg'g_t'vx
       where
         y           = y_ ? lem_in_env_esub g' x v_x y_ 
@@ -122,9 +120,12 @@ lem_subst_wf g g' x v_x t_x p_vx_tx t (WFExis _env z t_z p_env_tz t' y_ p_yenv_t
                          ? lem_in_env_concat (Cons x t_x g) g' y_
                          ? lem_in_env_concat (Cons x t_x g) g' y_
                          ? lem_fv_bound_in_benv (erase_env g) v_x (erase t_x) p_vx_er_tx y_
-        p_vx_er_tx  = lem_typing_hasbtype g v_x t_x p_vx_tx
-        p_g'g_tzvx  = lem_subst_wf g g'              x v_x t_x p_vx_tx t_z p_env_tz
-        p_yg'g_t'vx = lem_subst_wf g (Cons y t_z g') x v_x t_x p_vx_tx (unbindT z y t')  
+        p_xg_wf     = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+        (WFEBind _ p_g_wf _ _ _) = p_xg_wf
+        p_yenv_wf   = WFEBind (concatE (Cons x t_x g) g') p_env_wf y t_z p_env_tz
+        p_vx_er_tx  = lem_typing_hasbtype g v_x t_x p_vx_tx p_g_wf
+        p_g'g_tzvx  = lem_subst_wf g g'              x v_x t_x p_vx_tx p_env_wf t_z p_env_tz
+        p_yg'g_t'vx = lem_subst_wf g (Cons y t_z g') x v_x t_x p_vx_tx p_yenv_wf (unbindT z y t')  
                          (p_yenv_t' ? lem_erase_concat (Cons x t_x g) g')
                          ? lem_commute_tsubFV_tsubBV1 z (FV y) x v_x t'
   
