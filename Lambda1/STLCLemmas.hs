@@ -12,17 +12,20 @@ import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
-import Syntax
-import Environments
-import Semantics
-import BareTyping
-import WellFormedness
+import Basics
+import BasicProps
 import Typing
+import Primitives
+import Primitives3
 
 -- force these into scope fpr LH
 semantics = (Step, EvalsTo)
 typing = (HasBType, HasType, Subtype, WFType, WFEnv)
 denotations = (Entails, Denotes, DenotesEnv, ValueDenoted)
+
+{-@ reflect foo11 @-}
+foo11 x = Just x
+foo11 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying STLC
@@ -359,20 +362,8 @@ lem_subst_btyp g g' x v_x t_x p_vx_tx e t (BTLet env_ e_z t_z p_env_ez_tz z e' t
                                         t p_yenv_e'_t ? lem_commute_subFV_subBV1 z (FV y) x v_x e'
 lem_subst_btyp g g' x v_x t_x p_vx_tx e t (BTAnn env_ e' t_ liqt p_env_e'_t)
   = BTAnn (concatB g g') (subFV x v_x e') t 
-          (tsubFV x (v_x ? lem_fv_subset_bindsB g v_x t_x p_vx_tx 
-                         ? toProof ( S.isSubsetOf (bindsB g) (bindsB (concatB g g')) === True )
-                         ? toProof ( S.isSubsetOf (fv v_x) (bindsB (concatB g g')) === True ) )
-                       (liqt ? lem_erase_tsubFV x v_x liqt
-                             ? lem_binds_cons_concatB g g' x t_x
-                             ? toProof ( S.isSubsetOf (free (tsubFV x v_x liqt)) (S.union (fv v_x) (S.difference (free liqt) (S.singleton x))) === True )
-                             ? toProof ( S.difference (bindsB (concatB (BCons x t_x g) g')) (S.singleton x) === (bindsB (concatB g g')) )
-                             ? toProof ( S.isSubsetOf (S.difference (free liqt) (S.singleton x)) (bindsB (concatB g g')) === True ) )
-                             ? toProof ( S.isSubsetOf (fv v_x) (bindsB (concatB g g')) === True ) 
-                             ? lem_union_subset (fv v_x) (S.difference (free liqt) (S.singleton x)) (bindsB (concatB g g'))
-                             ? toProof ( S.isSubsetOf (S.union (fv v_x) (S.difference (free liqt) (S.singleton x))) (bindsB (concatB g g')) === True )
-                             ? toProof ( bindsB (concatB g g') === S.union (bindsB g) (bindsB g') )
-                             ? toProof ( tfreeBV liqt === S.empty ) 
-                             ? toProof ( erase (tsubFV x v_x liqt) === t )
-                             ? toProof ( tfreeBV (tsubFV x v_x liqt) === S.empty ) ) p_g'g_e'_t
+          (tsubFV x (v_x ? lem_fv_subset_bindsB g v_x t_x p_vx_tx )
+                  liqt ? lem_erase_tsubFV x v_x liqt
+                       ? lem_binds_cons_concatB g g' x t_x ) p_g'g_e'_t
       where
         p_g'g_e'_t = lem_subst_btyp g g' x v_x t_x p_vx_tx e' t p_env_e'_t

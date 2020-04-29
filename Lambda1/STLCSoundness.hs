@@ -12,18 +12,21 @@ import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
-import Syntax
-import Environments
-import Semantics
-import BareTyping
-import WellFormedness
+import Basics
+import BasicProps
 import Typing
+import Primitives
+import Primitives3
 import STLCLemmas
 
 -- we must force these into scope for LH
 semantics = (Step, EvalsTo)
 typing = (HasBType, HasType, WFType, WFEnv, Subtype)
 denotations = (Entails, Denotes, DenotesEnv, ValueDenoted)
+
+{-@ reflect foo12 @-}
+foo12 x = Just x
+foo12 :: a -> Maybe a
 
 -----------------------------------------------------------------------------
 ----- | SOUNDNESS of the SIMPLY-TYPED LAMBDA CALCULUS
@@ -40,6 +43,30 @@ lemma_progress x _t (BTVar1 BEmpty _ _)       = Left ()
 lemma_progress x _t (BTVar2 BEmpty _ _ _ _ _) = Left ()
 lemma_progress c _t (BTPrm BEmpty _)          = Left ()
 lemma_progress e t  p_e_t@(BTAbs {})               
+      = Left () ? lem_freeBV_emptyB BEmpty e t p_e_t 
+lemma_progress _e _t (BTApp BEmpty e1 t_x t p_e1_txt e2 p_e2_tx) 
+      = case e1 of 
+          (Prim p) -> case (lemma_progress e2 t_x p_e2_tx) of
+              Left ()               -> Right (delta p e2, EPrim p e2)
+              Right (e2', p_e2_e2') -> Right (App (Prim p) e2', EApp2 e2 e2' p_e2_e2' (Prim p))
+          (Lambda x e') -> case (lemma_progress e2 t_x p_e2_tx) of
+              Left ()               -> Right (subBV x e2 e', EAppAbs x e' e2)
+              Right (e2', p_e2_e2') -> Right (App (Lambda x e') e2', EApp2 e2 e2' p_e2_e2' (Lambda x e'))
+          _ -> case (isValue e1) of
+              False -> Right (App e1' e2, EApp1 e1 e1' p_e1_e1' e2)
+                  where
+                      Right (e1', p_e1_e1') = lemma_progress e1 (BTFunc t_x t) p_e1_txt
+              True  -> impossible ("by lemma" ? lemma_function_values e1 t_x t p_e1_txt)
+lemma_progress _e _t (BTLet BEmpty e1 tx p_e1_tx x e2 t y p_e2_t)
+      = case (lemma_progress e1 tx p_e1_tx) of
+          Left ()               -> Right (subBV x e1 e2, ELetV x e1 e2)
+          Right (e1', p_e1_e1') -> Right (Let x e1' e2, ELet e1 e1' p_e1_e1' x e2) 
+lemma_progress _e _t (BTAnn BEmpty e1 t liqt p_e1_t)
+      = case (lemma_progress e1 t p_e1_t) of
+          Left ()               -> Right (e1, EAnnV e1 liqt)
+          Right (e1', p_e1_e1') -> Right (Annot e1' liqt, EAnn e1 e1' p_e1_e1' liqt)
+
+{-lemma_progress e t  p_e_t@(BTAbs {})               
       = Left () ? lem_freeBV_emptyB BEmpty e t p_e_t 
 lemma_progress _e _t (BTApp BEmpty (Prim p) t_x t p_e1_txt e2 p_e2_tx) 
       = case (lemma_progress e2 t_x p_e2_tx) of
@@ -61,13 +88,8 @@ lemma_progress _e _t (BTAnn BEmpty e1 t liqt p_e1_t)
       = case (lemma_progress e1 t p_e1_t) of
           Left ()               -> Right (e1, EAnnV e1 liqt)
           Right (e1', p_e1_e1') -> Right (Annot e1' liqt, EAnn e1 e1' p_e1_e1' liqt)
+-}
 
-{-@ assume lem_delta_btyp :: c:Prim -> v:Value -> t_x:BType -> t':BType
-        -> ProofOf(HasBType BEmpty (Prim c) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
-        -> { pf:_ | propOf pf == HasBType BEmpty (delta c v) t' &&
-                    not ((delta c v) == Crash) } @-}
-lem_delta_btyp :: Prim -> Expr -> BType -> BType -> HasBType -> HasBType -> HasBType
-lem_delta_btyp And v t_x t' p_c_txt' p_v_tx = undefined
 
 {-@ lemma_preservation :: e:Expr -> t:BType -> ProofOf(HasBType BEmpty e t) -> e':Expr
         -> ProofOf(Step e e') -> Either { pf:_ | false } { pf:_ | propOf pf == HasBType BEmpty e' t} @-}
@@ -104,8 +126,9 @@ lemma_preservation e t p_e_t@(BTApp BEmpty (Lambda w e1) t_x t' p_lam_txt' e2 p_
                                                   (EApp2 e2 e2' st_e2_e2' (Lambda w e1))
 lemma_preservation e t p_e_t@(BTApp BEmpty e1 t_x t' p_e1_txt' e2 p_e2_tx) e' st_e_e' 
   = case (lemma_progress e1 (BTFunc t_x t') p_e1_txt') of
-      --Left ()                -> impossible "remove me later?"
+      Left ()                -> impossible ("by Lemma" ? lemma_function_values e1 t_x t' p_e1_txt')
       Right (e1', st_e1_e1') -> Right (BTApp BEmpty e1' t_x t' p_e1'_txt' e2 p_e2_tx)
+                                    ? toProof (e === App e1 e2)
         where
           Right p_e1'_txt'    = lemma_preservation e1 (BTFunc t_x t') p_e1_txt' e1' st_e1_e1'
                                     ? lem_sem_det e e' st_e_e' (App e1' e2)

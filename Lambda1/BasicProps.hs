@@ -1,146 +1,34 @@
 {-# LANGUAGE GADTs #-}
 
-{- @ LIQUID "--no-termination" @-}
-{- @ LIQUID "--no-totality" @-}
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
 
-module Syntax where
+module BasicProps where
 
 import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
+import Basics
+
+-- force these into scope for LH
+semantics = (Step, EvalsTo)
+typing = (HasBType, WFType, WFEnv)
+
+{-@ reflect foo2 @-}   
+foo2 x = Just x 
+foo2 :: a -> Maybe a 
+
+{-@ lem_union_subset :: a:S.Set Vname -> b:S.Set Vname 
+        -> { c:S.Set Vname | Set_sub a c && Set_sub b c }
+        -> { pf:_ | Set_sub (Set_cup a b) c } @-}
+lem_union_subset :: S.Set Vname -> S.Set Vname -> S.Set Vname -> Proof
+lem_union_subset a b c = ()
+
 ---------------------------------------------------------------------------
------ | TERMS of our language
+-- | BASIC PROPERTIES: Properties of SUBSTITUTION
 ---------------------------------------------------------------------------
-  ---   Term level expressions 
-  ---   Locally named representations
-  ---     "free" variables are ints because easier to pick fresh ones
-  ---     "bound" ones also ints 
-
-{- @ type Vname =  Nat @-} -- > 0 or not?
-type Vname = Int
-
-data Prim = And | Or | Not | Eqv
-          | Leq | Leqn Int 
-          | Eq  | Eqn Int
-  deriving (Eq, Show)
-
-{-@ data Expr [esize] @-}
-data Expr = Bc Bool              -- True, False
-          | Ic Int               -- 0, 1, 2, ...
-          | Prim Prim            -- built-in primitive functions 
-          | BV Vname             -- BOUND Variables: bound to a Lambda, Let or :t
-          | FV Vname             -- FREE Variables: bound in an environment
-          | Lambda Vname Expr    -- \x.e
-          | App Expr Expr        -- e e' 
-          | Let Vname Expr Expr  -- let x = e1 in e2
-          | Annot Expr Type      -- e : t
-          | Crash
-  deriving (Eq, Show)
-
-{-@ lazy esize @-}
-{-@ measure esize @-}
-{-@ esize :: e:Expr -> { v:Int | v >= 0 } @-}
-esize :: Expr -> Int
-esize (Bc _)	        = 1
-esize (Ic _)		= 1
-esize (Prim _)          = 1
-esize (BV _)            = 1
-esize (FV _)            = 1
-esize (Lambda x e)      = (esize e)   + 1
-esize (App e e')        = (esize e)   + (esize e') + 1
-esize (Let x e_x e)     = (esize e_x) + (esize e) + 1
-esize (Annot e t)       = (esize e)   + (tsize t) + 1
-esize Crash             = 1
-
--- In a value, all BV must be bound to a binder within the expression
-{-@ type Value = { v:Expr | isValue v && Set_emp (freeBV v) } @-}
-
-{-@ reflect isValue @-} -- meaning: is a syntactic value
-{- @ isValue :: v:Expr -> { b:Bool | (isValue v) => Set_emp (freeBV v) } @-}
-isValue :: Expr -> Bool
-isValue (Bc _)         = True
-isValue (Ic _)         = True
-isValue (Prim _)       = True
-isValue (FV _)         = True -- bound variables not a legal value because we 
-isValue v@(Lambda x e) = True -- S.null (freeBV v)
-isValue Crash          = True
-isValue _              = False
-
-{-@ reflect freeBV @-}
-{-@ freeBV :: e:Expr -> S.Set Vname / [esize e] @-}
-freeBV :: Expr -> S.Set Vname
-freeBV (Bc _)       = S.empty
-freeBV (Ic _)       = S.empty
-freeBV (Prim _)     = S.empty
-freeBV (FV x)       = S.empty
-freeBV (BV x)       = S.singleton x
-freeBV (Lambda x e) = S.difference (freeBV e) (S.singleton x)
-freeBV (App e e')   = S.union (freeBV e) (freeBV e')
-freeBV (Let x ex e) = S.union (freeBV ex) (S.difference (freeBV e) (S.singleton x))
-freeBV (Annot e t)  = S.union (freeBV e)  (tfreeBV t) 
-freeBV Crash        = S.empty
-
-{-@ reflect fv @-}
-{-@ fv :: e:Expr -> S.Set Vname / [esize e] @-}
-fv :: Expr -> S.Set Vname
-fv (Bc _)       = S.empty
-fv (Ic _)       = S.empty
-fv (Prim _)     = S.empty
-fv (BV _)       = S.empty
-fv (FV x)       = S.singleton x
-fv (Lambda x e) = (fv e) -- S.difference (fv e) (S.singleton x)
-fv (App e e')   = S.union (fv e) (fv e')
-fv (Let x ex e) = S.union (fv ex) (fv e) -- (S.difference (fv e) (S.singleton x))
-fv (Annot e t)  = S.union (fv e) (free t) -- fv e
-fv (Crash)      = S.empty
-
-  --- TERM-LEVEL SUBSTITUTION
-
-{-@ reflect subFV @-} 
-{-@ subFV :: x:Vname -> v:Value -> e:Expr 
-                     -> { e':Expr | (Set_mem x (fv e) || e == e') &&
-                      ( Set_sub (fv e) (Set_cup (Set_sng x) (fv e')) ) &&
-                      ( Set_sub (fv e') (Set_cup (fv v) (Set_dif (fv e) (Set_sng x)))) &&
-                      ( (freeBV e) == (freeBV e') ) &&
-                      ( (not (Set_mem x (fv v))) => not (Set_mem x (fv e')) ) && 
-                      ( (isValue v && isValue e) => isValue e' ) } / [esize e] @-}
-subFV :: Vname -> Expr -> Expr -> Expr
-subFV x e_x (Bc b)                    = Bc b
-subFV x e_x (Ic n)                    = Ic n
-subFV x e_x (Prim p)                  = Prim p
-subFV x e_x (BV y)                    = BV y
-subFV x e_x (FV y) | x == y           = e_x 
-                   | otherwise        = FV y
-subFV x e_x (Lambda y e)              = Lambda y (subFV x e_x e)
-subFV x e_x (App e e')                = App (subFV x e_x e) (subFV x e_x e')
-subFV x e_x (Let y e1 e2)             = Let y (subFV x e_x e1) (subFV x e_x e2)
-subFV x e_x (Annot e t)               = Annot (subFV x e_x e) (tsubFV x e_x t) -- TODO not 100%
-subFV x e_x Crash                     = Crash
-
-{-@ reflect subBV @-} -- x is a BOUND var  
-{-@ subBV :: x:Vname ->  v:Value -> e:Expr 
-                     -> { e':Expr | Set_sub (fv e) (fv e') &&
-                                    Set_sub (fv e') (Set_cup (fv e) (fv v)) &&
-                                    freeBV e' == Set_dif (freeBV e) (Set_sng x) } / [esize e] @-}
-subBV :: Vname -> Expr -> Expr -> Expr
-subBV x e_x (Bc b)                    = Bc b
-subBV x e_x (Ic n)                    = Ic n
-subBV x e_x (Prim p)                  = Prim p
-subBV x e_x (BV y) | x == y           = e_x
-                   | otherwise        = BV y
-subBV x e_x (FV y)                    = FV y
-subBV x e_x (Lambda y e) | x == y     = Lambda y e  -- not the same x anymore
-                         | otherwise  = Lambda y (subBV x e_x e)
-subBV x e_x (App e e')                = App (subBV x e_x e) (subBV x e_x e')
-subBV x e_x (Let y e1 e2) | x == y    = Let y (subBV x e_x e1) e2 -- not the same x anymore
-                          | otherwise = Let y (subBV x e_x e1) (subBV x e_x e2)
-subBV x e_x (Annot e t)               = Annot (subBV x e_x e) (tsubBV x e_x t)
-subBV x e_x Crash                     = Crash  -- I don't think lambdas can bind type vars
-
 
 -- Lemmas. The set of Values is closed under substitution.
 {-@ lem_subFV_value :: y:Vname -> v_y:Value -> v:Value  
@@ -180,15 +68,6 @@ lem_subBV_value x v_x (Let w ew e)
 lem_subBV_value x v_x (Annot e t)  = () ? lem_subBV_value x v_x e
                                         ? lem_tsubBV_inval x v_x t  
 lem_subBV_value x v_x Crash        = ()
-
-
-{-@ reflect unbind @-} -- unbind converts (BV x) to (FV y) in e
-{-@ unbind :: x:Vname -> y:Vname -> e:Expr 
-                    -> { e':Expr | Set_sub (fv e) (fv e') && 
-                                   Set_sub (fv e') (Set_cup (Set_sng y) (fv e)) &&
-                                   freeBV e' == Set_dif (freeBV e) (Set_sng x) } @-}
-unbind :: Vname -> Vname -> Expr -> Expr
-unbind x y e = subBV x (FV y) e
 
 {-@ lem_subFV_unbind :: x:Vname -> y:Vname -> v:Value
       -> { e:Expr | not (Set_mem y (fv e)) }
@@ -319,95 +198,6 @@ lem_commute_subFV x v y v_y (Annot e t)
                    ? lem_commute_tsubFV x v y v_y t
 lem_commute_subFV x v y v_y Crash        = ()
 
-
-  ---   Refinement Level: Names, Terms (in FO), FO Predicates, SMT Formulae
-type Pred = Expr
-
-data Form = P Pred                    -- p
-          | FAnd Form Form            -- c1 ^ c2
-          | Impl Vname Base Pred Form -- \forall x:b. p => c
-  deriving (Show)
-
-  ---   TYPES
-
-data Base = TBool
-          | TInt
-  deriving (Eq, Show)
-
-data Type = TRefn   Base Vname Pred      -- b{x : p}
-          | TFunc   Vname Type Type      -- x:t_x -> t
-          | TExists Vname Type Type      -- \exists x:t_x.t
-  deriving (Eq, Show)
-{-@ data Type [tsize] @-}
-{- @ data Type [tsize] where
-    TRefn   :: Base -> Vname -> p:Pred -> { t:Type | free t == fv p }
-  | TFunc   :: Vname -> t_x:Type -> t:Type 
-                     -> { t':Type | free t' == Set_cup (free t_x) (free t) }
-  | TExists :: Vname -> t_x:Type -> t:Type 
-                     -> { t':Type | free t' == Set_cup (free t_x) (free t) } @-}
-
-{-@ lazy tsize @-}
-{-@ measure tsize @-}
-{-@ tsize :: t:Type -> { v:Int | v >= 0 } @-} 
-tsize :: Type -> Int
-tsize (TRefn b v r)     = (esize r) + 1
-tsize (TFunc x t_x t)   = (tsize t_x) + (tsize t) + 1
-tsize (TExists x t_x t) = (tsize t_x) + (tsize t) + 1
-
-
-{-@ measure tlen @-}
-{-@ tlen :: Type -> { v:Int | v >= 0 } @-}
-tlen :: Type -> Int
-tlen (TRefn b v r)     = 0
-tlen (TFunc x t_x t)   = (tlen t) + 1
-tlen (TExists x t_x t) = (tlen t) + 1
-
-{-@ reflect free @-} 
-{-@ free :: t:Type -> S.Set Vname / [tsize t] @-}
-free :: Type -> S.Set Vname
-free (TRefn b v r)      = fv r
-free (TFunc x t_x t)    = S.union (free t_x) (free t) 
-free (TExists x t_x t)  = S.union (free t_x) (free t) 
-
-
-{-@ reflect tfreeBV @-}
-{-@ tfreeBV :: t:Type -> S.Set Vname / [tsize t] @-}
-tfreeBV :: Type -> S.Set Vname
-tfreeBV (TRefn b x r)     = S.difference (freeBV r) (S.singleton x)
-tfreeBV (TFunc x t_x t)   = S.union (tfreeBV t_x) (S.difference (tfreeBV t) (S.singleton x))
-tfreeBV (TExists x t_x t) = S.union (tfreeBV t_x) (S.difference (tfreeBV t) (S.singleton x))
-
-{-@ reflect tsubFV @-}
-{-@ tsubFV :: x:Vname -> e:Value -> t:Type  
-         -> { t':Type | tlen t' <= tlen t && tlen t' >= 0 &&
-                        ( Set_mem x (free t) || t == t' ) && 
-                        ( Set_sub (free t) (Set_cup (Set_sng x) (free t'))) &&
-                ( Set_sub (free t') (Set_cup (fv e) (Set_dif (free t) (Set_sng x))) ) &&
-                ( tfreeBV t == tfreeBV t' ) &&
-                ( (not (Set_mem x (fv e))) => not (Set_mem x (free t')) ) } / [tsize t] @-}
-tsubFV :: Vname -> Expr -> Type -> Type
-tsubFV x e_x (TRefn b z r)     = TRefn b z (subFV x e_x r)
-tsubFV x e_x (TFunc z t_z t)   = TFunc   z (tsubFV x e_x t_z) (tsubFV x e_x t)
-tsubFV x e_x (TExists z t_z t) = TExists z (tsubFV x e_x t_z) (tsubFV x e_x t)
-
-
-{-@ reflect tsubBV @-}
-{-@ tsubBV :: x:Vname -> v_x:Value -> t:Type  
-                    -> { t':Type | tlen t' <= tlen t && tlen t' >= 0 &&
-                                   Set_sub (free t) (free t') &&
-                                   Set_sub (free t') (Set_cup (fv v_x) (free t)) &&
-                                   tfreeBV t' == Set_dif (tfreeBV t) (Set_sng x) } / [tsize t] @-}
-tsubBV :: Vname -> Expr -> Type -> Type
-tsubBV x e_x (TRefn b y r)     
-  | x == y                     = TRefn b y r
-  | otherwise                  = TRefn b y (subBV x e_x r)
-tsubBV x e_x (TFunc z t_z t)   
-  | x == z                     = TFunc z (tsubBV x e_x t_z) t
-  | otherwise                  = TFunc z (tsubBV x e_x t_z) (tsubBV x e_x t)
-tsubBV x e_x (TExists z t_z t) 
-  | x == z                     = TExists z (tsubBV x e_x t_z) t
-  | otherwise                  = TExists z (tsubBV x e_x t_z) (tsubBV x e_x t)
-
 {-@ lem_tsubBV_inval :: x:Vname -> v_x:Value -> { t:Type | not (Set_mem x (tfreeBV t)) }
                 -> { pf:_ | tsubBV x v_x t == t } / [tsize t] @-} 
 lem_tsubBV_inval :: Vname -> Expr -> Type -> Proof
@@ -422,14 +212,6 @@ lem_tsubBV_inval x v_x (TExists z t_z t)
     | x == z    = () ? lem_tsubBV_inval x v_x t_z
     | otherwise = () ? lem_tsubBV_inval x v_x t_z
                      ? lem_tsubBV_inval x v_x t
-
-{-@ reflect unbindT @-}
-{-@ unbindT :: x:Vname -> y:Vname -> t:Type 
-                       -> { t':Type | Set_sub (free t) (free t') &&
-                                      Set_sub (free t') (Set_cup (Set_sng y) (free t)) &&
-                                      tfreeBV t' == Set_dif (tfreeBV t) (Set_sng x) } @-} 
-unbindT :: Vname -> Vname -> Type -> Type
-unbindT x y t = tsubBV x (FV y) t
 
 {-@ lem_tsubFV_unbindT :: x:Vname -> y:Vname -> v:Value 
         -> { t:Type | not (Set_mem y (free t)) }
@@ -514,4 +296,252 @@ lem_commute_tsubFV x v y v_y (TFunc w t_w t)
 lem_commute_tsubFV x v y v_y (TExists w t_w t)
               = () ? lem_commute_tsubFV x v y v_y t_w
                    ? lem_commute_tsubFV x v y v_y t
+
+----------------------------------------------------------------------------
+-- | BASIC PROPERTIES: Properties of ENVIRONMENTS / BARE-TYPED ENVIRONMENTS
+----------------------------------------------------------------------------
+
+{-@ reflect concatE @-}
+{-@ concatE :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
+                     -> { h:Env | (binds h) == (Set_cup (binds g) (binds g')) } @-}
+concatE :: Env -> Env -> Env
+concatE g Empty         = g
+concatE g (Cons x t g') = Cons x t (concatE g g')
+
+{-@ lem_in_env_concat :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
+    ->  x:Vname -> {pf:_ | (in_env x (concatE g g')) <=> ((in_env x g) || (in_env x g'))} @-}
+lem_in_env_concat :: Env -> Env -> Vname -> Proof
+lem_in_env_concat g Empty         x = ()
+lem_in_env_concat g (Cons y s g') x = () ? lem_in_env_concat g g' x 
+
+{-@ lem_erase_tsubFV :: x:Vname -> e:Expr -> t:Type 
+                                -> { pf:_ | erase (tsubFV x e t) == erase t } @-}
+lem_erase_tsubFV :: Vname -> Expr -> Type -> Proof
+lem_erase_tsubFV x e (TRefn   b   z p) = ()
+lem_erase_tsubFV x e (TFunc   z t_z t) = () ? lem_erase_tsubFV x e t_z
+                                            ? lem_erase_tsubFV x e t
+lem_erase_tsubFV x e (TExists z t_z t) = () ? lem_erase_tsubFV x e t
+
+{-@ lem_erase_tsubBV :: x:Vname -> e:Expr -> t:Type 
+                                -> { pf:_ | erase (tsubBV x e t) == erase t } @-}
+lem_erase_tsubBV :: Vname -> Expr -> Type -> Proof
+lem_erase_tsubBV x e (TRefn   b   z p) = ()
+lem_erase_tsubBV x e (TFunc   z t_z t) = () ? lem_erase_tsubBV x e t_z
+                                            ? lem_erase_tsubBV x e t
+lem_erase_tsubBV x e (TExists z t_z t) = () ? lem_erase_tsubBV x e t
+
+{-@ reflect concatB @-}
+{-@ concatB :: g:BEnv -> { g':BEnv | Set_emp (Set_cap (bindsB g) (bindsB g')) } 
+                      -> { h:BEnv  | bindsB h == Set_cup (bindsB g) (bindsB g') } @-}
+concatB :: BEnv -> BEnv -> BEnv
+concatB g BEmpty         = g
+concatB g (BCons x t g') = BCons x t (concatB g g')
+
+{-@ lem_in_env_concatB :: g:BEnv -> { g':BEnv | Set_emp (Set_cap (bindsB g) (bindsB g')) } 
+    ->  x:Vname -> {pf:_ | (in_envB x (concatB g g')) <=> ((in_envB x g) || (in_envB x g'))} @-}
+lem_in_env_concatB :: BEnv -> BEnv -> Vname -> Proof
+lem_in_env_concatB g BEmpty         x = ()
+lem_in_env_concatB g (BCons y s g') x = () ? lem_in_env_concatB g g' x 
+
+
+{-@ lem_binds_cons_concatB :: g:BEnv -> g':BEnv -> x:Vname -> t_x:BType
+  -> { pf:_ | Set_sub (bindsB (concatB g g')) (bindsB (concatB (BCons x t_x g) g')) && 
+              bindsB (concatB (BCons x t_x g) g') == Set_cup (Set_cup (bindsB g) (Set_sng x)) (bindsB g') } @-}
+lem_binds_cons_concatB :: BEnv -> BEnv -> Vname -> BType -> Proof
+lem_binds_cons_concatB g BEmpty         x t = ()
+lem_binds_cons_concatB g (BCons y s g') x t = () ? lem_binds_cons_concatB g g' x t
+
+{-@ lem_erase_concat :: g:Env -> g':Env 
+           -> { pf:_ |  erase_env (concatE g g') == concatB (erase_env g) (erase_env g') } @-}
+lem_erase_concat :: Env -> Env -> Proof
+lem_erase_concat g Empty         = ()
+lem_erase_concat g (Cons x t g') = () ? lem_erase_concat g g'
+
+
+-- -- -- -- -- -- -- -- -- -- -- --
+-- Substitutions in Environments --
+-- -- -- -- -- -- -- -- -- -- -- --
+
+{-@ reflect esubFV @-}
+{-@ esubFV :: x:Vname -> v:Value -> g:Env -> { g':Env | binds g == binds g' } @-}
+esubFV :: Vname -> Expr -> Env -> Env
+esubFV x e_x Empty          = Empty
+esubFV x e_x (Cons z t_z g) = Cons z (tsubFV x e_x t_z) (esubFV x e_x g)
+
+{-@ lem_in_env_esub :: g:Env -> x:Vname -> v_x:Value -> y:Vname
+        -> { pf:_ | in_env y (esubFV x v_x g) <=> in_env y g } @-}
+lem_in_env_esub :: Env -> Vname -> Expr -> Vname -> Proof
+lem_in_env_esub g x v_x y = undefined  
+
+{-@ lem_erase_esubFV :: x:Vname -> v:Expr -> g:Env
+        -> { pf:_ | erase_env (esubFV x v g) == erase_env g } @-}
+lem_erase_esubFV :: Vname -> Expr -> Env -> Proof
+lem_erase_esubFV x e (Empty)      = ()
+lem_erase_esubFV x e (Cons y t g) = () ? lem_erase_esubFV x e g
+                                       ? lem_erase_tsubFV x e t
+
+
+--------------------------------------------------------------------------
+----- | Properties of the OPERATIONAL SEMANTICS (Small Step)
+--------------------------------------------------------------------------
+
+-- EvalsToP is the transitive/reflexive closure of StepP:
+{-@ lemma_evals_trans :: e1:Expr -> e2:Expr -> e3:Expr -> ProofOf( EvalsTo e1 e2)
+                    -> ProofOf( EvalsTo e2 e3) -> ProofOf( EvalsTo e1 e3) @-} 
+lemma_evals_trans :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo -> EvalsTo
+lemma_evals_trans e1 e2 e3 (Refl _e1) p_e2e3 = p_e2e3
+lemma_evals_trans e1 e2 e3 (AddStep _e1 e p_e1e _e2 p_ee2) p_e2e3 = p_e1e3
+  where
+    p_e1e3 = AddStep e1 e p_e1e e3 p_ee3
+    p_ee3  = lemma_evals_trans e e2 e3 p_ee2 p_e2e3
+
+{-@ lemma_app_many :: e:Expr -> e':Expr -> v':Expr -> ProofOf(EvalsTo e e')
+                       -> ProofOf(EvalsTo (App e v') (App e' v')) @-}
+lemma_app_many :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_app_many e e' v (Refl _e) = Refl (App e v)
+lemma_app_many e e' v (AddStep _e e1 s_ee1 _e' p_e1e') = p_ev_e'v
+  where
+    p_ev_e'v  = AddStep (App e v) (App e1 v) s_ev_e1v (App e' v) p_e1v_e'v
+    s_ev_e1v  = EApp1 e e1 s_ee1 v 
+    p_e1v_e'v = lemma_app_many e1 e' v p_e1e' 
+
+{-@ lemma_app_many2 :: v:Value -> e:Expr -> e':Expr -> ProofOf(EvalsTo e e')
+                       -> ProofOf(EvalsTo (App v e) (App v e')) @-}
+lemma_app_many2 :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_app_many2 v e e' (Refl _e) = Refl (App v e)
+lemma_app_many2 v e e' (AddStep _e e1 s_ee1 _e' p_e1e') = p_ve_ve'
+  where
+    p_ve_ve'  = AddStep (App v e) (App v e1) s_ve_ve1 (App v e') p_ve1_ve'
+    s_ve_ve1  = EApp2 e e1 s_ee1 v 
+    p_ve1_ve' = lemma_app_many2 v e1 e' p_e1e' 
+
+{-@ lemma_app_both_many :: e:Expr -> v:Value -> ProofOf(EvalsTo e v)
+                             -> e':Expr -> v':Value -> ProofOf(EvalsTo e' v')
+                             -> ProofOf(EvalsTo (App e e') (App v v')) @-}
+lemma_app_both_many :: Expr -> Expr -> EvalsTo -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_app_both_many e v ev_e_v e' v' ev_e'_v' = ev_ee'_vv'
+  where
+    ev_ee'_ve' = lemma_app_many  e v  e' ev_e_v
+    ev_ve'_vv' = lemma_app_many2 v e' v' ev_e'_v'
+    ev_ee'_vv' = lemma_evals_trans (App e e') (App v e') (App v v') 
+                                   ev_ee'_ve' ev_ve'_vv'
+
+{-@ lemma_let_many :: x:Vname -> e_x:Expr -> e_x':Expr -> e:Expr 
+        -> ProofOf(EvalsTo e_x e_x') -> ProofOf(EvalsTo (Let x e_x e) (Let x e_x' e)) @-}
+lemma_let_many :: Vname -> Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_let_many x e_x e_x' e (Refl _ex)                               = Refl (Let x e_x e)
+lemma_let_many x e_x e_x' e (AddStep _ex e_x1 s_exex1 _ex' p_ex1ex') = p_let_let'
+  where
+    s_let_let1  = ELet e_x e_x1 s_exex1 x e
+    p_let1_let' = lemma_let_many x e_x1 e_x' e p_ex1ex'
+    p_let_let'  = AddStep (Let x e_x e) (Let x e_x1 e) s_let_let1 (Let x e_x' e) p_let1_let'
+
+{-@ lemma_annot_many :: e:Expr -> e':Expr -> t:Type -> ProofOf(EvalsTo e e')
+                         -> ProofOf(EvalsTo (Annot e t) (Annot e' t)) @-}
+lemma_annot_many :: Expr -> Expr -> Type -> EvalsTo -> EvalsTo
+lemma_annot_many e e' t (Refl _e) = Refl (Annot e t)
+lemma_annot_many e e' t (AddStep _e e1 s_ee1 _e' p_e1e') = p_et_e't
+  where
+    s_et_e1t  = EAnn e e1 s_ee1 t
+    p_e1t_e't = lemma_annot_many e1 e' t p_e1e'
+    p_et_e't  = AddStep (Annot e t) (Annot e1 t) s_et_e1t (Annot e' t) p_e1t_e't
+
+
+-----------------------------------------------------------------------------------------
+----- | Properties of JUDGEMENTS : the Bare-Typing Relation and Well-Formedness of Types
+-----------------------------------------------------------------------------------------
+
+-- Lemma. All free variables in a (bare) typed expression are bound in the (bare) environment
+{-@ lem_fv_bound_in_benv :: g:BEnv -> e:Expr -> t:BType -> ProofOf(HasBType g e t)
+                -> { x:Vname | not (in_envB x g) }
+                -> { pf:_ | not (Set_mem x (fv e)) } @-}
+lem_fv_bound_in_benv :: BEnv -> Expr -> BType -> HasBType -> Vname -> Proof
+lem_fv_bound_in_benv g e t (BTBC _g b) x      = ()
+lem_fv_bound_in_benv g e t (BTIC _g n) x      = ()
+lem_fv_bound_in_benv g e t (BTVar1 _ y _t) x  = ()
+lem_fv_bound_in_benv g e t (BTVar2 _ y _t p_y_t z t') x = ()
+lem_fv_bound_in_benv g e t (BTPrm _g c) x     = ()
+lem_fv_bound_in_benv g e t (BTAbs _g y t_y e' t' y' p_e'_t') x 
+    = case ( x == y' ) of
+        (True)  -> ()
+        (False) -> () ? lem_fv_bound_in_benv (BCons y' t_y g) (unbind y y' e') t' p_e'_t' x
+lem_fv_bound_in_benv g e t (BTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) x 
+    = () ? lem_fv_bound_in_benv g e1 (BTFunc t_y t') p_e1_tyt' x
+         ? lem_fv_bound_in_benv g e2 t_y p_e2_ty x
+lem_fv_bound_in_benv g e t (BTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') x 
+    = case ( x == y' ) of
+        (True)  -> () ? lem_fv_bound_in_benv g e_y t_y p_ey_ty x
+        (False) -> () ? lem_fv_bound_in_benv g e_y t_y p_ey_ty x
+                      ? lem_fv_bound_in_benv (BCons y' t_y g) (unbind y y' e') t' p_e'_t' x
+lem_fv_bound_in_benv g e t (BTAnn _g e' _t ann_t p_e'_t) x 
+    = () ? lem_fv_bound_in_benv g e' t p_e'_t x
+
+{-@ lem_fv_subset_bindsB :: g:BEnv -> e:Expr -> t:BType -> ProofOf(HasBType g e t)
+                -> { pf:_ | Set_sub (fv e) (bindsB g) } @-}
+lem_fv_subset_bindsB :: BEnv -> Expr -> BType -> HasBType -> Proof
+lem_fv_subset_bindsB g e t (BTBC _g b)       = ()
+lem_fv_subset_bindsB g e t (BTIC _g n)       = ()
+lem_fv_subset_bindsB g e t (BTVar1 _ y _t)   = ()
+lem_fv_subset_bindsB g e t (BTVar2 _ y _t p_y_t z t') = ()
+lem_fv_subset_bindsB g e t (BTPrm _g c)      = ()
+lem_fv_subset_bindsB g e t (BTAbs _g y t_y e' t' y' p_e'_t')  
+    = () ? lem_fv_subset_bindsB (BCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_fv_subset_bindsB g e t (BTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) 
+    = () ? lem_fv_subset_bindsB g e1 (BTFunc t_y t') p_e1_tyt' 
+         ? lem_fv_subset_bindsB g e2 t_y p_e2_ty 
+lem_fv_subset_bindsB g e t (BTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')  
+    = () ? lem_fv_subset_bindsB g e_y t_y p_ey_ty 
+         ? lem_fv_subset_bindsB (BCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_fv_subset_bindsB g e t (BTAnn _g e' _t ann_t p_e'_t) 
+    = () ? lem_fv_subset_bindsB g e' t p_e'_t 
+
+{-@ lem_free_bound_in_env :: g:Env -> t:Type -> ProofOf(WFType g t)
+                -> { x:Vname | not (in_env x g) }
+                -> { pf:_ | not (Set_mem x (free t)) } @-}
+lem_free_bound_in_env :: Env -> Type -> WFType -> Vname -> Proof
+lem_free_bound_in_env g t (WFRefn _g z b p z' p_z'_p_bl) x
+    = case ( x == z' ) of
+        (True)  -> ()
+        (False) -> () ? lem_fv_bound_in_benv (BCons z' (BTBase b) (erase_env g)) 
+                                             (unbind z z' p) (BTBase TBool) p_z'_p_bl x
+lem_free_bound_in_env g t (WFFunc _g y t_y p_ty_wf t' y' p_y'_t'_wf) x
+    = case ( x == y' ) of
+        (True)  -> () ? lem_free_bound_in_env g t_y p_ty_wf x
+        (False) -> () ? lem_free_bound_in_env g t_y p_ty_wf x
+                      ? lem_free_bound_in_env (Cons y' t_y g) (unbindT y y' t') p_y'_t'_wf x
+lem_free_bound_in_env g t (WFExis _g y t_y p_ty_wf t' y' p_y'_t'_wf) x
+    = case ( x == y' ) of 
+        (True)  -> () ? lem_free_bound_in_env g t_y p_ty_wf x
+        (False) -> () ? lem_free_bound_in_env g t_y p_ty_wf x
+                      ? lem_free_bound_in_env (Cons y' t_y g) (unbindT y y' t') p_y'_t'_wf x
+
+{-@ lem_free_subset_binds :: g:Env -> t:Type -> ProofOf(WFType g t)  
+                  -> { pf:_ | Set_sub (free t) (binds g) } @-}
+lem_free_subset_binds :: Env -> Type -> WFType -> Proof 
+lem_free_subset_binds g t (WFRefn _g z b p z' p_z'_p_bl)
+    = () ? lem_fv_subset_bindsB (BCons z' (BTBase b) (erase_env g)) (unbind z z' p) 
+                                (BTBase TBool) p_z'_p_bl
+lem_free_subset_binds g t (WFFunc _g y t_y p_ty_wf t' y' p_y'_t'_wf)
+    = () ? lem_free_subset_binds g t_y p_ty_wf
+         ? lem_free_subset_binds (Cons y' t_y g) (unbindT y y' t') p_y'_t'_wf
+lem_free_subset_binds g t (WFExis _g y t_y p_ty_wf t' y' p_y'_t'_wf)
+    = () ? lem_free_subset_binds g t_y p_ty_wf
+         ? lem_free_subset_binds (Cons y' t_y g) (unbindT y y' t') p_y'_t'_wf
+
+
+{-@ lookup_wftype_in_env :: g:Env -> ProofOf(WFEnv g) -> x:Vname -> { t:Type | bound_in x t g }
+        -> (Env,WFType)<{\g' pf -> not (in_env x g') && propOf pf == WFType g' t}> @-}
+lookup_wftype_in_env :: Env -> WFEnv -> Vname -> Type -> (Env, WFType)
+lookup_wftype_in_env g (WFEBind g' p_wf_g' y t_y p_wf_ty) x t
+  = case (x == y) of
+      (True)  -> (g', p_wf_ty)
+      (False) -> lookup_wftype_in_env g' p_wf_g' x t
+
+{-@ lem_truncate_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+        -> ProofOf(WFEnv (concatE g g')) -> ProofOf(WFEnv g) @-}
+lem_truncate_wfenv :: Env -> Env -> WFEnv -> WFEnv
+lem_truncate_wfenv g Empty         p_g_wf    = p_g_wf          
+lem_truncate_wfenv g (Cons x v g') p_xg'g_wf = lem_truncate_wfenv g g' p_g'g_wf
+  where
+    (WFEBind _ p_g'g_wf _ _ _) = p_xg'g_wf 
 
