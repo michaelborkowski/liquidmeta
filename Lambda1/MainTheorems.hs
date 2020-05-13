@@ -1,40 +1,53 @@
 {-# LANGUAGE GADTs #-}
 
---{-@ LIQUID "--higherorder" @-}
-{- @ LIQUID "--diff"        @-}
-{- @ LIQUID "--no-termination" @-}
-{-@ LIQUID "--no-totality" @-}
+{-@ LIQUID "--no-termination" @-} -- TODO assume
+{-@ LIQUID "--no-totality" @-} -- TODO assume
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
 
 module MainTheorems where
 
---import Control.Exception (assert)
 import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
-import Syntax
-import Environments
-import Semantics
+import Basics
+import BasicProps
 import Typing
 import Primitives
-import BasicLemmas
-import BasicLemmas2
+import Primitives3
+import STLCLemmas
+import STLCSoundness
+import TechLemmas
+import TechLemmas2
 import DenotationalSoundness 
 import Substitution
+import Primitives5
 
 -- force these into scope
 semantics = (Step, EvalsTo)
 typing = (HasBType, HasType, WFType, WFEnv, Subtype)
-denotations = (Entails, Denotes, DenotesEnv)
+denotations = (Entails, Denotes, DenotesEnv, AugmentedCSubst, lem_subst_typ)
+
+{-@ reflect foo18 @-}
+foo18 x = Just x
+foo18 :: a -> Maybe a
+
+  -- Last Lemmas
+{-
+{-@ lemma_function_values :: v:Value -> x:Vname -> t:Type -> t':Type
+          -> { p_v_tt':HasType | propOf p_v_tt' == HasType Empty v (TFunc x t t') }
+          -> { pf:_ | isLambda v || isPrim v } / [typSize p_v_tt'] @-}
+lemma_function_values :: Expr -> Type -> Type -> HasType -> Proof
+lemma_function_values e t t' (TPrm {})   = ()
+lemma_function_values e t t' (TAbs {})   = ()
+lemma_function_values e t t' (TSub 
+-}
 
 --------------------------------------------------------------------------------
 --- | PROGRESS and PRESERVATION
 --------------------------------------------------------------------------------
-
--- need a lemma that a typed term has no loose BVs!
 
 -- the big theorems 
 {-@ thm_progress :: e:Expr -> t:Type -> ProofOf(HasType Empty e t)  
@@ -48,18 +61,24 @@ thm_progress x _t (TVar2 Empty _ _ _ _ _) = Left ()
 thm_progress c _t (TPrm Empty _)          = Left ()
 thm_progress e t  p_e_t@(TAbs {})               
       = Left () ? lem_freeBV_empty Empty e t p_e_t WFEEmpty 
-thm_progress _e _t (TApp Empty (Prim p) x t_x t p_e1_txt e2 p_e2_tx) 
-      = case (thm_progress e2 t_x p_e2_tx) of
+thm_progress _e _t (TApp Empty e1 x t_x t p_e1_txt e2 p_e2_tx) = case e1 of
+      (Prim p)      -> case (thm_progress e2 t_x p_e2_tx) of
           Left ()               -> Right (delta p e2, EPrim p e2)
-          Right (e2', p_e2_e2') -> Right (App (Prim p) e2', EApp2 e2 e2' p_e2_e2' (Prim p))
-thm_progress _e _t (TApp Empty (Lambda x e') _x t_x t p_e1_txt e2 p_e2_tx) 
-      = case (thm_progress e2 t_x p_e2_tx) of
+          Right (e2', p_e2_e2') -> Right (App (Prim p) e2', EApp2 e2 e2' p_e2_e2' (Prim p))  
+      (Lambda x e') -> case (thm_progress e2 t_x p_e2_tx) of
           Left ()               -> Right (subBV x e2 e', EAppAbs x e' e2)
           Right (e2', p_e2_e2') -> Right (App (Lambda x e') e2', EApp2 e2 e2' p_e2_e2' (Lambda x e'))
-thm_progress _e _t (TApp Empty e1 x t_x t p_e1_txt e2 p_e2_tx) 
-      = Right (App e1' e2, EApp1 e1 e1' p_e1_e1' e2)
-        where
-          Right (e1', p_e1_e1') = thm_progress e1 (TFunc x t_x t) p_e1_txt
+      (_)           -> case (isValue e1) of
+          False                 -> Right (App e1' e2, EApp1 e1 e1' p_e1_e1' e2)
+              where
+                  Right (e1', p_e1_e1') = thm_progress e1 (TFunc x t_x t) p_e1_txt
+          True                  -> impossible ("by lemma" ? lemma_function_values e1 (erase t_x) (erase t)
+                                                                                  p_e1_er_txt)
+              where
+                  p_e1_er_txt = lem_typing_hasbtype Empty e1 (TFunc x t_x t) p_e1_txt WFEEmpty
+{-thm_progress _e _t (TApp Empty (Prim p) x t_x t p_e1_txt e2 p_e2_tx) 
+thm_progress _e _t (TApp Empty (Lambda x e') _x t_x t p_e1_txt e2 p_e2_tx) 
+thm_progress _e _t (TApp Empty e1 x t_x t p_e1_txt e2 p_e2_tx) -}
 thm_progress _e _t (TLet Empty e1 tx p_e1_tx x e2 t p_t y p_e2_t)
       = case (thm_progress e1 tx p_e1_tx) of
           Left ()               -> Right (subBV x e1 e2, ELetV x e1 e2)
@@ -89,7 +108,7 @@ thm_preservation e t p_e_t@(TApp Empty (Prim c) x t_x t' p_c_txt' e2 p_e2_tx) e'
           p_del_t'e2   = lem_delta_typ Empty c e2 x t_x t' p_c_txt' p_e2_tx 
           p_emp_ex_t'  = lem_typing_wf Empty e t p_e_t WFEEmpty
           (WFExis _ _ _ _ _t' y p_y_t') = p_emp_ex_t'
-          p_t'e2_ex_t' = lem_witness_sub Empty e2 t_x p_e2_tx x t' y p_y_t'
+          p_t'e2_ex_t' = lem_witness_sub Empty e2 t_x p_e2_tx WFEEmpty x t' y p_y_t'
           p_del_ex_t'  = TSub Empty (delta c e2) (tsubBV x e2 t') p_del_t'e2 
                               (TExists x t_x t') p_emp_ex_t' p_t'e2_ex_t'
       Right (e2', st_e2_e2') -> Right (TApp Empty (Prim c) x t_x t' p_c_txt' e2' p_e2'_tx)
@@ -108,7 +127,7 @@ thm_preservation e t p_e_t@(TApp Empty (Lambda w e1) x t_x t' p_lam_txt' e2 p_e2
                                               (unbind w y e1) (unbindT x y t') p_e1_t'
           p_emp_ex_t'         = lem_typing_wf Empty e t p_e_t WFEEmpty
           (WFExis _ _ _ _ _ y' p_y_t') = p_emp_ex_t'
-          p_t'e2_ex_t'        = lem_witness_sub Empty e2 t_x p_e2_tx x t' y' p_y_t'
+          p_t'e2_ex_t'        = lem_witness_sub Empty e2 t_x p_e2_tx WFEEmpty x t' y' p_y_t'
           p_e1e2_ex_t'        = TSub Empty (subBV w e2 e1) (tsubBV x e2 t') 
                                      (p_e1e2_t'e2 ? lem_subFV_unbind w y e2 e1
                                                   ? lem_tsubFV_unbindT x y e2 t')

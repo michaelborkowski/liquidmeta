@@ -100,6 +100,52 @@ lem_subFV_unbind x y v (Annot e' t)
                      ? lem_tsubFV_unbindT x y v t
 lem_subFV_unbind x y v (Crash)  = () 
 
+{-@ lem_subFV_id :: x:Vname -> e:Expr -> { pf:_ | subFV x (FV x) e == e } / [esize e] @-}
+lem_subFV_id :: Vname -> Expr -> Proof
+lem_subFV_id x (Bc b)   = ()
+lem_subFV_id x (Ic n)   = ()
+lem_subFV_id x (Prim c) = ()
+lem_subFV_id x (BV w)   = ()
+lem_subFV_id x (FV w)   
+    | x == w    = ()
+    | otherwise = ()
+lem_subFV_id x e@(Lambda w e') 
+                = () ? lem_subFV_id x e'
+lem_subFV_id x (App e1 e2) 
+                = () ? lem_subFV_id x e1
+                     ? lem_subFV_id x e2
+lem_subFV_id x e@(Let w ew e')
+                = () ? lem_subFV_id x ew
+                     ? lem_subFV_id x e'
+lem_subFV_id x (Annot e' t)
+                = () ? lem_subFV_id x e'
+                     ? lem_tsubFV_id x t
+lem_subFV_id x (Crash)  = () 
+
+{-@ lem_chain_subFV :: x:Vname -> y:Vname -> v:Value
+      -> { e:Expr | x == y || not (Set_mem y (fv e)) }
+      -> { pf:_ | subFV x v e == subFV y v (subFV x (FV y) e) } / [esize e] @-}
+lem_chain_subFV :: Vname -> Vname -> Expr -> Expr -> Proof
+lem_chain_subFV x y v (Bc b)   = ()
+lem_chain_subFV x y v (Ic n)   = ()
+lem_chain_subFV x y v (Prim c) = ()
+lem_chain_subFV x y v (BV w)   = ()
+lem_chain_subFV x y v (FV w)   
+    | x == w    = ()
+    | otherwise = ()
+lem_chain_subFV x y v e@(Lambda w e') 
+                = () ? lem_chain_subFV x y v e'
+lem_chain_subFV x y v (App e1 e2) 
+                = () ? lem_chain_subFV x y v e1
+                     ? lem_chain_subFV x y v e2
+lem_chain_subFV x y v e@(Let w ew e')
+                = () ? lem_chain_subFV x y v ew
+                     ? lem_chain_subFV x y v e'
+lem_chain_subFV x y v (Annot e' t)
+                = () ? lem_chain_subFV x y v e'
+                     ? lem_chain_tsubFV x y v t
+lem_chain_subFV x y v (Crash)  = () 
+
 {-@ lem_commute_subFV_unbind :: x:Vname -> y:Vname -> z:Vname 
         -> { z':Vname | z' != x } -> e:Expr
         -> {pf:_ | subFV x (FV y) (unbind z z' e) == unbind z z' (subFV x (FV y) e)} / [esize e] @-}
@@ -245,6 +291,30 @@ lem_tsubFV_unbindT x y v t@(TExists w t_w t')
   | otherwise  = () ? lem_tsubFV_unbindT x y v t_w
                     ? lem_tsubFV_unbindT x y v t'
 
+{-@ lem_tsubFV_id :: x:Vname -> t:Type -> { pf:_ | tsubFV x (FV x) t == t } / [tsize t] @-}
+lem_tsubFV_id :: Vname -> Type -> Proof
+lem_tsubFV_id x t@(TRefn b w p)
+               = () ? lem_subFV_id x p
+lem_tsubFV_id x t@(TFunc w t_w t')
+               = () ? lem_tsubFV_id x t_w
+                    ? lem_tsubFV_id x t'
+lem_tsubFV_id x t@(TExists w t_w t')
+               = () ? lem_tsubFV_id x t_w
+                    ? lem_tsubFV_id x t'
+
+{-@ lem_chain_tsubFV :: x:Vname -> y:Vname -> v:Value 
+        -> { t:Type | x == y || not (Set_mem y (free t)) }
+        -> { pf:_ | tsubFV x v t == tsubFV y v (tsubFV x (FV y) t) } / [tsize t] @-}
+lem_chain_tsubFV :: Vname -> Vname -> Expr -> Type -> Proof
+lem_chain_tsubFV x y v t@(TRefn b w p)     
+               = () ? lem_chain_subFV x y v p
+lem_chain_tsubFV x y v t@(TFunc w t_w t')
+               = () ? lem_chain_tsubFV x y v t_w 
+                    ? lem_chain_tsubFV x y v t' 
+lem_chain_tsubFV x y v t@(TExists w t_w t') 
+               = () ? lem_chain_tsubFV x y v t_w
+                    ? lem_chain_tsubFV x y v t'
+
 {-@ lem_commute_tsubFV_unbindT :: x:Vname -> y:Vname -> z:Vname 
         -> { z':Vname | z' != x } -> t:Type
         -> {pf:_ | tsubFV x (FV y) (unbindT z z' t) == unbindT z z' (tsubFV x (FV y) t)} / [tsize t] @-}
@@ -308,6 +378,11 @@ concatE :: Env -> Env -> Env
 concatE g Empty         = g
 concatE g (Cons x t g') = Cons x t (concatE g g')
 
+{-@ lem_empty_concatE :: g:Env -> { pf:_ | concatE Empty g == g } @-}
+lem_empty_concatE :: Env -> Proof
+lem_empty_concatE Empty        = ()
+lem_empty_concatE (Cons x t g) = () ? lem_empty_concatE g
+
 {-@ lem_in_env_concat :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
     ->  x:Vname -> {pf:_ | (in_env x (concatE g g')) <=> ((in_env x g) || (in_env x g'))} @-}
 lem_in_env_concat :: Env -> Env -> Vname -> Proof
@@ -343,6 +418,10 @@ lem_in_env_concatB :: BEnv -> BEnv -> Vname -> Proof
 lem_in_env_concatB g BEmpty         x = ()
 lem_in_env_concatB g (BCons y s g') x = () ? lem_in_env_concatB g g' x 
 
+{-@ lem_empty_concatB :: g:BEnv -> { pf:_ | concatB BEmpty g == g } @-}
+lem_empty_concatB :: BEnv -> Proof
+lem_empty_concatB BEmpty        = ()
+lem_empty_concatB (BCons x t g) = () ? lem_empty_concatB g
 
 {-@ lem_binds_cons_concatB :: g:BEnv -> g':BEnv -> x:Vname -> t_x:BType
   -> { pf:_ | Set_sub (bindsB (concatB g g')) (bindsB (concatB (BCons x t_x g) g')) && 
@@ -371,7 +450,11 @@ esubFV x e_x (Cons z t_z g) = Cons z (tsubFV x e_x t_z) (esubFV x e_x g)
 {-@ lem_in_env_esub :: g:Env -> x:Vname -> v_x:Value -> y:Vname
         -> { pf:_ | in_env y (esubFV x v_x g) <=> in_env y g } @-}
 lem_in_env_esub :: Env -> Vname -> Expr -> Vname -> Proof
-lem_in_env_esub g x v_x y = undefined  
+lem_in_env_esub Empty          x v_x y = ()
+lem_in_env_esub (Cons z t_z g) x v_x y = () ? lem_in_env_esub g x v_x y
+-- toProof ( in_env y (esubFV x v_x (Cons z t_z g))
+-- === in_env y (Cons z (tsubFV x v_x t_z) (esubFV x v_x g))
+                                               
 
 {-@ lem_erase_esubFV :: x:Vname -> v:Expr -> g:Env
         -> { pf:_ | erase_env (esubFV x v g) == erase_env g } @-}
@@ -380,6 +463,30 @@ lem_erase_esubFV x e (Empty)      = ()
 lem_erase_esubFV x e (Cons y t g) = () ? lem_erase_esubFV x e g
                                        ? lem_erase_tsubFV x e t
 
+{-@ lem_esubFV_inverse :: g0:Env -> { x:Vname | not (in_env x g0) } -> t_x:Type
+        -> { g:Env | Set_emp (Set_cap (binds g0) (binds g)) && not (in_env x g) } 
+        -> ProofOf(WFEnv (concatE (Cons x t_x g0) g))
+        -> { y:Vname | not (in_env y g) && not (in_env y g0) } 
+        -> { pf:Proof | esubFV y (FV x) (esubFV x (FV y) g) == g } @-}
+lem_esubFV_inverse :: Env -> Vname -> Type -> Env -> WFEnv -> Vname -> Proof
+lem_esubFV_inverse g0 x t_x Empty           p_g0g_wf y = ()
+lem_esubFV_inverse g0 x t_x (Cons z t_z g') p_g0g_wf y = case p_g0g_wf of
+  (WFEBind env' p_env'_wf _z _tz p_env'_tz) -> case ( x == y ) of
+    (True)  -> () ? lem_esubFV_inverse g0 x t_x g' p_env'_wf y
+                  ? lem_tsubFV_id x t_z
+    (False) -> toProof (
+          esubFV y (FV x) (esubFV x (FV y) (Cons z t_z g'))
+      === esubFV y (FV x) (Cons z (tsubFV x (FV y) t_z) (esubFV x (FV y) g'))
+      === Cons z (tsubFV y (FV x) (tsubFV x (FV y) t_z)) (esubFV y (FV x) (esubFV x (FV y) g'))
+        ? lem_esubFV_inverse g0 x t_x g' p_env'_wf y 
+      === Cons z (tsubFV y (FV x) (tsubFV x (FV y) t_z)) g'
+        ? lem_chain_tsubFV x y (FV x) (t_z ? lem_free_bound_in_env env' t_z p_env'_tz (y ? lem_in_env_concat (Cons x t_x g0) (Cons z t_z g') y ? lem_in_env_concat (Cons x t_x g0) g'))
+        ? lem_tsubFV_id x t_z
+      === Cons z t_z g' 
+      )
+-- ? lem_chain_tsubFV x y (FV x) (t_z ? lem_free_subset_binds g' t_z p_g'_tz)
+--    | otherwise  = () ? lem_esubFV_inverse g' p_g'_wf x y
+  --                    ? lem_chain_tsubFV x y (FV x) (t_z ? lem_free_subset_binds g' t_z p_g'_tz)
 
 --------------------------------------------------------------------------
 ----- | Properties of the OPERATIONAL SEMANTICS (Small Step)

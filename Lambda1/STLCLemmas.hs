@@ -301,6 +301,14 @@ lem_weaken_btyp g g' e bt (BTAnn _g e' _bt lt p_e'_bt) x t_x
             (lt `withProof` lem_binds_cons_concatB g g' x t_x)
             (lem_weaken_btyp g g' e' bt p_e'_bt x t_x)
 
+{-@ lem_weaken_many_btyp :: g:BEnv -> { g':BEnv | Set_emp (Set_cap (bindsB g) (bindsB g')) }
+        -> e:Expr -> t:BType -> ProofOf(HasBType g e t) -> ProofOf(HasBType (concatB g g') e t) @-}
+lem_weaken_many_btyp :: BEnv -> BEnv -> Expr -> BType -> HasBType -> HasBType
+lem_weaken_many_btyp g BEmpty           e t p_g_e_t = p_g_e_t
+lem_weaken_many_btyp g (BCons x t_x g') e t p_g_e_t
+    = lem_weaken_btyp (concatB g g') BEmpty e t p_gg'_e_t x t_x
+        where
+          p_gg'_e_t = lem_weaken_many_btyp g g' e t p_g_e_t
 
 -- -- -- -- -- -- -- -- ---
 -- THE SUBSTITUTION LEMMA -

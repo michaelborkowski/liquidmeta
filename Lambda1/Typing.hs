@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs #-}
 
-{-  @ LIQUID "--no-termination" @-}
-{-  @ LIQUID "--no-totality" @-}
+{- @ LIQUID "--no-termination" @-}
+{- @ LIQUID "--no-totality" @-} 
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -79,6 +79,20 @@ data HasType where
                 -> ProofOf(WFType g t) -> ProofOf(Subtype g s t) 
                 -> ProofOf(HasType g e t) @-} -- @-}
 
+{-@ lazy typSize @-}
+{-@ measure typSize @-}
+{-@ typSize :: HasType -> { v:Int | v >= 0 } @-}
+typSize :: HasType -> Int
+typSize (TBC {})                             = 1
+typSize (TIC {})                             = 1
+typSize (TVar1 {})                           = 1
+typSize (TVar2 _ _ _ p_x_b _ _)              = (typSize p_x_b)   + 1
+typSize (TPrm {})                            = 1
+typSize (TAbs _ _ _ _ _ _ _ p_e_b')          = (typSize p_e_b')  + 1
+typSize (TApp _ _ _ _ _ p_e_bb' _ p_e'_b)    = (typSize p_e_bb') + (typSize p_e'_b)   + 1
+typSize (TLet _ _ _ p_ex_b _ _ _ _ _ p_e_b') = (typSize p_ex_b)  + (typSize p_e_b')   + 1
+typSize (TAnn _ _ _ p_e_b)                   = (typSize p_e_b)   + 1
+typSize (TSub _ _ _ p_e_s _ _ p_s_t)         = (typSize p_e_s)   + (subtypSize p_s_t) + 1
 
 ------------------------------------------------------------------------------
 ----- | SUBTYPING
@@ -95,12 +109,14 @@ data Subtype where
                -> Subtype -> Subtype
     SBind :: Env -> Vname -> Type -> Type -> Type -> Vname -> Subtype -> Subtype
 
+-- edited SFunc 5/5/20: was -> { x2:Vname | not (in_Env x2 g) }. x2 is a BV so there's no
+--     possibility for collision with the FV's in the environment g.
 {-@ data Subtype where
     SBase :: g:Env -> v1:Vname -> b:Base -> p1:Pred -> v2:Vname -> p2:Pred 
                -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p2)) }
                -> ProofOf(Entails ( Cons y (TRefn b v1 p1) g) (unbind v2 y p2))
                -> ProofOf(Subtype g (TRefn b v1 p1) (TRefn b v2 p2))
- |  SFunc :: g:Env -> x1:Vname -> s1:Type -> { x2:Vname | not (in_env x2 g) } -> s2:Type
+ |  SFunc :: g:Env -> x1:Vname -> s1:Type -> x2:Vname -> s2:Type
                -> ProofOf(Subtype g s2 s1) -> t1:Type -> t2:Type
                -> { y:Vname | not (in_env y g) && not (Set_mem y (free t1)) 
                                                && not (Set_mem y (free t2)) }
@@ -109,12 +125,22 @@ data Subtype where
  |  SWitn :: g:Env -> e:Value  -> t_x:Type -> ProofOf(HasType g e t_x) 
                -> t:Type -> x:Vname -> t':Type -> ProofOf(Subtype g t (tsubBV x e t'))
                -> ProofOf(Subtype g t (TExists x t_x t'))
- |  SBind :: g:Env -> x:Vname -> t_x:Type -> t:Type -> {t':Type | not Set_mem x (free t')} 
+ |  SBind :: g:Env -> x:Vname -> t_x:Type -> t:Type -> {t':Type | not Set_mem x (tfreeBV t')} 
                -> { y:Vname | not (in_env y g) && not (Set_mem y (free t))
                                                && not (Set_mem y (free t')) }
                -> ProofOf(Subtype (Cons y t_x g) (unbindT x y t) t')
                -> ProofOf(Subtype g (TExists x t_x t) t')
-@-} 
+@-}
+
+{-@ lazy subtypSize @-}
+{-@ measure subtypSize @-}
+{-@ subtypSize :: Subtype -> { v:Int | v >= 0 } @-}
+subtypSize :: Subtype -> Int
+subtypSize (SBase {})                              = 1
+subtypSize (SFunc _ _ _ _ _ p_s2_s1 _ _ _ p_t1_t2) = (subtypSize p_s2_s1) + (subtypSize p_t1_t2) + 1
+subtypSize (SWitn _ _ _ p_e_tx _ _ _ p_t_t')       = (subtypSize p_t_t')  + (typSize p_e_tx)     + 1
+subtypSize (SBind _ _ _ _ _ _ p_t_t')              = (subtypSize p_t_t')  + 1
+ 
 
 {-@ lem_erase_subtype :: g:Env -> t1:Type -> t2:Type -> ProofOf(Subtype g t1 t2)
                -> { pf:_ | erase t1 == erase t2 } @-}
@@ -146,23 +172,41 @@ lem_erase_th_sub g t1 t2 p_t1_t2 th = toProof ( erase (ctsubst th t1)
 -------------------------------------------------------------------------
 
 -- closing substitutions (i.e. th(x), th(e), th(t)) proceed from the top/right of
---   the typing env downwards/leftwards
+--   the typing env downwards/leftwards. In order for a closing substitution to be
+--   "well formed" it must be an element of the denotation the corresponding enivornment
 
 data CSubst = CEmpty
             | CCons Vname Expr CSubst
+  deriving (Show)
 {-@ data CSubst  where
     CEmpty :: CSubst
-  | CCons  :: x:Vname -> v:Value -> th:CSubst -> CSubst @-}
+  | CCons  :: x:Vname -> { v:Value | Set_emp (fv v) } -> { th:CSubst | not (in_csubst x th ) } 
+                      -> { th':CSubst | bindsC th' == Set_cup (Set_sng x) (bindsC th) } @-}
 
 {-@ reflect bindsC @-}
 bindsC :: CSubst -> S.Set Vname
 bindsC CEmpty         = S.empty
 bindsC (CCons x v th) = S.union (S.singleton x) (bindsC th)
 
-{-@ measure uniqueC @-}
+{-@ reflect in_csubst @-}
+in_csubst :: Vname -> CSubst -> Bool
+in_csubst x th = S.member x (bindsC th)
+
+{-@ reflect bound_inC @-}
+bound_inC :: Vname -> Expr -> CSubst -> Bool
+bound_inC x v CEmpty                              = False
+bound_inC x v (CCons y v' th) | (x == y)          = (v == v')
+                              | otherwise         = bound_inC x v th
+
+{-{-@ measure uniqueC @-}
 uniqueC :: CSubst -> Bool
 uniqueC CEmpty         = True
 uniqueC (CCons x v th) = (uniqueC th) && not (S.member x (bindsC th))
+
+{-@ lem_env_uniqueC :: th:CSubst -> { pf:_ | uniqueC th } @-}
+lem_env_uniqueC :: CSubst -> Proof
+lem_env_uniqueC CEmpty         = ()
+lem_env_uniqueC (CCons x v th) = () ? lem_env_uniqueC th-}
 
 {-@ reflect csubst @-}
 csubst :: CSubst -> Expr -> Expr
@@ -176,9 +220,27 @@ ctsubst CEmpty         t = t
 ctsubst (CCons x v th) t = ctsubst th (tsubFV x v t)
 
 {-@ reflect concatCS @-}
+{-@ concatCS :: th:CSubst -> { th':CSubst | Set_emp (Set_cap (bindsC th) (bindsC th')) }
+                          -> { thC:CSubst | bindsC thC == Set_cup (bindsC th) (bindsC th') } @-}
 concatCS :: CSubst -> CSubst -> CSubst
 concatCS th CEmpty          = th
 concatCS th (CCons x v th') = CCons x v (concatCS th th')
+
+{-@ lem_in_csubst_concatCS :: th:CSubst -> { th':CSubst | Set_emp (Set_cap (bindsC th) (bindsC th')) }   
+      -> x:Vname -> {pf:_ | (in_csubst x (concatCS th th')) <=> ((in_csubst x th) || (in_csubst x th'))} @-} 
+lem_in_csubst_concatCS :: CSubst -> CSubst -> Vname -> Proof
+lem_in_csubst_concatCS th CEmpty          x = () 
+lem_in_csubst_concatCS th (CCons y v th') x = () ? lem_in_csubst_concatCS th th' x 
+
+{-@ lem_binds_cons_concatCS :: th:CSubst -> {  th':CSubst | Set_emp (Set_cap (bindsC th) (bindsC th')) }
+      -> { x:Vname | not (Set_mem x (bindsC th)) && not (Set_mem x (bindsC th')) } 
+      -> { v_x:Value | Set_emp (fv v_x) }
+      -> { pf:_ | Set_sub (bindsC (concatCS th th')) (bindsC (concatCS (CCons x v_x th) th')) &&
+             bindsC (concatCS (CCons x v_x th) th') == Set_cup (Set_cup (bindsC th) (Set_sng x)) (bindsC th') } @-}
+lem_binds_cons_concatCS :: CSubst -> CSubst -> Vname -> Expr -> Proof
+lem_binds_cons_concatCS th CEmpty          x v_x = ()
+lem_binds_cons_concatCS th (CCons y s th') x v_x = () ? lem_binds_cons_concatCS th th' x v_x
+
 
   --- various distributive properties of csubst and ctsubst
 
@@ -249,6 +311,13 @@ lem_ctsubst_exis (CCons y v th) x t_x t
 
   --- Various properties of csubst/ctsubst and free/bound variables
 
+{-@ lem_csubst_binds :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th) 
+        -> { pf:_ | binds g == bindsC th } @-}
+lem_csubst_binds :: Env -> CSubst -> DenotesEnv -> Proof
+lem_csubst_binds g th DEmp                                            = ()
+lem_csubst_binds g th (DExt g' th' den_g'_th' x t_x v_x den_th'tx_vx) 
+    = () ? lem_csubst_binds g' th' den_g'_th'
+
 {-@ lem_csubst_nofv :: th:CSubst -> { e:Expr | Set_emp (fv e) }
         -> { pf:_ | csubst th e == e } @-}
 lem_csubst_nofv :: CSubst -> Expr -> Proof
@@ -283,7 +352,8 @@ lem_csubst_value :: CSubst -> Expr -> Proof
 lem_csubst_value (CEmpty)         v = ()
 lem_csubst_value (CCons y v_y th) v = () ? lem_csubst_value th (subFV y v_y v)
 
-{-@ lem_ctsubst_head_not_free :: x:Vname -> v_x:Value -> th:CSubst 
+{-@ lem_ctsubst_head_not_free :: x:Vname -> { v_x:Value | Set_emp (fv v_x) } 
+        -> { th:CSubst | not (Set_mem x (bindsC th)) }
         -> { t:Type | not (Set_mem x (free t)) } 
         -> { pf:_ | ctsubst (CCons x v_x th) t == ctsubst th t } @-}
 lem_ctsubst_head_not_free :: Vname -> Expr -> CSubst -> Type -> Proof
@@ -315,28 +385,30 @@ lem_ctsubst_tsubBV x v bt pf_v_b (CCons y v_y th) t
 
 {-@ lem_csubst_and_unbind :: x:Vname -> y:Vname 
            -> v:Value -> bt:BType -> ProofOf(HasBType BEmpty v bt)
-           -> th:CSubst -> { p:Expr | not (Set_mem y (fv p)) }
+           -> { th:CSubst | not (Set_mem y (bindsC th)) } -> { p:Expr | not (Set_mem y (fv p)) }
            -> { pf:_ | csubst (CCons y v th) (unbind x y p) == subBV x v (csubst th p) } @-}
 lem_csubst_and_unbind :: Vname -> Vname -> Expr -> BType -> HasBType -> CSubst -> Expr -> Proof
-lem_csubst_and_unbind x y v b pf_v_b th p = toProof ( csubst (CCons y v th) (unbind x y p)
-                                                  === csubst th (subFV y v (unbind x y p))
-                                                    ? lem_subFV_unbind x y v p
-                                                  === csubst th (subBV x v p)
-                                                    ? lem_csubst_subBV x v b pf_v_b th p
-                                                  === subBV x v (csubst th p) )
+lem_csubst_and_unbind x y v b pf_v_b th p = toProof ( 
+       csubst (CCons y (v  ? lem_fv_subset_bindsB BEmpty v b pf_v_b) th) (unbind x y p) 
+   === csubst th (subFV y v (unbind x y p))
+     ? lem_subFV_unbind x y v p
+   === csubst th (subBV x v p)
+     ? lem_csubst_subBV x v b pf_v_b th p
+   === subBV x v (csubst th p) )
 
 {-@ lem_ctsubst_and_unbindT :: x:Vname -> y:Vname
            -> v:Value -> bt:BType -> ProofOf(HasBType BEmpty v bt)
-           -> th:CSubst -> { t:Type | not (Set_mem y (free t)) }
+           -> { th:CSubst | not (Set_mem y (bindsC th)) } -> { t:Type | not (Set_mem y (free t)) }
            -> { pf:_ | ctsubst (CCons y v th) (unbindT x y t) == tsubBV x v (ctsubst th t) } @-}
 lem_ctsubst_and_unbindT :: Vname -> Vname -> Expr -> BType -> HasBType 
            -> CSubst -> Type -> Proof
-lem_ctsubst_and_unbindT x y v bt pf_v_b th t = toProof ( ctsubst (CCons y v th) (unbindT x y t)
-                                                   === ctsubst th (tsubFV y v (unbindT x y t))
-                                                     ? lem_tsubFV_unbindT x y v t
-                                                   === ctsubst th (tsubBV x v t)
-                                                     ? lem_ctsubst_tsubBV x v bt pf_v_b th t
-                                                   === tsubBV x v (ctsubst th t) )
+lem_ctsubst_and_unbindT x y v bt pf_v_b th t = toProof ( 
+       ctsubst (CCons y (v ? lem_fv_subset_bindsB BEmpty v bt pf_v_b) th) (unbindT x y t)
+   === ctsubst th (tsubFV y v (unbindT x y t))
+     ? lem_tsubFV_unbindT x y v t
+   === ctsubst th (tsubBV x v t)
+     ? lem_ctsubst_tsubBV x v bt pf_v_b th t
+   === tsubBV x v (ctsubst th t) )
 
 {-@ lem_commute_ctsubst_tsubBV :: th:CSubst -> x:Vname -> v:Value -> t:Type
            -> { pf:_ | ctsubst th (tsubBV x v t) == tsubBV x (csubst th v) (ctsubst th t) } @-} 
@@ -345,6 +417,61 @@ lem_commute_ctsubst_tsubBV (CEmpty)         x v t = ()
 lem_commute_ctsubst_tsubBV (CCons y v_y th) x v t 
     = () ? lem_commute_tsubFV_tsubBV x v y v_y t
          ? lem_commute_ctsubst_tsubBV th x (subFV y v_y v) (tsubFV y v_y t)
+
+{-@ lem_csubst_no_more_fv :: th:CSubst -> { v_x:Value | Set_sub (fv v_x) (bindsC th) }
+        -> { pf:_ | Set_emp (fv (csubst th v_x)) } @-}
+lem_csubst_no_more_fv :: CSubst -> Expr -> Proof
+lem_csubst_no_more_fv CEmpty v_x           = ()
+lem_csubst_no_more_fv (CCons y v_y th) v_x = () ? lem_csubst_no_more_fv th (subFV y v_y v_x)
+
+{-@ lem_csubst_subFV :: th:CSubst -> { x:Vname | not (in_csubst x th) } 
+        -> { v_x:Value | Set_sub (fv v_x) (bindsC th) } -> e:Expr
+        -> { pf:_ | csubst th (subFV x v_x e) == csubst th (subFV x (csubst th v_x) e) } @-}
+lem_csubst_subFV :: CSubst -> Vname -> Expr -> Expr -> Proof
+lem_csubst_subFV  CEmpty            x v_x e = ()
+lem_csubst_subFV  (CCons y v_y th)  x v_x e = () ? toProof (-- case den_g_th of
+  -- (DExt _ _ _ _ _ _ den_thty_vy) -> () ? toProof (
+        csubst (CCons y v_y th) (subFV x (csubst (CCons y v_y th) v_x 
+                                    ? lem_csubst_value (CCons y v_y th) v_x) e)
+        ? lem_csubst_value (CCons y v_y th) v_x
+    === csubst th (subFV y v_y (subFV x (csubst (CCons y v_y th) v_x) e))
+        ? lem_commute_subFV x (csubst (CCons y v_y th) v_x) y v_y e
+        ? lem_subFV_value y v_y (csubst (CCons y v_y th) v_x)
+    === csubst th (subFV x (subFV y v_y (csubst (CCons y v_y th) v_x)) (subFV y v_y e))   
+        ? lem_csubst_no_more_fv (CCons y v_y th) v_x
+    === csubst th (subFV x (csubst (CCons y v_y th) v_x) (subFV y v_y e))
+        ? lem_csubst_value th (subFV y v_y v_x ? lem_subFV_value y v_y v_x)
+    === csubst th (subFV x (csubst th (subFV y v_y v_x)) (subFV y v_y e))
+        ? lem_csubst_subFV th x (subFV y v_y v_x) (subFV y v_y e)
+    === csubst th (subFV x (subFV y v_y v_x) (subFV y v_y e))
+        ? lem_commute_subFV x v_x y v_y e 
+    === csubst th (subFV y v_y (subFV x v_x e))
+    === csubst (CCons y v_y th) (subFV x v_x e) )
+    
+{-@ lem_ctsubst_tsubFV :: th:CSubst -> { x:Vname | not (in_csubst x th) } 
+        -> { v_x:Value | Set_sub (fv v_x) (bindsC th) } -> t:Type
+        -> { pf:_ | ctsubst th (tsubFV x v_x t) == ctsubst th (tsubFV x (csubst th v_x) t) } @-}
+lem_ctsubst_tsubFV :: CSubst -> Vname -> Expr -> Type -> Proof
+lem_ctsubst_tsubFV  CEmpty            x v_x t = ()
+lem_ctsubst_tsubFV  (CCons y v_y th)  x v_x t = () ? toProof (-- case den_g_th of
+  -- (DExt _ _ _ _ _ _ den_thty_vy) -> () ? toProof (
+        ctsubst (CCons y v_y th) (tsubFV x (csubst (CCons y v_y th) v_x 
+                                     ? lem_csubst_value (CCons y v_y th) v_x) t)
+        ? lem_csubst_value (CCons y v_y th) v_x
+    === ctsubst th (tsubFV y v_y (tsubFV x (csubst (CCons y v_y th) v_x) t))
+        ? lem_commute_tsubFV x (csubst (CCons y v_y th) v_x) y v_y t
+        ? lem_subFV_value y v_y (csubst (CCons y v_y th) v_x)
+    === ctsubst th (tsubFV x (subFV y v_y (csubst (CCons y v_y th) v_x)) (tsubFV y v_y t))   
+        ? lem_csubst_no_more_fv (CCons y v_y th) v_x
+    === ctsubst th (tsubFV x (csubst (CCons y v_y th) v_x) (tsubFV y v_y t))
+        ? lem_csubst_value th (subFV y v_y v_x ? lem_subFV_value y v_y v_x)
+    === ctsubst th (tsubFV x (csubst th (subFV y v_y v_x)) (tsubFV y v_y t))
+        ? lem_ctsubst_tsubFV th x (subFV y v_y v_x) (tsubFV y v_y t)
+    === ctsubst th (tsubFV x (subFV y v_y v_x) (tsubFV y v_y t))
+        ? lem_commute_tsubFV x v_x y v_y t 
+    === ctsubst th (tsubFV y v_y (tsubFV x v_x t))
+    === ctsubst (CCons y v_y th) (tsubFV x v_x t) )
+    
 
 {-@ lem_erase_ctsubst :: th:CSubst -> t:Type 
                -> { pf:_ | erase (ctsubst th t) == erase t } @-}
@@ -356,6 +483,96 @@ lem_erase_ctsubst (CCons y v th) t = toProof ( erase (ctsubst (CCons y v th) t)
                                            === erase (tsubFV y v t)
                                              ? lem_erase_tsubFV y v t
                                            === erase t )
+
+  --- Closing Substitutions and Technical Operations
+
+
+{-@ reflect change_varCS @-}
+{-@ change_varCS :: th:CSubst ->  { x:Vname | in_csubst x th } 
+        -> { y:Vname | y == x || not (in_csubst y th) } 
+        -> { th':CSubst | bindsC th' == Set_cup (Set_sng y) (Set_dif (bindsC th) (Set_sng x))} @-} 
+change_varCS :: CSubst -> Vname -> Vname -> CSubst
+change_varCS CEmpty           x y = CEmpty
+change_varCS (CCons z v_z th) x y | ( x == z ) = CCons y v_z th
+                                  | otherwise  = CCons z v_z (change_varCS th x y)
+
+{-@ reflect remove_fromCS @-}
+{-@ remove_fromCS :: th:CSubst -> { x:Vname | in_csubst x th}
+        -> { th':CSubst | bindsC th' == Set_dif (bindsC th) (Set_sng x) } @-}
+remove_fromCS :: CSubst -> Vname -> CSubst
+remove_fromCS (CCons z v_z th) x | ( x == z ) = th
+                                 | otherwise  = CCons z v_z (remove_fromCS th x)
+
+        -- -> { e:Expr | Set_sub (fv e) (bindsC th ) && ( x == y || not (Set_mem y (fv e))) }
+{-@ lem_change_var_in_csubst :: th:CSubst -> { x:Vname | in_csubst x th }
+        -> { y:Vname  | y == x || not (in_csubst y th) }
+        -> { e:Expr   | x == y || not (Set_mem y (fv e)) }
+        -> { pf:Proof | csubst th e == csubst (change_varCS th x y) (subFV x (FV y) e) } @-}
+lem_change_var_in_csubst :: CSubst -> Vname -> Vname -> Expr -> Proof
+lem_change_var_in_csubst (CCons z v_z th) x y e = case (x == z) of
+  (True)  -> toProof ( csubst (change_varCS (CCons z v_z th) x y) (subFV x (FV y) e)
+                   === csubst (CCons y v_z th) (subFV x (FV y) e)
+                   === csubst th (subFV y v_z (subFV x (FV y) e)) 
+                     ? lem_chain_subFV x y v_z e 
+                   === csubst th (subFV x v_z e)	
+                   === csubst (CCons z v_z th) e  ) 
+  (False) -> toProof ( csubst (change_varCS (CCons z v_z th) x y) (subFV x (FV y) e)
+                   === csubst (CCons z v_z (change_varCS th x y)) (subFV x (FV y) e)
+                   === csubst (change_varCS th x y) (subFV z v_z (subFV x (FV y) e))
+                     ? lem_commute_subFV x (FV y) z v_z e
+                   === csubst (change_varCS th x y) (subFV x (subFV z v_z (FV y)) (subFV z v_z e)) 
+                     ? lem_change_var_in_csubst th x y (subFV z v_z e) 
+                   === csubst th (subFV z v_z e)
+                   === csubst (CCons z v_z th) e )
+
+        -- -> { t:Type | Set_sub (free t) (bindsC th ) && ( x == y || not (Set_mem y (free t))) }
+{-@ lem_change_var_in_ctsubst :: th:CSubst -> { x:Vname | in_csubst x th }
+        -> { y:Vname  | y == x || not (in_csubst y th) }
+        -> { t:Type   | x == y || not (Set_mem y (free t)) }
+        -> { pf:Proof | ctsubst th t == ctsubst (change_varCS th x y) (tsubFV x (FV y) t) } @-}
+lem_change_var_in_ctsubst :: CSubst -> Vname -> Vname -> Type -> Proof
+lem_change_var_in_ctsubst (CCons z v_z th) x y t = case (x == z) of
+  (True)  -> () ? lem_chain_tsubFV x y v_z t 
+  (False) -> () ? lem_commute_tsubFV x (FV y) z v_z t
+                ? lem_change_var_in_ctsubst th x y (tsubFV z v_z t)
+
+{-@ lem_change_var_back :: th:CSubst -> { x:Vname | in_csubst x th }
+        -> { y:Vname | (y == x || not (in_csubst y th)) } 
+        -> { pf:Proof | change_varCS (change_varCS th x y) y x == th } @-}
+lem_change_var_back :: CSubst -> Vname -> Vname -> Proof
+lem_change_var_back CEmpty           x y              = ()
+lem_change_var_back (CCons z v_z th) x y | ( x == z ) = ()
+                                         | otherwise  = () ? lem_change_var_back th x y
+
+--        -> { e:Expr | Set_sub (fv e) (bindsC th) && not (Set_mem x (fv e)) }
+{-@ lem_remove_csubst :: th:CSubst -> { x:Vname | in_csubst x th}
+        -> { e:Expr | not (Set_mem x (fv e)) }
+        -> { pf:Proof | csubst th e == csubst (remove_fromCS th x) e } @-}
+lem_remove_csubst :: CSubst -> Vname -> Expr -> Proof
+lem_remove_csubst (CCons z v_z th) x e = case ( x == z ) of
+  (True)  -> toProof ( csubst (remove_fromCS (CCons x v_z th) x) e
+                   === csubst th e  
+                   === csubst th (subFV x v_z e)
+                   === csubst (CCons x v_z th) e)
+  (False) -> toProof ( csubst (remove_fromCS (CCons z v_z th) x) e
+                   === csubst (CCons z v_z (remove_fromCS th x)) e
+                     ? lem_remove_csubst th x (subFV z v_z e)
+                   === csubst (CCons z v_z th) e )
+
+{-@ lem_remove_ctsubst :: th:CSubst -> { x:Vname | in_csubst x th}
+        -> { t:Type | not (Set_mem x (free t)) }
+        -> { pf:Proof | ctsubst th t == ctsubst (remove_fromCS th x) t } @-}
+lem_remove_ctsubst :: CSubst -> Vname -> Type -> Proof
+lem_remove_ctsubst (CCons z v_z th) x t = case ( x == z ) of
+  (True)  -> toProof ( ctsubst (remove_fromCS (CCons x v_z th) x) t
+                   === ctsubst th t  
+                   === ctsubst th (tsubFV x v_z t)
+                   === ctsubst (CCons x v_z th) t)
+  (False) -> toProof ( ctsubst (remove_fromCS (CCons z v_z th) x) t
+                   === ctsubst (CCons z v_z (remove_fromCS th x)) t
+                     ? lem_remove_ctsubst th x (tsubFV z v_z t)
+                   === ctsubst (CCons z v_z th) t )
+
 
 -------------------------------------------------------------------------
 ----- | ENTAILMENTS and DENOTATIONAL SEMANTICS 
@@ -446,6 +663,76 @@ data DenotesEnv where
     DEmp :: ProofOf(DenotesEnv Empty CEmpty)
  |  DExt :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th) 
                -> { x:Vname | not (in_env x g) } -> t:Type 
-               -> v:Value -> ProofOf(Denotes (ctsubst th t) v)
+               -> { v:Value | Set_emp (fv v) } -> ProofOf(Denotes (ctsubst th t) v)
                -> ProofOf(DenotesEnv (Cons x t g) (CCons x v th)) @-}
 
+{-@ lem_binds_env_th :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th) -> { pf:_ | binds g == bindsC th } @-}
+lem_binds_env_th :: Env -> CSubst -> DenotesEnv -> Proof
+lem_binds_env_th g th DEmp                                      = ()
+lem_binds_env_th g th (DExt g' th' den_g'_th' x t v den_th't_v) = () ? lem_binds_env_th g' th' den_g'_th'
+
+{-@ lem_change_var_denote :: th:CSubst -> t:Type -> { v:Value | Set_emp (fv v) }
+      -> ProofOf(Denotes (ctsubst th t) v) -> { x:Vname | (in_csubst x th) } 
+      -> { y:Vname | y == x || ( not (in_csubst y th) && not (Set_mem y (free t))) } 
+      -> ProofOf(Denotes (ctsubst (change_varCS th x y) (tsubFV x (FV y) t)) v ) @-}
+lem_change_var_denote :: CSubst -> Type -> Expr -> Denotes -> Vname -> Vname -> Denotes
+lem_change_var_denote th t v den_tht_v x y = den_tht_v ? lem_change_var_in_ctsubst th x y t
+
+{-@ lem_remove_var_denote :: th:CSubst -> t:Type -> { v:Value | Set_emp (fv v) }
+      -> ProofOf(Denotes (ctsubst th t) v) -> { x:Vname | in_csubst x th && not (Set_mem x (free t)) } 
+      -> ProofOf(Denotes (ctsubst (remove_fromCS th x) t) v) @-}
+lem_remove_var_denote :: CSubst -> Type -> Expr -> Denotes -> Vname -> Denotes
+lem_remove_var_denote th t v den_tht_v x = den_tht_v ? lem_remove_ctsubst th x t
+
+{-@ lem_change_var_denote_env :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+      -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) }
+      -> ProofOf(WFEnv (concatE (Cons x t_x g) g'))
+      -> th:CSubst -> ProofOf(DenotesEnv (concatE (Cons x t_x g) g') th)
+      -> { y:Vname | (y == x || not (in_csubst y th)) && not (in_env y g) && not (in_env y g') } 
+      -> ProofOf(DenotesEnv (concatE (Cons y t_x g) (esubFV x (FV y) g')) (change_varCS th x y)) @-}
+lem_change_var_denote_env :: Env -> Vname -> Type -> Env -> WFEnv -> CSubst 
+                                 -> DenotesEnv -> Vname -> DenotesEnv
+lem_change_var_denote_env g x t_x Empty            p_env_wf th den_env_th y  = case den_env_th of
+  (DExt env' th' den_env'_th' _x _tx v_x den_th'tx_vx) -> DExt env' th' den_env'_th' y t_x v_x den_th'tx_vx
+lem_change_var_denote_env g x_ t_x (Cons z t_z g') p_env_wf th den_env_th y_ = case den_env_th of
+  (DExt env' th' den_env'_th' _z _tz v_z den_th'tz_vz) -- env' == concatE (Cons x t_x g) g'
+    -> DExt (concatE (Cons y t_x g) (esubFV x (FV y) g')) (change_varCS th' x y) den_env'y_th'y
+            z (tsubFV x (FV y) t_z) v_z den_th'ytzy_vz
+      where
+        (WFEBind _ p_env'_wf _ _ p_env'_tz) = p_env_wf -- tODO remove this
+        x              = x_ ? lem_binds_env_th (concatE (Cons x_ t_x g) g') th' den_env'_th'
+                            ? lem_in_env_concat g g' x_
+        y              = y_ ? lem_binds_env_th (concatE (Cons x t_x g) g') th' den_env'_th' 
+                            ? lem_in_env_concat g g' y_
+                            ? lem_in_env_concat (Cons x t_x g) g' y_
+                            ? lem_free_subset_binds (concatE (Cons x t_x g) g') t_z p_env'_tz 
+        den_env'y_th'y = lem_change_var_denote_env g x t_x g' p_env'_wf th' den_env'_th' y 
+        den_th'ytzy_vz = lem_change_var_denote th' t_z v_z den_th'tz_vz x y
+
+{-@ lem_remove_var_denote_env :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+       -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) }
+       -> ProofOf(WFEnv (concatE g g'))
+       -> th:CSubst -> ProofOf(DenotesEnv (concatE (Cons x t_x g) g') th)
+       -> ProofOf(DenotesEnv (concatE g g') (remove_fromCS th x )) @-}
+lem_remove_var_denote_env :: Env -> Vname -> Type -> Env -> WFEnv -> CSubst 
+                                 -> DenotesEnv -> DenotesEnv
+lem_remove_var_denote_env g x  t_x Empty           p_g'g_wf  th den_env_th = case den_env_th of
+  (DExt env' th' den_env'_th'_ _ _tx v_x den_th'tx_vx) -> den_env'_th'
+            ? toProof ( remove_fromCS (CCons x v_x th') x === th' ) 
+            ? toProof ( CCons x v_x th' === th )
+      where
+        den_env'_th' = den_env'_th'_ ? lem_binds_env_th env' th' den_env'_th'_
+lem_remove_var_denote_env g x_ t_x (Cons z t_z g') p_zg'g_wf th den_env_th = case den_env_th of
+  (DEmp)                                               -> impossible "th != CEmpty"
+  (DExt env' th' den_env'_th' _z _tz v_z den_th'tz_vz) -- env' == concatE (Cons x t_x g) g' 
+    -> DExt (concatE g g') (remove_fromCS th' x) den_env''_th'' z t_z v_z den_th''tz_vz
+            ? toProof ( remove_fromCS (CCons z v_z th') x === CCons z v_z (remove_fromCS th' x) )
+            ? toProof ( CCons z v_z th' === th )
+      where
+        (WFEBind _ p_g'g_wf _ _ p_g'g_tz) = p_zg'g_wf
+        x              = x_ ? lem_binds_env_th (concatE (Cons x_ t_x g) g') th' den_env'_th'
+                            ? lem_in_env_concat g g' x_ 
+                            ? lem_in_env_concat g (Cons z t_z g') x_
+                            ? lem_free_bound_in_env (concatE g g') t_z p_g'g_tz x_
+        den_env''_th'' = lem_remove_var_denote_env g x t_x g' p_g'g_wf th' den_env'_th'
+        den_th''tz_vz  = lem_remove_var_denote th' t_z v_z den_th'tz_vz x
