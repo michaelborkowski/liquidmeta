@@ -122,6 +122,24 @@ lem_subFV_id x (Annot e' t)
                      ? lem_tsubFV_id x t
 lem_subFV_id x (Crash)  = () 
 
+{-@ lem_subFV_notin :: x:Vname -> v:Value -> { e:Expr | not (Set_mem x (fv e)) } 
+                               -> { pf:_ | subFV x v e == e } / [esize e] @-}
+lem_subFV_notin :: Vname -> Expr -> Expr -> Proof
+lem_subFV_notin x v (Bc b)          = ()
+lem_subFV_notin x v (Ic n)          = ()
+lem_subFV_notin x v (Prim c)        = ()
+lem_subFV_notin x v (BV y)          = ()
+lem_subFV_notin x v (FV y)          = ()
+lem_subFV_notin x v e@(Lambda w e') = () ? lem_subFV_notin x v e'
+lem_subFV_notin x v (App e1 e2)     = () ? lem_subFV_notin x v e1
+                                         ? lem_subFV_notin x v e2
+lem_subFV_notin x v e@(Let w ew e') = () ? lem_subFV_notin x v ew
+                                         ? lem_subFV_notin x v e'
+lem_subFV_notin x v (Annot e' t)    = () ? lem_subFV_notin x v e'
+                                         ? lem_tsubFV_notin x v t
+lem_subFV_notin x v (Crash)         = () 
+
+
 {-@ lem_chain_subFV :: x:Vname -> y:Vname -> v:Value
       -> { e:Expr | x == y || not (Set_mem y (fv e)) }
       -> { pf:_ | subFV x v e == subFV y v (subFV x (FV y) e) } / [esize e] @-}
@@ -301,6 +319,15 @@ lem_tsubFV_id x t@(TFunc w t_w t')
 lem_tsubFV_id x t@(TExists w t_w t')
                = () ? lem_tsubFV_id x t_w
                     ? lem_tsubFV_id x t'
+
+{-@ lem_tsubFV_notin :: x:Vname -> v:Value -> { t:Type | not (Set_mem x (free t)) } 
+                               -> { pf:_ | tsubFV x v t == t } / [tsize t] @-}
+lem_tsubFV_notin :: Vname -> Expr -> Type -> Proof
+lem_tsubFV_notin x v t@(TRefn b w p)      = () ? lem_subFV_notin x v p
+lem_tsubFV_notin x v t@(TFunc w t_w t')   = () ? lem_tsubFV_notin x v t_w
+                                               ? lem_tsubFV_notin x v t'
+lem_tsubFV_notin x v t@(TExists w t_w t') = () ? lem_tsubFV_notin x v t_w
+                                               ? lem_tsubFV_notin x v t'
 
 {-@ lem_chain_tsubFV :: x:Vname -> y:Vname -> v:Value 
         -> { t:Type | x == y || not (Set_mem y (free t)) }
@@ -484,9 +511,6 @@ lem_esubFV_inverse g0 x t_x (Cons z t_z g') p_g0g_wf y = case p_g0g_wf of
         ? lem_tsubFV_id x t_z
       === Cons z t_z g' 
       )
--- ? lem_chain_tsubFV x y (FV x) (t_z ? lem_free_subset_binds g' t_z p_g'_tz)
---    | otherwise  = () ? lem_esubFV_inverse g' p_g'_wf x y
-  --                    ? lem_chain_tsubFV x y (FV x) (t_z ? lem_free_subset_binds g' t_z p_g'_tz)
 
 --------------------------------------------------------------------------
 ----- | Properties of the OPERATIONAL SEMANTICS (Small Step)
@@ -501,6 +525,18 @@ lemma_evals_trans e1 e2 e3 (AddStep _e1 e p_e1e _e2 p_ee2) p_e2e3 = p_e1e3
   where
     p_e1e3 = AddStep e1 e p_e1e e3 p_ee3
     p_ee3  = lemma_evals_trans e e2 e3 p_ee2 p_e2e3
+
+{-@ lem_step_evals :: e:Expr -> e':Expr -> ProofOf(Step e e') -> ProofOf(EvalsTo e e') @-}
+lem_step_evals :: Expr -> Expr -> Step -> EvalsTo
+lem_step_evals e e' st_e_e' = AddStep e e' st_e_e' e' (Refl e')
+
+{-@ lemma_add_step_after :: e:Expr -> e':Expr -> ProofOf(EvalsTo e e') -> e'':Expr
+                       -> ProofOf(Step e' e'') -> ProofOf(EvalsTo e e'') @-}
+lemma_add_step_after :: Expr -> Expr -> EvalsTo -> Expr -> Step -> EvalsTo
+lemma_add_step_after e e' (Refl _e)                         e'' st_e'_e'' 
+  = AddStep e' e'' st_e'_e'' e'' (Refl e'')
+lemma_add_step_after e e' (AddStep _ e1 st_e_e1 _ ev_e1_e') e'' st_e'_e''
+  = AddStep e e1 (st_e_e1) e'' (lemma_add_step_after e1 e' ev_e1_e' e'' st_e'_e'')
 
 {-@ lemma_app_many :: e:Expr -> e':Expr -> v':Expr -> ProofOf(EvalsTo e e')
                        -> ProofOf(EvalsTo (App e v') (App e' v')) @-}
@@ -619,7 +655,7 @@ lemma_evals_freeBV e e' (Refl _)                             = ()
 lemma_evals_freeBV e e' (AddStep _e e1 st_e_e1 _e' ev_e1_e') = () ? lemma_step_freeBV  e  e1 st_e_e1
                                                                   ? lemma_evals_freeBV e1 e' ev_e1_e'
 
--- Determinism of the Operational Semantics
+-- Basic sanity properties of the Operational Semantics
 {-@ lem_value_stuck :: e:Expr -> e':Expr -> ProofOf(Step e e') 
                    -> { proof:_ | not (isValue e) } @-}
 lem_value_stuck :: Expr -> Expr -> Step -> Proof
@@ -655,6 +691,7 @@ lem_value_stuck e  e' (EAnnV _ _)
     = case e of 
         (Annot _ _)  -> ()
         (_)          -> impossible ""
+
 
 -----------------------------------------------------------------------------------------
 ----- | Properties of JUDGEMENTS : the Bare-Typing Relation and Well-Formedness of Types

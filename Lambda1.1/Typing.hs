@@ -30,17 +30,30 @@ foo3 :: a -> Maybe a
 ----- | JUDGEMENTS : the Typing Relation and the Subtyping Relation
 -----------------------------------------------------------------------------
 
-{- @ lem_unbind_self :: b:Base -> z:Vname -> p:Pred -> x:Vname 
-        -> { pf:_ | self (TRefn b z p) x == TRefn b z (unbind z @-}
+{-@ lem_tsubFV_self1 :: z:Vname -> z':Vname -> t:Type -> { x:Vname | x == z }
+        -> { pf:_ | tsubFV z (FV z') (self t x) == self (tsubFV z (FV z') t) z' } @-}
+lem_tsubFV_self1 :: Vname -> Vname -> Type -> Vname -> Proof
+lem_tsubFV_self1 z z' (TRefn b w p) x = case b of
+  TBool -> () 
+  TInt  -> () 
+lem_tsubFV_self1 z z' t x             = ()
 
-{-@ reflect selfify @-} -- TODO: delet if possible
+{-@ lem_tsubFV_self2 :: z:Vname -> v:Value -> t:Type -> { x:Vname | x != z }
+        -> { pf:_ | tsubFV z v (self t x) == self (tsubFV z v t) x } @-}
+lem_tsubFV_self2 :: Vname -> Expr -> Type -> Vname -> Proof
+lem_tsubFV_self2 z v (TRefn b w p) x = case b of
+  TBool -> ()
+  TInt  -> ()
+lem_tsubFV_self2 z v t x             = ()
+
+{-@ reflect selfify @-} 
 {-@ selfify :: p:Pred -> b:Base -> z:Vname -> x:Vname 
-        -> { p':Pred | fv p' == Set_cup (fv p) (Set_sng x) } @-}
+        -> { p':Pred | fv p' == Set_cup (fv p) (Set_sng x) && 
+                       TRefn b z p' == self (TRefn b z p) x } @-}
 selfify :: Pred -> Base -> Vname -> Vname -> Pred
 selfify p TBool z x = App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) (FV x))
 selfify p TInt  z x = App (App (Prim And) p) (App (App (Prim Eq)  (BV z)) (FV x))
 
-{- @ self :: t:Type -> x:Vname -> { t':Type | t' == TRefn b z (selfify p b z x) && -}
 {-@ reflect self @-}
 {-@ self :: t:Type -> x:Vname -> { t':Type | Set_sub (free t') (Set_cup (free t) (Set_sng x)) &&
                                              tfreeBV t' == tfreeBV t && erase t == erase t' } @-}
@@ -49,6 +62,20 @@ self (TRefn b z p) x = case b of
   TBool -> TRefn b z (App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) (FV x)))
   TInt  -> TRefn b z (App (App (Prim And) p) (App (App (Prim Eq)  (BV z)) (FV x)))
 self t             x = t
+
+{-@ reflect equals @-}
+{-@ equals :: b:Base -> { c:Prim | Set_emp (fv (Prim c)) && Set_emp (freeBV (Prim c)) } @-}
+equals :: Base -> Prim
+equals TBool = Eqv
+equals TInt  = Eq
+
+{-@ lem_tsubFV_value_self :: b:Base -> z:Vname -> p:Pred -> { x:Vname | not (Set_mem x (fv p)) }
+        -> v:Value -> { pf:_ | tsubFV x v (self (TRefn b z p) x) 
+                                == TRefn b z (App (App (Prim And) p)
+                                                  (App (App (Prim (equals b)) (BV z)) v)) } @-}
+lem_tsubFV_value_self :: Base -> Vname -> Pred -> Vname -> Expr -> Proof
+lem_tsubFV_value_self b z p x v = toProof ( subFV x v p === p )
+
 
   --- the Typing Judgement
 
@@ -99,7 +126,7 @@ data HasType where
                 -> ProofOf(HasType g (Annot e t) t)
  |  TSub  :: g:Env -> e:Expr -> s:Type -> ProofOf(HasType g e s) -> t:Type 
                 -> ProofOf(WFType g t) -> ProofOf(Subtype g s t) 
-                -> ProofOf(HasType g e t) @-} -- @-}
+                -> ProofOf(HasType g e t) @-} 
 
 {-@ lazy typSize @-}
 {-@ measure typSize @-}
@@ -241,6 +268,24 @@ ctsubst :: CSubst -> Type -> Type
 ctsubst CEmpty         t = t
 ctsubst (CCons x v th) t = ctsubst th (tsubFV x v t)
 
+{-@ lem_unroll_ctsubst_left :: th:CSubst -> { x:Vname | not (in_csubst x th) } 
+        -> { v_x:Value | Set_emp (fv v_x) } ->  t:Type
+        -> { pf:_ | ctsubst (CCons x v_x th) t == tsubFV x v_x (ctsubst th t) } @-}
+lem_unroll_ctsubst_left :: CSubst -> Vname -> Expr -> Type -> Proof
+lem_unroll_ctsubst_left CEmpty           x v_x t = ()
+lem_unroll_ctsubst_left (CCons y v_y th) x v_x t = toProof ( ctsubst (CCons x v_x (CCons y v_y th)) t
+                                                         === ctsubst (CCons y v_y th) (tsubFV x v_x t)
+                                                         === ctsubst th (tsubFV y v_y (tsubFV x v_x t))
+                                                           ? lem_subFV_notin x v_x v_y
+                                                           ? toProof ( subFV x v_x v_y === v_y )
+                                                         === ctsubst th (tsubFV y (subFV x v_x v_y) (tsubFV x v_x t))
+                                                           ? lem_commute_tsubFV y v_y x v_x t
+                                                         === ctsubst th (tsubFV x v_x (tsubFV y v_y t))
+                                                         === ctsubst (CCons x v_x th) (tsubFV y v_y t)
+                                                           ? lem_unroll_ctsubst_left th x v_x (tsubFV y v_y t)
+                                                         === tsubFV x v_x (ctsubst th (tsubFV y v_y t))
+                                                         === tsubFV x v_x (ctsubst (CCons y v_y th) t) )
+
 {-@ reflect concatCS @-}
 {-@ concatCS :: th:CSubst -> { th':CSubst | Set_emp (Set_cap (bindsC th) (bindsC th')) }
                           -> { thC:CSubst | bindsC thC == Set_cup (bindsC th) (bindsC th') } @-}
@@ -280,6 +325,16 @@ lem_csubst_ic (CCons x v th) n = () ? lem_csubst_ic th n
 lem_csubst_prim :: CSubst -> Prim -> Proof
 lem_csubst_prim (CEmpty)       c = ()
 lem_csubst_prim (CCons x v th) c = () ? lem_csubst_prim th c
+
+{-@ lem_csubst_bv :: th:CSubst -> y:Vname -> { pf:_ | csubst th (BV y) == BV y } @-}
+lem_csubst_bv :: CSubst -> Vname -> Proof
+lem_csubst_bv (CEmpty)       y = ()
+lem_csubst_bv (CCons x v th) y = () ? lem_csubst_bv th y
+
+{-@ lem_csubst_fv :: th:CSubst -> { y:Vname | not (in_csubst y th) } -> { pf:_ | csubst th (FV y) == FV y } @-} 
+lem_csubst_fv :: CSubst -> Vname -> Proof
+lem_csubst_fv (CEmpty)       y = ()
+lem_csubst_fv (CCons x v th) y = () ? lem_csubst_fv th y 
 
 {-@ lem_csubst_lambda :: th:CSubst -> x:Vname 
         -> e:Expr -> { pf:_ | csubst th (Lambda x e) == Lambda x (csubst th e) } @-}
@@ -330,7 +385,57 @@ lem_ctsubst_exis (CEmpty)       x t_x t = ()
 lem_ctsubst_exis (CCons y v th) x t_x t 
     = () ? lem_ctsubst_exis th x (tsubFV y v t_x) (tsubFV y v t) 
 
+{-@ lem_ctsubst_self_refn :: th:CSubst -> b:Base -> z:Vname -> p:Pred -> x:Vname 
+        -> { pf:_ | ctsubst th (self (TRefn b z p) x) == 
+		        TRefn b z (App (App (Prim And) (csubst th p)) 
+                                       (App (App (Prim (equals b)) (BV z)) (csubst th (FV x)))) } @-}
+lem_ctsubst_self_refn :: CSubst -> Base -> Vname -> Pred -> Vname -> Proof
+lem_ctsubst_self_refn th b z p x  
+          = toProof ( ctsubst th (self (TRefn b z p) x)
+                  === ctsubst th (TRefn b z (App (App (Prim And) p) (App (App (Prim (equals b)) (BV z)) (FV x))))
+                    ? lem_ctsubst_refn th b z (selfify p b z x)
+                  === TRefn b z (csubst th (App (App (Prim And) p) (App (App (Prim (equals b)) (BV z)) (FV x))))
+                    ? lem_csubst_app th (App (Prim And) p) (App (App (Prim (equals b)) (BV z)) (FV x))
+                  === TRefn b z (App (csubst th (App (Prim And) p)) 
+                                     (csubst th (App (App (Prim (equals b)) (BV z)) (FV x))))
+                    ? lem_csubst_app th (Prim And) p
+                    ? lem_csubst_app th (App (Prim (equals b)) (BV z)) (FV x)
+                  === TRefn b z (App (App (csubst th (Prim And)) (csubst th p))
+                                     (App (csubst th (App (Prim (equals b)) (BV z))) (csubst th (FV x))))
+                    ? lem_csubst_prim th And 
+                    ? lem_csubst_app th (Prim (equals b)) (BV z) 
+                  === TRefn b z (App (App (Prim And) (csubst th p))
+                                     (App (App (csubst th (Prim (equals b))) (csubst th (BV z))) (csubst th (FV x))))
+                    ? lem_csubst_prim th (equals b)
+                    ? lem_csubst_bv th z
+                  === TRefn b z (App (App (Prim And) (csubst th p))
+                                     (App (App (Prim (equals b)) (BV z)) (csubst th (FV x)))) ) 
 
+{-@ lem_ctsubst_self_refn_notin :: th:CSubst -> b:Base -> z:Vname -> p:Pred -> { x:Vname | not (in_csubst x th) }
+        -> { pf:_ | ctsubst th (self (TRefn b z p) x) == self (ctsubst th (TRefn b z p)) x } @-}
+lem_ctsubst_self_refn_notin :: CSubst -> Base -> Vname -> Pred -> Vname -> Proof
+lem_ctsubst_self_refn_notin th b z p x 
+          = toProof ( ctsubst th (self (TRefn b z p) x) 
+                    ? lem_ctsubst_self_refn th b z p x 
+                  === TRefn b z (App (App (Prim And) (csubst th p))
+                                (App (App (Prim (equals b)) (BV z)) (csubst th (FV x)))) 
+                    ? lem_csubst_fv th x
+                  === TRefn b z (App (App (Prim And) (csubst th p)) 
+                                (App (App (Prim (equals b)) (BV z)) (FV x))) 
+                  === TRefn b z (selfify (csubst th p) b z x)
+                  === self (TRefn b z (csubst th p)) x
+                    ? lem_ctsubst_refn th b z p
+                  === self (ctsubst th (TRefn b z p)) x )
+
+{-@ lem_ctsubst_self_notin :: th:CSubst -> t:Type -> { x:Vname | not (in_csubst x th) }
+        -> { pf:_ | ctsubst th (self t x) == self (ctsubst th t) x } @-}
+lem_ctsubst_self_notin :: CSubst -> Type -> Vname -> Proof
+lem_ctsubst_self_notin th (TRefn b z p)      x = () ? lem_ctsubst_self_refn_notin th b z p x
+lem_ctsubst_self_notin th (TFunc z t_z t')   x = () ? lem_ctsubst_func th z t_z t'
+lem_ctsubst_self_notin th (TExists z t_z t') x = () ? lem_ctsubst_exis th z t_z t'
+
+
+-- TODO: this. TODO: lem_ctsubst_fv
   --- Various properties of csubst/ctsubst and free/bound variables
 
 {-@ lem_csubst_binds :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th) 
@@ -432,6 +537,14 @@ lem_ctsubst_and_unbindT x y v bt pf_v_b th t = toProof (
      ? lem_ctsubst_tsubBV x v bt pf_v_b th t
    === tsubBV x v (ctsubst th t) )
 
+{-@ lem_commute_csubst_subBV :: th:CSubst -> x:Vname -> v:Value -> e:Expr
+           -> { pf:_ | csubst th (subBV x v e) == subBV x (csubst th v) (csubst th e) } @-} 
+lem_commute_csubst_subBV :: CSubst -> Vname -> Expr -> Expr -> Proof
+lem_commute_csubst_subBV (CEmpty)         x v e = () 
+lem_commute_csubst_subBV (CCons y v_y th) x v e 
+    = () ? lem_commute_subFV_subBV x v y v_y e
+         ? lem_commute_csubst_subBV th x (subFV y v_y v) (subFV y v_y e)
+
 {-@ lem_commute_ctsubst_tsubBV :: th:CSubst -> x:Vname -> v:Value -> t:Type
            -> { pf:_ | ctsubst th (tsubBV x v t) == tsubBV x (csubst th v) (ctsubst th t) } @-} 
 lem_commute_ctsubst_tsubBV :: CSubst -> Vname -> Expr -> Type -> Proof
@@ -445,6 +558,12 @@ lem_commute_ctsubst_tsubBV (CCons y v_y th) x v t
 lem_csubst_no_more_fv :: CSubst -> Expr -> Proof
 lem_csubst_no_more_fv CEmpty v_x           = ()
 lem_csubst_no_more_fv (CCons y v_y th) v_x = () ? lem_csubst_no_more_fv th (subFV y v_y v_x)
+
+{-@ lem_ctsubst_no_more_fv :: th:CSubst -> { t:Type | Set_sub (free t) (bindsC th) }
+        -> { pf:_ | Set_emp (free (ctsubst th t)) } @-}
+lem_ctsubst_no_more_fv :: CSubst -> Type -> Proof
+lem_ctsubst_no_more_fv CEmpty           t = ()
+lem_ctsubst_no_more_fv (CCons y v_y th) t = () ? lem_ctsubst_no_more_fv th (tsubFV y v_y t)
 
 {-@ lem_csubst_subFV :: th:CSubst -> { x:Vname | not (in_csubst x th) } 
         -> { v_x:Value | Set_sub (fv v_x) (bindsC th) } -> e:Expr
@@ -493,8 +612,7 @@ lem_ctsubst_tsubFV  (CCons y v_y th)  x v_x t = () ? toProof (-- case den_g_th o
         ? lem_commute_tsubFV x v_x y v_y t 
     === ctsubst th (tsubFV y v_y (tsubFV x v_x t))
     === ctsubst (CCons y v_y th) (tsubFV x v_x t) )
-    
-
+   
 {-@ lem_erase_ctsubst :: th:CSubst -> t:Type 
                -> { pf:_ | erase (ctsubst th t) == erase t } @-}
 lem_erase_ctsubst :: CSubst -> Type -> Proof
@@ -648,7 +766,7 @@ data Denotes where
               -> ProofOf(HasBType BEmpty v (erase t)) 
               -> v_x:Value -> ProofOf(Denotes t_x v_x)
               -> ProofOf(Denotes (tsubBV x v_x t) v)
-              -> ProofOf(Denotes (TExists x t_x t) v)  @-} -- @-}
+              -> ProofOf(Denotes (TExists x t_x t) v)  @-} -- @- }
 
 {-@ get_btyp_from_den :: t:Type -> v:Value -> ProofOf(Denotes t v)
               -> ProofOf(HasBType BEmpty v (erase t)) @-}
@@ -776,3 +894,4 @@ lem_csubst_hasbtype' (Cons x t_x g') e t p_e_t th den_g_th = case den_g_th of
       p_evx_t     = lem_subst_btyp (erase_env g') BEmpty x v_x (erase t_x) p_g'_vx_tx -- ? lem_empty_concatE g')
                                    e (erase t) p_e_t ? lem_erase_tsubFV x v_x t
       p_the_t     = lem_csubst_hasbtype' g' (subFV x v_x e) (tsubFV x v_x t) p_evx_t th' den_g'_th' 
+

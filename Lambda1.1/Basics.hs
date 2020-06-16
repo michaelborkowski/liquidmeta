@@ -3,6 +3,7 @@
 {- @ LIQUID "--no-termination" @-}
 {- @ LIQUID "--no-totality" @-}
 {-@ LIQUID "--reflection"  @-}
+{- @ LIQUID "--ple-local"   @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
 
@@ -459,7 +460,7 @@ erase_env (Cons x t g) = BCons x (erase t) (erase_env g)
 -- E-AnnV  v:t -> v
 
 {-@ reflect delta @-}
-{-@ delta :: p:Prim -> e:Value ->  e':Value @-}
+{-@ delta :: p:Prim -> e:Value -> { e':Value | Set_emp (fv e') } @-}
 delta :: Prim -> Expr -> Expr
 delta And (Bc True)   = Lambda 1 (BV 1)
 delta And (Bc False)  = Lambda 1 (Bc False)
@@ -494,7 +495,7 @@ data Step where
  |  EApp1 :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
                  -> e1:Expr -> ProofOf( Step (App e e1) (App e' e1))
  |  EApp2 :: e:Expr -> e':Expr -> ProofOf( Step e e' )
-                 -> { v:Expr | isValue v } -> ProofOf( Step (App v e) (App v e'))
+                 -> v:Value -> ProofOf( Step (App v e) (App v e'))
  |  EAppAbs :: x:Vname -> e:Expr -> v:Value  
                  -> ProofOf( Step (App (Lambda x e) v) (subBV x v e))
  |  ELet  :: e_x:Expr -> e_x':Expr -> ProofOf( Step e_x e_x' )
@@ -503,8 +504,12 @@ data Step where
                  -> ProofOf( Step (Let x v e) (subBV x v e))
  |  EAnn  :: e:Expr -> e':Expr -> ProofOf( Step e e' )
                  -> t:Type -> ProofOf(Step (Annot e t) (Annot e' t))
- |  EAnnV :: { v:Expr | isValue v } -> t:Type -> ProofOf( Step (Annot v t) v) @-}
+ |  EAnnV :: v:Value -> t:Type -> ProofOf( Step (Annot v t) v) @-} -- @-}
 
+{- old version with isValue only in some rules:
+ |  EApp2 :: e:Expr -> e':Expr -> ProofOf( Step e e' )
+                 -> { v:Expr | isValue v } -> ProofOf( Step (App v e) (App v e'))
+ |  EAnnV :: { v:Expr | isValue v } -> t:Type -> ProofOf( Step (Annot v t) v) @-}
 
 data EvalsToP where
     EvalsTo :: Expr -> Expr -> EvalsToP
@@ -642,6 +647,7 @@ synthType g (Annot e liqt)  = case ( checkType g e (erase liqt) && S.null (tfree
     False -> Nothing
 synthType g Crash           = Nothing
 
+{-@ automatic-instances lem_check_synth @-}
 {-@ lem_check_synth :: g:BEnv -> { e:Expr | noDefns e } -> { t:BType | synthType g e == Just t }
                               -> { pf:_ | checkType g e t } @-}
 lem_check_synth :: BEnv -> Expr -> BType -> Proof
@@ -651,11 +657,12 @@ lem_check_synth g (Ic n) t         = case t of
     (BTBase TInt)  -> () 
 lem_check_synth g (Prim c) t       = ()
 lem_check_synth g (FV x) t         = lem_lookup_boundinB x t g 
-lem_check_synth g (App e e') t     = lem_check_synth g e (BTFunc t' t) 
-  where
-    (Just t') = synthType g e' 
+lem_check_synth g (App e e') t     = case (synthType g e') of
+    (Just t')       -> lem_check_synth g e (BTFunc t' t) 
+--    Nothing         -> impossible "" 
 lem_check_synth g (Annot e liqt) t = ()
 
+{-@ automatic-instances makeHasBType @-}
 {-@ makeHasBType :: g:BEnv -> { e:Expr | noDefns e } -> { t:BType | checkType g e t }
         -> ProofOf(HasBType g e t) / [esize e] @-}
 makeHasBType :: BEnv -> Expr -> BType -> HasBType
@@ -663,11 +670,11 @@ makeHasBType g (Bc b) t         = BTBC g b
 makeHasBType g (Ic n) t         = BTIC g n
 makeHasBType g (Prim c) t       = BTPrm g c
 makeHasBType g (FV x) t         = simpleBTVar g (x? lem_boundin_inenvB x t g ) t
-makeHasBType g (App e e') t     = BTApp g e t' t pf_e_t't e' pf_e'_t'
-  where
-    (Just t')  = synthType g e'
-    pf_e_t't   = makeHasBType g e (BTFunc t' t)
-    pf_e'_t'   = makeHasBType g e' (t' ? lem_check_synth g e' t')
+makeHasBType g (App e e') t     = case (synthType g e') of 
+    (Just t')  -> BTApp g e t' t pf_e_t't e' pf_e'_t'
+      where
+        pf_e_t't   = makeHasBType g e (BTFunc t' t)
+        pf_e'_t'   = makeHasBType g e' (t' ? lem_check_synth g e' t')
 makeHasBType g (Annot e liqt) t = BTAnn g e t liqt pf_e_t
   where
     pf_e_t = makeHasBType g e t
@@ -716,6 +723,56 @@ refn_pred Eq       = App (App (Prim Eqv) (BV 3))
 refn_pred (Eqn n)  = App (App (Prim Eqv) (BV 3))
                            (App (App (Prim Eq) (Ic n)) (BV 2))
 
+{-@ automatic-instances lem_sub_refn_pred_and @-}
+{-@ lem_sub_refn_pred_and :: b:Bool -> { pf:_ | subBV 1 (Bc b) (refn_pred And)
+                             == App (App (Prim Eqv) (BV 3)) (App (App (Prim And) (Bc b)) (BV 2)) } @-}
+lem_sub_refn_pred_and :: Bool -> Proof
+lem_sub_refn_pred_and b = ()
+
+{-@ automatic-instances lem_sub_refn_pred_or @-}
+{-@ lem_sub_refn_pred_or :: b:Bool -> { pf:_ | subBV 1 (Bc b) (refn_pred Or)
+                             == App (App (Prim Eqv) (BV 3)) (App (App (Prim Or) (Bc b)) (BV 2)) } @-}
+lem_sub_refn_pred_or :: Bool -> Proof
+lem_sub_refn_pred_or b = ()
+
+{-@ automatic-instances lem_sub_refn_pred_not @-}
+{-@ lem_sub_refn_pred_not :: b:Bool -> { pf:_ | subBV 2 (Bc b) (refn_pred Not)
+                             == App (App (Prim Eqv) (BV 3)) (App (Prim Not) (Bc b)) } @-}
+lem_sub_refn_pred_not :: Bool -> Proof
+lem_sub_refn_pred_not b = ()
+
+{-@ automatic-instances lem_sub_refn_pred_eqv @-}
+{-@ lem_sub_refn_pred_eqv :: b:Bool -> { pf:_ | subBV 1 (Bc b) (refn_pred Eqv)
+                             == App (App (Prim Eqv) (BV 3)) (App (App (Prim Or) 
+                                    (App (App (Prim And) (Bc b)) (BV 2)))              
+                                    (App (App (Prim And) (App (Prim Not) (Bc b))) (App (Prim Not) (BV 2)))) } @-}
+lem_sub_refn_pred_eqv :: Bool -> Proof
+lem_sub_refn_pred_eqv b = ()
+
+{-@ automatic-instances lem_sub_refn_pred_leq @-}
+{-@ lem_sub_refn_pred_leq :: n:Int -> { pf:_ | subBV 1 (Ic n) (refn_pred Leq)
+                             == App (App (Prim Eqv) (BV 3)) (App (App (Prim Leq) (Ic n)) (BV 2)) } @-}
+lem_sub_refn_pred_leq :: Int -> Proof
+lem_sub_refn_pred_leq n = ()
+
+{-@ automatic-instances lem_sub_refn_pred_leqn @-}
+{-@ lem_sub_refn_pred_leqn :: n:Int -> m:Int -> { pf:_ | subBV 2 (Ic m) (refn_pred (Leqn n))
+                             == App (App (Prim Eqv) (BV 3)) (App (App (Prim Leq) (Ic n)) (Ic m)) } @-}
+lem_sub_refn_pred_leqn :: Int -> Int -> Proof
+lem_sub_refn_pred_leqn n m = ()
+
+{-@ automatic-instances lem_sub_refn_pred_eq @-}
+{-@ lem_sub_refn_pred_eq :: n:Int -> { pf:_ | subBV 1 (Ic n) (refn_pred Eq)
+                             == App (App (Prim Eqv) (BV 3)) (App (App (Prim Eq) (Ic n)) (BV 2)) } @-}
+lem_sub_refn_pred_eq :: Int -> Proof
+lem_sub_refn_pred_eq n = ()
+
+{-@ automatic-instances lem_sub_refn_pred_eqn @-}
+{-@ lem_sub_refn_pred_eqn :: n:Int -> m:Int -> { pf:_ | subBV 2 (Ic m) (refn_pred (Eqn n))
+                             == App (App (Prim Eqv) (BV 3)) (App (App (Prim Eq) (Ic n)) (Ic m)) } @-}
+lem_sub_refn_pred_eqn :: Int -> Int -> Proof
+lem_sub_refn_pred_eqn n m = ()
+
 {-@ reflect un321_refn_pred @-}
 {- @ un321_refn_pred :: c:Prim 
      -> { p:Pred | un321_refn_pred c == unbind 3 3 (un21_refn_pred c) } @-}
@@ -753,6 +810,7 @@ noDefnsInRefns g (TExists x t_x t)  = noDefnsInRefns g t_x && noDefnsInRefns (Co
   where
     y = fresh_var g
 
+{-@ automatic-instances isWellFormed @-}
 {-@ reflect isWellFormed @-}
 {-@ isWellFormed :: g:Env -> { t:Type| noDefnsInRefns g t } -> Bool  / [tsize t] @-}
 isWellFormed :: Env -> Type -> Bool
@@ -812,88 +870,62 @@ ty (Eqn n)  = TFunc 2 (TRefn TInt 5 (Bc True))
                            (App (App (Prim Eq) (Ic n)) (BV 2)) ))
 -}
 
+{-@ automatic-instances ty @-}
 {-@ reflect ty @-} -- Primitive Typing
 {-@ ty :: c:Prim -> { t:Type | noDefnsInRefns Empty t && isWellFormed Empty t && Set_emp (tfreeBV t) 
-                                                                              && Set_emp (free t) } @-}
+                                                                              && Set_emp (free t) 
+                                                      && t == TFunc (firstBV c) (inType c) (ty' c) } @-}
 ty :: Prim -> Type
-ty And      = TFunc 1 (TRefn TBool 4 (Bc True)) 
-                  (TFunc 2 (TRefn TBool 5 (Bc True)) 
+ty And      = TFunc 1 (TRefn TBool 1 (Bc True)) 
+                  (TFunc 2 (TRefn TBool 2 (Bc True)) 
                       (TRefn TBool 3 (refn_pred And)))
-ty Or       = TFunc 1 (TRefn TBool 4 (Bc True)) 
-                  (TFunc 2 (TRefn TBool 5 (Bc True)) 
+ty Or       = TFunc 1 (TRefn TBool 1 (Bc True)) 
+                  (TFunc 2 (TRefn TBool 2 (Bc True)) 
                       (TRefn TBool 3  (refn_pred Or)))
-ty Not      = TFunc 2 (TRefn TBool 5 (Bc True)) 
+ty Not      = TFunc 2 (TRefn TBool 2 (Bc True)) 
                   (TRefn TBool 3 (refn_pred Not))
-ty Eqv      = TFunc 1 (TRefn TBool 4 (Bc True))
-                  (TFunc 2 (TRefn TBool 5 (Bc True))  
+ty Eqv      = TFunc 1 (TRefn TBool 1 (Bc True))
+                  (TFunc 2 (TRefn TBool 2 (Bc True))  
                       (TRefn TBool 3 (refn_pred Eqv)))
-ty Leq      = TFunc 1 (TRefn TInt 4 (Bc True)) 
-                  (TFunc 2 (TRefn TInt 5 (Bc True)) 
+ty Leq      = TFunc 1 (TRefn TInt 1 (Bc True)) 
+                  (TFunc 2 (TRefn TInt 2 (Bc True)) 
                       (TRefn TBool 3 (refn_pred Leq)))
-ty (Leqn n) = TFunc 2 (TRefn TInt 5 (Bc True)) 
+ty (Leqn n) = TFunc 2 (TRefn TInt 2 (Bc True)) 
                   (TRefn TBool 3 (refn_pred (Leqn n)))
-ty Eq       = TFunc 1 (TRefn TInt 4 (Bc True)) 
-                  (TFunc 2 (TRefn TInt 5 (Bc True)) 
+ty Eq       = TFunc 1 (TRefn TInt 1 (Bc True)) 
+                  (TFunc 2 (TRefn TInt 2 (Bc True)) 
                       (TRefn TBool 3 (refn_pred Eq)))
-ty (Eqn n)  = TFunc 2 (TRefn TInt 5 (Bc True)) 
+ty (Eqn n)  = TFunc 2 (TRefn TInt 2 (Bc True)) 
                   (TRefn TBool 3 (refn_pred (Eqn n)))
 
-{-
-{-@ reflect isCmpn @-}
-isCmpn :: Prim -> Bool
-isCmpn (Leqn _) = True
-isCmpn (Eqn _)  = True
-isCmpn _        = False
+{-@ reflect firstBV @-}
+firstBV :: Prim -> Int
+firstBV Not      = 2
+firstBV (Leqn _) = 2
+firstBV (Eqn _)  = 2
+firstBV _        = 1
 
-{-@ reflect un1_refn_pred @-}
-{-@ un1_refn_pred :: c:Prim 
-     -> { p:Pred | un1_refn_pred c == unbind 1 1 (refn_pred c) } @-}
-un1_refn_pred :: Prim -> Pred
-un1_refn_pred And      = App (App (Prim Eqv) (BV 3)) 
-                               (App (App (Prim And) (FV 1)) (BV 2)) 
-un1_refn_pred Or       = App (App (Prim Eqv) (BV 3)) 
-                               (App (App (Prim Or) (FV 1)) (BV 2)) 
-un1_refn_pred Not      = App (App (Prim Eqv) (BV 3)) 
-                               (App (Prim Not) (BV 2)) 
-un1_refn_pred Eqv      = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Or) 
-                                    (App (App (Prim And) (FV 1)) (BV 2)))
-                                    (App (App (Prim And) (App (Prim Not) (FV 1)))
-                                         (App (Prim Not) (BV 2))))
-un1_refn_pred Leq      = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Leq) (FV 1)) (BV 2)) 
-un1_refn_pred (Leqn n) = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Leq) (Ic n)) (BV 2)) 
-un1_refn_pred Eq       = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Eq) (FV 1)) (BV 2))
-un1_refn_pred (Eqn n)  = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Eq) (Ic n)) (BV 2))
+{-@ reflect inType @-}
+inType :: Prim -> Type
+inType And = TRefn TBool 1 (Bc True)
+inType Or  = TRefn TBool 1 (Bc True)
+inType Eqv = TRefn TBool 1 (Bc True)
+inType Not = TRefn TBool 2 (Bc True)
+inType Leq = TRefn TInt 1 (Bc True)
+inType Eq  = TRefn TInt 1 (Bc True)
+inType _   = TRefn TInt 2 (Bc True)
 
+{-@ reflect ty' @-}
+ty' :: Prim -> Type
+ty' And      = TFunc 2 (TRefn TBool 2 (Bc True)) (TRefn TBool 3 (refn_pred And))
+ty' Or       = TFunc 2 (TRefn TBool 2 (Bc True)) (TRefn TBool 3  (refn_pred Or))
+ty' Not      = TRefn TBool 3 (refn_pred Not)
+ty' Eqv      = TFunc 2 (TRefn TBool 2 (Bc True)) (TRefn TBool 3 (refn_pred Eqv))
+ty' Leq      = TFunc 2 (TRefn TInt 2 (Bc True)) (TRefn TBool 3 (refn_pred Leq))
+ty' (Leqn n) = TRefn TBool 3 (refn_pred (Leqn n))
+ty' Eq       = TFunc 2 (TRefn TInt 2 (Bc True)) (TRefn TBool 3 (refn_pred Eq))
+ty' (Eqn n)  = TRefn TBool 3 (refn_pred (Eqn n))
 
-{-@ reflect un21_refn_pred @-}
-{-@ un21_refn_pred :: c:Prim 
-     -> { p:Pred | un21_refn_pred c == unbind 2 2 (un1_refn_pred c) } @-}
-un21_refn_pred :: Prim -> Pred
-un21_refn_pred And      = App (App (Prim Eqv) (BV 3)) 
-                               (App (App (Prim And) (FV 1)) (FV 2)) 
-un21_refn_pred Or       = App (App (Prim Eqv) (BV 3)) 
-                               (App (App (Prim Or) (FV 1)) (FV 2)) 
-un21_refn_pred Not      = App (App (Prim Eqv) (BV 3)) 
-                               (App (Prim Not) (FV 2)) 
-un21_refn_pred Eqv      = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Or) 
-                                    (App (App (Prim And) (FV 1)) (FV 2)))
-                                    (App (App (Prim And) (App (Prim Not) (FV 1)))
-                                         (App (Prim Not) (FV 2))))
-un21_refn_pred Leq      = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Leq) (FV 1)) (FV 2)) 
-un21_refn_pred (Leqn n) = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Leq) (Ic n)) (FV 2)) 
-un21_refn_pred Eq       = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Eq) (FV 1)) (FV 2))
-un21_refn_pred (Eqn n)  = App (App (Prim Eqv) (BV 3))
-                               (App (App (Prim Eq) (Ic n)) (FV 2))
--}
 
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : WELL-FORMEDNESS of TYPES and ENVIRONMENTS
@@ -934,6 +966,7 @@ wftypSize (WFExis g x t_x p_g_tx t y p_yg_t)  = (wftypSize p_g_tx) + (wftypSize 
 -- | AUTOMATING WELL-FORMEDNESS PROOF GENERATION for refinements that occur in practice --
 ------------------------------------------------------------------------------------------
 
+{-@ automatic-instances makeWFType @-}
 {-@ makeWFType :: g:Env -> { t:Type | noDefnsInRefns g t && isWellFormed g t && Set_sub (free t) (binds g) }
                         -> ProofOf(WFType g t) / [tsize t] @-}
 makeWFType :: Env -> Type -> WFType
@@ -971,6 +1004,7 @@ data WFEnv where
 
 -- Constant and Primitive Typing Lemmas
 -- Lemma. Well-Formedness of Constant Types
+{-@ automatic-instances lem_wf_tybc @-}
 {-@ lem_wf_tybc :: g:Env -> b:Bool -> ProofOf(WFType g (tybc b)) @-}
 lem_wf_tybc :: Env -> Bool -> WFType
 lem_wf_tybc g b = WFRefn g 1 TBool pred y pf_pr_bool
@@ -984,6 +1018,7 @@ lem_wf_tybc g b = WFRefn g 1 TBool pred y pf_pr_bool
      pf_pr_bool = BTApp g' (App (Prim Eqv) (FV y)) (BTBase TBool) (BTBase TBool) 
                            pf_eqv_v (Bc b) (BTBC g' b)
 
+{-@ automatic-instances lem_wf_tyic @-}
 {-@ lem_wf_tyic :: g:Env -> n:Int -> ProofOf(WFType g (tyic n)) @-}
 lem_wf_tyic :: Env -> Int -> WFType
 lem_wf_tyic g n = WFRefn g 1 TInt pred y pf_pr_bool
@@ -995,31 +1030,6 @@ lem_wf_tyic g n = WFRefn g 1 TInt pred y pf_pr_bool
                            (BTPrm g' Eq) (FV y) (BTVar1 (erase_env g) y (BTBase TInt))
     pf_pr_bool  = BTApp g' (App (Prim Eq) (FV y)) (BTBase TInt) (BTBase TBool) 
                            pf_eq_v (Ic n) (BTIC g' n)
-
-{-
-{-@ lem_ty_isWellFormed :: c:Prim -> { pf:_ | noDefnsInRefns Empty (ty c) && isWellFormed Empty (ty c) } @-}
-lem_ty_isWellFormed :: Prim -> Proof
-lem_ty_isWellFormed And      = ()
-lem_ty_isWellFormed Or       = ()
-lem_ty_isWellFormed Not      = ()
-lem_ty_isWellFormed Eqv      = ()
-lem_ty_isWellFormed Leq      = ()
-lem_ty_isWellFormed (Leqn n) = ()
-lem_ty_isWellFormed Eq       = ()
-lem_ty_isWellFormed (Eqn n)  = ()
-
-
-{-@ lem_wf_ty :: c:Prim -> ProofOf(WFType Empty (ty c)) @-}
-lem_wf_ty :: Prim -> WFType
-lem_wf_ty And      = makeWFType Empty (ty And) ? lem_ty_isWellFormed And 
-lem_wf_ty Or       = makeWFType Empty (ty Or) ? lem_ty_isWellFormed Or
-lem_wf_ty Not      = makeWFType Empty (ty Not) ? lem_ty_isWellFormed Not
-lem_wf_ty Eqv      = makeWFType Empty (ty Eqv) ? lem_ty_isWellFormed Eqv
-lem_wf_ty Leq      = makeWFType Empty (ty Leq) ? lem_ty_isWellFormed Leq
-lem_wf_ty (Leqn n) = makeWFType Empty (ty (Leqn n)) ? lem_ty_isWellFormed (Leqn n)
-lem_wf_ty Eq       = makeWFType Empty (ty Eq) ? lem_ty_isWellFormed Eq
-lem_wf_ty (Eqn n)  = makeWFType Empty (ty (Eqn n)) ? lem_ty_isWellFormed (Eqn n)
--}
 
 {-@ lem_wf_ty :: c:Prim -> ProofOf(WFType Empty (ty c)) @-}
 lem_wf_ty :: Prim -> WFType
@@ -1034,6 +1044,7 @@ lem_wf_ty (Eqn n)  = makeWFType Empty (ty (Eqn n))
 
 
 
+{-@ automatic-instances lem_bool_values @-}
 {-@ lem_bool_values :: { v:Expr | isValue v } -> ProofOf(HasBType BEmpty v (BTBase TBool))
         -> { pf:_ | v == Bc True || v = Bc False } @-}
 lem_bool_values :: Expr -> HasBType -> Proof
@@ -1044,6 +1055,7 @@ isInt :: Expr -> Bool
 isInt (Ic _ ) = True
 isInt _       = False
 
+{-@ automatic-instances lem_int_values @-}
 {-@ lem_int_values :: v:Value -> ProofOf(HasBType BEmpty v (BTBase TInt))
         -> { pf:_ | isInt v } @-}
 lem_int_values :: Expr -> HasBType -> Proof
@@ -1059,6 +1071,7 @@ isPrim :: Expr -> Bool
 isPrim (Prim _) = True
 isPrim _        = False
 
+{-@ automatic-instances lemma_function_values @-}
 {-@ lemma_function_values :: v:Value -> t:BType -> t':BType
         -> ProofOf(HasBType BEmpty v (BTFunc t t'))
         -> { pf:_ | isLambda v || isPrim v } @-}
@@ -1066,6 +1079,7 @@ lemma_function_values :: Expr -> BType -> BType -> HasBType -> Proof
 lemma_function_values e t t' (BTPrm {})   = ()     
 lemma_function_values e t t' (BTAbs {})   = ()    
 
+{-@ automatic-instances lem_delta_and_btyp @-}
 {-@ lem_delta_and_btyp :: v:Value -> t_x:BType -> t':BType
         -> ProofOf(HasBType BEmpty (Prim And) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
         -> { pf:_ | propOf pf == HasBType BEmpty (delta And v) t' } @-} -- &&
@@ -1078,7 +1092,7 @@ lem_delta_and_btyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
                               1 (BTBC (BCons 1 (BTBase TBool) BEmpty) False)  
           _          -> impossible ("by lemma" ? lem_bool_values v p_v_tx) 
 
-
+{-@ automatic-instances lem_delta_or_btyp @-}
 {-@ lem_delta_or_btyp :: v:Value -> t_x:BType -> t':BType
         -> ProofOf(HasBType BEmpty (Prim Or) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
         -> { pf:_ | propOf pf == HasBType BEmpty (delta Or v) t' } @-} 
@@ -1091,7 +1105,7 @@ lem_delta_or_btyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
                           1 (BTVar1 BEmpty 1 (BTBase TBool) ) -- ? toProof ( unbind 1 1 (BV 1) === FV 1 ))
       _          -> impossible ("by lemma" ? lem_bool_values v p_v_tx)
 
-
+{-@ automatic-instances lem_delta_not_btyp @-}
 {-@ lem_delta_not_btyp :: v:Value -> t_x:BType -> t':BType
         -> ProofOf(HasBType BEmpty (Prim Not) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
         -> { pf:_ | propOf pf == HasBType BEmpty (delta Not v) t' } @-} 
@@ -1102,6 +1116,7 @@ lem_delta_not_btyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
       (Bc False) -> BTBC BEmpty True  --    ? toProof ( t' === BTBase TBool )
       _          -> impossible ("by lemma" ? lem_bool_values v p_v_tx)
 
+{-@ automatic-instances lem_delta_eqv_btyp @-}
 {-@ lem_delta_eqv_btyp :: v:Value -> t_x:BType -> t':BType
         -> ProofOf(HasBType BEmpty (Prim Eqv) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
         -> { pf:_ | propOf pf == HasBType BEmpty (delta Eqv v) t' } @-} -- &&
@@ -1118,6 +1133,7 @@ lem_delta_eqv_btyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
                             (BTPrm g Not) (FV 1) (BTVar1 BEmpty 1 (BTBase TBool))
       _          -> impossible ("by lemma" ? lem_bool_values v p_v_tx)
 
+{-@ automatic-instances lem_delta_leq_btyp @-}
 {-@ lem_delta_leq_btyp :: v:Value -> t_x:BType -> t':BType
         -> ProofOf(HasBType BEmpty (Prim Leq) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
         -> { pf:_ | propOf pf == HasBType BEmpty (delta Leq v) t' } @-} 
@@ -1127,6 +1143,7 @@ lem_delta_leq_btyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
       (Ic n) -> BTPrm BEmpty (Leqn n) --   ? toProof ( t' === (BTFunc (BTBase TInt) (BTBase TBool)) )
       _      -> impossible ("by lemma" ? lem_int_values v p_v_tx)
 
+{-@ automatic-instances lem_delta_leqn_btyp @-}
 {-@ lem_delta_leqn_btyp :: n:Int -> v:Value -> t_x:BType -> t':BType
         -> ProofOf(HasBType BEmpty (Prim (Leqn n)) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
         -> { pf:_ | propOf pf == HasBType BEmpty (delta (Leqn n) v) t' } @-} 
@@ -1136,6 +1153,7 @@ lem_delta_leqn_btyp n v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
       (Ic m) -> BTBC BEmpty ( n <= m ) --    ? toProof ( t' === BTBase TBool)
       _      -> impossible ("by lemma" ? lem_int_values v p_v_tx)
 
+{-@ automatic-instances lem_delta_eq_btyp @-}
 {-@ lem_delta_eq_btyp :: v:Value -> t_x:BType -> t':BType
         -> ProofOf(HasBType BEmpty (Prim Eq) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
         -> { pf:_ | propOf pf == HasBType BEmpty (delta Eq v) t' } @-} -- &&
@@ -1145,6 +1163,7 @@ lem_delta_eq_btyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
       (Ic n) -> BTPrm BEmpty (Eqn n) --    ? toProof ( t' === (BTFunc (BTBase TInt) (BTBase TBool)) )
       _      -> impossible ("by lemma" ? lem_int_values v p_v_tx)
 
+{-@ automatic-instances lem_delta_eqn_btyp @-}
 {-@ lem_delta_eqn_btyp :: n:Int -> v:Value -> t_x:BType -> t':BType
         -> ProofOf(HasBType BEmpty (Prim (Eqn n)) (BTFunc t_x t')) -> ProofOf(HasBType BEmpty v t_x)
         -> { pf:_ | propOf pf == HasBType BEmpty (delta (Eqn n) v) t' } @-} -- &&
