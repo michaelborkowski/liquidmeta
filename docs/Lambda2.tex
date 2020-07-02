@@ -3,8 +3,7 @@
 \usepackage[margin=1.25in]{geometry}
 \usepackage{graphicx,ctable,booktabs}
 \usepackage{textcomp,stmaryrd}
-\usepackage{mathpartir} 
-
+\usepackage{mathpartir}
 \allowdisplaybreaks
 
 \newtheorem{theorem}{Theorem}%[section]
@@ -33,7 +32,6 @@
 \newcommand{\step}{\hookrightarrow}
 \newcommand{\many}{\hookrightarrow^*}
 
-% purely font faces
 \newcommand{\true}{\mathtt{true}}
 \newcommand{\Int}{{\sf Int}}
 \newcommand{\Bool}{{\sf Bool}}
@@ -51,7 +49,7 @@
 
 \title{Liquid Meta}
 \author{\textsc{Michael Borkowski} \\ (summarizing joint work with {\sc Ranjit Jhala} and {\sc Niki Vazou})}
-\date{June 8, 2020}
+\date{June 30, 2020}
 
 \maketitle
 \thispagestyle{empty}
@@ -108,7 +106,7 @@ Next, we give the syntax of the types and binding environments used in our langu
                    &\;\;|\quad \Gamma, \al\bind k & bind\;type\;variable\\
 \end{align*}
 
-Next, we give the syntax of the Boolean predicates and constraints involved in refinements and subtyping judgments. The ternary judgment $\vdash_B \; :$ is the typing judgment in the underlying System F calculus.
+Note that a basic type $b$ is not a proper type; to express $b$ as a type we must write $b\{x\col\true\}$. Next, we give the syntax of the Boolean predicates and constraints involved in refinements and subtyping judgments. The ternary judgment $\vdash_B \; :$ is the typing judgment in the underlying System F calculus.
 
 \begin{align*}
 {\sf Refinements} \;\; r :&= \{x\col p\}  \\ \\
@@ -197,9 +195,9 @@ In order to express the exact type of variables, we introduce a ``selfification'
 \begin{align*}
 {\rm self}(b\{z\col p\}, x):&= b\{z\col p \wedge z = x\} \\
 {\rm self}(\al, x) :&= \al \\
-{\rm self}(\functype{z}{t_z}{t}, x) :&= \functype{z}{t_z}{t} \\
-{\rm self}(\existype{z}{t_z}{t}, x) :&= \existype{z}{t_z}{t} \\
-{\rm self}(\polytype{\al}{k}{t}, x) :&= \polytype{\al}{k}{t} 
+{\rm self}(\functype{z}{t_z}{t}, x) :&= \functype{z}{t_z}{{\rm self}(t, x\, z)} \\
+{\rm self}(\existype{z}{t_z}{t}, x) :&= \existype{z}{t_z}{{\rm self}(t, x)} \\
+{\rm self}(\polytype{\al}{k}{t}, x) :&= \polytype{\al}{k}{{\rm self}(t, x)} 
 \end{align*}
 
 \begin{mathpar}             %%%%%%%%%%%%% TYPING %%%%%%%%%%%%%%%%%%
@@ -216,10 +214,10 @@ In order to express the exact type of variables, we introduce a ``selfification'
 {\Gamma \vdash e [t] : s[t/\al]} \\
 \inferrule*[Right=T-AbsT]
 {\al'\bind k, \Gamma \vdash e [\al'/\al] : t [\al'/\al] \quad\; 
- \al'\bind k, \Gamma \vdash_w t : k' \quad\; \al'\not\in {\rm dom}(\Gamma)}
+ \al'\bind k, \Gamma \vdash_w t [\al'/\al] : k' \quad\; \al'\not\in {\rm dom}(\Gamma)}
 {\Gamma \vdash \Lambda \al\bind k. e : \polytype{\al}{k}{t}} \\
 \inferrule*[Right=T-Let]
-{\Gamma \vdash e_x : t_x \quad\; y\bind t_x, \Gamma \vdash e_2[y/x] : t[y/x] \quad\; \Gamma \vdash_w t : k \quad\; y \not\in {\rm dom}(\Gamma)}
+{\Gamma \vdash e_x : t_x \quad\; y\bind t_x, \Gamma \vdash e[y/x] : t[y/x] \quad\; \Gamma \vdash_w t : k \quad\; y \not\in {\rm dom}(\Gamma)}
 {\Gamma \vdash \letin{x}{e_x}{e} : t} \\
 \inferrule*[Right=T-Ann]{\Gamma\vdash e:t \quad\; \Gamma \vdash_w t : k}{\Gamma\vdash e\col t\,:\,t}
 \and \inferrule*[Right=T-Sub]
@@ -256,6 +254,14 @@ We give the inference rule for the entailment judgement:
 {\Gamma \vdash_e p}
 \end{mathpar}
 
+Note that if we combine rules {\sc T-AbsT} and {\sc S-Poly} then we can derive the following judgment, which shows that polymorphic types are equivalent up to alpha-renaming bound type variables:
+
+\begin{mathpar}
+\inferrule*[Right=T-AbsT']
+{\al\bind k, \Gamma \vdash e [\al/\al_1] : t [\al/\al_2] \quad\; 
+ \al\bind k, \Gamma \vdash_w t : k' \quad\; \al\not\in {\rm dom}(\Gamma)}
+{\Gamma \vdash \Lambda \al_1\bind k. e : \polytype{\al_2}{k}{t}}
+\end{mathpar}
 
 \section{Preliminaries}   %%%%%%%%%%% 2222222222222 %%%%%%%%
 
@@ -343,29 +349,21 @@ The operational semantics of $\lambda_2$ are deterministic: For every expression
 \end{lemma}
 
 \begin{lemma}\label{weakenings}
-(Weakenings of Judgments) For any environments $\Gamma$, $\Gamma'$ and $x \not\in dom(\Gamma', \Gamma)$:
+(Weakenings of Judgments) For any environments $\Gamma$, $\Gamma'$ and $x,\al \not\in dom(\Gamma', \Gamma)$:
 \begin{enumerate}
-\item If $\Gamma', \Gamma \vdash e : t$ then $\Gamma', x\bind t_x, \Gamma \vdash e :  t$.
-\item If $\Gamma', \Gamma \vdash s <: t$ then $\Gamma', x\bind t_x, \Gamma \vdash s <: t$.
-\item If $\Gamma', \Gamma \vdash_e p$ then $\Gamma', x\bind t_x, \Gamma \vdash_e p$.
-\item If $\Gamma', \Gamma \vdash_w t:k$ then $\Gamma', x\bind t_x, \Gamma \vdash_w t:k$.
+\item If $\Gamma', \Gamma \vdash e : t$ then $\Gamma', x\bind t_x, \Gamma \vdash e :  t$ and $\Gamma', \al\bind k, \Gamma \vdash e :  t$.
+\item If $\Gamma', \Gamma \vdash s <: t$ then $\Gamma', x\bind t_x, \Gamma \vdash s <: t$ and $\Gamma', \al\bind k, \Gamma \vdash s <: t$.
+\item If $\Gamma', \Gamma \vdash_e p$ then $\Gamma', x\bind t_x, \Gamma \vdash_e p$ and $\Gamma', \al\bind k, \Gamma \vdash_e p$.
+\item If $\Gamma', \Gamma \vdash_w t:k$ then $\Gamma', x\bind t_x, \Gamma \vdash_w t:k$ and $\Gamma', \al\bind k, \Gamma \vdash_w t:k$.
 \end{enumerate}
 \end{lemma}
 \begin{proof}
-The proof is by mutual induction on the derivation trees of each type of judgment.
-%(1) {\bf TODO}
-%
-%(2) {\bf TODO}
-%
-%(3) {\bf TODO}
-%
-%(4) {\bf TODO}
+The proof is by straightforward mutual induction on the derivation trees of each type of judgment. In the base cases we rely on weakening typing judgments in the underlying System F ({\sc WF-Base}) and on the fact that we can add extra variables to a closing substitution that don't appear in a predicate ({\sc Ent-Pred}).
 \end{proof}
-
 
 \begin{lemma}\label{sub-refl}
 (Reflexivity of $<:$) If $\Gamma \vdash_w t : k$ and $t$ is not a type variable then $\Gamma \vdash t <: t$.
-\end{lemma} {\bf TODO: Write up the other two cases from my notes}
+\end{lemma}
 
 \begin{proof} We proceed by induction of the structure of the derivation of $\Gamma \vdash_w t : k$. {\em We could dispense with the hypothesis that $t \not\equiv \al$ by either making $\al$ a basic type or adding another subtyping rule that states $(\al\col k)\in\Gamma \Rightarrow \Gamma \vdash \al <: \al$}
 
@@ -373,16 +371,63 @@ The proof is by mutual induction on the derivation trees of each type of judgmen
 	
 {\bf Case} {\sc WF-Kind}:  We have $\Gamma \vdash_w t : *$ and by inversion we have $\Gamma \vdash_w t : B$. By induction, we get $\Gamma \vdash t <: t$ as desired.
 
-{\bf Case} {\sc WF-Func}: 
+{\bf Case} {\sc WF-Func}:  We have $t \equiv \functype{x}{t_x}{t'}$ and $k \equiv *$. By inversion, for some $y \not\in\dom{\Gamma}$ and some $k_x, k$ we have
+\[
+\Gamma\vdash_w t_x : k_x \;\;{\rm and}\;\; y\bind t_x,\Gamma \vdash_w t'[y/x] : k.
+\]
+By the inductive hypothesis, we have $\Gamma \vdash t_x <: t_x$ and also $y\bind t_x, \Gamma \vdash_w t'[y/x] <: t'[y/x]$. Then by rule {\sc S-Func} we have $\Gamma \vdash \functype{x}{t_x}{t'} <: \functype{x}{t_x}{t'}$.
 
-{\bf Case} {\sc WF-Exis}:
+{\bf Case} {\sc WF-Exis}:  We have $t \equiv \existype{x}{t_x}{t'}$, and by inversion, for some $y \not\in\dom{\Gamma}$ and some $k_x$ we have
+\[
+\Gamma\vdash_w t_x : k_x \;\;{\rm and}\;\; y\bind t_x,\Gamma \vdash_w t'[y/x] : k.
+\]
+By rule {\sc T-Var} and the fact that $y\bind t_x, \Gamma \vdash {\rm self}(t_x, y) <: t_x$ we have $y\bind t_x, \Gamma \vdash y : t_x$. By the inductive hypothesis we have $y\bind t_x, \Gamma \vdash t'[y/x] <: t'[y/x]$. 
+Then by rule {\sc S-Witn} (where $v_x \equiv y$) we have $y\bind t_x, \Gamma \vdash t'[y/x] <: \existype{x}{t_x}{t'}$. Then applying rule {\sc S-Bind} we have $\Gamma \vdash \existype{x}{t_x}{t'} <: \existype{x}{t_x}{t'}$ as desired.
 
 {\bf Case} {\sc WF-Poly}: We have $t \equiv \Lambda\al\bind k.t'$ and $\Gamma \vdash_w\Lambda\al\bind k.t' : *$. By inversion we have for some $\al' \not \in {\rm dom}(\Gamma)$, 
 $\al'\bind k, \Gamma\vdash_w t'[\al'/\al]: k_t$. By induction, we have
 $\al'\bind k, \Gamma\vdash t'[\al'/\al] <: t'[\al'/\al]$. By rule {\sc S-Poly} we conclude that $\Gamma \vdash \polytype{\al}{k}{t'} <: \polytype{\al}{k}{t'}$.
 \end{proof}
 
+\begin{lemma}\label{sub-erase} If $\Gamma \vdash t_1 <: t_2$ then $\lfloor t_1 \rfloor \overset{\al}{=} \lfloor t_2 \rfloor$. 
+\end{lemma}
+\begin{proof}
+We proceed by structural induction on the derivation tree of $\Gamma \vdash t_1 <: t_2$. In the base case {\sc Sub-Base}, $t_1 \equiv b\{x_1\col p_1\}$ and $t_2 \equiv b\{x_2\col p_2\}$. Then $\lfloor t_1 \rfloor = b = \lfloor t_2 \rfloor$
+
+{\bf Case} {\sc Sub-Func}: We have $t_1 \equiv \functype{x_1}{s_1}{t'_1}$ and $t_2 \equiv \functype{x_2}{s_2}{t'_2}$. By inversion we have for some $y\not\in\dom{\Gamma}$ that $\Gamma \vdash s_2 <: s_1$ and $y\bind s_2,\Gamma \vdash t'_1[y/x_1] <: t'_2[y/x_2]$. By the inductive hypothesis, $\lfloor s_2 \rfloor \overset{\al}{=} \lfloor s_1 \rfloor$ and $\lfloor t'_1 \rfloor = \lfloor t'_1[y/x_1] \rfloor \overset{\al}{=} \lfloor t'_2[y/x_2] \rfloor = \lfloor t'_2 \rfloor.$ Combining these we obtain 
+$\lfloor t_1 \rfloor = \lfloor s_1 \rfloor \rightarrow \lfloor t'_1 \rfloor \overset{\al}{=} \lfloor s_2 \rfloor \rightarrow \lfloor t'_2 \rfloor = \lfloor t_2 \rfloor$ as desired.
+
+{\bf Case} {\sc Sub-Witn}: We have $\Gamma \vdash t_1 <: t_2$ where $t_2 \equiv \existype{x}{t_x}{t'}$. By inversion $\Gamma \vdash t_1 <: t'[v_x/x]$ and by the inductive hypothesis $\lfloor t_1 \rfloor \overset{\al}{=} \lfloor t'[v_x/x] \rfloor = \lfloor t' \rfloor = \lfloor \existype{x}{t_x}{t'} \rfloor$.
+
+{\bf Case} {\sc Sub-Bind}: We have $\Gamma \vdash t_1 <: t_2$ where $t_1 \equiv \existype{x}{t_x}{t'}$. By inversion for some $y \not\in\dom{\Gamma}$ such that $y \not\in{\rm free}(t_2)$ we have 
+$y\bind t_x,\Gamma \vdash t'[y/x] <: t_2$. Then by the inductive hypothesis  $\lfloor t_2 \rfloor \overset{\al}{=} \lfloor t'[y/x] \rfloor = \lfloor t' \rfloor = \lfloor \existype{x}{t_x}{t'} \rfloor$.
+
+{\bf Case} {\sc Sub-Poly}: We have $t_1 \equiv \polytype{\al_1}{k}{t'_1}$ and $t_2 \equiv \polytype{\al_2}{k}{t'_2}$. By inversion, for some $\al\not\in\dom{\Gamma}$, $\al\bind k,\Gamma \vdash t'_1[\al/\al_1] <: t'_2[\al/\al_2]$. By the inductive hypothesis we have
+$\lfloor t'_1 \rfloor [\al/\al_1] = \lfloor t'_1[\al/\al_1] \rfloor
+\overset{\al}{=} \lfloor t'_2[\al/\al_2] \rfloor = \lfloor t'_2 \rfloor [\al/\al_2].$ Thus under an additional alpha-equivalence, $\lfloor \polytype{\al_1}{k}{t'_1} \rfloor \overset{\al}{=} \lfloor \polytype{\al_2}{k}{t'_2} \rfloor$.
+\end{proof}
+
 Our proof of the soundness theorems begin with several helping lemmas.
+
+\begin{lemma}{(Selfification and Denotations) If $\varnothing \vdash_w t : k$ and %$\theta\in\lb\Gamma\rb$ such that $\theta(e) \many 
+$e\many v \in \lb t\rb$ then $v \in \lb {\rm self}(t,e)\rb$.} \label{self-denote}
+\end{lemma}
+\begin{proof} % TODO: recheck and finish this part
+We proceed by structural induction on $t$. In the first case, $t \equiv b\{z\col p\}$ and ${\rm self}(t, e) = b\{z \col p \wedge z = e\}$. Then $\theta({\rm self}(t, e)) = b\{z\col \theta(p) \wedge z = \theta(e)\}$. 
+We have $\theta(p\wedge z = e)[\theta(e)/z] = (\theta(p)[\theta(e)/z] \wedge \theta(e)=\theta(e)) \many \true$
+because $\theta(p)[\theta(e)/z] \many \true$ from $\theta(x)\in\lb b\{z\col \theta(p)\}\rb.$ Therefore $\theta(x) \in \lb\theta({\rm self}(t,x))\rb$, as desired.
+
+Second, ${\rm self}(\al, x) = \al$, so we are done. Third, if $t \equiv \functype{y}{s_y}{s}$ then 
+\[ \hspace*{-1cm}
+\lb\theta({\rm self}(t,x))\rb = \{\hat v \,|\, \varnothing \vdash_B \hat v : \lfloor \theta({\rm self}(t,x)) \rfloor \;\wedge\; (\forall\, v_y \in \lb \theta(s_y) \rb.\, \hat v\, v_y \many v' \;{\rm such\; that}\; v'\in \lb \theta({\rm self}(s,x\, y)[v_y/y]) \rb ) \}
+\]
+Let $v_y \in \lb\theta(s_y)\rb$ and let $z\not\in\dom\Gamma$.
+We do have $v \in \lb\theta(\functype{y}{s_y}{s})\rb$, so $v\, v_y \many v'$ such that $v' \in \lb\theta(s)[v_y/y]\rb = $. 
+Then by the 
+
+% and $\theta' = (z\mapsto v_y, \theta) \in \lb z\bind s_y, \Gamma \rb$. Then $theta'(z) \in \lb\theta(s_y)\rb = \lb\theta'(s_y)\rb$ because $z$ cannot appear free in $s_y$. By the inductive hypothesis,  
+
+\end{proof}
 
 \begin{lemma}{(Type Denotations) Our typing and subtyping relations are sound with respect to the denotational semantics of our types:\\
 1. If $\Gamma \vdash t_1 <: t_2$ then $\forall \theta. \theta \in \lb \Gamma \rb \Rightarrow \lb\theta(t_1)\rb \subseteq \lb\theta(t_2)\rb$.\\
@@ -445,15 +490,16 @@ We need to show $\forall \theta.\;
 Equivalently,
 \begin{align} \label{3.2.1}
 \forall\theta.\,\theta\in\lb\Gamma\rb \Rightarrow&
-\{ v \,|\, \varnothing \vdash_B v:\lfloor s_1\rfloor \rightarrow \lfloor t'_1\rfloor \;\wedge\; 
+\{ v \,|\, \varnothing \vdash_B v:\lfloor \theta(s_1)\rfloor \rightarrow \lfloor \theta(t'_1)\rfloor \;\wedge\; 
   (\forall\, v' \in \lb \theta(s_1)\rb.\, v\,v' \many v^* \in\lb \theta(t'_1)[v'/x_1]\rb)\}\\
-\subseteq &\{ v \,|\, \varnothing \vdash_B v:\lfloor s_2\rfloor \rightarrow \lfloor t'_2\rfloor \;\wedge\; 
+\subseteq &\{ v \,|\, \varnothing \vdash_B v:\lfloor \theta(s_2)\rfloor \rightarrow \lfloor \theta(t'_2)\rfloor \;\wedge\; 
   (\forall\, v' \in \lb \theta(s_2)\rb.\, v\,v' \many v^* \in\lb \theta(t'_2)[v'/x_2]\rb)\}\label{3.2.2} 
 \end{align}
 Fix $\theta \in \lb\Gamma\rb$ and let $v$ be a term in set (\ref{3.2.1}) and let $v' \in \lb \theta(s_2)\rb$. Then by induction, $v' \in \lb \theta(s_1)\rb$. So there exists a value $v^*$ such that $(v\, v') \many v^*$ and $v^* \in \lb(\theta(t'_1)[v'/x_1]\rb$. Let $\theta' = (y \mapsto v', \theta)$.  From (\ref{3.2.0}) we also have that 
 $\lb\theta'(t'_1[y/x_1])\rb \subseteq \lb\theta'(t'_2[y/x_2])\rb$.
 But $\theta'(t'_1[y/x_1]) = \theta(t'_1[y/x_1])[v'/y] = \theta(t'_1)[v'/x_1]$ and $\theta'(t'_2[y/x_2]) = \theta(t'_2)[v'/x_2]$.
 Therefore  $v^* \in \lb \theta(t'_1)[v'/x_2]\rb \subseteq \lb \theta(t'_2)[v'/x_2]\rb$ and so $v$ is in set (\ref{3.2.2}) as desired.
+Finally, given $\varnothing \vdash_B v:\lfloor \theta(s_1)\rfloor \rightarrow \lfloor \theta(t'_1)\rfloor$ we have $\varnothing \vdash_B v:\lfloor \theta(s_2)\rfloor \rightarrow \lfloor \theta(t'_2)\rfloor$ by Lemma \ref{sub-erase}.
 
 {\bf Case} $\textsc{Sub-Witn}$: We have that
 $\Gamma \vdash t_1 <: \exists\, x\bind t_x.\, t'_2$ where $t_2 \equiv \exists\, x\bind t_x.\, t'_2$. By inversion, there exists some value term $v_x$ such that
@@ -501,7 +547,8 @@ By inversion, for some $\al\not\in\dom{\Gamma}$, $\al\bind k,\Gamma \vdash t_1[\
 By the inductive hypothesis, we have that for all $\theta' \in \lb \al\bind k, \Gamma\rb$ we have 
 $\lb \theta'(t_1[\al/\al_1]) \rb \subseteq \lb \theta'( t_2[\al/\al_2] )\rb$.
 We need to show \[\forall\theta.\; \theta \in \lb\Gamma\rb \Rightarrow \lb \theta(\polytype{\al_1}{k}{t_1})\rb \subseteq \lb \theta(\polytype{\al_2}{k}{t_2})\rb.\] 
-Let $\theta \in \lb\Gamma\rb$ arbitrary and let $v \in \lb\theta( \polytype{\al_1}{k}{t_1})\rb = \lb\polytype{\al_1}{k}{\theta(t_1)}\rb$. Then $\varnothing \vdash_B v : \polytype{\al_1}{k}{\lfloor \theta(t_1) \rfloor}$. By Lemma \ref{erase-subtypes}, we also have $\varnothing \vdash_B v : \polytype{\al_2}{k}{\lfloor \theta(t_2) \rfloor}$ because $\lfloor \theta(t_1) \rfloor = \lfloor \theta(t_1[\al/\al_1]\rfloor = \lfloor \theta(t_2[\al/\al_2]) \rfloor = \lfloor \theta(t_2) \rfloor$. 
+Let $\theta \in \lb\Gamma\rb$ arbitrary and let $v \in \lb\theta( \polytype{\al_1}{k}{t_1})\rb = \lb\polytype{\al_1}{k}{\theta(t_1)}\rb$. Then $\varnothing \vdash_B v : \polytype{\al_1}{k}{\lfloor \theta(t_1) \rfloor}$. By Lemma \ref{erase-sub}, we also have $\varnothing \vdash_B v : \polytype{\al_2}{k}{\lfloor \theta(t_2) \rfloor}$ 
+because $\lfloor \theta(t_1[\al/\al_1]\rfloor \overset{\al}{=} \lfloor \theta(t_2[\al/\al_2]) \rfloor$ and $\lfloor \polytype{\al_1}{k}{\theta(t_1)} \rfloor = \lfloor \polytype{\al_2}{k}{\theta(t_2)} \rfloor$. 
 Now let $t_\al$ be a type such that $\varnothing \vdash_w t_\al : k$. Then we have that there exists a value $v'$ such that 
 $v\, [t_\al] \many v'$ and $v' \in \lb \theta(t_1)[t_\al/\al_1]\rb = \lb\theta(t_1[\al/\al_1])[t_\al/\al]\rb.$
 Let $\theta' = (\al \mapsto t_\al, \theta)$. Then $v' \in \lb\theta'(t_1[\al/\al_1])\rb$ and by induction we have
@@ -510,6 +557,8 @@ v' \in \lb\theta'(t_2[\al/\al_2])\rb = \lb\theta(t_2[\al/\al_2])[t_\al/\al]\rb =
 \]
 This proves that $v \in \lb\polytype{\al_2}{k}{\theta(t_2)}\rb = \lb\theta(\polytype{\al_2}{k}{t_2})\rb$ as desired.\\
 
+
+
 (2) Suppose $\Gamma \vdash e : t$. % and $e \many v$. 
 We proceed by induction on the derivation tree of the typing relation. 
 
@@ -517,406 +566,475 @@ We proceed by induction on the derivation tree of the typing relation.
 In one case $t \equiv b\{x\col p\}$; then by Lemma \ref{prim-typing} on constants, $\theta(c) = c \in \lb ty(c)\rb = \lb \theta(ty(c))\rb$. In the other case, $ty(c) \equiv \functype{x}{t_x}{t'}$; by Lemma \ref{prim-typing},
 $c\; v_x \step \delta(c,v_x) \in \lb t'[v_x/x]\rb$ for any $v_x \in \lb t_x\rb.$ There are no free variables in $c$ or $t$ so $\theta(c)$ is a value and $\theta(c) = c \in \lb ty(c)\rb = \lb\theta(ty(c))\rb$.
 
-
-{\bf Case} {\sc T-Var}: We have $\Gamma \vdash e : t$ where $e \equiv x$ and $t \equiv {\rm self}(t', x)$. By inversion, $(x\bind t') \in \Gamma$. Then for any $\theta \in \lb\Gamma\rb,$ we have by definition $\theta(x) \in \lb \theta(t')\rb$. If ${\rm self}(t', x) = t'$ then we are done; otherwise $t' \equiv b\{z\col p\}$ and ${\rm self}(t', x) = b\{z \col p \wedge z = x\}$. Then $\theta({\rm self}(t', x)) = b\{z\col \theta(p) \wedge z = \theta(x)\}$. We have $\varnothing\vdash_B \theta(x) : \lfloor {\rm self}(t', x) \rfloor$ because $\lfloor {\rm self}(t', x)\rfloor = \lfloor t'\rfloor$.
-Finally, we have $\theta(p\wedge z = x)[\theta(x)/z] 
+{\bf Case} {\sc T-Var}: We have $\Gamma \vdash e : t$ where $e \equiv x$ and $t \equiv {\rm self}(t', x)$. By inversion, $(x\bind t') \in \Gamma$. Then for any $\theta \in \lb\Gamma\rb,$ we have by definition $\theta(x) \in \lb \theta(t')\rb$. 
+We have $\varnothing\vdash_B \theta(x) : \lfloor {\rm self}(t', x) \rfloor$ because $\lfloor {\rm self}(t', x)\rfloor = \lfloor t'\rfloor$.
+We consider the different possible cases for $t'$. First, if $t' \equiv b\{z\col p\}$ and ${\rm self}(t', x) = b\{z \col p \wedge z = x\}$. Then $\theta({\rm self}(t', x)) = b\{z\col \theta(p) \wedge z = \theta(x)\}$. 
+We have $\theta(p\wedge z = x)[\theta(x)/z] 
 = \theta(p)[\theta(x)/z] \wedge \theta(x)=\theta(x) \many \true$
-because $\theta(p)[\theta(x)/z] \many \true$ from $\theta(x)\in\lb b\{z\col \theta(p)\}\rb.$ Therefore $\theta(x) \in \lb\theta({\rm self}(t',x))\rb$, as desired.
+because $\theta(p)[\theta(x)/z] \many \true$ from $\theta(x)\in\lb b\{z\col \theta(p)\}\rb.$ Therefore $\theta(x) \in \lb\theta({\rm self}(t',x))\rb$, as desired. % TODO: update for changing def'n of selfify
 
-% move TApp here
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-{\bf Case} {\sc T-AbsT}. We have $\Gamma \vdash e : t$ where $e \equiv \Lambda \al\bind k. e'$ and $t \equiv \polytype{\al}{k}{t'}$. By inversion we have $\al\bind k, \Gamma \vdash e' : t'$, and by the inductive hypothesis,
-\begin{equation}\label{3.15}
-\forall\, \theta'.\, \theta' \in \lb\al\bind k, \Gamma\rb \Rightarrow
-\theta'(e') \in \lb\theta'(t')\rb.
-\end{equation}
-Let $\theta \in \lb\Gamma\rb$ arbitrary and let $t_\al$ be a type such that $\varnothing \vdash_w t_\al : k$. Then we have $\theta' := (\al \mapsto t_\al, \theta).$ Then from (\ref{3.15}), we have \[
-\theta(e')[t_\al/\al] = \theta'(e') \in \lb \theta'(t')\rb = \lb\theta(t')[t_\al/\al]\rb.
+Second, ${\rm self}(\al, x) = \al$, so we are done. Third, if $t' \equiv \functype{y}{s_y}{s}$ then 
+\[
+\lb\theta({\rm self}(t',x))\rb = \{v \,|\, \varnothing \vdash_B v : \lfloor \theta({\rm self}(t',x)) \rfloor \;\wedge\; (\forall\, v_y \in \lb \theta(s_y) \rb.\, v\, v_y \many v' \;{\rm such\; that}\; v'\in \lb \theta({\rm self}(s,x)[v_y/y]) \rb ) \}
 \]
-By the closure of values under substitution, $\theta(e')[t_\al/\al]$ is itself a value and by rule {\sc E-AppTAbs} we have that $\theta(\Lambda \al\bind k. e')\, [t_\al] \many \theta(e')[t_\al/\al]$, which proves that $\theta(e) \in \lb\theta(\polytype{\al}{k}{t'})\rb$.
-
-%%%%%%%%%%%%%%%%%%%% include the bare typing judgment reasoning
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
 {\bf Case} {\sc T-App}: We have $\Gamma \vdash e : t$ where $e \equiv e'\; e_x$ and $t \equiv \existype{x}{t_x}{t'}$. By inversion,
 $\Gamma \vdash e' : \functype{x}{t_x}{t'}$ and $\Gamma \vdash e_x : t_x$. 
 By the inductive hypothesis we have both
                                                                                                                                                                                                                                                                                                                                             
 \begin{equation}\label{3.8.1}
-\forall \theta.\, \theta\in\lb\Gamma\rb \Rightarrow 
-\theta(e') \in \lb\theta(\functype{x}{t_x}{t'})\rb\end{equation}
+\forall \theta.\, \theta\in\lb\Gamma\rb \Rightarrow \exists\, v'.\,
+\theta(e') \many v' \,{\rm and}\; v' \in \lb\theta(\functype{x}{t_x}{t'})\rb\end{equation}
 and
 \begin{equation}\label{3.8.2}
-\forall \theta.\, \theta \in \lb\Gamma\rb \Rightarrow
-\theta(e_x) \in \lb\theta(t_x)\rb.
+\forall \theta.\, \theta \in \lb\Gamma\rb \Rightarrow \exists\, v_x.\,
+\theta(e_x) \many v_x \;{\rm and}\; v_x \in \lb\theta(t_x)\rb.
 \end{equation}
 
-First suppose,
+Fix some $\theta \in \lb\Gamma \rb$ and let $v'$ and $v_x$ be as above; we must show that there exists some value $v$ such that $\theta(e) = \theta(e')\; \theta(e_x) \many v$ and $v \in \lb\theta(t)\rb = \lb\existype{x}{\theta(t_x)}{\theta(t')}\rb$. 
+Because $v' \in \lb\theta(\functype{x}{t_x}{t'})\rb =\lb\functype{x}{\theta(t_x)}{\theta(t')}\rb$, we have that $\varnothing \vdash_B v' : \lfloor t_x\rfloor \rightarrow \lfloor t'\rfloor$ and that there exists a $v$ such that $v'\; v_x \many v$ and $v \in \lb \theta(t')[v_x/x]\rb$. Note that $\theta(e) = \theta(e')\; \theta(e_x) \many v'\; v_x \many v$ and we have $\varnothing \vdash_B v'\; v_x : \lfloor t' \rfloor$ because $\varnothing \vdash_B v_x:\lfloor t_x\rfloor$. Then by the soundness of the underlying System F, we have $\varnothing \vdash_B v : \lfloor t' \rfloor$. Thus we conclude that $v \in \lb \existype{x}{\theta(t_x)}{\theta(t')}\rb$ as required.
 
-
-
-Next suppose that $\theta(e_x)$ does not evaluate to a value. Then 
-$\theta(e')\;\theta(e_x)$ cannot evaluate to a value ever (because the only rule we could ever apply is {\sc E-App1} and no expression of the form $e'_1\;e'_2$ is ever a value)
-
-From (\ref{3.8.1}), we have that for all $\theta \in \lb\Gamma\rb$, $\theta(e')\; \theta(e_x) \in \lb\theta(t')[\theta(e_x)/x]\rb$. Thus
-\begin{equation}
-\theta(e) = \theta(e')\; \theta(e_x) \in \lb \existype{x}{\theta(t_x)}{\theta(t')}\rb = \lb\theta(\existype{x}{t_x}{t'})\rb
-.\end{equation}
-
-
-
-{\bf Case} {\sc T-Abs}: We have $\Gamma \vdash e : t$ where $e \equiv \lambda x.e'$ and $t \equiv \functype{x}{t_x}{t'}$. By inversion, $\Gamma,x\bind t_x \vdash e' : t'$ and by the inductive hypothesis,
+{\bf Case} {\sc T-Abs}: We have $\Gamma \vdash e : t$ where $e \equiv \lambda x.e'$ and $t \equiv \functype{x}{t_x}{t'}$. By inversion, there exists some $y\not\in\dom{\Gamma}$ such that $y\bind t_x, \Gamma \vdash e'[y/x] : t'[y/x]$. By the inductive hypothesis,
 \begin{equation}\label{3.7.1}
-\forall\theta'.\, \theta' \in \lb\Gamma,x\bind t_x\rb \Rightarrow \theta'(e') \in \lb\theta'(t')\rb.\end{equation}
-Let $\theta \in \lb\Gamma\rb$ and let $v_x \in \lb \theta(t_x)\rb$ a value. Then let
-\[\theta' := (\theta,x\mapsto v_x) \in \lb\Gamma,x\bind t_x\rb.
-\] 
-%because we chose $\theta(x) = \theta(v) \in \lb\theta(t_1)\rb$.
-Then from (\ref{3.7.1}), 
-\begin{equation}\label{3.7.2}
-\theta(e')[v_x/x] = \theta'(e') \in \lb\theta'(t')\rb = \lb\theta(t')[v_x/x]\rb.
-\end{equation}
-
-We need to show that for every $\theta \in \lb\Gamma\rb$, it holds that 
+\forall\theta'.\, \theta' \in \lb y\bind t_x,\Gamma\rb \Rightarrow \exists\, v'.\, \theta'(e'[y/x]) \many v' \;{\rm and}\; v' \in \lb\theta'(t'[y/x])\rb.\end{equation}
+We need to show that for every $\theta \in \lb\Gamma\rb$, there exists a value $v$ such that $\theta(e) \many v$ and 
 \begin{align*}
-\theta(e) \in \lb \theta(&\functype{x}{t_x}{t'}) \rb = \lb \functype{x}{\theta(t_x)}{\theta(t')}\rb\\
-=&\; \{ \hat{e} \;|\; (\varnothing \vdash_B {\hat e} : \lfloor t_x \rfloor \rightarrow \lfloor t' \rfloor) \wedge ( \forall\, \hat v_x \in \lb \theta(t_x) \rb.\; \hat e \; \hat v_x \in \lb\theta(t')[\hat v_x/x] \rb) \}
+v \in \lb \theta(&\functype{x}{t_x}{t'}) \rb = \lb \functype{x}{\theta(t_x)}{\theta(t')}\rb\\
+=&\; \{ \hat{v} \;|\; (\varnothing \vdash_B {\hat v} : \lfloor \theta(t_x) \rfloor \rightarrow \lfloor \theta(t') \rfloor) \wedge ( \forall\, v_x \in \lb \theta(t_x) \rb.\; \exists v'.\,\hat v \; v_x \many v' \in \lb\theta(t')[v_x/x] \rb) \}
 \end{align*}
-We have $\varnothing \vdash_B \theta(e) : \lfloor t_x \rfloor \rightarrow \lfloor t' \rfloor$ because substitutions do not affect bare types, only the refinement predicates.
-We have
-$\theta(e)\; v_x = (\lambda x.\theta(e'))\; v_x.$
-%There are two cases for $e_x$: first, if $e_x$ does not evaluate to any value then the only reduction rules we can ever apply are {\sc E-App1} and {\sc E-App2} and so $\theta(e)\; e_x$ can never evaluate to a value. By Lemma \ref{denote-diverge} we have that $\theta(e)\; e_x \in \lb t'[e_x/x]\rb$. In the other case suppose that there exists some value such that $e_x \many v_x$. 
-Then  $\theta(e)\; v_x \step \theta(e')[v_x/x] \in \lb \theta(t')[v_x/x]\rb$. By Lemma \ref{pres-den}, we conclude that $\theta(e)\; v_x \in \lb \theta(t')[v_x/x]\rb$ also.
-%By a forthcoming lemma (TODO: this), $\lb\theta(t')[v_x/x]\rb \subseteq \lb\theta(t')[e_x/x]\rb$. Then by Lemma \ref{denote-diverge} we conclude that $\theta(e)\; e_x \in \lb\theta(t')[e_x/x]\rb$ and so $\theta(e) \in \lb\theta(t)\rb$.
 
+Let $\theta \in \lb\Gamma\rb$ and let $v = \lambda x.\theta(e') = \theta(e)$. By repeated application of the substitution lemma for System F, $\varnothing \vdash_B v : \lfloor \theta(t) \rfloor$.
+Let $v_x \in \lb \theta(t_x)\rb$ a value.  Then let
+\[\theta' := (y\mapsto v_x, \theta) \in \lb y\bind t_x,\Gamma\rb.\] 
+By rule {\sc E-AppAbs} $v\; v_x \step \theta(e')[v_x/x] = \theta(e'[y/x])[v_x/y] = \theta'(e'[y/x]) \many v'$ and $v' \in \lb\theta'(t'[y/x])\rb = \lb \theta(t')[v_x/x]\rb$ by (\ref{3.7.1}), which proves that $v \in \lb\theta(t)\rb$.
 
+{\bf Case} {\sc T-AppT} We have $\Gamma \vdash e : t$ where $e \equiv e'\; [t']$ and $t \equiv s[t'/\al]$. By inversion, $\Gamma \vdash e' : \polytype{\al}{k}{s}$ and $\Gamma \vdash_w t': k$. By the inductive hypothesis
+\begin{equation}\label{3.16}
+\forall\, \theta.\, \theta \in \lb\Gamma\rb \Rightarrow \exists v'.\, \theta(e') \many v' \;{\rm and}\; v' \in \lb\polytype{\al}{k}{\theta(s)}\rb.
+\end{equation}
+Let $\theta \in \lb\Gamma\rb$. Then $\theta(e) = \theta(e')\; [\theta(t')] \many v'\; [\theta(t')]$. By definition of a denotation, we have that there exists $v''$ such that $v'\; [\theta(t')] \many v''$ and $v'' \in \lb \theta(s)[\theta(t')/\al]\rb = \lb\theta(t)\rb$.
+
+{\bf Case} {\sc T-AbsT}. We have $\Gamma \vdash e : t$ where $e \equiv \Lambda \al\bind k. e'$ and $t \equiv \polytype{\al}{k}{t'}$. By inversion we have that there exists $\al' \not\in\dom{\Gamma}$ such that $\al'\bind k, \Gamma \vdash e'[\al'/\al] : t'[\al'/\al]$, and by the inductive hypothesis,
+\begin{equation}\label{3.15}
+\forall\, \theta'.\, \theta' \in \lb\al'\bind k, \Gamma\rb \Rightarrow
+\exists v'.\, \theta'(e'[\al'/\al]) \many v' \;{\rm and}\; v' \in \lb\theta'(t'[\al'/\al])\rb.
+\end{equation}
+Let $\theta \in \lb\Gamma\rb$ arbitrary and let $t_\al$ be a type such that $\varnothing \vdash_w t_\al : k$. Then we have $\theta' := (\al' \mapsto t_\al, \theta).$ 
+Let $v = \Lambda\al\bind k.\theta(e')$.
+Then from (\ref{3.15}), we have that $v'$ exists such that
+\[
+v\; [t_\al] \step \theta(e')[t_\al/\al] = \theta(e'[\al'/\al])[t_\al/\al'] = \theta'(e'[\al'/\al]) \many v'
+\]
+and $v' \in \lb\theta'(t'[\al'/\al])\rb = \lb\theta(t')[t_\al/\al]\rb.$
+Finally, by repeated application of the System F substitution lemma, $\varnothing \vdash_B c : \lfloor \theta(t)\rfloor$. This proves that $v \in \lb \theta(t)\rb$.
 
 {\bf Case} {\sc T-Let}: We have $\Gamma \vdash e : t$ where
 $e \equiv \letin{x}{e_x}{e'}$.
-By inversion, we have $\Gamma \vdash e_x : t_x$,\; $(\Gamma,x\bind t_x) \vdash e' : t$, and $\Gamma \vdash_w t$
+By inversion, we have for some $y\not\in\dom{\Gamma}$, that
+$\Gamma \vdash e_x : t_x$,\; $(y\bind t_x,\Gamma) \vdash e'[y/x] : t[y/x]$, and $\Gamma \vdash_w t$
 for some $t_x$. Then by the inductive hypothesis we have
 \[
-\foralltheta \Rightarrow \theta(e_x) \in \lb\theta(t_x)\rb
+\foralltheta \Rightarrow \exists v_x.\, \theta(e_x) \many v_x \;{\rm and}\; v_x \in \lb\theta(t_x)\rb
 \] and 
 \begin{equation}\label{3.9.1}
-\forall\theta'.\, \theta' \in \lb\Gamma,x\bind t_x\rb \Rightarrow \theta'(e') \in \lb\theta'(t)\rb.\end{equation}
-Let $\theta \in \lb\Gamma\rb$. There are two cases for the semantics of $e_x$. In the case that there exists some value $v_x$ such that $\theta(e_x) \many v_x$, let $\theta' = (\theta, x\mapsto v_x)\in \lb\Gamma,x\bind t_x\rb$ because we chose $\theta'(x) = v_x \in \lb\theta(t_x)\rb$. 
-From the operational semantics $\theta(\letin{x}{e_x}{e'}) = \letin{x}{\theta(e_x)}{\theta(e')} \many \letin{x}{v_x}{\theta(e')} \step \theta(e')[v_x/x]$. 
-Then from (\ref{3.9.1}),
+\forall\theta'.\, \theta' \in \lb y\bind t_x, \Gamma\rb \Rightarrow \exists v'.\, \theta'(e'[y/x]) \many v' \;{\rm and}\; v' \in \lb\theta'(t[y/x])\rb.
+\end{equation}
+Let $\theta \in \lb\Gamma\rb$. Let $v_x$ be as above and let $\theta' = (y\mapsto v_x, \theta)\in \lb y\bind t_x,\Gamma\rb$ because we chose $\theta'(x) = v_x \in \lb\theta(t_x)\rb$. 
+From the operational semantics $\theta(\letin{x}{e_x}{e'}) = (\letin{x}{\theta(e_x)}{\theta(e')}) \many (\letin{x}{v_x}{\theta(e')}) \step \theta(e')[v_x/x] = \theta(e'[y/x])[v_x/y] = \theta'(e'[y/x]) \many v'$ for some value $v'$.
+ Then from (\ref{3.9.1}),
 \[
-\theta(e')[v_x/x] = \theta'(e') \in \lb\theta'(t)\rb = \lb\theta(t)[v_x/x]\rb = \lb\theta(t)\rb,
+v' \in \lb\theta'(t[y/x])\rb = \lb\theta(t[y/x])[v_x/y]\rb = \lb\theta(t[y/x])\rb,
 \]
-where the last equality follows from the fact that the judgement $\Gamma \vdash_w t$ implies $\varnothing \vdash_w \theta(t)$ by part 3 of this lemma, which in turn implies that $x$ cannot be free in $\theta(t)$.
-The above implies
-$\theta(e) \many \theta(e')[v_x/x]$, so by Lemma \ref{pres-den}, $\theta(e) \in \lb\theta(t)\rb$.
+where the last equality follows from the fact that the judgment $\Gamma \vdash_w t$ implies that $y$ cannot be free in $\theta(t)$.
+In conclusion we have $\theta(e) \many v'$ and $v' \in \lb\theta(t[y/x])\rb$ as required.
 
-In the second case, $\theta(e_x)$ does not reduce to any value. In that case, the only rule we can ever apply to $\theta(e) = \letin{x}{\theta(e_x)}{\theta(e')}$ is {\sc E-Let} so $\theta(e)$ never reduces to a value, and by Lemma \ref{denote-diverge} $\theta(e) \in \lb\theta(t)\rb$.
+{\bf Case} {\sc T-Ann}: We have $\Gamma \vdash e : t$ where $e \equiv (e'\col t)$. By inversion, $\Gamma \vdash e' : t$ and by the inductive hypothesis, there exists some value $v$ such that $\theta(e') \many v$ and $v \in \lb\theta(t)\rb$. 
+By the operational semantics of type annotations, $\theta(e) = (\theta(e')\col \theta(t)) \many (v\col \theta(t)) \step v \in \lb\theta(t)\rb$, as required. 
 
-{\bf Case} {\sc T-Ann}: We have $\Gamma \vdash e : t$ where $e \equiv (e'\col t)$. By inversion, $\Gamma \vdash e' : t$ and by the inductive hypothesis, $\theta(e') \in \lb\theta(t)\rb$. By the operational semantics of type annotations, 
-$\theta(e) = (\theta(e')\col\theta(t)) \step \theta(e') \in \lb\theta(t)\rb$, so we conclude that $\theta(e) \in \lb\theta(t)\rb$ by Lemma \ref{pres-den}.
-
-{\bf Case} {\sc T-Sub}: We have $\Gamma \vdash e : t $ and by inversion, we have $\Gamma \vdash e : s$ and $\Gamma \vdash s <: t$ for some type $s$. 
-By the inductive hypothesis, $\foralltheta \Rightarrow \theta(e) \in \lb\theta(s)\rb$ and by mutual induction, part 1 of the Lemma gives us that  $\foralltheta \Rightarrow \lb\theta(s)\rb \subseteq \lb\theta(t)\rb$. Then we conclude that $\foralltheta \Rightarrow \theta(e) \in \lb\theta(t)\rb$.
-%
-%{\bf Case} {\sc T-Bot}: We have $\Gamma \vdash \bot : t$ where $t \equiv b\{x \col p\}$. Then because $\bot$ cannot evaluate, we have that $\bot \in \lb b\{x\col \theta(p)\}\rb = \lb \theta(t)\rb$.
+{\bf Case} {\sc T-Sub}: We have $\Gamma \vdash e : t $ and by inversion, we have $\Gamma \vdash e : s$ and $\Gamma \vdash s <: t$ for some type $s$. By the inductive hypothesis, 
+$\foralltheta \Rightarrow \exists v.\, \theta(e) \many v \;{\rm and}\; v\in \lb\theta(s)\rb$. By mutual induction, part 1 of the Lemma gives us that $\foralltheta \Rightarrow \lb\theta(s)\rb \subseteq \lb\theta(t)\rb$.
+Then we conclude that $\foralltheta \Rightarrow \exists v.\, \theta(e) \many v \;{\rm and}\; \in \lb\theta(t)\rb$ as desired.
 \end{proof}
 
+\begin{lemma}(The Substitution Lemma) 
+If $\Gamma \vdash v_x : t_x$ and if $\Gamma \vdash_w t_\al : k$ then\\
+1. If\; $\Gamma', x\bind t_x, \Gamma \vdash t_1 <: t_2$ and $\vdash_w \Gamma', x\bind t_x, \Gamma$ then
+\[
+\Gamma'[v_x/x], \Gamma \vdash t_1[v_x/x] <: t_2[v_x/x],
+\]
+and if\; $\Gamma', \al\bind k, \Gamma \vdash t_1 <: t_2$ and $\vdash_w \Gamma', \al\bind k, \Gamma$ then
+\[
+\Gamma'[t_\al/\al], \Gamma \vdash t_1[t_\al/\al] <: t_2[t_\al/\al].
+\]
+2. If\; $\Gamma', x\bind t_x, \Gamma \vdash e : t$ and $\vdash_w \Gamma', x\bind t_x, \Gamma$then
+\[
+\Gamma'[v_x/x], \Gamma \vdash e[v_x/x] : t[v_x/x],
+\]
+and if\; $\Gamma', x\bind t_x, \Gamma \vdash e : t$ and $\vdash_w \Gamma', \al\bind k, \Gamma$ then
+\[
+\Gamma'[t_\al/\al], \Gamma \vdash e[t_\al/\al] : t[t_\al/\al].
+\]
+3. If\; $\Gamma', x\bind t_x, \Gamma \vdash_w t : k$ and $\vdash_w \Gamma', x\bind t_x, \Gamma$then
+\[
+\Gamma'[v_x/x], \Gamma \vdash_w t[v_x/x] : k,
+\]
+and if\; $\Gamma', x\bind t_x, \Gamma \vdash_w t : k$ and $\vdash_w \Gamma', \al\bind k, \Gamma$ then
+\[
+\Gamma'[t_\al/\al], \Gamma \vdash_w t[t_\al/\al] : k.
+\]
+\end{lemma}
 
-
-
-\begin{comment}
 \begin{proof}
-(1) Suppose $\Gamma \vdash e_x:t_x$ and $\Gamma, x\bind t_x ,\Gamma' \vdash t_1 <: t_2$. We proceed by mutual induction on the derivation tree of the subtyping relation.
+(1) Suppose $\Gamma \vdash v_x:t_x$ and $\Gamma', x\bind t_x ,\Gamma  \vdash t_1 <: t_2$. We proceed by mutual induction (for parts 1 and 2) on the derivation tree of the subtyping relation. The proofs for substitution for a type variable are entirely similar, except where specifically noted.
 
-{\bf Case} $\textsc{Sub-Base}$: We have that 
-$\Gamma,x\bind t_x,\Gamma' \vdash b\{x_1\col p_1\} <: b\{x_2\col p_2\}$ where $t_1 \equiv b\{x_1\col p_1\}$ and $t_2 \equiv b\{x_2\col p_2\}$.
-By inversion, 
-\[\Gamma,x\bind t_x,\Gamma',x_1\bind b\{x_1\col p_1\} \vdash p_2[x_1/x_2].\] 
-By inversion of {\sc Ent-Ext} we have 
+{\bf Case} $\textsc{Sub-Base}$: First, we have that 
+$\Gamma',x\bind t_x,\Gamma \vdash b\{x_1\col p_1\} <: b\{x_2\col p_2\}$ where $t_1 \equiv b\{x_1\col p_1\}$ and $t_2 \equiv b\{x_2\col p_2\}$.
+By inversion, for some $y\not\in\dom{\Gamma',x\bind t_x,\Gamma}$ we have
+\[y\bind b\{x_1\col p_1\}, \Gamma',x\bind t_x,\Gamma \vdash_e  p_2[y/x_2].\] 
+By inversion of {\sc Ent-Pred} we have 
 \begin{equation}\label{311}
-\Gamma,x\bind t_x,\Gamma' \vdash \forall x_1\bind b.\; p_1 \Rightarrow p_2[x_1/x_2].\end{equation}
-By Lemma \ref{decl-impl}, we have
-\begin{align}
-\forall\, \theta^*.\, \theta^* \in \lb \Gamma,x\bind t_x,\Gamma'\rb \Rightarrow \varnothing \;&\vdash_e \theta^*(\forall x_1\bind b.\; p_1 \Rightarrow p_2[x_1/x_2]) \\
-&= \forall\, x_1\bind b.\, \theta^*(p_1) \Rightarrow \theta^*(p_2)[x_1/x_2].
-\end{align}
-
-Let $e_x$ be an expression such that $\Gamma \vdash e_x : t_x$.
-The above is equivalent to:
-\[
-\forall\, \theta, \theta'.\, (\theta, x \mapsto \theta(e_x), \theta') \in \lb\Gamma, x\bind t_x, \Gamma'\rb \Rightarrow \big( \varnothing \vdash_e
-\forall\, x_1\bind b.\, \theta'(\theta(p_1)[\theta(e_x)/x]) \Rightarrow \theta'(\theta(p_2)[\theta(e_x)/x]))[x_1/x_2] \big)
-\]
-or equivalently,
-\begin{equation}
-\forall\, \theta, \theta'.\, (\theta, \theta') \in \lb\Gamma, \Gamma'[e_x/x]\rb \Rightarrow \big(\varnothing \vdash_e
-\forall\, x_1\bind b.\, (\theta, \theta')(p_1[e_x/x]) \Rightarrow (\theta,\theta')(p_2[e_x/x][x_1/x_2])\big)
+\forall\theta^*.\, \theta^* \in \lb y\bind b\{x_1\col p_1\}, \Gamma',x\bind t_x,\Gamma \rb \Rightarrow \theta^*(p_2[y/x_2]) \many \true.
 \end{equation}
+Let $\hat \theta = (y\mapsto v_y,\theta',\theta) \in \lb y\bind\{x_1\col p_1[v_x/x]\},\Gamma'[v_x/x], \Gamma\rb$ arbitrary and let $\theta^* = (y\mapsto v_y, \theta', x \mapsto v_x, \theta) \in \lb y\bind\{ x_1\col p_1\}, \Gamma', x\bind t_x, \Gamma\rb$.
+Then $\hat \theta(p_2[v_x/x][y/x_2]) = \hat\theta(p_2[y/x_2])[v_x/x] = \theta^*(p_2[y/x_2]) \many \true$. Then we have that $y\bind\{x_1\col p_1[v_x/x]\},\Gamma'[v_x/x], \Gamma \vdash_e p_2[v_x/x][y/x_2]$
+by rule {\sc Ent-Pred}, and $\Gamma'[v_x/x], \Gamma \vdash b\{x_1\col p_1[v_x/x]\} <: b\{x_2\col p_2[v_x/x]\}$ by {\sc Sub-Base}.
 
-TODO: can't finish this one yet.
-\begin{comment}
-The validity of the implication in (\ref{311}) means that
-\begin{equation}\label{312}
-\forall\theta^*. \theta^*\in\lb\Gamma,x:t_x,\Gamma',v_1:b\rb \Rightarrow
-(\theta^*(p_1)\many\true)\Rightarrow(\theta^*(p_2[v_1/v_2])\many\true)
-\end{equation}
-
-Let $(\theta,\theta',v_1\mapsto e_1) \in \lb\Gamma,\Gamma'[e_x/x],v_1:b\rb$ be a closing substitution. Then
-\[(\theta,x\mapsto e_x,\theta',v_1\mapsto e_1)
-\in \lb \Gamma,x:t_x,\Gamma',v_1:b\rb
-\]
-because for each $(y:t_y[e_x/x]) \in \Gamma'[e_x/x]$ we have
-$\theta'(y) \in\lb\theta'(t_y[e_x/x])\rb$ which implies
-$(x\mapsto e_x,\theta')(y) \in \lb(x\mapsto e_x,\theta')(t_y)\rb$.
-
-Suppose it were the case that $(\theta,\theta',v_1\mapsto e_1)(p_1[e_x/x]) \many \true$. Then 
+{\bf Case} $\textsc{Sub-Func}$: We have that
+$\Gamma', x:t_x,\Gamma \vdash x_1:s_1 \rightarrow t'_1 <: x_2:s_2 \rightarrow t'_2$ where $t_1 \equiv x_1:s_1 \rightarrow t'_1$ and $t_2 \equiv x_2:s_2 \rightarrow t'_2$. By inversion, there exists some $y\not\in\dom{\Gamma',x\bind t_x,\Gamma}$ such that
 \[
-(\theta,x\mapsto e_x,\theta',v_1\mapsto e_1)
-(p_1) \many \true
-\] and so by (\ref{312}) \[
-(\theta,x\mapsto e_x,\theta',v_1\mapsto e_1)
-(p_2[v_1/v_2]) \many \true
-\]
-which in turn implies
-\[
-(\theta,\theta',v_1\mapsto e_1)((p_2[v_1/v_2])[e_x/x]) \many\true.
-\]
-Using the fact that $(p_2[v_1/v_2])[e_x/x] = (p_2[e_x/x])[v_1/v_2]$,
-this gives us the entailment 
-\begin{equation}\label{313}
-\Gamma,\Gamma'[e_x/x] \vdash \forall v_1:b.\, 
-  p_1[e_x/x] \Rightarrow (p_2[e_x/x])[v_1/v_2]
-\end{equation}
-By {\sc Ent-Ext},
-\[
-\Gamma,\Gamma'[e_x/x],v_1:b\{p_1[e_x/x]\} \vdash (p_2[e_x/x])[v_1/v_2].
-\]
-By {\sc Sub-Base},
-\[
-\Gamma,\Gamma'[e_x/x] \vdash b\{v_1 : p_1[e_x/x]\} <: b\{ v_2 : p_2[e_x/x]\}
-\]
-We know $t_1[e_x/x] = b\{v_1 : p_1[e_x/x]\}$ and likewise $t_2[e_x/x] = b\{v_2:p_2[e_x/x]\}$.
-Therefore, we conclude that 
-$\Gamma,\Gamma'[e_x/x] \vdash t_1[e_x/x] <: t_2[e_x/x].$
-\end{comment}
-\begin{comment}
-
-{\bf Case} $\textsc{Sub-Fun}$: We have that
-$\Gamma, x:t_x,\Gamma' \vdash x_1:s_1 \rightarrow t'_1 <: x_2:s_2 \rightarrow t'_2$ where $t_1 \equiv x_1:s_1 \rightarrow t'_1$ and $t_2 \equiv x_2:s_2 \rightarrow t'_2$. By inversion
-\[
-\Gamma,x:t_x,\Gamma' \vdash s_2 <: s_1 \;\;\;\;{\rm and}\;\;\;\;
-\Gamma,x:t_x,\Gamma',x_2:s_2 \vdash t'_1[x_2/x_1] <: t'_2
+\Gamma',x:t_x,\Gamma \vdash s_2 <: s_1 \;\;\;\;{\rm and}\;\;\;\;
+y\bind s_2, \Gamma',x:t_x,\Gamma \vdash t'_1[y/x_1] <: t'_2[y/x_2].
 \]
 Applying the inductive hypothesis to the above, we get
 \begin{equation}\label{321}
-\Gamma,\Gamma'[e_x/x] \vdash s_2[e_x/x] <: s_1[e_x/x]
+\Gamma'[v_x/x],\Gamma \vdash s_2[v_x/x] <: s_1[v_x/x]
 \end{equation} 
 and
 \begin{equation}\label{322}
-\Gamma,\Gamma'[e_x/x],x_2:s_2[e_x/x] \vdash (t'_1[x_2/x_1])[e_x/x] <: t'_2[e_x/x]
+y\bind s_2[v_x/x],\Gamma'[v_x/x],\Gamma \vdash t'_1[y/x_1][v_x/x] <: t'_2[y/x_2][v_x/x]
 \end{equation}
-We necessarily have that $x \neq x_1$ so
-$(t'_1[x_2/x_1])[e_x/x] = (t'_1[e_x/x])[x_2/x_1]$.
+We necessarily have that $x \neq y$ and $v_x$ contains only free variables from $\Gamma$, so
+$t'_1[y/x_1][v_x/x] = t'_1[v_x/x][y/x_1]$ and $t'_2[y/x_2][v_x/x] = t'_2[v_x/x][y/x_2]$.
 By rule {\sc Sub-Fun} applied to (\ref{321}) and (\ref{322}),
 \[
-\Gamma,\Gamma'[e_x/x] \vdash x_1:s_1[e_x/x] \rightarrow t'_1[e_x/x] <: x_2:s_2[e_x/x] \rightarrow t'_2[e_x/x]
+\Gamma'[v_x/x],\Gamma \vdash x_1:s_1[v_x/x] \rightarrow t'_1[v_x/x] <: x_2:s_2[v_x/x] \rightarrow t'_2[v_x/x]
 \]
 This is the same as 
-$\Gamma,\Gamma'[e_x/x] \vdash t_1[e_x/x] <: t_2[e_x/x]$.
+$\Gamma'[v_x/x],\Gamma \vdash t_1[v_x/x] <: t_2[v_x/x]$.
 
-(2) Suppose $\Gamma \vdash e_x:t_x$ and $\Gamma, x:t_x ,\Gamma' \vdash e : t$. We proceed by induction on the derivation tree of the typing judgment $e:t$.
-
-{\bf Case} {\sc Syn-Var}: We have $\Gamma, x:t_x,\Gamma' \vdash e : t$ where $e \equiv y$. By inversion we have $(\Gamma,x:t_x,\Gamma')(y) = t$. There are three possibilities for where in the environment $y:t$ is bound.
-First, suppose $\Gamma(y) = t$. Then, necessarily, $y\neq x$ and $y[e_x/x] = y.$ But $x:t_x$ is bound to the right of $\Gamma$, so $x$ cannot appear in $t$ and $t = t[e_x/x]$. By rule {\sc Syn-Var} we have $\Gamma, \Gamma'[e_x/x] \vdash y : t$ and so
-$\Gamma, \Gamma'[e_x/x] \vdash y[e_x/x] : t[e_x/x] $.
-
-Next suppose $y \equiv x$. Then $t \equiv t_x$. Also, $x:t_x$ is bound to the right of $\Gamma$, so $x$ cannot appear in $t_x$ (i.e. $x$ cannot be free in its own type). So $t_x = t_x[e_x/x] = t[e_x/x]$.
-We also have $e_x = x[e_x/x] = y[e_x/x]$ and 
-By hypothesis, $\Gamma \vdash e_x : t_x$ and this judgment remains true with respect to more bindings on variables that don't appear in $e_x$ or $t_x$; so $\Gamma,\Gamma'[e_x/x] \vdash e_x : t_x$. By the above equalities we see $\Gamma,\Gamma'[e_x/x] \vdash y[e_x/x] : t[e_x/x]$.
-
-Finally, suppose $\Gamma'(y) = t$. 
-Then $\Gamma'[e_x/x](y) = t[e_x/x]$. 
-By rule {\sc Syn-Var} we have $\Gamma,\Gamma'[e_x/x] \vdash y : t[e_x/x]$. We necessarily have that $y\neq x$ and so $y[e_x/x] = y$. Thus we conclude
-$\Gamma,\Gamma'[e_x/x] \vdash y[e_x/x] : t[e_x/x]$.
-
-
-{\bf Case} {\sc Syn-Con}:We have $\Gamma, x:t_x,\Gamma' \vdash e : t$ where $e \equiv c$. By inversion, $t = {\sf prim}(c)$. By our assumptions on constants, neither $c$ nor ${\sf prim}(c)$ contain free variables so $c[e_x/x] = c$ and ${\sf prim}(c)[e_x/x]$.
-By rule {\sc Syn-Con},
-$\Gamma,\Gamma'[e_x/x] \vdash c : t$ and so
-$\Gamma,\Gamma'[e_x/x] \vdash c[e_x/x] : t[e_x/x]$
-because the environment can be artibrary.
-
-{\bf Case} {\sc Syn-Ann}:We have $\Gamma, x:t_x,\Gamma' \vdash e : t$ where $e \equiv (e':t)$. By inversion, we have $\Gamma, x:t_x,\Gamma' \vdash e' : t$ and by the induction hypothesis, 
-$\Gamma, \Gamma'[e_x/x] \vdash e'[e_x/x] : t[e_x/x]$. By rule {\sc Syn-Ann}, we get
-\begin{equation}\label{351}
-\Gamma, \Gamma'[e_x/x] \vdash (e'[e_x/x] : t[e_x/x]) : t[e_x/x]
+{\bf Case} {\sc Sub-Witn}: We have that $t_2 \equiv \existype{y}{t_y}{t'}$ and $\Gamma', x:t_x,\Gamma \vdash t_1 <: \existype{y}{t_y}{t'}$. By inversion, there exists some value $v_y$ such that
+\begin{equation}
+\Gamma', x:t_x,\Gamma \vdash v_y : t_y \;\;\;\;{\rm and}\;\;\;\;
+\Gamma', x:t_x,\Gamma \vdash t_1 <: t'[v_y/y].
 \end{equation}
-By definition of substitutions $(e'[e_x/x] : t[e_x/x]) = (e':t)[e_x/x] = e[e_x/x]$, so from (\ref{351}) we immediately get $\Gamma, \Gamma'[e_x/x] \vdash e[e_x/x] : t[e_x/x]$
+By the inductive hypothesis we have that $\Gamma'[v_x/x], \Gamma \vdash t_1[v_x/x] <: t'[v_y/y][v_x/x]$. By our convention that free and bound variables are distinct (and because $v_x$ contains only free variables from $\Gamma$ and $v_y$ contains only free variables from $\Gamma', x\bind t_x,\Gamma$) we have $t'[v_y/y][v_x/x] = t'[v_x/x][v_y[v_x/x]/y]$. By the inductive hypothesis, we also have $\Gamma'[v_x/x], \Gamma \vdash v_y[v_x/x] : t_y[v_x/x]$. Applying rule {\sc Sub-Witn} we have $\Gamma'[v_x/x], \Gamma \vdash t_1[v_x/x] <: \existype{y}{t_y[v_x/x]}{t'[v_x/x]}$ as desired.
 
-{\bf Case} {\sc Syn-App}:We have $\Gamma, x:t_x,\Gamma' \vdash e : t$ where $e \equiv e'\, v$ and $t \equiv t'[v/y]$ for some value $v$ (per the syntax). By inversion,
-$\Gamma, x:t_x, \Gamma' \vdash e' : (y:s'\rightarrow t')$
-and $\Gamma, x:t_x, \Gamma' \vdash v : s'$.
+{\bf Case} {\sc Sub-Bind}: We have that $t_1 \equiv \existype{y}{t_y}{t}$ and $\Gamma', x:t_x,\Gamma \vdash\existype{y}{t_y}{t} <: t_2$. By inversion, we have for some $z\not\in\dom{\Gamma', x:t_x,\Gamma}$ such that $z\not\in{\rm free}(t_2)$,
+\[
+z\bind t_y, \Gamma', x:t_x,\Gamma \vdash t[z/y] <: t_2.
+\]
 By the inductive hypothesis,
+\begin{equation}
+z\bind t_y[v_x/x], \Gamma'[v_x/x], \Gamma \vdash t[z/y][v_x/x] <: t_2[v_x/x].
+\end{equation}
+Because $x \neq z$ and $v_x$ contains only free variables from $\Gamma$ we have $t[z/y][v_x/x] = t[v_x/x][z/y]$. Thus we can apply rule {\sc Sub-Bind} to conclude that
+$\Gamma'[v_x/x], \Gamma \vdash \existype{y}{t_y[v_x/x]}{t[v_x/x]} <: t_2[v_x/x].$
+
+{\bf Case} $\textsc{Sub-Poly}$: We have that
+$\Gamma', x\bind t_x,\Gamma \vdash \polytype{\al_1}{k}{t'_1} <: \polytype{\al_2}{k}{t'_2}$ where $t_1 \equiv \polytype{\al_1}{k}{t'_1}$ and $t_2 \equiv \polytype{\al_2}{k}{t'_2}$. By inversion, there exists some $\al\not\in\dom{\Gamma',x\bind t_x,\Gamma}$ such that
+\[
+\al\bind k, \Gamma',x:t_x,\Gamma \vdash t'_1[\al/\al_1] <: t'_2[\al/\al_2].
+\]
+Applying the inductive hypothesis to the above, we get
+\begin{equation}\label{sub-poly-2}
+\al\bind k,\Gamma'[v_x/x],\Gamma \vdash t'_1[\al/\al_1][v_x/x] <: t'_2[\al/\al_2][v_x/x]
+\end{equation}
+We necessarily have that $x \neq \al$ and $v_x$ contains only free variables from $\Gamma$, so
+$t'_1[\al/\al_1][v_x/x] = t'_1[v_x/x][\al/\al_1]$ and $t'_2[\al/\al_1][v_x/x] = t'_2[v_x/x][\al/\al_1]$.
+By rule {\sc Sub-Fun} applied to (\ref{sub-poly-2}),
+\[
+\Gamma'[v_x/x],\Gamma \vdash \polytype{\al_1}{k}{t'_1[v_x/x]} <: \polytype{\al_2}{k}{t'_2[v_x/x]}.
+\]
+This is the same as 
+$\Gamma'[v_x/x],\Gamma \vdash t_1[v_x/x] <: t_2[v_x/x]$. \\
+
+(2) Suppose $\Gamma \vdash v_x:t_x$ and $\Gamma', x:t_x ,\Gamma \vdash e : t$. We proceed by induction on the derivation tree of the typing judgment $e:t$. The proofs for substitution of a type variable are entirely similar, except where specifically noted.
+
+{\bf Case} {\sc T-Prim}: We have $\Gamma', x:t_x,\Gamma \vdash e : t$ where $e \equiv c$. By inversion, $t = ty(c)$. By Lemma \ref{prim-typing}, neither $c$ nor $ty(c)$ contain any free variables so $c[v_x/x] = c$ and $ty(c)[v_x/x] = ty(c)$.
+By rule {\sc T-Prim},
+$\Gamma'[v_x/x],\Gamma \vdash c : ty(c)$ 
+because the environment can be arbitrary,
+and so
+$\Gamma'[v_x/x],\Gamma \vdash c[v_x/x] : ty(c)[v_x/x]$.
+
+{\bf Case} {\sc T-Var}: We have $\Gamma', x:t_x,\Gamma \vdash e : t$ where $e \equiv y$. By inversion we have $y\bind t \in \Gamma', x:t_x,\Gamma.$ There are three possible cases for where $y$ is bound in the environment.
+
+First suppose that $y\bind t \in \Gamma$. Then, necessarily, $y\neq x$ and $y[v_x/x] = y.$ Now $x\bind t_x$ is bound to the left of $\Gamma$, so $x$ cannot appear free in $t$ and $t = t[v_x/x]$. By rule {\sc T-Var} we have $\Gamma'[v_x/x], \Gamma \vdash y : t$ and so $\Gamma'[v_x/x], \Gamma \vdash y[v_x/x] : t[v_x/x] $.
+
+Next suppose $y = x$. Then $t = t_x$. Also, $x$ cannot appear in $t_x$ (i.e. $x$ cannot be free in its own type). So $t_x = t_x[v_x/x] = t[v_x/x]$. We also have $v_x = x[v_x/x] = y[v_x/x]$.
+By hypothesis, $\Gamma \vdash v_x : t_x$ and by Lemma \ref{weakenings} this judgment remains true with respect to more bindings on variables that don't appear in $\Gamma$; thus $\Gamma'[v_x/x], \Gamma \vdash v_x : t_x$. Then we conclude $\Gamma'[v_x/x], \Gamma \vdash y[v_x/x] : t[v_x/x]$.
+
+Finally, suppose  $y\bind t \in \Gamma'$. Then $y\bind t[v_x/x] \in \Gamma'[v_x/x]$, and by rule {\sc T-Var} we have $\Gamma'[v_x/x], \Gamma \vdash y : t[v_x/x]$. We must have that $y\neq x$ and thus $y[v_x/x] = y$. Thus we conclude that $\Gamma'[v_x/x], \Gamma \vdash y[v_x/x] : t[v_x/x]$.
+
+For the type variable substitution proof, we have $\Gamma', \al:k,\Gamma \vdash y : t$ and $\vdash_w \Gamma', \al:k,\Gamma$. By inversion we have $y\bind t \in \Gamma', \al;k ,\Gamma.$ We proceed as above, except that there are only two cases: $y\bind t \in \Gamma$ or $y\bind t \in \Gamma'$.
+
+{\bf Case} {\sc T-App}:We have $\Gamma', x\bind t_x,\Gamma \vdash e : t$ where $e \equiv e_1\; e_2$ and $t \equiv \existype{y}{t_y}{t'}$. 
+By inversion, $\Gamma', x\bind t_x, \Gamma \vdash e_1 : \functype{y}{t_y}{t'}$ and $\Gamma', x\bind t_x, \Gamma \vdash e_2 : t_y$. By the inductive hypothesis,
 \begin{equation}\label{361}
-\Gamma,\Gamma'[e_x/x] \vdash e'[e_x/x] : (y:s'[e_x/x]\rightarrow t'[e_x/x])
+\Gamma'[v_x/x],\Gamma\vdash e_1[v_x/x] : \functype{y}{t_y[v_x/x]}{t'[v_x/x]}
 \end{equation}
 and
 \begin{equation}\label{362}
-\Gamma,\Gamma'[e_x/x] \vdash v[e_x/x] : s'[e_x/x.]
+\Gamma'[v_x/x],\Gamma\vdash e_2[v_x/x] : t_y[v_x/x].
 \end{equation}
-By rule {\sc Syn-App}
+By applying rule {\sc T-App}
 \begin{equation}
-\Gamma,\Gamma'[e_x/x] \vdash e'[e_x/x]\, v[e_x/x] : (t'[e_x/x])[v[e_x/x]/y]
+\Gamma'[v_x/x],\Gamma\vdash e_1[v_x/x]\;e_2[v_x/x] : \functype{y}{t_y[v_x/x]}{t'[v_x/x]}.
 \end{equation}
-Now by the definition of substitutions we have
-$e'[e_x/x]\, v[e_x/x] = (e'\;v)[e_x/x] \equiv e[e_x/x]$ and 
-$(t'[e_x/x])[v[e_x/x]/y] = (t'[v/y])[e_x/x] \equiv t[e_x/x]$.
-Therefore, we conclude
-$\Gamma,\Gamma'[e_x/x] \vdash e[e_x/x] : t[e_x/x]$.
+Now by the definition of substitution we have $e_1[v_x/x]\; e_2[v_x/x] = (e_1\;e_2)[v_x/x] \equiv e[v_x/x]$ and $\functype{y}{t_y[v_x/x]}{t'[v_x/x]} = (\functype{y}{t_y}{t'})[v_x/x] \equiv t[v_x/x]$. Therefore, we conclude that
+$\Gamma'[v_x/x],\Gamma \vdash e[v_x/x] : t[v_x/x]$.
 
-{\bf Case} {\sc Chk-Syn}:We have $\Gamma, x:t_x,\Gamma' \vdash e : t$. By inversion, we have $\Gamma,x:t_x,\Gamma' \vdash e : s$
-and $\Gamma, x:t_x, \Gamma' \vdash s <: t$ for some type $s$. By the inductive hypothesis we have
+{\bf Case} {\sc T-Abs}:We have $\Gamma', x:t_x,\Gamma \vdash e : t$ where $e \equiv \lambda y. e'$ and $t \equiv \functype{y}{t_y}{t'}$. By inversion, $z\bind t_y, \Gamma', x\bind t_x,\Gamma \vdash e'[z/y] : t'[z/y]$ and $\Gamma', x\bind  t_x,\Gamma \vdash_w t_y : k_y$ for some $z\not\in\dom{\Gamma}$. By the inductive hypothesis
 \begin{equation}
-\label{371}
-\Gamma,\Gamma'[e_x/x] \vdash e[e_x/x] : s[e_x/x]
+z\bind t_y[v_x/x], \Gamma'[v_x/x],\Gamma \vdash e'[z/y][v_x/x] : t'[z/y][v_x/x] \;\;{\rm and}\;\; \Gamma'[v_x/x],\Gamma \vdash_w t_y[v_x/x] : k_y.
 \end{equation}
-and by part (1) of the Lemma we have
+We must have $x\neq z$ and we have $x \neq y$ because bound and free variables are taken to be distinct. Moreover, $v_x$ contains only free variables from $\Gamma$, so $e'[z/y][v_x/x] = e'[v_x/x][z/y]$ and $t'[z/y][v_x/x] = t'[v_x/x][z/y]$. Then by rule {\sc T-Abs}
 \begin{equation}
-\label{372}
-\Gamma,\Gamma'[e_x/x] \vdash s[e_x/x] <: t[e_x/x].
-\end{equation}
-Then by rule {\sc Chk-Syn} we have
-$\Gamma,\Gamma'[e_x/x] \vdash e[e_x/x] : t[e_x/x]$.
-
-{\bf Case} {\sc Chk-Lam}:We have $\Gamma, x:t_x,\Gamma' \vdash e : t$ where $e \equiv \lambda y. e'$ 
-and $t \equiv y:t_1 \rightarrow t_2$. By inversion,
-$\Gamma, x:t_x,\Gamma',y:t_1 \vdash e' : t_2$. By the inductive hypothesis
-\begin{equation}
-\Gamma,\Gamma'[e_x/x],y:t_1[e_x/x] \vdash e'[e_x/x] : t_2[e_x/x].
-\end{equation}
-Then by rule {\sc Chk-Lam}
-\begin{equation}
-\Gamma,\Gamma'[e_x/x] \vdash \lambda y.(e'[e_x/x]) : (y:t_1[e_x/x] \rightarrow t_2[e_x/x]).
+\Gamma'[v_x/x], \Gamma' \vdash \lambda y.(e'[v_x/x]) : \functype{y}{t_y[v_x/x]}{t'[v_x/x]}.
 \end{equation}
 By definition of substitution, we can rewrite the above as
 \[
-\Gamma,\Gamma'[e_x/x] \vdash (\lambda y.e')[e_x/x] : (y:t_1 \rightarrow t_2)[e_x/x].
+\Gamma'[v_x/x],\Gamma \vdash (\lambda y.e')[v_x/x] : \functype{y}{t_y}{t'}[v_x/x].
 \]
 
-{\bf Case} {\sc Chk-Let}:We have $\Gamma, x:t_x,\Gamma' \vdash e : t$ where $e \equiv (\letin{y}{e_1}{e_2})$ and $t \equiv t_2$. By inversion, $\Gamma,x:t_x,\Gamma' \vdash e_1 : t_1$ and 
-$\Gamma,x:t_x,\Gamma',y:t_1 \vdash e_2 : t_2$ for some type $t_1$. By the inductive hypothesis we have
-\begin{equation}
-\Gamma,\Gamma'[e_x/x] \vdash e_1[e_x/x] : t_1[e_x/x]
-\end{equation}and
-\begin{equation}
-\Gamma,\Gamma'[e_x/x], y:t_1[e_x/x] \vdash e_2[e_x/x] : t_2[e_x/x]
+{\bf Case} {\sc T-AppT}:We have $\Gamma', x\bind t_x,\Gamma \vdash e : t$ where $e \equiv e'\; [t']$ and $t \equiv s[t'/\al']$. 
+By inversion, $\Gamma', x\bind t_x, \Gamma \vdash e' : \polytype{\al'}{k'}{s}$ and $\Gamma', x\bind t_x, \Gamma \vdash_w t' : k'$. By the inductive hypothesis,
+\begin{equation}\label{361T}
+\Gamma'[v_x/x],\Gamma\vdash e'[v_x/x] : \polytype{\al'}{k'}{s[v_x/x]}
 \end{equation}
-Then by rule {\sc Chk-Let},
-\begin{equation}
-\Gamma,\Gamma'[e_x/x] \vdash \letin{y}{e_1[e_x/x]}{e_2[e_x/x]} : t_2[e_x/x]
+and
+\begin{equation}\label{362T}
+\Gamma'[v_x/x],\Gamma\vdash_w t'[v_x/x] : k'.
 \end{equation}
-which we can write as
+By applying rule {\sc T-AppT}
+\begin{equation}
+\Gamma'[v_x/x],\Gamma\vdash e'[v_x/x]\;[t'[v_x/x]] : s[v_x/x][t'[v_x/x]/\al'].
+\end{equation}
+Now by the definition of substitution we have $e'[v_x/x]\; [t'[v_x/x]] = (e'\;[t'])[v_x/x] \equiv e[v_x/x]$ and $s[v_x/x][t'[v_x/x]/\al'] = s[t'/\al'][v_x/x] \equiv t[v_x/x]$. Therefore, we conclude that $\Gamma'[v_x/x],\Gamma \vdash e[v_x/x] : t[v_x/x]$.
+
+{\bf Case} {\sc T-AbsT}:We have $\Gamma', x:t_x,\Gamma \vdash e : t$ where $e \equiv \Lambda \al:k. e'$ and $t \equiv \polytype{\al}{k}{t'}$. By inversion, $\al'\bind k, \Gamma', x\bind t_x,\Gamma \vdash e'[\al'/\al] : t'[\al'/\al]$ and $\al'\bind k, \Gamma', x\bind t_x,\Gamma \vdash_w t'[\al'/\al] : k'$ for some $\al'\not\in\dom{\Gamma}$. By the inductive hypothesis
+\begin{equation}
+\al'\bind k, \Gamma'[v_x/x],\Gamma \vdash e'[\al'/\al][v_x/x] : t'[\al'/\al][v_x/x] \;\;{\rm and}\;\; \al'\bind k, \Gamma'[v_x/x],\Gamma \vdash_w t'[\al'/\al][v_x/x] : k'.
+\end{equation}
+We must have $x\neq \al'$ and we have $x \neq \al$ because bound and free variables are taken to be distinct. Moreover, $v_x$ contains only free variables from $\Gamma$, so $e'[\al'/\al][v_x/x] = e'[v_x/x][\al'/\al]$ and $t'[\al'/\al][v_x/x] = t'[v_x/x][\al'/\al]$. Then by rule {\sc T-AbsT}
+\begin{equation}
+\Gamma'[v_x/x], \Gamma' \vdash \Lambda \al:k.(e'[v_x/x]) : \polytype{\al}{k}{t'[v_x/x]}.
+\end{equation}
+By definition of substitution, we can rewrite the above as
 \[
-\Gamma,\Gamma'[e_x/x] \vdash (\letin{y}{e_1}{e_2})[e_x/x]:t_2[e_x/x]
-\] to complete the proof of the final case.
-%\end{comment}
-\end{proof}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\newpage {\sc Most recently updated} 
-
-
-\begin{lemma}(The Substitution Lemma) If $\Gamma \vdash e_x : t_x$ then\\
-1. If $\Gamma, x\bind t_x, \Gamma' \vdash t_1 <: t_2$ then
-\[
-\Gamma, \Gamma'[e_x/x] \vdash t_1[e_x/x] <: t_2[e_x/x].
+\Gamma'[v_x/x],\Gamma \vdash (\Lambda \al:k.e')[v_x/x] : \polytype{\al}{k}{t'}[v_x/x].
 \]
-2. If $\Gamma, x\bind t_x, \Gamma' \vdash e : t$ then
-\[
-\Gamma, \Gamma'[e_x/x] \vdash e[e_x/x] : t[e_x/x].
-\]
-3. If $\Gamma, x\bind t_x, \Gamma' \vdash_w t$ then
-\[
-\Gamma, \Gamma'[e_x/x] \vdash_w t[e_x/x]
-\]
-\end{lemma}
+In the type variable substitution lemma, where we have an environment $\Gamma',\beta\bind k_\beta,\Gamma$ and $\Gamma \vdash_w t_\beta : k_\beta$ this proof is similar except that we argue that $e'[\al'/\al][t_\beta/\beta] = e'[t_\beta/\beta][\al'/\al]$ and $t'[\al'/\al][t_\beta/\beta] = t'[t_\beta/\beta][\al'/\al]$ because $\al'\neq\beta$ and only free variables from $\Gamma$ may appear in $t_\beta$.
 
-\begin{proof}
-We proceed by mutual induction 	
-	
-	
-	
-	
+{\bf Case} {\sc Chk-Let}: We have $\Gamma', x\bind t_x,\Gamma \vdash e : t$ where $e \equiv (\letin{y}{e_1}{e_2})$ and $t \equiv t_2$. By inversion, $\Gamma', x\bind t_x,\Gamma \vdash e_1 : t_1$ and $z\bind t_1, \Gamma,x\bind t_x,\Gamma \vdash e_2[z/y] : t_2[z/y]$ for some type $t_1$ and some $y\not\in\dom{\Gamma}$. By the inductive hypothesis we have
+\begin{equation}
+\Gamma'[v_x/x],\Gamma \vdash e_1[v_x/x] : t_1[v_x/x]
+\end{equation} and
+\begin{equation}
+y\bind t_1[v_x/x], \Gamma'[v_x/x], \Gamma \vdash e_2[z/y][v_x/x] : t_2[z/y][e_x/x]
+\end{equation}
+We must have $x\neq z$ and we have $x \neq y$ because bound and free variables are taken to be distinct. Moreover, $v_x$ contains only free variables from $\Gamma$, so $e_2[z/y][v_x/x] = e_2[v_x/x][z/y]$ and $t_2[z/y][v_x/x] = t_2[v_x/x][z/y]$. Then by rule {\sc Chk-Let},
+\begin{equation}
+\Gamma'[v_x/x], \Gamma \vdash \letin{y}{e_1[v_x/x]}{e_2[v_x/x]} : t_2[v_x/x]
+\end{equation} which we can write as \[
+\Gamma'[v_x/x], \Gamma \vdash (\letin{y}{e_1}{e_2})[v_x/x]:t_2[v_x/x].
+\] 
+
+{\bf Case} {\sc T-Ann}: We have $\Gamma', x\bind t_x,\Gamma \vdash e : t$ where $e \equiv (e':t)$. By inversion, we have $\Gamma', x\bind t_x,\Gamma \vdash e' : t$ and by the inductive hypothesis, $\Gamma'[v_x/x],\Gamma \vdash e'[v_x/x] : t[v_x/x]$. By rule {\sc T-Ann}, we get
+\begin{equation}\label{351}
+\Gamma'[v_x/x], \Gamma \vdash (e'[v_x/x] : t[v_x/x]) : t[v_x/x]
+\end{equation}
+By definition of substitution, $(e'[v_x/x] : t[v_x/x]) = (e':t)[v_x/x] = e[v_x/x]$, so from (\ref{351}) we immediately get $\Gamma'[v_x/x], \Gamma \vdash e[v_x/x] : t[v_x/x]$.
+
+{\bf Case} {\sc T-Sub}: We have $\Gamma', x\bind t_x,\Gamma \vdash e : t$. By inversion, we have $\Gamma',x\bind t_x,\Gamma \vdash e : s$,\; $\Gamma', x\bind t_x, \Gamma \vdash s <: t$, and $\Gamma',x\bind t_x,\Gamma \vdash_w t : k$ for some type $s$ and kind $k$. By the inductive hypothesis we have
+\begin{equation} \label{371}
+\Gamma'[v_x/x], \Gamma \vdash e[v_x/x] : s[v_x/x]
+\end{equation}
+and by part (1) of the Lemma we have
+\begin{equation} \label{372}
+\Gamma'[v_x/x],\Gamma \vdash s[v_x/x] <: t[v_x/x].
+\end{equation}
+By part (3) of the Lemma we also have $\Gamma'[v_x/x],\Gamma \vdash_w t[v_x/x] : k$. Then by rule {\sc T-Sub} we have $\Gamma'[v_x/x], \Gamma \vdash e[v_x/x] : t[v_x/x]$. \\
+
+(3) Suppose $\Gamma \vdash v_x:t_x$ and $\Gamma', x:t_x ,\Gamma \vdash_w t : k$. We proceed by induction on the derivation tree of the typing judgment $e:t$. The proofs for substitution of a type variable are entirely similar, except where specifically noted.
+
+{\bf Case} {\sc WF-Refn}: We have $\Gamma', x\bind t_x,\Gamma \vdash t: k$ where $t \equiv b\{y\col p\}$ and $k \equiv B$. By inversion we have $z\bind b, \lfloor \Gamma',x\bind t_x,\Gamma\rfloor \vdash_B p[z/y] : \Bool$ for some $z\not\in\dom{\Gamma',x\bind t_x,\Gamma}$. By the Substitution Lemma for System F we have
+\[
+z\bind b, \lfloor \Gamma', \Gamma\rfloor \vdash_B p[z/y][v_x/x] : \Bool.
+\]
+We must have $z\neq x$ and $x\neq x$ and $v_x$ contains only free variables from $\Gamma$, so $p[z/y][v_x/x] = p[v_x/x][z/y]$. We also have that $\lfloor \Gamma', \Gamma\rfloor = \lfloor \Gamma'[v_x/x], \Gamma\rfloor$ because all refinements are erased . By rule {\sc WF-Refn} we conclude that $\Gamma'[v_x/x], \Gamma \vdash_w b\{y\col p[v_x/x]\} : B$.
+
+{\bf Case} {\sc WF-Kind}: We have $\Gamma', x\bind t_x,\Gamma \vdash t: *$. By inversion, we have We have $\Gamma', x\bind t_x,\Gamma \vdash t: B$. By the inductive hypothesis, $\Gamma'[v_x/x],\Gamma \vdash t[v_x/x]: B$, and by rule {\sc WF-Kind} we conclude $\Gamma'[v_x/x],\Gamma \vdash t[v_x/x]: *$.
+
+{\bf Case} {\sc WF-Var}: We have $\Gamma', x\bind t_x,\Gamma \vdash \al' : k'$. By inversion we have that $\al'\bind k' \in \Gamma', x\bind t_x,\Gamma$. There are two possibilities for where $\al'$ appears in the environment: either in $\Gamma$ or $\Gamma'$ (we cannot have $\al'=x$ because one is a term variable and one is a type variable). Then $\al' = \al'[v_x/x]$. By rule {\sc WF-Var} we thus have $\Gamma'[v_x/x],\Gamma \vdash_w \al'[v_x/x] : k'$. 
+
+{\bf Case} {\sc WF-Func}: We have $\Gamma', x\bind t_x,\Gamma \vdash t: k$ where $t \equiv \functype{y}{t_y}{t'}$ and $k \equiv *$. By inversion we have 
+\begin{equation}
+\Gamma', x\bind t_x,\Gamma \vdash_w t_y : k_y \;\;\;\;{\rm and}\;\;\;\; z\bind t_y,\Gamma', x\bind t_x,\Gamma \vdash_w t'[z/y] : k'
+\end{equation}
+for some $z\not\in\dom{\Gamma', x\bind t_x,\Gamma}$. By the inductive hypothesis on the above,
+\begin{equation}
+\Gamma'[v_x/x], \Gamma \vdash_w t_y[v_x/x] : k_y \;\;\;\;{\rm and}\;\;\;\;z\bind t_y[v_x/x],\Gamma'[v_x/x], \Gamma \vdash_w t'[z/y][v_x/x] : k'.
+\end{equation}
+We must have $z \neq x$ and $v_x$ contains only free variables from $\Gamma$ so $t'[z/y][v_x/x] = t'[v_x/x][z/y]$. Then by rule {\sc WF-Func} we conclude $\Gamma'[v_x/x], \Gamma \vdash_w \functype{y}{t_y[v_x/x]}{t'[v_x/x]} : *$ and $\functype{y}{t_y[v_x/x]}{t'[v_x/x]} = (\functype{y}{t_y}{t'})[v_x/x]$.
+
+{\bf Case} {\sc WF-Exis}:  We have $\Gamma', x\bind t_x,\Gamma \vdash t: k$ where $t \equiv \existype{y}{t_y}{t'}$. By inversion we have 
+\begin{equation}
+\Gamma', x\bind t_x,\Gamma \vdash_w t_y : k_y \;\;\;\;{\rm and}\;\;\;\; z\bind t_y,\Gamma', x\bind t_x,\Gamma \vdash_w t'[z/y] : k'
+\end{equation}
+for some $z\not\in\dom{\Gamma', x\bind t_x,\Gamma}$. By the inductive hypothesis on the above,
+\begin{equation}
+\Gamma'[v_x/x], \Gamma \vdash_w t_y[v_x/x] : k_y \;\;\;\;{\rm and}\;\;\;\;z\bind t_y[v_x/x],\Gamma'[v_x/x], \Gamma \vdash_w t'[z/y][v_x/x] : k'.
+\end{equation}
+We must have $z \neq x$ and $v_x$ contains only free variables from $\Gamma$ so $t'[z/y][v_x/x] = t'[v_x/x][z/y]$. Then by rule {\sc WF-Exis} we conclude $\Gamma'[v_x/x], \Gamma \vdash_w \existype{y}{t_y[v_x/x]}{t'[v_x/x]} : k$ and $\existype{y}{t_y[v_x/x]}{t'[v_x/x]} = (\existype{y}{t_y}{t'})[v_x/x]$.
+
+{\bf Case} {\sc WF-Poly}: We have $\Gamma', x\bind t_x,\Gamma \vdash t: k$ where $t \equiv \polytype{\al}{k'}{t'}$ and $k \equiv *$. By inversion we have $\al'\bind k',\Gamma', x\bind t_x,\Gamma \vdash_w t'[\al'/\al] : k_{t'}$for some $\al'\not\in\dom{\Gamma', x\bind t_x,\Gamma}$. By the inductive hypothesis, $al'\bind k', Gamma'[v_x/x], \Gamma \vdash_w t'[\al'/\al][v_x/x] : k_{t'}$. We must have $x\neq\al'$ and $v_x$ contains only free variables from $\Gamma$ so $t'[\al'/\al][v_x/x] = t'[v_x/x][\al'/\al]$. Then by rule {\sc WF-Poly} we conclude $\Gamma'[v_x/x], \Gamma \vdash_w \polytype{\al}{k'}{t'[v_x/x]} : *$ and $\polytype{\al}{k'}{t'[v_x/x]} = (\polytype{\al}{k'}{t'})[v_x/x]$.
+
+Finally, suppose $\Gamma \vdash_w t_\al : k$ and $\Gamma',\al\bind k,\Gamma \vdash e : t$. We give the proof of {\sc WF-Refn} for type variable substitution because it is slightly different as System F types do contain type variables. 
+In this case we have $t \equiv b\{y\col p\}$ and $k \equiv B$. By inversion we have $z\bind b, \lfloor \Gamma',\al\bind k,\Gamma\rfloor \vdash_B p[y/x] : \Bool$ for some $z\not\in\dom{\Gamma',x\bind t_x,\Gamma}$. By the Substitution Lemma for System F we have 
+\[
+z\bind b, \lfloor \Gamma'[t_\al/\al] , \Gamma\rfloor \vdash_B p[z/y][t_\al/\al] : \Bool.
+\]
+We must have $z\neq \al$ and $y\neq \al$ and $t_\al$ contains only free variables from $\Gamma$, so $p[z/y][t_\al/\al] = p[t_\al/\al][z/y]$. By rule {\sc WF-Refn} we conclude that $\Gamma'[t_\al/\al], \Gamma \vdash_w b\{y\col p[t_\al/\al]\} : B$.
+
+We also consider the proof of {\sc WF-Var}. Here we have $\Gamma', \al\bind k,\Gamma \vdash \al' : k'$. By inversion we have that $\al'\bind k' \in\Gamma', \al\bind k,\Gamma$. There are three possibilities for where $\al$ appears in the environment. First, consider either $\al'\bind k' \in\Gamma'$ or $\al'\bind k' \in\Gamma$. Then $\al\neq\al'$ so $\al'[t_\al/\al] = \al'$. So we still have $\al'\bind k' \in \Gamma'[t_\al/\al],\Gamma$ and by rule {\sc WF-Var}, $\Gamma'[t_\al/\al],\Gamma \vdash_w \al' : k$. The other possibility is that $\al = \al'$ and $k = k'$ in which case $\al'[t_\al/\al] = t_\al$. By hypothesis $\Gamma \vdash_w t_\al : k$ and by repeated application of Lemma \ref{weakenings} we have $\Gamma'[t_\al/\al], \Gamma \vdash_w t_\al : k$. In other words, $\Gamma'[t_\al/\al], \Gamma \vdash_w \al'[t_\al/\al] : k'$.
 \end{proof}
 
 \begin{lemma}\label{types-wf}
-(Well-formedness of types in judgements) 
-If $\Gamma \vdash e: t$ and $\vdash_{w} \Gamma$ then $\Gamma \vdash_w t$.
+(Well-formedness of types in judgments) 
+If $\Gamma \vdash e: t$ and $\vdash_{w} \Gamma$ then $\Gamma \vdash_w t : k$ for some kind $k$.
 \end{lemma}
 
 \begin{proof} 
-We proceed by induction on the derivation tree of the judgment $\varnothing \vdash e : t$.
+We proceed by induction on the derivation tree of the judgment $\Gamma \vdash e : t$.
 
-{\bf Case} {\sc T-Prim}: We have $e \equiv c$. By inversion, $t = ty(c)$ and by Lemma \ref{prim-typing} we have $\varnothing \vdash_ w ty(c)$. By repeated application of Lemma \ref{weakenings}, we have $\Gamma \vdash_w ty(c)$. 
+{\bf Case} {\sc T-Prim}: We have $e \equiv c$. By inversion, $t = ty(c)$ and by Lemma \ref{prim-typing} we have $\varnothing \vdash_ w ty(c) : k$, where $k$ is either $B$ or $*$ depending on whether $c$ is a Boolean/integer constant or function. By repeated application of Lemma \ref{weakenings}, we have $\Gamma \vdash_w ty(c) : k$. 
 
-{\bf Case} {\sc T-Var}: We have $\Gamma \vdash e : t$ where $e \equiv x$. By inversion, $x\bind t \in \Gamma$, so we can write $\Gamma \equiv \Gamma', x\bind t,\Gamma''$ and by repeated inversion of {\sc WFE-Bind}, $\vdash_w \Gamma',x\bind t$ and inverting again we get $\Gamma' \vdash_w t$. Inductively applying Lemma \ref{weakenings} gives us $\Gamma \vdash_w t$.
+{\bf Case} {\sc T-Var}: We have $\Gamma \vdash e : t$ where $e \equiv x$. By inversion, $x\bind t \in \Gamma$, so we can write $\Gamma \equiv \Gamma'', x\bind t,\Gamma'$ and by repeated inversion of {\sc WFE-Bind}, $\vdash_w x\bind t,\Gamma'$. Inverting once again we get $\Gamma' \vdash_w t : k$. Inductively applying Lemma \ref{weakenings} gives us $\Gamma \vdash_w t : k$.
 
-{\bf Case} {\sc T-Abs}: We have $\Gamma \vdash e : t$ where $e \equiv \lambda x.\, e'$ and $t \equiv \functype{x}{t_x}{t'}$. By inversion, we have $\Gamma, x\bind t_x \vdash e : t'$ and $\Gamma \vdash_w t_x$. By the inductive hypothesis, we have $\Gamma, x\bind t_x \vdash_W t'$. By rule {\sc WF-Func} we have $\Gamma \vdash_w \functype{x}{t_x}{t'}$.
+{\bf Case} {\sc T-App}: We have $\Gamma \vdash e : t$ where $e \equiv e_1\; e_2$ and $t \equiv \existype{x}{t_x}{t'}.$ By inversion, $\Gamma \vdash e_1 : \functype{x}{t_x}{t'}$ and $\Gamma \vdash e_2 : t_x$. By the inductive hypothesis we have $\Gamma \vdash_w \functype{x}{t_x}{t'} : k$ where $k \equiv *$ because {\sc WF-Func} is the only rule that could have resulted in a well-formedness judgment for a function type. By inverting rule {\sc WF-Func} (on the aforementioned judgment), we have $\Gamma \vdash_w t_x : k_x$ and $y\bind t_x, \Gamma, \vdash_w t'[y/x] : k'$ for some $y\not\in\dom{\Gamma}$. By rule {\sc WF-Exis}, $\Gamma \vdash_w \existype{x}{t_x}{t'} : k'$.
 
-{\bf Case} {\sc T-App}: We have $\Gamma \vdash e : t$ where $e \equiv e_1\; e_2$ and $t \equiv \existype{x}{t_x}{t'}.$ By inversion, $\Gamma \vdash e_1 : \functype{x}{t_x}{t'}$ and $\Gamma \vdash e_2 : t_x$. By the inductive hypothesis we have $\Gamma \vdash_w \functype{x}{t_x}{t'}$ and $\Gamma \vdash_w t_x$. By inverting rule {\sc WF-Func} (on the former judgement), we have $\Gamma \vdash_w t_x$ and $\Gamma,x\bind t_x \vdash_w t'$. By rule {\sc WF-Exis}, $\Gamma \vdash_w \existype{x}{t_x}{t'}$.
+{\bf Case} {\sc T-Abs}: We have $\Gamma \vdash e : t$ where $e \equiv \lambda x.\, e'$ and $t \equiv \functype{x}{t_x}{t'}$. By inversion, we have $y\bind t_x,\Gamma \vdash e[y/x] : t'[y/x]$ and $\Gamma \vdash_w t_x : k_x$ for some $y\not\in\dom{\Gamma}$. By the inductive hypothesis, we have $y\bind t_x, \Gamma\vdash_w t'[y/x] : k'$ for some kind $k'$. By rule {\sc WF-Func} we have $\Gamma \vdash_w \functype{x}{t_x}{t'} : *$.
 
-{\bf Case} {\sc T-Let}: We have $\Gamma \vdash e : t$ where $e \equiv \letin{x}{e_x}{e'}$. By inversion we have, in particular, that $\Gamma \vdash_w t$.
+{\bf Case} {\sc T-AppT}: We have $\Gamma \vdash e : t$ where $e \equiv e'\: [t']$ and $t \equiv s[t'/\al]$. By inversion, $\Gamma \vdash e' : \polytype{\al}{k}{s}$ and $\Gamma \vdash_w t' : k$. By the inductive hypothesis we have $\Gamma \vdash_w \polytype{\al}{k}{s} : k'$ where $k' \equiv *$ because {\sc WF-Poly} is the only rule that could have resulted in a well-formedness judgment for a polymorphic type. 
+By inverting rule {\sc WF-Poly} (on the aforementioned judgment), we have $\al'\bind k, \Gamma \vdash_w s[\al'/\al] : k_s$ for some $\al'\not\in\dom{\Gamma}$. By the Substitution Lemma, we have $\Gamma \vdash_w s[\al'/\al][t'/\al'] : k_s$. We conclude by noting that  $s[\al'/\al][t'/\al'] = s[t'/\al]$.
 
-{\bf Case} {\sc T-Ann}: We have $\Gamma \vdash e : t$ where $e \equiv e'\col t$. By inversion we have $\Gamma \vdash e' : t$ and by the inductive hypothesis we conclude $\Gamma \vdash_w t$.
+{\bf Case} {\sc T-AbsT}: We have $\Gamma \vdash e : t$ where $e \equiv \Lambda \al:k.\, e'$ and $t \equiv \polytype{\al}{k}{t'}$. By inversion, we have $\al'\bind k,\Gamma \vdash e'[\al'/\al] : t'[\al'/\al]$ and $\al'\bind k,\Gamma \vdash_w t'[\al'/\al] : k'$ for some $\al'\not\in\dom{\Gamma}$. By rule {\sc WF-Func} we have $\Gamma \vdash_w \polytype{\al}{k}{t'} : *$.
 
-{\bf Case} {\sc T-Sub}: We have $\Gamma \vdash e : t$. By inversion we have, in particular, $\Gamma \vdash_w t$.
-\end{proof}
+{\bf Case} {\sc T-Let}: We have $\Gamma \vdash e : t$ where $e \equiv \letin{x}{e_x}{e'}$. By inversion we have, in particular, that $\Gamma \vdash_w t :k$ for some kind $k$.
 
+{\bf Case} {\sc T-Ann}: We have $\Gamma \vdash e : t$ where $e \equiv e'\col t$. By inversion we have, in particular, that $\Gamma \vdash_w t : k$ for some kind $k$.
+
+{\bf Case} {\sc T-Sub}: We have $\Gamma \vdash e : t$. By inversion we have, in particular, $\Gamma \vdash_w t : k$ for some kind $k$.
+\end{proof} 
 
 \begin{lemma}\label{witness-sub}
-(Witnesses and subtyping) If $\Gamma \vdash e_x : t_x$ and $\Gamma, x\bind t_x \vdash_w t'$ then $\Gamma \vdash t'[e_x/x] <: \existype{x}{t_x}{t'}$.
+(Witnesses and subtyping) If $\Gamma \vdash v_x : t_x$ and $y\bind t_x,\Gamma \vdash_w t : k$ then $\Gamma \vdash t[v_x/x] <: \existype{x}{t_x}{t}$.
 \end{lemma}
 \begin{proof}
-By Lemma \ref{sub-refl}, we have that $\Gamma \vdash t' <: t'$ and by the Substitution Lemma we have $\Gamma \vdash t'[e_x/x] <: t'[e_x/x]$.  Applying rule {\sc S-Witn} (with $t\equiv \existype{x}{t_x}{t'}$), we get $\Gamma \vdash t'[e_x/x] <: \existype{x}{t_x}{t'}$.
+By Lemma \ref{sub-refl}, we have that $y\bind t_x \Gamma \vdash t <: t$ and by the Substitution Lemma we have $\Gamma \vdash t[v_x/x] <: t[v_x/x]$.  Applying rule {\sc S-Witn}, we get $\Gamma \vdash t[v_x/x] <: \existype{x}{t_x}{t}$.
 \end{proof}
 
+\begin{lemma}\label{subtype-env}
+(Subtypes in the Environment) If $\Gamma \vdash s_x <: t_x$ then \\
+1. If $\Gamma', x\bind t_x, \Gamma \vdash_w t : k$ then
+\[
+\Gamma', x\bind s_x, \Gamma \vdash_w t : k.
+\]
+2. If $\Gamma', x\bind t_x, \Gamma \vdash_e p$ then 
+\[
+\Gamma', x\bind s_x, \Gamma \vdash_e p. 
+\]
+3. If $\Gamma', x\bind t_x, \Gamma \vdash t_1 <: t_2$ then
+\[
+\Gamma', x\bind s_x, \Gamma \vdash t_1 <: t_2.
+\]
+4. If $\Gamma', x\bind t_x, \Gamma \vdash e : t$ then
+\[
+\Gamma', x\bind s_x, \Gamma \vdash e : t.
+\]
+\end{lemma}
+\begin{proof}
+(1) We proceed by induction on the derivation tree of $\Gamma', x\bind t_x, \Gamma \vdash_w t : k$.
+
+{\bf Case} {\sc WF-Refn}: We have $\Gamma', x\bind t_x, \Gamma \vdash_w b\{y\col p\} : B$. By inversion, we have 
+\begin{equation}
+z\bind b, \lfloor \Gamma'\rfloor, x\bind \lfloor t_x\rfloor, \lfloor\Gamma\rfloor \vdash_B p[z/y] : \Bool
+\end{equation}
+for some $z\not\in\dom{\Gamma', x\bind t_x, \Gamma}$. By Lemma \ref{sub-erase}, $\lfloor s_x\rfloor \overset{\al}{=} \lfloor t_x\rfloor$. Judgments in our System F remain valid {\em mutatis mutandis} under alpha-renaming bound variables in types in the environment, so we obtain $z\bind b, \lfloor \Gamma'\rfloor, x\bind \lfloor s_x\rfloor, \lfloor\Gamma\rfloor \vdash_B p[z/y] : \Bool$. Applying rule {\sc WF-Refn}, $\Gamma', x\bind s_x, \Gamma \vdash_w b\{y\col p\} : B$.
+
+{\bf Case} {\sc WF-Kind}: We have $\Gamma', x\bind t_x, \Gamma \vdash_w t : *$. By inversion we have $\Gamma', x\bind t_x, \Gamma \vdash_w t : B$. By the inductive hypothesis, $\Gamma', x\bind s_x, \Gamma \vdash_w t : B$. Then by rule {\sc WF-Kind}, $\Gamma', x\bind s_x, \Gamma \vdash t: *$.
+
+{\bf Case} {\sc WF-Var}: We have $\Gamma', x\bind t_x, \Gamma \al : k$. By inversion we have $\al\bind k \in \Gamma', x\bind t_x, \Gamma$ and thus $\al\bind k \in \Gamma', x\bind s_x, \Gamma$. By rule {\sc WF-Var} we conclude $\Gamma', x\bind s_x, \Gamma \vdash_w \al : k$.
+
+{\bf Case} {\sc WF-Func}: We have $\Gamma', x\bind t_x, \Gamma \vdash_w \functype{y}{t_y}{t} : *$. By inversion, $\Gamma', x\bind t_x, \Gamma \vdash_w t_y : k_y$ and $z\bind t_y, \Gamma', x\bind t_x, \Gamma \vdash_w t[z/y] : k$ for some $z\not\in\dom{\Gamma', x\bind t_x, \Gamma} = \dom{\Gamma', x\bind s_x, \Gamma}$. By the inductive hypothesis, $\Gamma', x\bind s_x, \Gamma \vdash_w t_y : k_y$ and $z\bind t_y, \Gamma', x\bind s_x, \Gamma \vdash_w t[z/y] : k$. Then applying {\sc WF-Func} we conclude $\Gamma', x\bind s_x, \Gamma \vdash_w \functype{y}{t_y}{t} : *$.
+
+{\bf Case} {\sc WF-Exis}: We have $\Gamma', x\bind t_x, \Gamma \vdash_w \existype{y}{t_y}{t} : k$. By inversion, $\Gamma', x\bind t_x, \Gamma \vdash_w t_y : k_y$ and $z\bind t_y, \Gamma', x\bind t_x, \Gamma \vdash_w t[z/y] : k$ for some $z\not\in\dom{\Gamma', x\bind t_x, \Gamma} = \dom{\Gamma', x\bind s_x, \Gamma}$. By the inductive hypothesis, $\Gamma', x\bind s_x, \Gamma \vdash_w t_y : k_y$ and $z\bind t_y, \Gamma', x\bind s_x, \Gamma \vdash_w t[z/y] : k$. Then applying {\sc WF-Exis} we conclude $\Gamma', x\bind s_x, \Gamma \vdash_w \existype{y}{t_y}{t} : k$.
+
+{\bf Case} {\sc WF-Poly}: We have $\Gamma', x\bind t_x, \Gamma \vdash_w \polytype{\al}{k}{t} : *$. By inversion, we have $\al'\bind k,\Gamma', x\bind t_x, \Gamma \vdash_w t[\al'/\al] : k_t$ for some $\al\not\in\dom{\Gamma', x\bind t_x, \Gamma \vdash_w} = \dom{\Gamma', x\bind s_x, \Gamma \vdash_w}$. By the inductive hypothesis we have, $\al'\bind k,\Gamma', x\bind s_x, \Gamma \vdash_wt[\al'/\al] : k_t$ and by rule {\sc WF-Poly} we conclude $\Gamma', x\bind s_x, \Gamma \vdash_w \polytype{\al}{k}{t} : *$.
+
+(2) We have $\Gamma', x\bind t_x, \Gamma \vdash_e p$ and by inversion of the only rule we have that $\forall \theta.\,\theta\in \lb\Gamma', x\bind t_x, \Gamma \rb \Rightarrow  \theta(p) \many \true$. We observe that if $\theta \in \lb\Gamma', x\bind s_x, \Gamma \rb$ then $\theta(x) \in \lb\theta(s_x)\rb \subseteq \lb\theta(t_x)\rb$ by Lemma \ref{type-denote}; therefore $\theta \in \lb\Gamma', x\bind t_x, \Gamma \rb$. Then we have the statement $\forall \theta.\,\theta\in \lb\Gamma', x\bind s_x, \Gamma \rb \Rightarrow  \theta(p) \many \true$, and by rule {\sc Ent-Pred} we conclude $\Gamma', x\bind s_x, \Gamma \vdash_e p$.
+
+(3) We proceed by mutual induction on the derivation of the subtyping and typing judgments (part 4).
+
+{\bf Case} {\sc S-Base}: We have $\Gamma', x\bind t_x, \Gamma \vdash b\{y_1\col p_1\} <: b\{y_2\col p_2\}$. By inversion, we have $z\bind b\{y_1\col p_1\}, \Gamma', x\bind t_x, \Gamma \vdash_e p2[z/y_2]$ for some $z\not\in\dom{\Gamma', x\bind t_x, \Gamma}$. By part (2) we have $z\bind b\{y_1\col p_1\}, \Gamma', x\bind s_x, \Gamma \vdash_e p[z/y_2]$ and by rule {\sc S-Base} we conclude $\Gamma', x\bind s_x, \Gamma \vdash b\{y_1\col p_1\} <: b\{y_2\col p_2\}$.
+
+{\bf Case} {\sc S-Func}: We have $\Gamma', x\bind t_x, \Gamma \vdash \functype{y_1}{s_1}{t_1} <: \functype{y_2}{s_2}{t_2}$. By inversion we have $\Gamma', x\bind t_x, \Gamma \vdash s_2 <: s_1$ and $z\bind s_2, \Gamma', x\bind t_x, \Gamma \vdash t_1[z/y_1] <: t_2[z/y_2]$ for some $z\not\in\dom{\Gamma', x\bind t_x, \Gamma }$. By the inductive hypothesis, we have $\Gamma', x\bind s_x, \Gamma \vdash s_2 <: s_1$ and $z\bind s_2, \Gamma', x\bind s_x, \Gamma \vdash t_1[z/y_1] <: t_2[z/y_2]$. By rule {\sc S-Func} we conclude $\Gamma', x\bind s_x, \Gamma \vdash \functype{y_1}{s_1}{t_1} <: \functype{y_2}{s_2}{t_2}$.
+
+{\bf Case} {\sc S-Witn}: We have $\Gamma', x\bind t_x, \Gamma \vdash t <: \existype{y}{t_y}{t'}$. By inversion we have $\Gamma', x\bind t_x, \Gamma \vdash v_y : t_y$ and $\Gamma', x\bind t_x, \Gamma \vdash t <: t'[v_y/y]$ for some value $v_y$. By the inductive hypothesis we have $\Gamma', x\bind s_x, \Gamma \vdash v_y : t_y$ and $\Gamma', x\bind s_x, \Gamma t <: t'[v_y/y]$. We conclude by rule {\sc S-Witn} that $\Gamma', x\bind s_x, \Gamma \vdash t <: \existype{y}{t_y}{t'}$.
+
+{\bf Case} {\sc S-Bind}: We have $\Gamma', x\bind t_x, \Gamma \vdash \existype{y}{t_y}{t}<: t$. By inversion, $z\bind t_y,\Gamma', x\bind t_x, \Gamma \vdash t[z/y] <: t'$ for some $z\not\in\dom{\Gamma', x\bind t_x, \Gamma}$ such that $z \not\in free(t')$. By the inductive hypothesis, $z\bind t_y, \Gamma', x\bind s_x, \Gamma \vdash t[z/y] <: t'$. Then by rule {\sc S-Bind} we conclude $\Gamma', x\bind s_x, \Gamma \vdash \existype{y}{t_y}{t} <: t'$.
+
+{\bf Case} {\sc S-Poly}: We have $\Gamma', x\bind t_x, \Gamma \vdash \polytype{\al_1}{k}{t_1}<: \polytype{\al_2}{k}{t_2}$. By inversion, $\al\bind k, \Gamma', x\bind t_x, \Gamma \vdash t_1[\al/\al_1] <: t_2[\al/\al_2]$ for some $\al\not\in\dom{\Gamma', x\bind t_x, \Gamma}$. By the inductive hypothesis, we have $\al\bind k, \Gamma', x\bind s_x, \Gamma \vdash t_1[\al/\al_1] <: t_2[\al/\al_2]$ and by rule {\sc S-Poly} we get $\Gamma', x\bind s_x, \Gamma \vdash \polytype{\al_1}{k}{t_1} <: \polytype{\al_2}{k}{t_2}$.
+
+(4) As in part (3), we proceed by mutual induction on the derivation of the subtyping and typing judgments.
+
+{\bf Case} {\sc T-Prim}: We have $\Gamma', x\bind t_x, \Gamma \vdash c : t$. By inversion, $ty(c) = t$, so by {\sc T-Prim} we have $\Gamma', x\bind s_x, \Gamma \vdash c : t$.
+
+{\bf Case} {\sc T-Var}: We have $\Gamma', x\bind t_x, \Gamma \vdash y : self(t,y)$. By inversion, $y\bind t \in \Gamma', x\bind t_x, \Gamma$. If $y\neq x$ then $y\bind t \in \Gamma', x\bind s_x, \Gamma$ and we conclude by rule {\sc T-Var}. If $y = x$ and $t = t_x$ then we have that $\Gamma', x\bind s_x, \Gamma \vdash y : self(s_x, y)$. 
+We claim that $\Gamma', x\bind s_x, \Gamma \vdash self(s_x, y) <: self(t_x, y)$.
+
+{\bf Case} {\sc T-App}:
+
+{\bf Case} {\sc T-Abs}:
+
+{\bf Case} {\sc T-AppT}:
+
+{\bf Case} {\sc T-AbsT}:
+
+{\bf Case} {\sc T-Let}:
+
+{\bf Case} {\sc T-Ann}:
+
+{\bf Case} {\sc T-Sub}:
+
+\end{proof}
+
+\begin{lemma}\label{sub-trans}
+If $\Gamma \vdash t <: t'$ and $\Gamma \vdash t' <: t''$ then $\Gamma \vdash t <: t''$.
+\end{lemma}
+
+\begin{lemma}\label{sub-closure}
+Let $<:^*$ denote the reflexive and transitive closure of the subtyping judgment $<:$. If $\Gamma \vdash t <:^* t'$ then $\Gamma \vdash t <: t'$.
+\end{lemma}
+
+\begin{lemma}\label{invert-app}
+If $\Gamma \vdash \lambda x.\, e : \functype{x}{t_x}{t}$ then $y\bind t_x, \Gamma e : t[y/x]$ for some $y\not\in\dom{\Gamma}$.
+\end{lemma}
 
 \begin{theorem}\label{progress}
 (The Progress Theorem) If $\varnothing \vdash e : t$ then either $e$ is a value or there exists a term $e'$ such that $e \hookrightarrow$ e'.
-\end{theorem} {\bf TODO: Do I need crash?.}
+\end{theorem}
 
 \begin{proof} We proceed by induction on the derivation tree of the judgment $\varnothing \vdash e : t$.
 
@@ -924,9 +1042,7 @@ By Lemma \ref{sub-refl}, we have that $\Gamma \vdash t' <: t'$ and by the Substi
 
 {\bf Case} {\sc T-Var}: This case cannot occur because $\Gamma = \varnothing$.
 
-{\bf Case} {\sc T-Abs}: This case holds trivially because $e \equiv \lambda x.e'$ is a value.
-
-{\bf Case} {\sc T-App}: We have $\varnothing \vdash e : t$ where $e \equiv e_1\; e_2$ and $t \equiv \existype{x}{t_x}{t'}$. By inversion, $\varnothing \vdash e_1 : \functype{x}{t_x}{t'}$ and $\varnothing \vdash e_2 : t_x$ for some type $s$. We split on five cases for the structure of $e_1$ and $e_2$.
+{\bf Case} {\sc T-App}: We have $\varnothing \vdash e : t$ where $e \equiv e_1\; e_2$ and $t \equiv \existype{x}{t_x}{t'}$. By inversion, $\varnothing \vdash e_1 : \functype{x}{t_x}{t'}$ and $\varnothing \vdash e_2 : t_x$. We split on five cases for the structure of $e_1$ and $e_2$.
 
 First, consider $e_1 \equiv c$ and $e_2 \equiv v$; then by rule {\sc E-Prim} $e \equiv c\; v \hookrightarrow \delta(c,v)$, which is defined by Lemma \ref{prim-typing}.
 Second, consider $e_1 \equiv c$ and $e_2$ not a value. By the inductive hypothesis (applied to $\varnothing \vdash e_2 : t_x$), there exists a term $e'_2$ such that $e_2 \step e'_2$. Thus $e_1\; e_2 \step e_1 \; e'_2$ by rule {\sc E-App1}.
@@ -935,31 +1051,50 @@ Third, consider $e_1 \equiv \lambda x.e'_1$ and $e_2 \equiv v$. Then by the oper
 
 This exhausts all possible cases in which $e_1$ could be a value in the empty environment. So, finally, consider $e_1$ not a value. Then by the inductive hypothesis there exists $e'_1$ such that $e_1 \hookrightarrow e'_1$. By the operational semantics, $e_1\; e_2 \hookrightarrow e'_1\; e_2$.
 
+{\bf Case} {\sc T-Abs} and {\sc T-AbsT}: These cases holds trivially because $e \equiv \lambda x.e'$ is a value and so is $e \equiv \Lambda \al:k.e'$.
+
+{\bf Case} {\sc T-AppT}: We have $\varnothing \vdash e : t$ where $e \equiv e'\; [t']$ and $t \equiv s[t'/\al]$. By inversion, $\varnothing \vdash e' : \polytype{\al}{k}{s}$ and $\varnothing \vdash_w t' : k$. There are two possible cases for the structure of $e'$. {\em Note: We'll get another case if we introduce any polymorphic primitives}. 
+
+First, if $e'$ is a value then it can't be a variable because it is typed in the empty environment. So the only possibility is that $e' \equiv \Lambda \al\bind k'.e''$. Then by the operational semantics $e\equiv \Lambda \al\bind k'.e''\; [t'] \step e''[t'/\al]$. Second, $e'$ is not a value. Then by the inductive hypothesis there is some term $e''$ such that $e' \step e''$. Then by rule {\sc E-AppT} of the operation semantics, $e \equiv e'\; [t'] \step e''\; [t']$.
+
 {\bf Case} {\sc T-Let}: We have $\varnothing \vdash e : t$ where
-$e \equiv (\letin{x}{e_1}{e_2})$. By inversion, $\varnothing \vdash e_1:t_x$ and $x\bind t_x\vdash e_2: t$. First, suppose that $e_1 \equiv v$. Then by rule {\sc T-LetV}, $\letin{x}{v}{e_2} \step e_2[v/x]$. Second, suppose that $e_1$ is not a value. Then by the inductive hypothesis (applied to judgement $\varnothing \vdash e_1:t_x$), there exists a term $e'_1$ such that $e_1 \step e'_1$. Then by rule {\sc E-Let} we have $\letin{x}{e_1}{e_2} \step \letin{x}{e'_1}{e_2}$.
+$e \equiv (\letin{x}{e_1}{e_2})$. By inversion, $\varnothing \vdash e_1:t_x$ and $y\bind t_x\vdash e_2[y/x] : t[y/x]$ for some $y$. First, suppose that $e_1 \equiv v$. Then by rule {\sc T-LetV}, $\letin{x}{v}{e_2} \step e_2[v/x]$. Second, suppose that $e_1$ is not a value. Then by the inductive hypothesis (applied to judgement $\varnothing \vdash e_1:t_x$), there exists a term $e'_1$ such that $e_1 \step e'_1$. Then by rule {\sc E-Let} we have $\letin{x}{e_1}{e_2} \step \letin{x}{e'_1}{e_2}$.
 
 {\bf Case} {\sc T-Ann}: We have $\varnothing \vdash e : t$ where $e \equiv (e_1\col t)$. By inversion, $\varnothing \vdash e_1 : t$. By the inductive hypothesis either $e_1 \equiv v$ a value or there exists $e'_1$ such that $e_1 \hookrightarrow e'_1$. In the former case $(v\col t) \hookrightarrow v$ and in the latter case $(e_1\col t) \hookrightarrow (e'_1\col t)$.
 
-{\bf Case} {\sc T-Sub}: We have $\varnothing \vdash e : t$. By inversion, $\varnothing \vdash e : s$, $\varnothing \vdash s <: t$, and $\varnothing \vdash_w t$ for some type $s$. By the inductive hypothesis, either $e$ is a value or there exists $e'$ such that $e \hookrightarrow e'$ and we are done.
+{\bf Case} {\sc T-Sub}: We have $\varnothing \vdash e : t$. By inversion, $\varnothing \vdash e : s$, $\varnothing \vdash s <: t$, and $\varnothing \vdash_w t : k$ for some type $s$. By the inductive hypothesis, either $e$ is a value or there exists $e'$ such that $e \hookrightarrow e'$ and we are done.
 \end{proof}
+
 
 \begin{theorem}(The Preservation Theorem)
 If $\varnothing \vdash e : t$ and $e \hookrightarrow e'$, then $\varnothing \vdash e' : t$.	
-\end{theorem} {\bf Todo: Do I need crash?}
-\begin{proof} We proceed by induction on the derivation tree of the judgment $\varnothing \vdash e : t$.
+\end{theorem} 
+\begin{proof} 
+We proceed by induction on the derivation tree of the judgment $\varnothing \vdash e : t$.
 
-{\bf Case} {\sc T-Con}: Holds trivially because if $e \equiv c$ then there does not exist $e'$ such that $c \hookrightarrow e'$.
+{\bf Case} {\sc T-Prim}: Holds trivially because if $e \equiv c$ then there does not exist $e'$ such that $c \hookrightarrow e'$.
 
 {\bf Case} {\sc T-Var}: Holds trivially because if $e \equiv x$ then there does not exist $e'$ such that $x \hookrightarrow e'$.
 
-{\bf Case} {\sc T-Abs}: Holds trivially because if $e \equiv \lambda x.e_1$ then there does not exist any $e'$ such that $\lambda x.e_1 \hookrightarrow e'$.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 {\bf Case} {\sc T-App}: We have $\varnothing \vdash e : t$ where $e \equiv e_1\; e_2$ and $t \equiv \existype{x}{t_x}{t'}$ for some variable $x$ and type $t_x$. By inversion, $\varnothing \vdash e_1 : \functype{x}{t_x}{t'}$ and $\varnothing \vdash e_2 : t_x$. We split on five cases for the structure of $e_1$ and $e_2$.
 
-First, consider $e_1 \equiv c$ and $e_2 \equiv v$; then by the semantics $e' = \delta(c,v)$ and by Lemma \ref{prim-typing}, we have $\varnothing \vdash \delta(c,v) : t'[v/x]$ because n. By Lemma \ref{types-wf}, we have $\varnothing \vdash_w \existype{x}{t_x}{t'}$ and by inverting {\sc WF-Exis} we have $x\bind t_x \vdash_w t'$. By Lemma \ref{witness-sub}, $\varnothing \vdash t'[v/x] <: \existype{x}{t_x}{t'}$, and so by rule {\sc T-Sub}, $\varnothing \vdash \delta(c,v) : \existype{x}{t_x}{t'} $.
+First, consider $e_1 \equiv c$ and $e_2 \equiv v$; then by the determinism of the semantics $e' = \delta(c,v)$. By Lemma \ref{prim-typing} we have $\varnothing \vdash c : ty(c)$ and write $ty(c) = \functype{z}{t_z}{t''}$. By Lemma \ref{prim-subtyping} we have $\varnothing \vdash \functype{z}{t_z}{t''} <: \functype{x}{t_x}{t'}$. Inverting the last rule used in that derivation, which must be {\sc S-Func}, we have $y\bind t_x \vdash t''[y/z] <: t'[y/z]$. By the Substitution Lemma we have $\varnothing \vdash t''[y/z][v/y] <: t'[y/x][v/y]$, which is the same as $\varnothing \vdash t''[v/z] <: t'[v/x]$.
+By Lemma \ref{prim-typing}, we have $\varnothing \vdash \delta(c,v) : t''[v/z]$. We also have $\varnothing \vdash t'[v/x] : k$ for some kind $k$ by Lemma \ref{types-wf} and the Substitution Lemma. Then we can apply rule {\sc T-Sub} to obtain $\varnothing \vdash \delta(c,v) : t'[v/x]$. By Lemma \ref{witness-sub}, $\varnothing \vdash t'[v/x] <: \existype{x}{t_x}{t'}$, and so by rule {\sc T-Sub} again (by Lemma \ref{types-wf}, we have $\varnothing \vdash_w \existype{x}{t_x}{t'}$), $\varnothing \vdash \delta(c,v) : \existype{x}{t_x}{t'} $.
 
-Second, consider $e_1 \equiv c$ and $e_2$ not a value. By Theorem \ref{progress}, there exists a term $e'_2$ such that $e_2 \step e'_2$. By rule {\sc E-App2}, $c\; e_2 \step c\; e'_2$ and by the determinism of the operational semantics, $e' \equiv c\; e'_2$.
-By the inductive hypothesis, $\varnothing \vdash e'_2 : t_x$. We conclude by {\sc T-App} that $\varnothing \vdash e' : \existype{x}{t_x}{t'}$.
+Second, consider $e_1 \equiv c$ and $e_2$ not a value. By Theorem \ref{progress}, there exists a term $e'_2$ such that $e_2 \step e'_2$. By rule {\sc E-App2}, $c\; e_2 \step c\; e'_2$ and by the determinism of the operational semantics, $e' \equiv c\; e'_2$. By the inductive hypothesis, $\varnothing \vdash e'_2 : t_x$. We conclude by {\sc T-App} that $\varnothing \vdash e' : \existype{x}{t_x}{t'}$.
+
+Third, consider $e_1 \equiv \lambda x.e'_1$ and $e_2 \equiv v$. Then $e_1\; e_2 \step e'_1[v/x]$ and by determinism of the operational semantics, $e' \equiv e'_1[v/x]$. Consider the proof tree deriving $\varnothing \vdash \lambda x.e'_1 : \functype{x}{t_x}{t'}$...
+
+
+There are two rules that could have been used last in $\varnothing \vdash \lambda x.e'_1 : \functype{x}{t_x}{t'}$. If the last rule used were {\sc T-Abs}, then by inversion we have %$x\bind t_x \vdash e'_1 : t'$, and by the substitution lemma we have $\varnothing \vdash e'_1[v/x] : t'[v/x]$. By Lemma \ref{types-wf}, we have $\varnothing \vdash_w \existype{x}{t_x}{t'}$ and by inverting {\sc WF-Exis} we have $x\bind t_x \vdash_w t'$. By Lemma \ref{witness-sub}, $\varnothing \vdash t'[v/x] <: \existype{x}{t_x}{t'}$, and so by rule {\sc T-Sub}, $\varnothing \vdash e' : \existype{x}{t_x}{t'}$.
+If the last rule used were {\sc T-Sub}, then inversion gives us $\varnothing \vdash \lambda x.e'_1 : s$ and $\varnothing \vdash s <: \functype{x}{t_x}{t'}$ for some type s. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 
 Third, consider $e_1 \equiv \lambda x.e'_1$ and $e_2 \equiv v$. Then $e_1\; e_2 \step e'_1[v/x]$ and by determinism of the operational semantics, $e' \equiv e'_1[v/x]$. By inversion of {\sc T-Abs}, we have $x\bind t_x \vdash e'_1 : t'$, and by the substitution lemma we have $\varnothing \vdash e'_1[v/x] : t'[v/x]$. By Lemma \ref{types-wf}, we have $\varnothing \vdash_w \existype{x}{t_x}{t'}$ and by inverting {\sc WF-Exis} we have $x\bind t_x \vdash_w t'$. By Lemma \ref{witness-sub}, $\varnothing \vdash t'[v/x] <: \existype{x}{t_x}{t'}$, and so by rule {\sc T-Sub}, $\varnothing \vdash e' : \existype{x}{t_x}{t'}$.
 
@@ -969,6 +1104,10 @@ By the inductive hypothesis, $\varnothing \vdash e'_2 : t_x$. We conclude by {\s
 This exhausts all possible cases in which $e_1$ could be a value in the empty environment. So, finally, consider $e_1$ not a value.
 Then by Theorem \ref{progress}, there exists an $e'_1$ such that $e_1 \hookrightarrow e'_1$. By determinism of the operational semantics, $e' \equiv e'_1\; e_2$. By the inductive hypothesis,
 $\varnothing \vdash e'_1 : \existype{x}{t_x}{t'}$. By rule {\sc Syn-App}, $\varnothing \vdash e' : \existype{x}{t_x}{t'}$.
+
+{\bf Case} {\sc T-Abs}: Holds trivially because if $e \equiv \lambda x.e_1$ then there does not exist any $e'$ such that $\lambda x.e_1 \hookrightarrow e'$.
+
+{\bf Case} {\sc T-AbsT}: Holds trivially because if $e \equiv \Lambda\al\bind k.e_1$ then there does not exist any $e'$ such that $\Lambda\al\bind k.e_1 \hookrightarrow e'$.
 
 {\bf Case} {\sc T-Let}: We have $\varnothing \vdash e : t$ where $e \equiv (\letin{x}{e_1}{e_2})$ and $t \equiv t_2$. By inversion,
 $\varnothing \vdash e_1 : t_1$,\quad $x\bind t_1\vdash e_2 : t_2$, and $\varnothing \vdash_w t_2$ for some type $t_1$. 
@@ -980,23 +1119,6 @@ Second, suppose that $e_1 \equiv v$, for some value $v$. Then by rule {\sc E-Let
 $\varnothing \vdash e_1 : t$. By Theorem \ref{progress} there exists $e'_1$ such that $e_1 \hookrightarrow e'_1$. By rule {\sc E-Ann} $(e_1 : t) \hookrightarrow (e'_1 : t)$ and by the determinism of the operational semantics we must have $e' \equiv (e'_1 : t)$. Then by the inductive hypothesis, $\varnothing \vdash e'_1 : t$. By rule {\sc Syn-Ann}, $\varnothing \vdash (e'_1 : t) : t$. 
 
 {\bf Case} {\sc T-Sub}: We have $\varnothing \vdash e : t$. By inversion $\varnothing \vdash e : s$ and $\varnothing \vdash s <: t$ for some type $s$, and also $\varnothing \vdash_w t$. By the inductive hypothesis $\varnothing \vdash e' : s$. By rule {\sc Chk-Syn}, $\varnothing \vdash e' : t$.
+
 \end{proof}
-
-\section{Algorithmic Typing} %%%%%%%% 444444 %%%%%%%%%%%%%%
-
-\begin{lemma}\label{SMT-Entails}
-(Denotational Soundness of SMT) If $\Gamma \vdash p$ then $\Gamma \vdash_e p$.
-\end{lemma}
-
-
-\newpage
-General Todo list:
-\begin{itemize}
-	\item does having call-by-value (non-lazy) semantics affect wha the definitions of denotations of types ($\lb \; \rb$) ought to be? Should any expressions being substituted into types become values?
-	\item In Lemma 5, case {\sc T-Abs} requires some additional lemma like: if $e \many v$ then $\lb t[v/x] \rb \subseteq \lb t[e/x] \rb$
-	\item Lemma 5 needs a part (3): If $\Gamma \vdash_w t$ then $\foralltheta \Rightarrow \varnothing \vdash_w \theta(t)$.
-	\item The entailment rules don't quite seem to fit with the denotation definitions. Can't prove case {\sc S-Base} in the Substitution Lemma (Lemma 6).
-	
-\end{itemize}
-\end{comment}
 \end{document}
