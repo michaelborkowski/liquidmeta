@@ -15,9 +15,6 @@ import Semantics
 import SystemFTyping
 import WellFormedness
 
-semantics = (\e e' -> Step e e', \e e' -> EvalsTo e e', \e e' -> AppReduced e e')
-typing = (TBool, TInt, \g e t -> HasFType g e t, \g t -> WFType g t, \g -> WFEnv g)
-
 {-@ reflect foo13 @-}
 foo13 :: a -> Maybe a
 foo13 x = Just x

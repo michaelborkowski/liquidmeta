@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{- @ LIQUID "--no-termination" @-} 
-{- @ LIQUID "--no-totality" @-} 
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -17,8 +15,12 @@ import Semantics
 import SystemFTyping
 import WellFormedness
 
-semantics = (\e e' -> Step e e', \e e' -> EvalsTo e e', \e e' -> AppReduced e e')
-typing = (TBool, TInt, \g e t -> HasFType g e t, \g t -> WFType g t, \g -> WFEnv g)
+----semantics = (\e e' -> Step e e', \e e' -> EvalsTo e e', \e e' -> AppReduced e e')
+----typing = (TBool, TInt, \g e t -> HasFType g e t, \g t -> WFType g t, \g -> WFEnv g)
+--semantics = (Step, EvalsTo, \e e' -> AppReduced e e')
+--typing = (TBool, TInt, HasFType, WFType, \g -> WFEnv g)
+----semantics = (Step, EvalsTo, AppReduced)
+----typing = (TBool, TInt, HasFType, WFType, WFEnv)
 
 {-@ reflect foo06 @-}
 foo06 :: a -> Maybe a
@@ -28,18 +30,18 @@ foo06 x = Just x
 -- | Properties of BUILT-IN PRIMITIVES
 -----------------------------------------------------------------------------
 
-{-@ lem_wf_intype_and :: { pf:_ | noDefnsInRefns Empty (inType And) && isWellFormed Empty (inType And) Base } @-}
-lem_wf_intype_and :: Proof
-lem_wf_intype_and = ()
+{-@ lem_wf_intype_and :: () -> { pf:_ | noDefnsInRefns Empty (inType And) && isWellFormed Empty (inType And) Base } @-}
+lem_wf_intype_and :: () -> Proof
+lem_wf_intype_and _ = ()
 
-{-@ lem_wf_ty'_and :: { pf:_ | noDefnsInRefns (Cons (firstBV And) (inType And) Empty) 
+{-@ lem_wf_ty'_and :: () -> { pf:_ | noDefnsInRefns (Cons (firstBV And) (inType And) Empty) 
                                               (unbindT (firstBV And) (firstBV And) (ty' And))
                                  && isWellFormed (Cons (firstBV And) (inType And) Empty) 
                                                  (unbindT (firstBV And) (firstBV And) (ty' And)) Star } @-}
-lem_wf_ty'_and :: Proof
-lem_wf_ty'_and = ()
+lem_wf_ty'_and :: () -> Proof
+lem_wf_ty'_and _ = ()
 
-{-@ lem_wf_ty_and :: { pf:_ | noDefnsInRefns Empty (ty And) && isWellFormed Empty (ty And) Star } @-}
-lem_wf_ty_and :: Proof
-lem_wf_ty_and = () ? lem_wf_intype_and ? lem_wf_ty'_and
+{-@ lem_wf_ty_and :: () -> { pf:_ | noDefnsInRefns Empty (ty And) && isWellFormed Empty (ty And) Star } @-}
+lem_wf_ty_and :: () -> Proof
+lem_wf_ty_and _ = () ? lem_wf_intype_and () ? lem_wf_ty'_and ()
 

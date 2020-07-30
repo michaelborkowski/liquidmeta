@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{- @ LIQUID "--no-termination" @-}  
-{- @ LIQUID "--no-totality" @-}      
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -16,7 +14,8 @@ import Basics
 import SystemFTyping
 
 -- force these into scope fpr LH
-typing = (\g e t -> HasFType g e t)
+-- typing = (\g e t -> HasFType g e t)
+typing = HasFType
 
 {-@ reflect foo04 @-}
 foo04 :: a -> Maybe a
