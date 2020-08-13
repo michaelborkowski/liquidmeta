@@ -95,15 +95,15 @@ data WFEnvP where
 
 data WFEnv where
     WFEEmpty :: WFEnv
-    WFEBind  :: Env -> WFEnv -> Vname -> Type -> WFType -> WFEnv
+    WFEBind  :: Env -> WFEnv -> Vname -> Type -> Kind -> WFType -> WFEnv
     WFEBindT :: Env -> WFEnv -> Vname -> Kind -> WFEnv
 
 {-@ data WFEnv where
     WFEEmpty :: ProofOf(WFEnv Empty)
  |  WFEBind  :: g:Env -> ProofOf(WFEnv g) -> { x:Vname | not (in_env x g) } -> t:Type 
-                      -> ProofOf(WFType g t) -> ProofOf(WFEnv (Cons x t g)) 
+                   -> k:Kind -> ProofOf(WFType g t k) -> ProofOf(WFEnv (Cons x t g)) 
  |  WFEBindT :: g:Env -> ProofOf(WFEnv g) -> { a:Vname | not (in_env a g) } -> k:Kind 
-                                             -> ProofOf(WFEnv (ConsT a k g)) @-}
+                                                      -> ProofOf(WFEnv (ConsT a k g)) @-}
 
 
 ------------------------------------------------------------------------------------------
@@ -187,11 +187,6 @@ makeWFType g (FTV a) k
   | tv_bound_in a k g                 = simpleWFVar g a k
   | k == Star && tv_bound_in a Base g = WFKind g (FTV a) (simpleWFVar g a Base)
   | otherwise                         = impossible ("by lemma" ? lem_wf_ftv g a k)
---  | tv_bound_in a Base g && k == Star = WFKind g (FTV a) (simpleWFVar g a Base)
-{-  | k == Base && tv_bound_in a k g    = simpleWFVar g a k
-  | k == Star && tv_bound_in a k g    = simpleWFVar g a k
-  | k == Base && not (tv_bound_in a k g) = impossible ""
-  | k == Star && not (tv_bound_in a k g) = WFKind g (FTV a) (simpleWFVar g a Base) -}
 makeWFType g (TFunc x t_x t) Star = WFFunc g x t_x Star (makeWFType g t_x Star) t Star y
                                       (makeWFType (Cons y t_x g) (unbindT x y t) Star)
   where

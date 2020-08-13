@@ -82,12 +82,29 @@ freeBV (Prim _)        = S.empty
 freeBV (BV x)          = S.singleton x
 freeBV (FV x)          = S.empty
 freeBV (Lambda x e)    = S.difference (freeBV e) (S.singleton x)
-freeBV (App e e')      = S.union (freeBV e) (freeBV e')
-freeBV (LambdaT a k e) = S.difference (freeBV e) (S.singleton a)  -- bound type variables are the same set 
-freeBV (AppT e t)      = S.union (freeBV e)  (tfreeBV t)          --   TODO: revisit this decision
+freeBV (App e e')      = S.union (freeBV e) (freeBV e') 
+freeBV (LambdaT a k e) = freeBV e                                 -- bound type variables are not same set 
+         -- formerly     S.difference (freeBV e) (S.singleton a)  -- /\ 1. \ 1. (BTV 1)   isn't hidden
+freeBV (AppT e t)      = S.union (freeBV e)  (tfreeBV t)          
 freeBV (Let x ex e)    = S.union (freeBV ex) (S.difference (freeBV e) (S.singleton x))
 freeBV (Annot e t)     = S.union (freeBV e)  (tfreeBV t) 
 freeBV Crash           = S.empty
+
+{-@ reflect freeBTV @-}
+{-@ freeBTV :: e:Expr -> S.Set Vname / [esize e] @-}
+freeBTV :: Expr -> S.Set Vname
+freeBTV (Bc _)          = S.empty
+freeBTV (Ic _)          = S.empty
+freeBTV (Prim _)        = S.empty
+freeBTV (BV x)          = S.empty
+freeBTV (FV x)          = S.empty
+freeBTV (Lambda x e)    = freeBV e
+freeBTV (App e e')      = S.union (freeBV e) (freeBV e') 
+freeBTV (LambdaT a k e) = S.difference (freeBV e) (S.singleton a)  
+freeBTV (AppT e t)      = S.union (freeBV e)  (tfreeBV t)          
+freeBTV (Let x ex e)    = S.union (freeBV ex)  (freeBV e)
+freeBTV (Annot e t)     = S.union (freeBV e)  (tfreeBV t) 
+freeBTV Crash           = S.empty
 
 {-@ reflect fv @-}
 {-@ fv :: e:Expr -> S.Set Vname / [esize e] @-}
@@ -306,11 +323,21 @@ freeTV (TPoly a k   t)    = freeTV t
 {-@ tfreeBV :: t:Type -> S.Set Vname / [tsize t] @-}
 tfreeBV :: Type -> S.Set Vname
 tfreeBV (TRefn b x r)     = S.difference (freeBV r) (S.singleton x)
-tfreeBV (BTV a)           = S.singleton a
+tfreeBV (BTV a)           = S.empty
 tfreeBV (FTV a)           = S.empty
 tfreeBV (TFunc x t_x t)   = S.union (tfreeBV t_x) (S.difference (tfreeBV t) (S.singleton x))
 tfreeBV (TExists x t_x t) = S.union (tfreeBV t_x) (S.difference (tfreeBV t) (S.singleton x))
-tfreeBV (TPoly a  k  t)   = S.difference (tfreeBV t) (S.singleton a)
+tfreeBV (TPoly a  k  t)   = (tfreeBV t)
+
+{-@ reflect tfreeBTV @-}
+{-@ tfreeBTV :: t:Type -> S.Set Vname / [tsize t] @-}
+tfreeBTV :: Type -> S.Set Vname
+tfreeBTV (TRefn b x r)     = freeBV r
+tfreeBTV (BTV a)           = S.singleton a
+tfreeBTV (FTV a)           = S.empty
+tfreeBTV (TFunc x t_x t)   = S.union (tfreeBV t_x) (tfreeBV t) 
+tfreeBTV (TExists x t_x t) = S.union (tfreeBV t_x) (tfreeBV t) 
+tfreeBTV (TPoly a  k  t)   = S.difference (tfreeBV t) (S.singleton a)
 
 --  removed for now:              ( tfreeBV t == tfreeBV t' ) &&
 {-@ reflect tsubFV @-}

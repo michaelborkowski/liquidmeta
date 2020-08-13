@@ -25,9 +25,9 @@ import PrimitivesWFTypeLeqn
 import PrimitivesWFTypeEq
 import PrimitivesWFTypeEqn
 
-{-@ reflect foo15 @-}
-foo15 :: a -> Maybe a
-foo15 x = Just x
+{-@ reflect foo14 @-}
+foo14 :: a -> Maybe a
+foo14 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES

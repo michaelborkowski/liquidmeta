@@ -65,8 +65,8 @@ data HasFType where
                 -> ProofOf(HasFType (FConsT a' k g) (unbind_tv a a' e) b)
                 -> ProofOf(HasFType g (LambdaT a k e) (FTPoly a k b))
  |  FTAppT :: g:FEnv -> e:Expr -> a:Vname -> k:Kind -> t':FType
-                -> ProofOf(HasFType g e (FTPoly a k t')) 
-                -> t:Type -> ProofOf(HasFType g (AppT e t) (ftsubBV a (erase t) t'))
+                -> ProofOf(HasFType g e (FTPoly a k t')) -> { rt:Type | Set_sub (free rt) (bindsF g) } 
+                -> ProofOf(HasFType g (AppT e rt) (ftsubBV a (erase rt) t'))
  |  FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
                 -> x:Vname -> e:Expr -> b':FType 
                 -> { y:Vname | not (in_envF y g) && not (Set_mem y (fv e)) }
@@ -284,7 +284,8 @@ checkType g (App e e') t     = case ( synthType g e' ) of
     (Just t')       -> checkType g e (FTFunc t' t)
     _               -> False
 checkType g (AppT e t2) t    = case ( synthType g e ) of
-    (Just (FTPoly a k t1))  -> ( t == ftsubBV a (erase t2) t1 )
+    (Just (FTPoly a k t1))  -> ( t == ftsubBV a (erase t2) t1 ) &&
+                               ( S.isSubsetOf (free t2) (bindsF g) )
     _                       -> False
 checkType g (Annot e liqt) t   = ( checkType g e t ) && ( t == erase liqt ) &&
                                  ( S.isSubsetOf (free liqt) (bindsF g) ) {- &&
@@ -306,7 +307,9 @@ synthType g (App e e')      = case ( synthType g e' ) of
         (Just (FTFunc t_x t)) -> if ( t_x == t' ) then Just t else Nothing
         _                     -> Nothing
 synthType g (AppT e t2)     = case ( synthType g e ) of
-    (Just (FTPoly a k t1))    -> Just (ftsubBV a (erase t2) t1)
+    (Just (FTPoly a k t1))    -> case ( S.isSubsetOf (free t2) (bindsF g) ) of
+	True  -> Just (ftsubBV a (erase t2) t1)
+        False -> Nothing
     _                         -> Nothing
 synthType g (Annot e liqt)  = case ( checkType g e (erase liqt) && -- S.null (tfreeBV liqt) &&
                                      S.isSubsetOf (free liqt) (bindsF g) ) of
@@ -349,7 +352,7 @@ makeHasFType g (App e e') t     = FTApp g e t' t pf_e_t't e' pf_e'_t'
     (Just t')  = synthType g e'
     pf_e_t't   = makeHasFType g e (FTFunc t' t)
     pf_e'_t'   = makeHasFType g e' (t' ? lem_check_synth g e' t')
-makeHasFType g (AppT e t2) t    = FTAppT g e a k t1 pf_e_at1 t2
+makeHasFType g (AppT e rt) t    = FTAppT g e a k t1 pf_e_at1 rt
   where
     (Just (FTPoly a k t1)) = synthType g e 
     pf_e_at1               = makeHasFType g e (FTPoly a k t1 ? lem_check_synth g e (FTPoly a k t1))
