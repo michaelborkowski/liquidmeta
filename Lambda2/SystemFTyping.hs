@@ -53,7 +53,7 @@ data HasFType where
                 -> ProofOf(HasFType (FConsT y k g) (FV x) b)
  |  FTPrm  :: g:FEnv -> c:Prim  -> ProofOf(HasFType g (Prim c) (erase (ty c)))
  |  FTAbs  :: g:FEnv -> x:Vname -> b:FType -> e:Expr -> b':FType
-                -> { y:Vname | not (in_envF y g) && not (Set_mem y (fv e)) }
+                -> { y:Vname | not (in_envF y g) && not (Set_mem y (fv e)) && not (Set_mem y (ftv e)) }
                 -> ProofOf(HasFType (FCons y b g) (unbind x y e) b')
                 -> ProofOf(HasFType g (Lambda x e) (FTFunc b b'))
  |  FTApp  :: g:FEnv -> e:Expr -> b:FType -> b':FType
@@ -61,19 +61,21 @@ data HasFType where
                 -> e':Expr -> ProofOf(HasFType g e' b) 
                 -> ProofOf(HasFType g (App e e') b')
  |  FTAbsT :: g:FEnv -> a:Vname -> k:Kind -> e:Expr -> b:FType
-                -> { a':Vname | not (in_envF a' g) && not (Set_mem a' (fv e)) && not (Set_mem a' (ftv e)) }
-                -> ProofOf(HasFType (FConsT a' k g) (unbind_tv a a' e) b)
+                -> { a':Vname | not (in_envF a' g) && not (Set_mem a' (fv e)) 
+                                  && not (Set_mem a' (ftv e)) && not (Set_mem a' (ffreeTV b)) }
+                -> ProofOf(HasFType (FConsT a' k g) (unbind_tv a a' e) (unbindFT a a' b))
                 -> ProofOf(HasFType g (LambdaT a k e) (FTPoly a k b))
  |  FTAppT :: g:FEnv -> e:Expr -> a:Vname -> k:Kind -> t':FType
-                -> ProofOf(HasFType g e (FTPoly a k t')) -> { rt:Type | Set_sub (free rt) (bindsF g) } 
+                -> ProofOf(HasFType g e (FTPoly a k t')) 
+                -> { rt:Type | Set_sub (Set_cup (free rt) (freeTV rt)) (bindsF g) } 
                 -> ProofOf(HasFType g (AppT e rt) (ftsubBV a (erase rt) t'))
  |  FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
                 -> x:Vname -> e:Expr -> b':FType 
-                -> { y:Vname | not (in_envF y g) && not (Set_mem y (fv e)) }
+                -> { y:Vname | not (in_envF y g) && not (Set_mem y (fv e)) && not (Set_mem y (ftv e)) }
                 -> ProofOf(HasFType (FCons y b g) (unbind x y e) b')
                 -> ProofOf(HasFType g (Let x e_x e) b')
  |  FTAnn  :: g:FEnv -> e:Expr -> b:FType 
-                -> { t1:Type | (erase t1 == b) && Set_sub (free t1) (bindsF g)  }
+                -> { t1:Type | (erase t1 == b) && Set_sub (Set_cup (free t1) (freeTV t1)) (bindsF g) }
                 -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b)  @-} 
 
 -- old version : -> { t1:Type | (erase t1 == b) && Set_sub (free t1) (bindsF g) && Set_emp (tfreeBV t1) }
@@ -285,11 +287,13 @@ checkType g (App e e') t     = case ( synthType g e' ) of
     _               -> False
 checkType g (AppT e t2) t    = case ( synthType g e ) of
     (Just (FTPoly a k t1))  -> ( t == ftsubBV a (erase t2) t1 ) &&
-                               ( S.isSubsetOf (free t2) (bindsF g) )
+                               ( S.isSubsetOf (free t2) (bindsF g) ) &&
+                               ( S.isSubsetOf (freeTV t2) (bindsF g) )
     _                       -> False
 checkType g (Annot e liqt) t   = ( checkType g e t ) && ( t == erase liqt ) &&
-                                 ( S.isSubsetOf (free liqt) (bindsF g) ) {- &&
-                                 ( S.null (tfreeBV liqt) ) -}
+                                 ( S.isSubsetOf (free liqt) (bindsF g) ) &&
+                                 ( S.isSubsetOf (freeTV liqt) (bindsF g) )
+                                 {- ( S.null (tfreeBV liqt) ) -}
 checkType g Crash t            = False -- Crash is untypable
 
 {- @ automatic-instances synthType @-}
@@ -307,12 +311,14 @@ synthType g (App e e')      = case ( synthType g e' ) of
         (Just (FTFunc t_x t)) -> if ( t_x == t' ) then Just t else Nothing
         _                     -> Nothing
 synthType g (AppT e t2)     = case ( synthType g e ) of
-    (Just (FTPoly a k t1))    -> case ( S.isSubsetOf (free t2) (bindsF g) ) of
+    (Just (FTPoly a k t1))    -> case ( S.isSubsetOf (free t2)   (bindsF g) &&
+                                        S.isSubsetOf (freeTV t2) (bindsF g) ) of
 	True  -> Just (ftsubBV a (erase t2) t1)
         False -> Nothing
     _                         -> Nothing
 synthType g (Annot e liqt)  = case ( checkType g e (erase liqt) && -- S.null (tfreeBV liqt) &&
-                                     S.isSubsetOf (free liqt) (bindsF g) ) of
+                                     S.isSubsetOf (free liqt) (bindsF g) &&
+                                     S.isSubsetOf (freeTV liqt) (bindsF g) ) of
     True  -> Just (erase liqt)
     False -> Nothing
 synthType g Crash           = Nothing

@@ -203,7 +203,11 @@ lemma_evals_app_value e e' v (AddStep _ee' eee st_ee'_eee _v ev_eee_v)
           ev_e'_v2                             = AddStep e' e2 st_e'_e2 v2 ev_e2_v2
       (EAppAbs x e'' w)           -> AppRed e e (Refl e) e' e' (Refl e')
 
--- Basic sanity properties of the Operational Semantics
+
+--------------------------------------------------------------------------
+----- | Basic LEMMAS of the OPERATIONAL SEMANTICS (Small Step)
+--------------------------------------------------------------------------
+
 {-@ lem_value_stuck :: e:Expr -> e':Expr -> ProofOf(Step e e') 
                    -> { proof:_ | not (isValue e) } @-}
 lem_value_stuck :: Expr -> Expr -> Step -> Proof
@@ -247,4 +251,85 @@ lem_value_stuck e  e' (EAnnV _ _)
     = case e of 
         (Annot _ _)  -> ()
         (_)          -> impossible ""
+
+{-@ lem_value_refl :: { v:Expr | isValue v } -> v':Expr -> ProofOf(EvalsTo v v')
+                -> { pf:_ | v == v' } @-}
+lem_value_refl :: Expr -> Expr -> EvalsTo -> Proof
+lem_value_refl v v' (Refl _v) = ()
+lem_value_refl v v' (AddStep _v v1 st_v_v1 _v' ev_v1_v')
+    = impossible ("stuck" ? lem_value_stuck v v1 st_v_v1)
+
+
+{-@ lem_sem_det :: e:Expr -> e1:Expr -> ProofOf(Step e e1)
+                   -> e2:Expr -> ProofOf(Step e e2) -> { x:_ | e1 == e2 } @-}
+lem_sem_det :: Expr -> Expr -> Step -> Expr -> Step -> Proof
+lem_sem_det e e1 p1@(EPrim _ _) e2 p2  -- e = App (Prim c) w
+    = case p2 of    
+        (EPrim _ _)            -> ()            
+        (EApp1 f f' p_f_f' f1) -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EApp2 f f' p_f_f' v)  -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EAppAbs {})           -> impossible "OK"
+        (_)                    -> impossible ""
+lem_sem_det e e' (EApp1 e1 e1' p_e1e1' e2) e'' pf_e_e''
+    = case pf_e_e'' of
+        (EPrim _ _)                 -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (EApp1 _e1 e1'' p_e1e1'' _) -> () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''  
+        (EApp2 g g' p_g_g' v)       -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (EAppAbs {})                -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (_)                         -> impossible "" 
+    -- e = e1 e2, e' = e1' e2, e'' = e1'' e2
+lem_sem_det e e' (EApp2 e1 e1' p_e1e1' v1) e'' pf_e_e''
+    = case pf_e_e'' of
+        (EPrim _ _)                 -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (EApp1 _v1 v1' p_v1v1' _)   -> impossible ("by lem" ? lem_value_stuck _v1 v1' p_v1v1')
+        (EApp2 _ e1'' p_e1e1'' _)   -> () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''
+        (EAppAbs {})                -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (_)                         -> impossible ""
+    -- e = v1 e1, e' = v1 e1', e'' = v1 e1''
+lem_sem_det e e1 (EAppAbs x e' v) e2 pf_e_e2
+    = case pf_e_e2 of 
+        (EPrim {})                  -> impossible ""
+        (EApp1 f f' p_f_f' _)       -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EApp2 f f' p_f_f' _)       -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EAppAbs _x _e' _v)         -> ()
+        (_)                         -> impossible ""
+lem_sem_det e e' (EAppT e1 e1' p_e1e1' t) e'' pf_e_e''
+    = case pf_e_e'' of
+        (EAppT _e1 e1'' p_e1e1'' _) -> () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''
+        (EAppTAbs {})               -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+lem_sem_det e e1 (EAppTAbs a k e' t) e2 pf_e_e2
+    = case pf_e_e2 of
+        (EAppT f f' p_f_f' _)       -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EAppTAbs _a _k _e' _t)     -> ()
+lem_sem_det e e1 (ELet e_x e_x' p_ex_ex' x e1') e2 pf_e_e2
+    = case pf_e_e2 of 
+        (ELet _ e_x'' p_ex_ex'' _x _) -> () ? lem_sem_det e_x e_x' p_ex_ex' e_x'' p_ex_ex''
+        (ELetV _ _ _)                 -> impossible ("by" ? lem_value_stuck e_x e_x' p_ex_ex')
+        (_)                           -> impossible ""
+lem_sem_det e e1 (ELetV x v e') e2 pf_e_e2
+    = case pf_e_e2 of 
+        (ELet e_x e_x' p_ex_ex' _x _) -> impossible ("by" ? lem_value_stuck e_x e_x' p_ex_ex')
+        (ELetV _ _ _)                 -> ()
+        (_)                           -> impossible ""
+lem_sem_det e e1 (EAnn e' e1' p_e_e1' t) e2 pf_e_e2
+    = case pf_e_e2 of
+        (EAnn _e' e2' p_e_e2' _t) -> () ? lem_sem_det e' e1' p_e_e1' e2' p_e_e2'
+        (EAnnV {})                -> impossible ("by lem" ? lem_value_stuck e' e1' p_e_e1')
+        (_)                       -> impossible ""
+lem_sem_det e e1 (EAnnV v t) e2 pf_e_e2
+    = case pf_e_e2 of 
+        (EAnn e' e1' p_e_e1' t)   -> impossible ("by lem" ? lem_value_stuck e' e1' p_e_e1')
+        (EAnnV _v _t)             -> ()
+        (_)                       -> impossible "" 
+
+{-@ lem_evals_val_det :: e:Expr -> v1:Value -> ProofOf(EvalsTo e v1)
+                   -> v2:Value -> ProofOf(EvalsTo e v2) -> { x:_ | v1 == v2 } @-}
+lem_evals_val_det :: Expr -> Expr -> EvalsTo -> Expr -> EvalsTo -> Proof
+lem_evals_val_det e v1 (Refl _v1) v2 ev_e_v2 = case (ev_e_v2) of
+  (Refl _v2)                 -> () 
+  (AddStep _ e' st_e_e' _ _) -> impossible ("by lemma" ? lem_value_stuck e e' st_e_e')
+lem_evals_val_det e v1 (AddStep _ e1 st_e_e1 _ ev_e1_v1) v2 ev_e_v2 = case (ev_e_v2) of
+  (Refl _v2)                       -> impossible ("by lemma" ? lem_value_stuck e e1 st_e_e1)
+  (AddStep _ e2 st_e_e2 _ ev_e2_v2) -> lem_evals_val_det (e1 ? lem_sem_det e e1 st_e_e1 e2 st_e_e2)
+                                                         v1 ev_e1_v1 v2 ev_e2_v2
 

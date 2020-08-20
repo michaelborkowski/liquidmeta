@@ -1,8 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{- @ LIQUID "--no-termination" @-}
-{- @ LIQUID "--no-totality" @-}
-
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -146,19 +143,37 @@ lem_esubFV_inverse g0 x t_x (Cons z t_z g') p_g0g_wf y = case p_g0g_wf of
   (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) -> case ( x == y ) of
     (True)  -> () ? lem_esubFV_inverse g0 x t_x g' p_env'_wf y
                   ? lem_tsubFV_id x t_z
-    (False) -> toProof (
+    (False) -> () {- toProof (
           esubFV y (FV x) (esubFV x (FV y) (Cons z t_z g'))
       === esubFV y (FV x) (Cons z (tsubFV x (FV y) t_z) (esubFV x (FV y) g'))
-      === Cons z (tsubFV y (FV x) (tsubFV x (FV y) t_z)) (esubFV y (FV x) (esubFV x (FV y) g'))
+      === Cons z (tsubFV y (FV x) (tsubFV x (FV y) t_z)) (esubFV y (FV x) (esubFV x (FV y) g')) -}
         ? lem_esubFV_inverse g0 x t_x g' p_env'_wf y 
-      === Cons z (tsubFV y (FV x) (tsubFV x (FV y) t_z)) g'
+   {- === Cons z (tsubFV y (FV x) (tsubFV x (FV y) t_z)) g' -}
         ? lem_chain_tsubFV x y (FV x) (t_z ? lem_free_bound_in_env env' t_z k_z p_env'_tz (y ? lem_in_env_concat (Cons x t_x g0) (Cons z t_z g') y ? lem_in_env_concat (Cons x t_x g0) g'))
         ? lem_tsubFV_id x t_z
-      === Cons z t_z g'  )
+   {- === Cons z t_z g'  ) -}
 lem_esubFV_inverse g0 x t_x (ConsT a k g') p_g0g_wf y = case p_g0g_wf of
   (WFEBindT env' p_env'_wf _a _k)  -> () ? lem_esubFV_inverse g0 x t_x g' p_env'_wf y
-  --(WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) -> () ? lem_esubFV_inverse g0 x t_x g' p_env'_wf y
-   
+
+
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- Substitutions in Systen F Environments --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
+{-@ reflect fesubFV @-}
+{-@ fesubFV :: a:Vname -> t_a:FType -> g:FEnv -> { g':FEnv | bindsF g == bindsF g' } @-}
+fesubFV :: Vname -> FType -> FEnv -> FEnv
+fesubFV a t_a  FEmpty          = FEmpty
+fesubFV a t_a (FCons  z t_z g) = FCons z (ftsubFV a t_a t_z) (fesubFV a t_a g)
+fesubFV a t_a (FConsT a1  k g) = FConsT a1 k                 (fesubFV a t_a g)
+
+{-@ lem_in_fenv_fesub :: g:FEnv -> a:Vname -> t_a:FType -> y:Vname
+        -> { pf:_ | in_envF y (fesubFV a t_a g) <=> in_envF y g } @-}
+lem_in_fenv_fesub :: FEnv -> Vname -> FType -> Vname -> Proof
+lem_in_fenv_fesub FEmpty           a t_a y = ()
+lem_in_fenv_fesub (FCons  z t_z g) a t_a y = () ? lem_in_fenv_fesub g a t_a y
+lem_in_fenv_fesub (FConsT a1 k  g) a t_a y = () ? lem_in_fenv_fesub g a t_a y
+
 
 
 -----------------------------------------------------------------------------------------
@@ -168,7 +183,7 @@ lem_esubFV_inverse g0 x t_x (ConsT a k g') p_g0g_wf y = case p_g0g_wf of
 -- Lemma. All free variables in a (bare) typed expression are bound in the (bare) environment
 {-@ lem_fv_bound_in_fenv :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
                 -> { x:Vname | not (in_envF x g) }
-                -> { pf:_ | not (Set_mem x (fv e)) } @-}
+                -> { pf:_ | not (Set_mem x (fv e)) && not (Set_mem x (ftv e)) } @-}
 lem_fv_bound_in_fenv :: FEnv -> Expr -> FType -> HasFType -> Vname -> Proof
 lem_fv_bound_in_fenv g e t (FTBC _g b) x      = ()
 lem_fv_bound_in_fenv g e t (FTIC _g n) x      = ()
@@ -186,7 +201,8 @@ lem_fv_bound_in_fenv g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) x
 lem_fv_bound_in_fenv g e t (FTAbsT _g a k e' t' a' p_e'_t') x
     = case ( x == a' ) of
         True  -> ()
-        False -> () ? lem_fv_bound_in_fenv (FConsT a' k g) (unbind_tv a a' e') t' p_e'_t' x
+        False -> () ? lem_fv_bound_in_fenv (FConsT a' k g) (unbind_tv a a' e') 
+                                           (unbindFT a a' t') p_e'_t' x
 lem_fv_bound_in_fenv g e t (FTAppT _g e' a k t' p_e'_at' ref_t') x
     = () ? lem_fv_bound_in_fenv g e' (FTPoly a k t') p_e'_at' x
 lem_fv_bound_in_fenv g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') x 
@@ -196,6 +212,38 @@ lem_fv_bound_in_fenv g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') x
                       ? lem_fv_bound_in_fenv (FCons y' t_y g) (unbind y y' e') t' p_e'_t' x
 lem_fv_bound_in_fenv g e t (FTAnn _g e' _t ann_t p_e'_t) x 
     = () ? lem_fv_bound_in_fenv g e' t p_e'_t x
+{-
+{-@ lem_ftv_bound_in_fenv :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
+                -> { a:Vname | not (in_envF a g) }
+                -> { pf:_ | not (Set_mem a (ftv e)) } @-}
+lem_ftv_bound_in_fenv :: FEnv -> Expr -> FType -> HasFType -> Vname -> Proof
+lem_ftv_bound_in_fenv g e t (FTBC _g b) a                = ()
+lem_ftv_bound_in_fenv g e t (FTIC _g n) a                = ()
+lem_ftv_bound_in_fenv g e t (FTVar1 _ y _t) a            = ()
+lem_ftv_bound_in_fenv g e t (FTVar2 _ y _t p_y_t z t') a = ()
+lem_ftv_bound_in_fenv g e t (FTVar3 _ y _y p_y_t z k)  a = ()
+lem_ftv_bound_in_fenv g e t (FTPrm _g c) a               = ()
+lem_ftv_bound_in_fenv g e t (FTAbs _g y t_y e' t' y' p_e'_t') a 
+    = case ( a == y' ) of
+        (True)  -> ()
+        (False) -> () ? lem_ftv_bound_in_fenv (FCons y' t_y g) (unbind y y' e') t' p_e'_t' a
+lem_ftv_bound_in_fenv g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) a 
+    = () ? lem_ftv_bound_in_fenv g e1 (FTFunc t_y t') p_e1_tyt' a
+         ? lem_ftv_bound_in_fenv g e2 t_y p_e2_ty a
+lem_ftv_bound_in_fenv g e t (FTAbsT _g a k e' t' a' p_e'_t') a1
+    = case ( a1 == a' ) of
+        True  -> ()
+        False -> () ? lem_ftv_bound_in_fenv (FConsT a' k g) (unbind_tv a a' e') t' p_e'_t' a1
+lem_ftv_bound_in_fenv g e t (FTAppT _g e' a' k t' p_e'_a't' ref_t') a
+    = () ? lem_ftv_bound_in_fenv g e' (FTPoly a' k t') p_e'_a't' a
+lem_ftv_bound_in_fenv g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') a
+    = case ( a == y' ) of
+        (True)  -> () ? lem_ftv_bound_in_fenv g e_y t_y p_ey_ty a
+        (False) -> () ? lem_ftv_bound_in_fenv g e_y t_y p_ey_ty a
+                      ? lem_ftv_bound_in_fenv (FCons y' t_y g) (unbind y y' e') t' p_e'_t' a
+lem_ftv_bound_in_fenv g e t (FTAnn _g e' _t ann_t p_e'_t) a
+    = () ? lem_ftv_bound_in_fenv g e' t p_e'_t a
+-}
 
 {-@ lem_fv_subset_bindsF :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
                 -> { pf:_ | Set_sub (fv e) (bindsF g) } @-}
@@ -212,7 +260,7 @@ lem_fv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty)
     = () ? lem_fv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt' 
          ? lem_fv_subset_bindsF g e2 t_y p_e2_ty 
 lem_fv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t')  
-    = () ? lem_fv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e') t' p_e'_t' 
+    = () ? lem_fv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e') (unbindFT a a' t') p_e'_t' 
 lem_fv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2) 
     = () ? lem_fv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
 lem_fv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')  
@@ -221,8 +269,55 @@ lem_fv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')
 lem_fv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t) 
     = () ? lem_fv_subset_bindsF g e' t p_e'_t 
 
+{-@ lem_ftv_subset_bindsF :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
+                -> { pf:_ | Set_sub (ftv e) (bindsF g) } @-}
+lem_ftv_subset_bindsF :: FEnv -> Expr -> FType -> HasFType -> Proof
+lem_ftv_subset_bindsF g e t (FTBC _g b)       = ()
+lem_ftv_subset_bindsF g e t (FTIC _g n)       = ()
+lem_ftv_subset_bindsF g e t (FTVar1 _ y _t)   = ()
+lem_ftv_subset_bindsF g e t (FTVar2 _ y _t p_y_t z t') = ()
+lem_ftv_subset_bindsF g e t (FTVar3 _ y _t p_y_t a k)  = ()
+lem_ftv_subset_bindsF g e t (FTPrm _g c)      = ()
+lem_ftv_subset_bindsF g e t (FTAbs _g y t_y e' t' y' p_e'_t')  
+    = () ? lem_ftv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_ftv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) 
+    = () ? lem_ftv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt' 
+         ? lem_ftv_subset_bindsF g e2 t_y p_e2_ty 
+lem_ftv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t')  
+    = () ? lem_ftv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e') (unbindFT a a' t') p_e'_t' 
+lem_ftv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2) 
+    = () ? lem_ftv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
+lem_ftv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')  
+    = () ? lem_ftv_subset_bindsF g e_y t_y p_ey_ty 
+         ? lem_ftv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_ftv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t) 
+    = () ? lem_ftv_subset_bindsF g e' t p_e'_t 
 
--- TODO: asuumed this part, update later
+{-
+{-@ lem_fv_ftv_subset_bindsF :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
+                -> { pf:_ | Set_sub (Set_cup (fv e) (ftv e)) (bindsF g) } @-}
+lem_fv_ftv_subset_bindsF :: FEnv -> Expr -> FType -> HasFType -> Proof
+lem_fv_ftv_subset_bindsF g e t (FTBC _g b)       = ()
+lem_fv_ftv_subset_bindsF g e t (FTIC _g n)       = ()
+lem_fv_ftv_subset_bindsF g e t (FTVar1 _ y _t)   = ()
+lem_fv_ftv_subset_bindsF g e t (FTVar2 _ y _t p_y_t z t') = ()
+lem_fv_ftv_subset_bindsF g e t (FTVar3 _ y _t p_y_t a k)  = ()
+lem_fv_ftv_subset_bindsF g e t (FTPrm _g c)      = ()
+lem_fv_ftv_subset_bindsF g e t (FTAbs _g y t_y e' t' y' p_e'_t')  
+    = () ? lem_fv_ftv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_fv_ftv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) 
+    = () ? lem_fv_ftv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt' 
+         ? lem_fv_ftv_subset_bindsF g e2 t_y p_e2_ty 
+lem_fv_ftv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t')  
+    = () ? lem_fv_ftv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e') t' p_e'_t' 
+lem_fv_ftv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2) 
+    = () ? lem_fv_ftv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
+lem_fv_ftv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')  
+    = () ? lem_fv_ftv_subset_bindsF g e_y t_y p_ey_ty 
+         ? lem_fv_ftv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_fv_ftv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t) 
+    = () ? lem_fv_ftv_subset_bindsF g e' t p_e'_t 
+-}
 {-@ lem_free_bound_in_env :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
                 -> { x:Vname | not (in_env x g) }
                 -> { pf:_ | not (Set_mem x (free t)) } @-}

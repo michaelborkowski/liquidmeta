@@ -98,12 +98,12 @@ freeBTV (Ic _)          = S.empty
 freeBTV (Prim _)        = S.empty
 freeBTV (BV x)          = S.empty
 freeBTV (FV x)          = S.empty
-freeBTV (Lambda x e)    = freeBV e
-freeBTV (App e e')      = S.union (freeBV e) (freeBV e') 
-freeBTV (LambdaT a k e) = S.difference (freeBV e) (S.singleton a)  
-freeBTV (AppT e t)      = S.union (freeBV e)  (tfreeBV t)          
-freeBTV (Let x ex e)    = S.union (freeBV ex)  (freeBV e)
-freeBTV (Annot e t)     = S.union (freeBV e)  (tfreeBV t) 
+freeBTV (Lambda x e)    = freeBTV e
+freeBTV (App e e')      = S.union (freeBTV e)   (freeBTV e') 
+freeBTV (LambdaT a k e) = S.difference (freeBTV e) (S.singleton a)  
+freeBTV (AppT e t)      = S.union (freeBTV e)  (tfreeBTV t)          
+freeBTV (Let x ex e)    = S.union (freeBTV ex)  (freeBTV e)
+freeBTV (Annot e t)     = S.union (freeBTV e)  (tfreeBTV t) 
 freeBTV Crash           = S.empty
 
 {-@ reflect fv @-}
@@ -240,11 +240,12 @@ subBTV a t_a Crash                        = Crash
 
 --  removed for now:                         Set_sub (freeBV e') (freeBV e) &&
 --  captured by reflection:                  (unbind x y e == subBV x (FV y) e) &&
+-- swapped out for now                                   ftv e == ftv e' &&
 {-@ reflect unbind @-} -- unbind converts (BV x) to (FV y) in e --TODO revisit refinment
 {-@ unbind :: x:Vname -> y:Vname -> e:Expr 
                     -> { e':Expr | Set_sub (fv e) (fv e') && 
                                    Set_sub (fv e') (Set_cup (Set_sng y) (fv e)) &&
-                                   ftv e == ftv e' &&
+                                   Set_sub (ftv e) (ftv e') && Set_sub (ftv e') (ftv e) &&
                                    esize e == esize e' } / [esize e] @-}
 unbind :: Vname -> Vname -> Expr -> Expr
 unbind x y e = subBV x (FV y) e
@@ -332,12 +333,12 @@ tfreeBV (TPoly a  k  t)   = (tfreeBV t)
 {-@ reflect tfreeBTV @-}
 {-@ tfreeBTV :: t:Type -> S.Set Vname / [tsize t] @-}
 tfreeBTV :: Type -> S.Set Vname
-tfreeBTV (TRefn b x r)     = freeBV r
+tfreeBTV (TRefn b x r)     = freeBTV r
 tfreeBTV (BTV a)           = S.singleton a
 tfreeBTV (FTV a)           = S.empty
-tfreeBTV (TFunc x t_x t)   = S.union (tfreeBV t_x) (tfreeBV t) 
-tfreeBTV (TExists x t_x t) = S.union (tfreeBV t_x) (tfreeBV t) 
-tfreeBTV (TPoly a  k  t)   = S.difference (tfreeBV t) (S.singleton a)
+tfreeBTV (TFunc x t_x t)   = S.union (tfreeBTV t_x) (tfreeBTV t) 
+tfreeBTV (TExists x t_x t) = S.union (tfreeBTV t_x) (tfreeBTV t) 
+tfreeBTV (TPoly a  k  t)   = S.difference (tfreeBTV t) (S.singleton a)
 
 --  removed for now:              ( tfreeBV t == tfreeBV t' ) &&
 {-@ reflect tsubFV @-}
