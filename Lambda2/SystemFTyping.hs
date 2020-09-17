@@ -1,9 +1,6 @@
 {-# LANGUAGE GADTs #-}
 
-{- @ LIQUID "--no-termination" @-}   
-{- @ LIQUID "--no-totality" @-}      
 {-@ LIQUID "--reflection"  @-}
-{- @ LIQUID "--ple-local"         @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
 
@@ -14,8 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-
---semantics = (Step, EvalsTo)
+import SystemFWellFormedness
 
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : the Bare-Typing Relation
@@ -31,11 +27,12 @@ data HasFType where
     FTVar2 :: FEnv -> Vname -> FType -> HasFType -> Vname -> FType -> HasFType
     FTVar3 :: FEnv -> Vname -> FType -> HasFType -> Vname -> Kind -> HasFType
     FTPrm  :: FEnv -> Prim -> HasFType
-    FTAbs  :: FEnv -> Vname -> FType -> Expr -> FType -> Vname -> HasFType -> HasFType
+    FTAbs  :: FEnv -> Vname -> FType -> Kind -> WFFT -> Expr -> FType 
+                   -> Vname -> HasFType -> HasFType
     FTApp  :: FEnv -> Expr -> FType -> FType -> HasFType 
                    -> Expr -> HasFType -> HasFType
     FTAbsT :: FEnv -> Vname -> Kind -> Expr -> FType -> Vname -> HasFType -> HasFType
-    FTAppT :: FEnv -> Expr -> Vname -> Kind -> FType -> HasFType -> Type -> HasFType
+    FTAppT :: FEnv -> Expr -> Vname -> Kind -> FType -> HasFType -> Type -> WFFT -> HasFType
     FTLet  :: FEnv -> Expr -> FType -> HasFType -> Vname -> Expr
                    -> FType -> Vname -> HasFType -> HasFType
     FTAnn  :: FEnv -> Expr -> FType -> Type -> HasFType -> HasFType
@@ -52,7 +49,7 @@ data HasFType where
                 -> { y:Vname | y != x && not (in_envF y g) }  -> k:Kind
                 -> ProofOf(HasFType (FConsT y k g) (FV x) b)
  |  FTPrm  :: g:FEnv -> c:Prim  -> ProofOf(HasFType g (Prim c) (erase (ty c)))
- |  FTAbs  :: g:FEnv -> x:Vname -> b:FType -> e:Expr -> b':FType
+ |  FTAbs  :: g:FEnv -> x:Vname -> b:FType -> k:Kind -> ProofOf(WFFT g b k) -> e:Expr -> b':FType
                 -> { y:Vname | not (in_envF y g) && not (Set_mem y (fv e)) && not (Set_mem y (ftv e)) }
                 -> ProofOf(HasFType (FCons y b g) (unbind x y e) b')
                 -> ProofOf(HasFType g (Lambda x e) (FTFunc b b'))
@@ -67,7 +64,8 @@ data HasFType where
                 -> ProofOf(HasFType g (LambdaT a k e) (FTPoly a k b))
  |  FTAppT :: g:FEnv -> e:Expr -> a:Vname -> k:Kind -> t':FType
                 -> ProofOf(HasFType g e (FTPoly a k t')) 
-                -> { rt:Type | Set_sub (Set_cup (free rt) (freeTV rt)) (bindsF g) } 
+                -> { rt:Type | Set_sub (Set_cup (free rt) (freeTV rt)) (bindsF g) }
+                -> ProofOf(WFFT g (erase rt) k)
                 -> ProofOf(HasFType g (AppT e rt) (ftsubBV a (erase rt) t'))
  |  FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
                 -> x:Vname -> e:Expr -> b':FType 
@@ -89,10 +87,10 @@ ftypSize (FTVar1 {})                         = 1
 ftypSize (FTVar2 _ _ _ p_x_b _ _)            = (ftypSize p_x_b)   + 1
 ftypSize (FTVar3 _ _ _ p_x_b _ _)            = (ftypSize p_x_b)   + 1
 ftypSize (FTPrm {})                          = 1
-ftypSize (FTAbs _ _ _ _ _ _ p_e_b')          = (ftypSize p_e_b')  + 1
+ftypSize (FTAbs _ _ _ _ _ _ _ _ p_e_b')      = (ftypSize p_e_b')  + 1
 ftypSize (FTApp _ _ _ _ p_e_bb' _ p_e'_b)    = (ftypSize p_e_bb') + (ftypSize p_e'_b) + 1
 ftypSize (FTAbsT _ _ _ _ _ _ p_e_b)          = (ftypSize p_e_b)  + 1
-ftypSize (FTAppT _ _ _ _ _ p_e_at' _)        = (ftypSize p_e_at') + 1
+ftypSize (FTAppT _ _ _ _ _ p_e_at' _ _)      = (ftypSize p_e_at') + 1
 ftypSize (FTLet _ _ _ p_ex_b _ _ _ _ p_e_b') = (ftypSize p_ex_b)  + (ftypSize p_e_b') + 1
 ftypSize (FTAnn _ _ _ _ p_e_b)               = (ftypSize p_e_b)   + 1
 
@@ -128,7 +126,6 @@ refn_pred_freeBV (Leqn _) = S.fromList [3,2]
 refn_pred_freeBV (Eqn _)  = S.fromList [3,2]
 refn_pred_freeBV _        = S.fromList [3,2,1]
 
-{- @ automatic-instances refn_pred @-}
 {- @ refn_pred :: c:Prim -> { p:Pred | noDefns p && Set_sub (freeBV p) (refn_pred_freeBV c) -}
 {-@ reflect refn_pred @-}
 {-@ refn_pred :: c:Prim -> { p:Pred | noDefns p && Set_emp (fv p) } @-}
@@ -255,9 +252,9 @@ ty' (Eqn n)  = TRefn TBool 3 (refn_pred (Eqn n))
 --
 -- The only expressions fow which we are trying to automate the production of
 --    are the refinements found in the types of the built in primitives, in ty(c)
---    These consist of constants, primitives, variables and function application only.
+--    These consist of constants, primitives, variables and function application only. In
+--    particular this rules out lambdas, Lambdas and polymorphic type application
 
-{- @ automatic-instances noDefns @-}
 {-@ reflect noDefns @-}
 noDefns :: Expr -> Bool
 noDefns (Bc _)          = True
@@ -268,12 +265,11 @@ noDefns (Prim _)        = True
 noDefns (Lambda _ _)    = False
 noDefns (App e e')      = (noDefns e) && (noDefns e')
 noDefns (LambdaT _ _ _) = False
-noDefns (AppT e t)      = (noDefns e) -- && (noDefns e')
+noDefns (AppT e t)      = False -- was: (noDefns e)
 noDefns (Let _ _ _)     = False
 noDefns (Annot e t)     = noDefns e
 noDefns Crash           = True
 
-{- @ automatic-instances checkType @-}
 {-@ reflect checkType @-}
 {-@ checkType :: FEnv -> { e:Expr | noDefns e } -> t:FType -> Bool / [esize e] @-}
 checkType :: FEnv -> Expr -> FType -> Bool
@@ -285,18 +281,17 @@ checkType g (FV x) t         = bound_inF x t g
 checkType g (App e e') t     = case ( synthType g e' ) of
     (Just t')       -> checkType g e (FTFunc t' t)
     _               -> False
-checkType g (AppT e t2) t    = case ( synthType g e ) of
+{-checkType g (AppT e t2) t    = case ( synthType g e ) of
     (Just (FTPoly a k t1))  -> ( t == ftsubBV a (erase t2) t1 ) &&
                                ( S.isSubsetOf (free t2) (bindsF g) ) &&
                                ( S.isSubsetOf (freeTV t2) (bindsF g) )
-    _                       -> False
+    _                       -> False -}
 checkType g (Annot e liqt) t   = ( checkType g e t ) && ( t == erase liqt ) &&
                                  ( S.isSubsetOf (free liqt) (bindsF g) ) &&
                                  ( S.isSubsetOf (freeTV liqt) (bindsF g) )
                                  {- ( S.null (tfreeBV liqt) ) -}
 checkType g Crash t            = False -- Crash is untypable
 
-{- @ automatic-instances synthType @-}
 {-@ reflect synthType @-}
 {-@ synthType :: FEnv -> { e:Expr | noDefns e } -> Maybe FType / [esize e] @-}
 synthType :: FEnv -> Expr -> Maybe FType
@@ -310,12 +305,12 @@ synthType g (App e e')      = case ( synthType g e' ) of
     (Just t')  -> case ( synthType g e ) of
         (Just (FTFunc t_x t)) -> if ( t_x == t' ) then Just t else Nothing
         _                     -> Nothing
-synthType g (AppT e t2)     = case ( synthType g e ) of
+{-synthType g (AppT e t2)     = case ( synthType g e ) of
     (Just (FTPoly a k t1))    -> case ( S.isSubsetOf (free t2)   (bindsF g) &&
                                         S.isSubsetOf (freeTV t2) (bindsF g) ) of
 	True  -> Just (ftsubBV a (erase t2) t1)
         False -> Nothing
-    _                         -> Nothing
+    _                         -> Nothing -}
 synthType g (Annot e liqt)  = case ( checkType g e (erase liqt) && -- S.null (tfreeBV liqt) &&
                                      S.isSubsetOf (free liqt) (bindsF g) &&
                                      S.isSubsetOf (freeTV liqt) (bindsF g) ) of
@@ -323,7 +318,6 @@ synthType g (Annot e liqt)  = case ( checkType g e (erase liqt) && -- S.null (tf
     False -> Nothing
 synthType g Crash           = Nothing
 
-{- @ automatic-instances lem_check_synth @-}
 {-@ lem_check_synth :: g:FEnv -> { e:Expr | noDefns e } -> { t:FType | synthType g e == Just t }
                               -> { pf:_ | checkType g e t } @-}
 lem_check_synth :: FEnv -> Expr -> FType -> Proof
@@ -336,14 +330,10 @@ lem_check_synth g (FV x) t         = lem_lookup_boundinF x t g
 lem_check_synth g (App e e') t     = case (synthType g e') of
     (Just t')       -> lem_check_synth g e (FTFunc t' t)   -- where  (Just t') = synthType g e' 
     Nothing         -> impossible ""
-lem_check_synth g (AppT e t2) t    = case (synthType g e) of 
-    (Just (FTPoly a k t1))  -> ()
+{-lem_check_synth g (AppT e t2) t    = case (synthType g e) of 
+    (Just (FTPoly a k t1))  -> ()-}
 lem_check_synth g (Annot e liqt) t = ()
---lem_check_synth g (AppT e t2) t    = () -- : recheck this
---  where
---    (Just (FTPoly a k t1)) = synthType g e
 
-{- @ automatic-instances makeHasFType @-}
 {-@ makeHasFType :: g:FEnv -> { e:Expr | noDefns e } -> { t:FType | checkType g e t }
         -> ProofOf(HasFType g e t) / [esize e] @-}
 makeHasFType :: FEnv -> Expr -> FType -> HasFType
@@ -358,10 +348,10 @@ makeHasFType g (App e e') t     = FTApp g e t' t pf_e_t't e' pf_e'_t'
     (Just t')  = synthType g e'
     pf_e_t't   = makeHasFType g e (FTFunc t' t)
     pf_e'_t'   = makeHasFType g e' (t' ? lem_check_synth g e' t')
-makeHasFType g (AppT e rt) t    = FTAppT g e a k t1 pf_e_at1 rt
+{- makeHasFType g (AppT e rt) t    = FTAppT g e a k t1 pf_e_at1 rt {- wfft rt -}
   where
     (Just (FTPoly a k t1)) = synthType g e 
-    pf_e_at1               = makeHasFType g e (FTPoly a k t1 ? lem_check_synth g e (FTPoly a k t1))
+    pf_e_at1               = makeHasFType g e (FTPoly a k t1 ? lem_check_synth g e (FTPoly a k t1)) -}
 makeHasFType g (Annot e liqt) t = FTAnn g e t liqt pf_e_t
   where
     pf_e_t = makeHasFType g e t

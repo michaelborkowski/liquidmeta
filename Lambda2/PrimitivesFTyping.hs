@@ -12,12 +12,13 @@ import qualified Data.Set as S
 
 import Basics
 import Semantics
+import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-{-@ reflect foo05 @-}
-foo05 :: a -> Maybe a
-foo05 x = Just x
+{-@ reflect foo06 @-}
+foo06 :: a -> Maybe a
+foo06 x = Just x
 
 -----------------------------------------------------------------------------
 -- | (System F) TYPES of DELTA (of Applications of Primitives)
@@ -61,9 +62,10 @@ lemma_function_values e t t' (FTAbs {})   = ()
 lem_delta_and_ftyp :: Expr -> FType -> FType -> HasFType -> HasFType -> HasFType
 lem_delta_and_ftyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
   (FTPrm FEmpty And) -> case v of
-          (Bc True)  -> FTAbs FEmpty 1 (FTBasic TBool) (BV 1) (FTBasic TBool) 
-                              1 (FTVar1 FEmpty 1 (FTBasic TBool) ) -- ? toProof ( unbind 1 1 (BV 1) === FV 1 ))
-          (Bc False) -> FTAbs FEmpty 1 (FTBasic TBool) (Bc False) (FTBasic TBool) 
+          (Bc True)  -> FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) 
+                              (BV 1) (FTBasic TBool) 1 (FTVar1 FEmpty 1 (FTBasic TBool) ) 
+          (Bc False) -> FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) 
+                              (Bc False) (FTBasic TBool) 
                               1 (FTBC (FCons 1 (FTBasic TBool) FEmpty) False)  
           _          -> impossible ("by lemma" ? lem_bool_values v p_v_tx) 
 
@@ -74,9 +76,11 @@ lem_delta_and_ftyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
 lem_delta_or_ftyp :: Expr -> FType -> FType -> HasFType -> HasFType -> HasFType
 lem_delta_or_ftyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
   (FTPrm FEmpty Or) -> case v of
-      (Bc True)  -> FTAbs FEmpty 1 (FTBasic TBool) (Bc True) (FTBasic TBool)
+      (Bc True)  -> FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) 
+                          (Bc True) (FTBasic TBool)
                           1 (FTBC (FCons 1 (FTBasic TBool) FEmpty) True)
-      (Bc False) -> FTAbs FEmpty 1 (FTBasic TBool) (BV 1)    (FTBasic TBool) 
+      (Bc False) -> FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) 
+                          (BV 1)    (FTBasic TBool) 
                           1 (FTVar1 FEmpty 1 (FTBasic TBool) ) -- ? toProof ( unbind 1 1 (BV 1) === FV 1 ))
       _          -> impossible ("by lemma" ? lem_bool_values v p_v_tx)
 
@@ -97,9 +101,11 @@ lem_delta_not_ftyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
 lem_delta_eqv_ftyp :: Expr -> FType -> FType -> HasFType -> HasFType -> HasFType
 lem_delta_eqv_ftyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
   (FTPrm FEmpty Eqv) -> case v of
-      (Bc True)  -> FTAbs FEmpty 1 (FTBasic TBool) (BV 1) (FTBasic TBool)
+      (Bc True)  -> FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) 
+                          (BV 1) (FTBasic TBool)
                           1 (FTVar1 FEmpty 1 (FTBasic TBool) ) -- ? toProof ( unbind 1 1 (BV 1) === FV 1 ))
-      (Bc False) -> FTAbs FEmpty 1 (FTBasic TBool) not_x  (FTBasic TBool) 1 p_notx_bl
+      (Bc False) -> FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) 
+                          not_x  (FTBasic TBool) 1 p_notx_bl
         where
           not_x     = App (Prim Not) (BV 1)
           g         = (FCons 1 (FTBasic TBool) FEmpty)

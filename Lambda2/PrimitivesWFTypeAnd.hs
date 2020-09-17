@@ -12,19 +12,13 @@ import qualified Data.Set as S
 
 import Basics
 import Semantics
+import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-----semantics = (\e e' -> Step e e', \e e' -> EvalsTo e e', \e e' -> AppReduced e e')
-----typing = (TBool, TInt, \g e t -> HasFType g e t, \g t -> WFType g t, \g -> WFEnv g)
---semantics = (Step, EvalsTo, \e e' -> AppReduced e e')
---typing = (TBool, TInt, HasFType, WFType, \g -> WFEnv g)
-----semantics = (Step, EvalsTo, AppReduced)
-----typing = (TBool, TInt, HasFType, WFType, WFEnv)
-
-{-@ reflect foo06 @-}
-foo06 :: a -> Maybe a
-foo06 x = Just x
+{-@ reflect foo07 @-}
+foo07 :: a -> Maybe a
+foo07 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES

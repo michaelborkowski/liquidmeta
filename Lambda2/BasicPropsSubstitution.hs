@@ -1,8 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{- @ LIQUID "--no-termination" @-}
-{- @ LIQUID "--no-totality" @-}
-
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -15,9 +12,9 @@ import qualified Data.Set as S
 
 import Basics
 
-{-@ reflect foo15 @-}   
-foo15 x = Just x 
-foo15 :: a -> Maybe a 
+{-@ reflect foo16 @-}   
+foo16 x = Just x 
+foo16 :: a -> Maybe a 
 
 {-@ lem_union_subset :: a:S.Set Vname -> b:S.Set Vname 
         -> { c:S.Set Vname | Set_sub a c && Set_sub b c }
@@ -362,7 +359,7 @@ lem_subFTV_unbind_tv a a' t (LambdaT a1 k e')
     | otherwise = () ? lem_subFTV_unbind_tv a a' t e'
 lem_subFTV_unbind_tv a a' t (AppT e' t')
                 = () ? lem_subFTV_unbind_tv   a a' t e'  
-                     ? lem_tsubFTV_unbind_tvT a a' t t' -- TODO TODO assume
+                     ? lem_tsubFTV_unbind_tvT a a' t t'
 lem_subFTV_unbind_tv a a' t (Let w ew e')
                 = () ? lem_subFTV_unbind_tv a a' t ew
                      ? lem_subFTV_unbind_tv a a' t e'
@@ -613,4 +610,19 @@ lem_ftsubFV_unbindFT a a' t_a (FTFunc t_w t')  = () ? lem_ftsubFV_unbindFT a a' 
 lem_ftsubFV_unbindFT a a' t_a (FTPoly a1 k t') 
   | a == a1    = () ? lem_ftsubFV_notin      a' t_a t'
   | otherwise  = () ? lem_ftsubFV_unbindFT a a' t_a t'
+
+{-@ lem_commute_ftsubFV_unbindFT :: a0:Vname -> a1:Vname -> a:Vname 
+        -> { a':Vname | a' != a0 } -> t:FType
+        -> {pf:_ | ftsubFV a0 (FTFV a1) (unbindFT a a' t) 
+                   == unbindFT a a' (ftsubFV a0 (FTFV a1) t)} / [ftsize t] @-}
+lem_commute_ftsubFV_unbindFT :: Vname -> Vname -> Vname -> Vname -> FType -> Proof
+lem_commute_ftsubFV_unbindFT a0 a1 a a' (FTBasic b) = ()
+lem_commute_ftsubFV_unbindFT a0 a1 a a' (FTBV aa)   = ()
+lem_commute_ftsubFV_unbindFT a0 a1 a a' (FTFV aa)   = ()
+lem_commute_ftsubFV_unbindFT a0 a1 a a' (FTFunc t1 t2)
+  = () ? lem_commute_ftsubFV_unbindFT a0 a1 a a' t1
+       ? lem_commute_ftsubFV_unbindFT a0 a1 a a' t2
+lem_commute_ftsubFV_unbindFT a0 a1 a a' (FTPoly aa k t)
+  | a == aa   = ()
+  | otherwise = () ? lem_commute_ftsubFV_unbindFT a0 a1 a a' t
 

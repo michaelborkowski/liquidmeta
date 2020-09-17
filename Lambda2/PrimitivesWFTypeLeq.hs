@@ -12,12 +12,13 @@ import qualified Data.Set as S
 
 import Basics
 import Semantics
+import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-{-@ reflect foo10 @-}
-foo10 :: a -> Maybe a
-foo10 x = Just x
+{-@ reflect foo11 @-}
+foo11 :: a -> Maybe a
+foo11 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES

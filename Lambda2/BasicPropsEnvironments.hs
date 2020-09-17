@@ -11,14 +11,14 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 import BasicPropsSubstitution
 
-{-@ reflect foo16 @-}
-foo16 x = Just x 
-foo16 :: a -> Maybe a 
-
+{-@ reflect foo17 @-}
+foo17 x = Just x 
+foo17 :: a -> Maybe a 
 
 ----------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of ENVIRONMENTS / BARE-TYPED ENVIRONMENTS
@@ -66,6 +66,35 @@ lem_erase_tsubBV x e (TFunc   z t_z t) = () ? lem_erase_tsubBV x e t_z
                                             ? lem_erase_tsubBV x e t
 lem_erase_tsubBV x e (TExists z t_z t) = () ? lem_erase_tsubBV x e t
 lem_erase_tsubBV x e (TPoly   a k   t) = () ? lem_erase_tsubBV x e t
+
+
+{-@ lem_erase_tsubBTV :: a:Vname -> t_a:Type -> t:Type 
+        -> { pf:_ | erase (tsubBTV a t_a t) == ftsubBV a (erase t_a) (erase t) } @-}
+lem_erase_tsubBTV :: Vname -> Type -> Type -> Proof
+lem_erase_tsubBTV a t_a (TRefn   b   z p) = ()
+lem_erase_tsubBTV a t_a (BTV a')          = ()
+lem_erase_tsubBTV a t_a (FTV a')          = ()
+lem_erase_tsubBTV a t_a (TFunc   z t_z t) = () ? lem_erase_tsubBTV a t_a t_z
+                                               ? lem_erase_tsubBTV a t_a t
+lem_erase_tsubBTV a t_a (TExists z t_z t) = () ? lem_erase_tsubBTV a t_a t
+lem_erase_tsubBTV a t_a (TPoly   a' k' t) = () ? lem_erase_tsubBTV a t_a t
+
+{-@ lem_erase_freeTV :: t:Type -> { pf:_ | Set_sub (ffreeTV (erase t)) (freeTV t) } @-}
+lem_erase_freeTV :: Type -> Proof
+lem_erase_freeTV (TRefn   b   z p) = ()
+lem_erase_freeTV (BTV a)           = ()
+lem_erase_freeTV (FTV a)           = ()
+lem_erase_freeTV (TFunc   z t_z t) = () ? lem_erase_freeTV t_z
+                                        ? lem_erase_freeTV t
+lem_erase_freeTV (TExists z t_z t) = () ? lem_erase_freeTV t
+lem_erase_freeTV (TPoly   a' k' t) = () ? lem_erase_freeTV t
+
+
+
+
+
+
+
 
 {-@ reflect concatF @-}
 {-@ concatF :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) } 
@@ -191,7 +220,7 @@ lem_fv_bound_in_fenv g e t (FTVar1 _ y _t) x  = ()
 lem_fv_bound_in_fenv g e t (FTVar2 _ y _t p_y_t z t') x = ()
 lem_fv_bound_in_fenv g e t (FTVar3 _ y _y p_y_t z k)  x = ()
 lem_fv_bound_in_fenv g e t (FTPrm _g c) x     = ()
-lem_fv_bound_in_fenv g e t (FTAbs _g y t_y e' t' y' p_e'_t') x 
+lem_fv_bound_in_fenv g e t (FTAbs _g y t_y _ _ e' t' y' p_e'_t') x 
     = case ( x == y' ) of
         (True)  -> ()
         (False) -> () ? lem_fv_bound_in_fenv (FCons y' t_y g) (unbind y y' e') t' p_e'_t' x
@@ -203,7 +232,7 @@ lem_fv_bound_in_fenv g e t (FTAbsT _g a k e' t' a' p_e'_t') x
         True  -> ()
         False -> () ? lem_fv_bound_in_fenv (FConsT a' k g) (unbind_tv a a' e') 
                                            (unbindFT a a' t') p_e'_t' x
-lem_fv_bound_in_fenv g e t (FTAppT _g e' a k t' p_e'_at' ref_t') x
+lem_fv_bound_in_fenv g e t (FTAppT _g e' a k t' p_e'_at' ref_t' _) x
     = () ? lem_fv_bound_in_fenv g e' (FTPoly a k t') p_e'_at' x
 lem_fv_bound_in_fenv g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') x 
     = case ( x == y' ) of
@@ -212,38 +241,6 @@ lem_fv_bound_in_fenv g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') x
                       ? lem_fv_bound_in_fenv (FCons y' t_y g) (unbind y y' e') t' p_e'_t' x
 lem_fv_bound_in_fenv g e t (FTAnn _g e' _t ann_t p_e'_t) x 
     = () ? lem_fv_bound_in_fenv g e' t p_e'_t x
-{-
-{-@ lem_ftv_bound_in_fenv :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
-                -> { a:Vname | not (in_envF a g) }
-                -> { pf:_ | not (Set_mem a (ftv e)) } @-}
-lem_ftv_bound_in_fenv :: FEnv -> Expr -> FType -> HasFType -> Vname -> Proof
-lem_ftv_bound_in_fenv g e t (FTBC _g b) a                = ()
-lem_ftv_bound_in_fenv g e t (FTIC _g n) a                = ()
-lem_ftv_bound_in_fenv g e t (FTVar1 _ y _t) a            = ()
-lem_ftv_bound_in_fenv g e t (FTVar2 _ y _t p_y_t z t') a = ()
-lem_ftv_bound_in_fenv g e t (FTVar3 _ y _y p_y_t z k)  a = ()
-lem_ftv_bound_in_fenv g e t (FTPrm _g c) a               = ()
-lem_ftv_bound_in_fenv g e t (FTAbs _g y t_y e' t' y' p_e'_t') a 
-    = case ( a == y' ) of
-        (True)  -> ()
-        (False) -> () ? lem_ftv_bound_in_fenv (FCons y' t_y g) (unbind y y' e') t' p_e'_t' a
-lem_ftv_bound_in_fenv g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) a 
-    = () ? lem_ftv_bound_in_fenv g e1 (FTFunc t_y t') p_e1_tyt' a
-         ? lem_ftv_bound_in_fenv g e2 t_y p_e2_ty a
-lem_ftv_bound_in_fenv g e t (FTAbsT _g a k e' t' a' p_e'_t') a1
-    = case ( a1 == a' ) of
-        True  -> ()
-        False -> () ? lem_ftv_bound_in_fenv (FConsT a' k g) (unbind_tv a a' e') t' p_e'_t' a1
-lem_ftv_bound_in_fenv g e t (FTAppT _g e' a' k t' p_e'_a't' ref_t') a
-    = () ? lem_ftv_bound_in_fenv g e' (FTPoly a' k t') p_e'_a't' a
-lem_ftv_bound_in_fenv g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') a
-    = case ( a == y' ) of
-        (True)  -> () ? lem_ftv_bound_in_fenv g e_y t_y p_ey_ty a
-        (False) -> () ? lem_ftv_bound_in_fenv g e_y t_y p_ey_ty a
-                      ? lem_ftv_bound_in_fenv (FCons y' t_y g) (unbind y y' e') t' p_e'_t' a
-lem_ftv_bound_in_fenv g e t (FTAnn _g e' _t ann_t p_e'_t) a
-    = () ? lem_ftv_bound_in_fenv g e' t p_e'_t a
--}
 
 {-@ lem_fv_subset_bindsF :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
                 -> { pf:_ | Set_sub (fv e) (bindsF g) } @-}
@@ -254,14 +251,14 @@ lem_fv_subset_bindsF g e t (FTVar1 _ y _t)   = ()
 lem_fv_subset_bindsF g e t (FTVar2 _ y _t p_y_t z t') = ()
 lem_fv_subset_bindsF g e t (FTVar3 _ y _t p_y_t a k)  = ()
 lem_fv_subset_bindsF g e t (FTPrm _g c)      = ()
-lem_fv_subset_bindsF g e t (FTAbs _g y t_y e' t' y' p_e'_t')  
+lem_fv_subset_bindsF g e t (FTAbs _g y t_y _ _ e' t' y' p_e'_t')  
     = () ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
 lem_fv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) 
     = () ? lem_fv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt' 
          ? lem_fv_subset_bindsF g e2 t_y p_e2_ty 
 lem_fv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t')  
     = () ? lem_fv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e') (unbindFT a a' t') p_e'_t' 
-lem_fv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2) 
+lem_fv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2 _) 
     = () ? lem_fv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
 lem_fv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')  
     = () ? lem_fv_subset_bindsF g e_y t_y p_ey_ty 
@@ -278,14 +275,14 @@ lem_ftv_subset_bindsF g e t (FTVar1 _ y _t)   = ()
 lem_ftv_subset_bindsF g e t (FTVar2 _ y _t p_y_t z t') = ()
 lem_ftv_subset_bindsF g e t (FTVar3 _ y _t p_y_t a k)  = ()
 lem_ftv_subset_bindsF g e t (FTPrm _g c)      = ()
-lem_ftv_subset_bindsF g e t (FTAbs _g y t_y e' t' y' p_e'_t')  
+lem_ftv_subset_bindsF g e t (FTAbs _g y t_y _ _ e' t' y' p_e'_t')  
     = () ? lem_ftv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
 lem_ftv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) 
     = () ? lem_ftv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt' 
          ? lem_ftv_subset_bindsF g e2 t_y p_e2_ty 
 lem_ftv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t')  
     = () ? lem_ftv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e') (unbindFT a a' t') p_e'_t' 
-lem_ftv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2) 
+lem_ftv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2 _) 
     = () ? lem_ftv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
 lem_ftv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')  
     = () ? lem_ftv_subset_bindsF g e_y t_y p_ey_ty 
@@ -377,3 +374,45 @@ lem_truncate_wfenv g (Cons x v g')  p_xg'g_wf = lem_truncate_wfenv g g' p_g'g_wf
 lem_truncate_wfenv g (ConsT a k g') p_ag'g_wf = lem_truncate_wfenv g g' p_g'g_wf
   where
     (WFEBindT _ p_g'g_wf _ _) = p_ag'g_wf
+
+
+   ----- SYSTEM F VERSIONS
+{-@ lem_ffreeTV_bound_in_fenv :: g:FEnv -> t:FType -> k:Kind -> ProofOf(WFFT g t k)
+                -> { a:Vname | not (in_envF a g) }
+                -> { pf:_ | not (Set_mem a (ffreeTV t)) } @-}
+lem_ffreeTV_bound_in_fenv :: FEnv -> FType -> Kind -> WFFT -> Vname -> Proof
+lem_ffreeTV_bound_in_fenv g t k (WFFTBasic _g b) x = ()
+lem_ffreeTV_bound_in_fenv g t k (WFFTFV1 g' a _k) x = ()
+lem_ffreeTV_bound_in_fenv g t k (WFFTFV2 g' a _k p_a_k y t') x
+    = () ? lem_ffreeTV_bound_in_fenv g' t k p_a_k x
+lem_ffreeTV_bound_in_fenv g t k (WFFTFV3 g' a _k p_a_k a' k') x
+    = () ? lem_ffreeTV_bound_in_fenv g' t k p_a_k x
+lem_ffreeTV_bound_in_fenv g t k (WFFTFunc _g t1 k1 p_t1_wf t2 k2 p_t2_wf) a
+    = () ? lem_ffreeTV_bound_in_fenv g t1 k1 p_t1_wf a
+         ? lem_ffreeTV_bound_in_fenv g t2 k2 p_t2_wf a
+lem_ffreeTV_bound_in_fenv g t k (WFFTPoly _g a' k' t' k_t' a'' p_a''g_t'_kt') a
+    = case ( a == a'' ) of
+        (True)  -> ()
+        (False) -> () ? lem_ffreeTV_bound_in_fenv (FConsT a'' k' g) (unbindFT a' a'' t') 
+                                                  k_t' p_a''g_t'_kt' a
+lem_ffreeTV_bound_in_fenv g t k (WFFTKind _g _t p_t_B) a 
+    = () ? lem_ffreeTV_bound_in_fenv g t Base p_t_B a
+
+{-@ lem_ffreeTV_subset_bindsF :: g:FEnv -> t:FType -> k:Kind -> ProofOf(WFFT g t k) 
+                  -> { pf:_ | Set_sub (ffreeTV t) (bindsF g) } @-}
+lem_ffreeTV_subset_bindsF :: FEnv -> FType -> Kind -> WFFT -> Proof 
+lem_ffreeTV_subset_bindsF g t k (WFFTBasic _g b)  = ()
+lem_ffreeTV_subset_bindsF g t k (WFFTFV1 g' a _k) = ()
+lem_ffreeTV_subset_bindsF g t k (WFFTFV2 g' a _k p_a_k y t') 
+    = () ? lem_ffreeTV_subset_bindsF g' t k p_a_k 
+lem_ffreeTV_subset_bindsF g t k (WFFTFV3 g' a _k p_a_k a' k') 
+    = () ? lem_ffreeTV_subset_bindsF g' t k p_a_k 
+lem_ffreeTV_subset_bindsF g t k (WFFTFunc _g t1 k1 p_t1_wf t2 k2 p_t2_wf) 
+    = () ? lem_ffreeTV_subset_bindsF g t1 k1 p_t1_wf 
+         ? lem_ffreeTV_subset_bindsF g t2 k2 p_t2_wf 
+lem_ffreeTV_subset_bindsF g t k (WFFTPoly _g a' k' t' k_t' a'' p_a''g_t'_kt') 
+    = () ? lem_ffreeTV_subset_bindsF (FConsT a'' k' g) (unbindFT a' a'' t') 
+                                     k_t' p_a''g_t'_kt' 
+lem_ffreeTV_subset_bindsF g t k (WFFTKind _g _t p_t_B) 
+    = () ? lem_ffreeTV_subset_bindsF g t Base p_t_B 
+

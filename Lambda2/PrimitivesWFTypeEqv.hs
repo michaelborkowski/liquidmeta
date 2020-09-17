@@ -12,15 +12,13 @@ import qualified Data.Set as S
 
 import Basics
 import Semantics
+import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-{-semantics = (\e e' -> Step e e', \e e' -> EvalsTo e e', \e e' -> AppReduced e e')
-typing = (TBool, TInt, \g e t -> HasFType g e t, \g t -> WFType g t, \g -> WFEnv g) -}
-
-{-@ reflect foo09 @-}
-foo09 :: a -> Maybe a
-foo09 x = Just x
+{-@ reflect foo10 @-}
+foo10 :: a -> Maybe a
+foo10 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES
@@ -36,7 +34,6 @@ lem_wf_intype_eqv _ = () {-noDefnsInRefns Empty (inType Eqv)
                   === noDefns (Bc True)
                   === True *** QED -}
 
-
 {-@ lem_wf_ty'_eqv :: () -> { pf:_ | noDefnsInRefns (Cons (firstBV Eqv) (inType Eqv) Empty) 
                                               (unbindT (firstBV Eqv) (firstBV Eqv) (ty' Eqv))
                                  && isWellFormed (Cons (firstBV Eqv) (inType Eqv) Empty) 
@@ -44,8 +41,6 @@ lem_wf_intype_eqv _ = () {-noDefnsInRefns Empty (inType Eqv)
 lem_wf_ty'_eqv :: () -> Proof
 lem_wf_ty'_eqv _ = ()
 
-
 {-@ lem_wf_ty_eqv :: () -> { pf:_ | noDefnsInRefns Empty (ty Eqv) && isWellFormed Empty (ty Eqv) Star } @-}
 lem_wf_ty_eqv :: () -> Proof
 lem_wf_ty_eqv _ = () ? lem_wf_intype_eqv () ? lem_wf_ty'_eqv ()
-

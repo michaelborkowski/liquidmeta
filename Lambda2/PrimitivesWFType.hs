@@ -1,7 +1,6 @@
 {-# LANGUAGE GADTs #-}
 
 {-@ LIQUID "--reflection"  @-}
-{- @ LIQUID "--ple-local"   @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
 
@@ -13,6 +12,7 @@ import qualified Data.Set as S
 
 import Basics
 import Semantics
+import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 import PrimitivesFTyping
@@ -25,14 +25,13 @@ import PrimitivesWFTypeLeqn
 import PrimitivesWFTypeEq
 import PrimitivesWFTypeEqn
 
-{-@ reflect foo14 @-}
-foo14 :: a -> Maybe a
-foo14 x = Just x
+{-@ reflect foo15 @-}
+foo15 :: a -> Maybe a
+foo15 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES
 -----------------------------------------------------------------------------
-
 
 -- Constant and Primitive Typing Lemmas
 -- Lemma. Well-Formedness of Constant Types

@@ -693,6 +693,14 @@ bound_inF x t (FCons  y t' g) | (x == y)              = (t == t')
 bound_inF x t (FConsT a k  g) | (x == a)              = False
                               | otherwise             = bound_inF x t g
 
+{-@ reflect tv_bound_inF @-}         -- type variables only
+tv_bound_inF :: Vname -> Kind -> FEnv -> Bool
+tv_bound_inF a k FEmpty                                   = False
+tv_bound_inF a k (FCons x t g)    | (a == x)              = False
+                                  | otherwise             = tv_bound_inF a k g
+tv_bound_inF a k (FConsT a' k' g) | (a == a')             = (k == k')
+                                  | otherwise             = tv_bound_inF a k g
+
 {-@ lem_lookup_boundinF :: x:Vname -> t:FType -> { g:FEnv | lookupF x g == Just t }
         -> { pf:_ | bound_inF x t g } @-}
 lem_lookup_boundinF :: Vname -> FType -> FEnv -> Proof

@@ -11,15 +11,16 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SystemFWellFormedness
 import SystemFTyping
 
 -- force these into scope fpr LH
 -- typing = (\g e t -> HasFType g e t)
 typing = HasFType
 
-{-@ reflect foo04 @-}
-foo04 :: a -> Maybe a
-foo04 x = Just x
+{-@ reflect foo05 @-}
+foo05 :: a -> Maybe a
+foo05 x = Just x
 
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : WELL-FORMEDNESS of TYPES and ENVIRONMENTS
@@ -104,7 +105,6 @@ data WFEnv where
                    -> k:Kind -> ProofOf(WFType g t k) -> ProofOf(WFEnv (Cons x t g)) 
  |  WFEBindT :: g:Env -> ProofOf(WFEnv g) -> { a:Vname | not (in_env a g) } -> k:Kind 
                                                       -> ProofOf(WFEnv (ConsT a k g)) @-}
-
 
 ------------------------------------------------------------------------------------------
 -- | AUTOMATING WELL-FORMEDNESS PROOF GENERATION for refinements that occur in practice --
