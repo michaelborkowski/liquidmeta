@@ -116,7 +116,7 @@ data WFEnv where
 
 {-@ reflect noDefnsInRefns @-}
 noDefnsInRefns :: Env -> Type -> Bool
-noDefnsInRefns g (TRefn b x p)      = noDefnsAppT (unbind x y p)
+noDefnsInRefns g (TRefn b x p)      = noDefnsBaseAppT (unbind x y p)
   where
     y = fresh_var g
 noDefnsInRefns g (TFunc x t_x t)    = noDefnsInRefns g t_x && noDefnsInRefns (Cons y t_x g) (unbindT x y t)

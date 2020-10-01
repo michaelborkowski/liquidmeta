@@ -23,9 +23,9 @@ import BasicPropsEnvironments
 import BasicPropsWellFormedness
 import SystemFLemmasWellFormedness
 
-{-@ reflect foo20 @-}
-foo20 x = Just x
-foo20 :: a -> Maybe a
+{-@ reflect foo21 @-}
+foo21 x = Just x
+foo21 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying STLC :: Technical LEMMAS

@@ -23,9 +23,9 @@ import SystemFWellFormedness
 import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 
-{-@ reflect foo21 @-}
-foo21 x = Just x
-foo21 :: a -> Maybe a
+{-@ reflect foo22 @-}
+foo22 x = Just x
+foo22 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying System F Calculus

@@ -24,10 +24,11 @@ import PrimitivesWFTypeLeq
 import PrimitivesWFTypeLeqn
 import PrimitivesWFTypeEq
 import PrimitivesWFTypeEqn
+import PrimitivesWFTypeEql
 
-{-@ reflect foo15 @-}
-foo15 :: a -> Maybe a
-foo15 x = Just x
+{-@ reflect foo16 @-}
+foo16 :: a -> Maybe a
+foo16 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES
@@ -71,4 +72,4 @@ lem_wf_ty Leq      = makeWFType Empty (ty Leq) Star      ? lem_wf_ty_leq
 lem_wf_ty (Leqn n) = makeWFType Empty (ty (Leqn n)) Star ? lem_wf_ty_leqn n
 lem_wf_ty Eq       = makeWFType Empty (ty Eq) Star       ? lem_wf_ty_eq
 lem_wf_ty (Eqn n)  = makeWFType Empty (ty (Eqn n)) Star  ? lem_wf_ty_eqn n
-
+lem_wf_ty Eql      = makeWFType Empty (ty Eql) Star      ? lem_wf_ty_eql

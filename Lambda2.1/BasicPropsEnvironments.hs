@@ -16,9 +16,9 @@ import SystemFTyping
 import WellFormedness
 import BasicPropsSubstitution
 
-{-@ reflect foo17 @-}
-foo17 x = Just x 
-foo17 :: a -> Maybe a 
+{-@ reflect foo18 @-}
+foo18 x = Just x 
+foo18 :: a -> Maybe a 
 
 ----------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of ENVIRONMENTS / BARE-TYPED ENVIRONMENTS
@@ -174,6 +174,13 @@ lem_esubFV_inverse g0 x t_x (Cons z t_z g') p_g0g_wf y = case p_g0g_wf of
 lem_esubFV_inverse g0 x t_x (ConsT a k g') p_g0g_wf y = case p_g0g_wf of
   (WFEBindT env' p_env'_wf _a _k)  -> () ? lem_esubFV_inverse g0 x t_x g' p_env'_wf y
 
+{-@ reflect esubFTV @-}
+{-@ esubFTV :: a:Vname -> t_a:Type -> g:Env -> { g':Env | binds g == binds g' } @-}
+esubFTV :: Vname -> Type -> Env -> Env
+esubFTV a t_a Empty           = Empty
+esubFTV a t_a (Cons  z t_z g) = Cons z (tsubFTV a t_a t_z) (esubFTV a t_a g)
+esubFTV a t_a (ConsT a' k' g) = ConsT a' k'                (esubFTV a t_a g)
+
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 -- Substitutions in Systen F Environments --
@@ -308,14 +315,16 @@ lem_fv_ftv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t)
 -}
 {-@ lem_free_bound_in_env :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
                 -> { x:Vname | not (in_env x g) }
-                -> { pf:_ | not (Set_mem x (free t)) } @-}
+                -> { pf:_ | not (Set_mem x (free t)) && not (Set_mem x (freeTV t)) } @-}
 lem_free_bound_in_env :: Env -> Type -> Kind -> WFType -> Vname -> Proof
-lem_free_bound_in_env g t k (WFBase _ _) x = ()
+lem_free_bound_in_env g t k (WFBase _ b) x 
+    = () ? toProof ( ftv (Bc True) === S.empty )
 lem_free_bound_in_env g t k (WFRefn _g z b p_g_b p z' p_z'_p_bl) x
     = case ( x == z' ) of
-        (True)  -> ()
+        (True)  -> () ? lem_free_bound_in_env g (TRefn b 1 (Bc True)) Base p_g_b x
         (False) -> () ? lem_fv_bound_in_fenv (FCons z' (FTBasic b) (erase_env g)) 
                                              (unbind z z' p) (FTBasic TBool) p_z'_p_bl x
+                      ? lem_free_bound_in_env g (TRefn b 1 (Bc True)) Base p_g_b x
 lem_free_bound_in_env g t k (WFVar1 g' a _k) x = ()
 lem_free_bound_in_env g t k (WFVar2 g' a _k p_a_k y t') x
     = () ? lem_free_bound_in_env g' t k p_a_k x
@@ -338,11 +347,28 @@ lem_free_bound_in_env g t k (WFPoly _g a k' t' k_t' a' p_a'_t'_kt') x
 lem_free_bound_in_env g t k (WFKind _g _t p_t_B) x = () ? lem_free_bound_in_env g t Base p_t_B x
 
 {-@ lem_free_subset_binds :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
-                  -> { pf:_ | Set_sub (free t) (binds g) } @-}
+                  -> { pf:_ | Set_sub (Set_cup (free t) (freeTV t)) (binds g) } @-}
 lem_free_subset_binds :: Env -> Type -> Kind -> WFType -> Proof 
-lem_free_subset_binds g t k (WFBase _ _ ) = ()
-lem_free_subset_binds g t k (WFRefn _g z b p_g_b p z' p_z'_p_bl)
-    = () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+lem_free_subset_binds g t k (WFBase _ b) = case b of
+    TBool -> ()
+    TInt  -> ()
+lem_free_subset_binds g t k (WFRefn _g z b p_g_b p z' p_z'_p_bl) = case b of
+    TBool    -> () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+                                (FTBasic TBool) p_z'_p_bl
+                   ? lem_ftv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+                                (FTBasic TBool) p_z'_p_bl
+    TInt     -> () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+                                (FTBasic TBool) p_z'_p_bl
+                   ? lem_ftv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+                                (FTBasic TBool) p_z'_p_bl
+    (FTV a)  -> () ? lem_free_subset_binds g (TRefn (FTV a) 1 (Bc True)) Base p_g_b 
+                   ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+                                (FTBasic TBool) p_z'_p_bl
+                   ? lem_ftv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+                                (FTBasic TBool) p_z'_p_bl
+    (BTV a)  -> () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+                                (FTBasic TBool) p_z'_p_bl
+                   ? lem_ftv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
                                 (FTBasic TBool) p_z'_p_bl
 lem_free_subset_binds g t k (WFVar1 g' a _k) = ()
 lem_free_subset_binds g t k (WFVar2 g' a _k p_a_k y t') = ()

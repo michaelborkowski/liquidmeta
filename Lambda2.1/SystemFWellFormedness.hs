@@ -95,3 +95,42 @@ data WFFE where
  |  WFFBindT :: g:FEnv -> ProofOf(WFFE g) -> { a:Vname | not (in_envF a g) } -> k:Kind 
                                                     -> ProofOf(WFFE (FConsT a k g)) @-}
 
+----------------------------------------------------------------------------
+-- | AUTOMATED INFERENCE of SYSTEM F WELL-FORMEDNESS JUDGMENTS
+----------------------------------------------------------------------------
+
+{-@ reflect isWFFT @-}
+{-@ isWFFT :: g:FEnv -> t:FType -> Kind -> Bool  / [ftsize t, fenvsize g] @-}
+isWFFT :: FEnv -> FType -> Kind -> Bool
+isWFFT g (FTBasic b) k      = case b of
+    TBool    -> True
+    TInt     -> True
+    (BTV a)  -> False
+    (FTV a) | tv_bound_inF a Base g -> True
+            | tv_bound_inF a Star g -> k == Star
+            | otherwise            -> False  
+isWFFT g (FTFunc  t_x t) k  = k == Star && isWFFT g t_x Star 
+                                        && isWFFT g t   Star
+isWFFT g (FTPoly a  k' t) k = k == Star && isWFFT (FConsT a' k' g) (unbindFT a a' t) Star
+  where
+    a' = fresh_varF g
+
+{-@ makeWFFT :: g:FEnv -> { t:FType | Set_sub (ffreeTV t) (bindsF g)}
+                       -> { k:Kind  | isWFFT g t k } -> ProofOf(WFFT g t k) / [ftsize t, ksize k] @-}
+makeWFFT :: FEnv -> FType -> Kind -> WFFT
+makeWFFT g (FTBasic b) Base    = case b of 
+  TBool    -> WFFTBasic g TBool
+  TInt     -> WFFTBasic g TInt
+  (FTV a)  -> simpleWFFTFV g a Base
+makeWFFT g (FTBasic b) Star    = case b of
+  TBool                          -> WFFTKind g (FTBasic b) (makeWFFT g (FTBasic b) Base)
+  TInt                           -> WFFTKind g (FTBasic b) (makeWFFT g (FTBasic b) Base)
+  (FTV a) | tv_bound_inF a Base g -> WFFTKind g (FTBasic b) (simpleWFFTFV g a Base)
+          | tv_bound_inF a Star g -> simpleWFFTFV g a Star
+makeWFFT g (FTFunc t_x t) Star = WFFTFunc g t_x Star (makeWFFT g t_x Star) t Star 
+                                      (makeWFFT g t Star)
+makeWFFT g (FTFunc t_x t) _    = impossible ""
+makeWFFT g (FTPoly a k t) Star = WFFTPoly g a k t Star a' (makeWFFT (FConsT a' k g) (unbindFT a a' t) Star)
+  where
+    a' = fresh_varF g
+makeWFFT g (FTPoly a k t) _    = impossible ""

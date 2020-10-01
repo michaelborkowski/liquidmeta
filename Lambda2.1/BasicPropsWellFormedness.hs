@@ -17,9 +17,9 @@ import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
 
-{-@ reflect foo18 @-}
-foo18 :: a -> Maybe a
-foo18 x = Just x
+{-@ reflect foo19 @-}
+foo19 :: a -> Maybe a
+foo19 x = Just x
 
 {-@ lem_btv_not_wf :: g:Env -> a:Vname -> x:Vname -> p:Pred -> k:Kind
                         -> ProofOf(WFType g (TRefn (BTV a) x p) k) -> { pf:_ | false } @-}

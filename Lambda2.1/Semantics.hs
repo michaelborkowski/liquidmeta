@@ -12,6 +12,7 @@ import qualified Data.Set as S
 
 import Basics
 
+
 --------------------------------------------------------------------------
 ----- | OPERATIONAL SEMANTICS (Small Step)
 --------------------------------------------------------------------------
@@ -20,6 +21,7 @@ import Basics
 -- E-App1    e e1 -> e' e1 if e->e'
 -- E-App2    v e  -> v e'  if e->e'
 -- E-AppAbs  (\x. e) v -> e[v/x]
+-- E-PrimT   c [t] -> deltaT(c,t)
 -- E-AppT    e [t] -> e' [t] id e->e'
 -- E-AppTAbs (/\a. e) [t] -> e[t/a]
 -- E-Let     let x=e_x in e -> let x=e'_x in e if e_x->e'_x
@@ -27,9 +29,8 @@ import Basics
 -- E-Ann     e:t -> e':t  if e->e'
 -- E-AnnV    v:t -> v
 
-{- @ automatic-instances delta @-}
 {-@ reflect delta @-}
-{-@ delta :: p:Prim -> e:Value -> { e':Value | Set_emp (fv e') } @-}
+{-@ delta :: p:Prim -> e:Value -> { e':Value | Set_emp (fv e') && Set_emp (ftv e') } @-}
 delta :: Prim -> Expr -> Expr
 delta And (Bc True)   = Lambda 1 (BV 1)
 delta And (Bc False)  = Lambda 1 (Bc False)
@@ -45,6 +46,17 @@ delta Eq       (Ic n) = Prim (Eqn n)
 delta (Eqn n)  (Ic m) = Bc (n == m)
 delta _ _             = Crash
 
+{-@ reflect deltaT @-}
+{-@ deltaT :: c:Prim -> t:Type -> { e':Value | Set_emp (fv e') && Set_emp (ftv e') } @-}
+deltaT :: Prim -> Type -> Expr
+deltaT Eql t = case (erase t) of
+  (FTBasic b)    -> case b of
+    TBool             -> Prim Eqv
+    TInt              -> Prim Eq
+    _                 -> Crash
+  _              -> Crash
+deltaT _   _ = Crash
+
 data StepP where
     Step :: Expr -> Expr -> StepP
 
@@ -53,6 +65,7 @@ data Step where
     EApp1 :: Expr -> Expr -> Step -> Expr -> Step
     EApp2 :: Expr -> Expr -> Step -> Expr -> Step
     EAppAbs :: Vname -> Expr -> Expr -> Step
+    EPrimT :: Prim -> Type -> Step
     EAppT :: Expr -> Expr -> Step -> Type -> Step
     EAppTAbs :: Vname -> Kind -> Expr -> Type -> Step
     ELet  :: Expr -> Expr -> Step -> Vname -> Expr -> Step
@@ -61,14 +74,14 @@ data Step where
     EAnnV :: Expr -> Type -> Step
 
 {-@ data Step where 
-    EPrim :: c:Prim -> w:Value  
-                 -> ProofOf( Step (App (Prim c) w) (delta c w) )
+    EPrim :: c:Prim -> w:Value -> ProofOf( Step (App (Prim c) w) (delta c w) )
  |  EApp1 :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
                  -> e1:Expr -> ProofOf( Step (App e e1) (App e' e1))
  |  EApp2 :: e:Expr -> e':Expr -> ProofOf( Step e e' )
                  -> v:Value -> ProofOf( Step (App v e) (App v e'))
  |  EAppAbs :: x:Vname -> e:Expr -> v:Value  
                  -> ProofOf( Step (App (Lambda x e) v) (subBV x v e))
+ |  EPrimT :: c:Prim -> t:Type -> ProofOf( Step (AppT (Prim c) t) (deltaT c t) )
  |  EAppT :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
                  -> t:Type -> ProofOf( Step (AppT e t) (AppT e' t))
  |  EAppTAbs :: a:Vname -> k:Kind -> e:Expr -> t:Type
@@ -227,6 +240,10 @@ lem_value_stuck e  e' (EAppAbs _ _ _)
     = case e of 
         (App _ _)    -> ()
         (_)          -> impossible ""
+lem_value_stuck e  e' (EPrimT _ _)      
+    = case e of 
+        (AppT _ _)   -> ()
+        (_)          -> impossible ""
 lem_value_stuck e  e' (EAppT _ _ _ _)  
     = case e of 
         (AppT _ _)   -> ()
@@ -293,12 +310,19 @@ lem_sem_det e e1 (EAppAbs x e' v) e2 pf_e_e2
         (EApp2 f f' p_f_f' _)       -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
         (EAppAbs _x _e' _v)         -> ()
         (_)                         -> impossible ""
+lem_sem_det e e' (EPrimT _ _) e'' pf2
+    = case pf2 of
+        (EPrimT _ _)                -> ()
+        (EAppT e1 e1' p_e1e1' _)    -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (EAppTAbs {})               -> impossible ""
 lem_sem_det e e' (EAppT e1 e1' p_e1e1' t) e'' pf_e_e''
     = case pf_e_e'' of
+        (EPrimT _ _)                -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
         (EAppT _e1 e1'' p_e1e1'' _) -> () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''
         (EAppTAbs {})               -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
 lem_sem_det e e1 (EAppTAbs a k e' t) e2 pf_e_e2
     = case pf_e_e2 of
+        (EPrim _ _)                 -> impossible ""
         (EAppT f f' p_f_f' _)       -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
         (EAppTAbs _a _k _e' _t)     -> ()
 lem_sem_det e e1 (ELet e_x e_x' p_ex_ex' x e1') e2 pf_e_e2
@@ -332,4 +356,3 @@ lem_evals_val_det e v1 (AddStep _ e1 st_e_e1 _ ev_e1_v1) v2 ev_e_v2 = case (ev_e
   (Refl _v2)                       -> impossible ("by lemma" ? lem_value_stuck e e1 st_e_e1)
   (AddStep _ e2 st_e_e2 _ ev_e2_v2) -> lem_evals_val_det (e1 ? lem_sem_det e e1 st_e_e1 e2 st_e_e2)
                                                          v1 ev_e1_v1 v2 ev_e2_v2
-

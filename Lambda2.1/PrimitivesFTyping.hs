@@ -149,10 +149,14 @@ lem_delta_eqn_ftyp n v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
       (Ic m) -> FTBC FEmpty ( n == m ) --    ? toProof ( t' === FTBasic TBool)
       _      -> impossible ("by lemma" ? lem_int_values v p_v_tx)
 
+{-@ lem_prim_ftyp_ftfunc :: c:Prim -> t_x:FType -> t':FType
+        -> ProofOf(HasFType FEmpty (Prim c) (FTFunc t_x t')) -> { pf:_ | c != Eql } @-}
+lem_prim_ftyp_ftfunc :: Prim -> FType -> FType -> HasFType -> Proof
+lem_prim_ftyp_ftfunc c t_x t' (FTPrm _ _c) = ()
+
 {-@ lem_delta_ftyp :: c:Prim -> v:Value -> t_x:FType -> t':FType
         -> ProofOf(HasFType FEmpty (Prim c) (FTFunc t_x t')) -> ProofOf(HasFType FEmpty v t_x)
-        -> { pf:_ | propOf pf == HasFType FEmpty (delta c v) t' } @-} -- &&
---                    not ((delta c v) == Crash) } @- }
+        -> { pf:_ | propOf pf == HasFType FEmpty (delta c v) t' } @-} -- && not ((delta c v) == Crash) 
 lem_delta_ftyp :: Prim -> Expr -> FType -> FType -> HasFType -> HasFType -> HasFType
 lem_delta_ftyp And      v t_x t' p_c_txt' p_v_tx = lem_delta_and_ftyp    v t_x t' p_c_txt' p_v_tx
 lem_delta_ftyp Or       v t_x t' p_c_txt' p_v_tx = lem_delta_or_ftyp     v t_x t' p_c_txt' p_v_tx
@@ -162,3 +166,20 @@ lem_delta_ftyp Leq      v t_x t' p_c_txt' p_v_tx = lem_delta_leq_ftyp    v t_x t
 lem_delta_ftyp (Leqn n) v t_x t' p_c_txt' p_v_tx = lem_delta_leqn_ftyp n v t_x t' p_c_txt' p_v_tx
 lem_delta_ftyp Eq       v t_x t' p_c_txt' p_v_tx = lem_delta_eq_ftyp     v t_x t' p_c_txt' p_v_tx
 lem_delta_ftyp (Eqn n)  v t_x t' p_c_txt' p_v_tx = lem_delta_eqn_ftyp  n v t_x t' p_c_txt' p_v_tx
+lem_delta_ftyp Eql      _ t_x t' p_c_txt' _      
+  = impossible ("by lemma" ? lem_prim_ftyp_ftfunc Eql t_x t' p_c_txt')
+
+{-@ lem_base_types :: t:FType -> ProofOf(WFFT FEmpty t Base)  
+        -> { pf:_ | t == FTBasic (TBool) || t == FTBasic TInt } @-}
+lem_base_types :: FType -> WFFT -> Proof
+lem_base_types t (WFFTBasic _ _) = ()
+
+{-@ lem_deltaT_ftyp :: t:Type -> { a:Vname | a == 1 } -> k:Kind -> s:FType
+        -> ProofOf(HasFType FEmpty (Prim Eql) (FTPoly a k s)) -> ProofOf(WFFT FEmpty (erase t) Base)
+        -> { pf:_ | propOf pf == HasFType FEmpty (deltaT Eql t) (ftsubBV a (erase t) s) } @-}
+lem_deltaT_ftyp :: Type -> Vname -> Kind -> FType -> HasFType -> WFFT -> HasFType
+lem_deltaT_ftyp t a k s p_c_aks p_emp_t = case p_c_aks of
+  (FTPrm FEmpty Eql) -> case (erase t) of 
+      (FTBasic TBool) -> FTPrm FEmpty Eqv
+      (FTBasic TInt)  -> FTPrm FEmpty Eq 
+      _               -> impossible ("by lemma" ? lem_base_types (erase t) p_emp_t)

@@ -23,7 +23,7 @@ type Vname = Int
 
 data Prim = And | Or | Not | Eqv
           | Leq | Leqn Int 
-          | Eq  | Eqn Int
+          | Eq  | Eqn Int | Eql       -- Eql is polymorphic
   deriving (Eq, Show)
 
 {-@ data Expr [esize] @-}
@@ -793,7 +793,7 @@ data FEnv = FEmpty                       -- type FEnv = [(Vname, FType) or Vname
 {-@ data FEnv where
     FEmpty :: FEnv
   | FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } -> FEnv 
-  | FConsT :: x:Vname -> k:Kind  -> { g:FEnv | not (in_envF x g) } -> FEnv @-}
+  | FConsT :: a:Vname -> k:Kind  -> { g:FEnv | not (in_envF a g) } -> FEnv @-}
 
 {-@ measure fenvsize @-}
 {-@ fenvsize :: FEnv -> { n:Int | n >= 0 } @-}
@@ -885,12 +885,19 @@ lem_boundin_inenvF x t (FCons y s g)  | x == y    = ()
 lem_boundin_inenvF x t (FConsT a k g) | x == a    = impossible ""
                                       | otherwise = lem_boundin_inenvF x t g 
 
+{-@ lem_tvboundin_inenvF :: a:Vname -> k:Kind -> { g:FEnv | tv_bound_inF a k g}
+        -> { pf:_ | in_envF a g } @-}
+lem_tvboundin_inenvF :: Vname -> Kind -> FEnv -> Proof
+lem_tvboundin_inenvF a k (FCons y s g)    | a == y    = impossible ""
+                                          | otherwise = lem_tvboundin_inenvF a k g 
+lem_tvboundin_inenvF a k (FConsT a' k' g) | a == a'   = ()
+                                          | otherwise = lem_tvboundin_inenvF a k g 
+
 {-@ reflect bindsF @-}
 bindsF :: FEnv -> S.Set Vname
 bindsF FEmpty         = S.empty
 bindsF (FCons  x t g) = S.union (S.singleton x) (bindsF g)
 bindsF (FConsT a k g) = S.union (S.singleton a) (bindsF g)
-
 
 {-@ reflect erase_env @-}
 {-@ erase_env :: g:Env -> { g':FEnv | binds g == bindsF g' } @-}
@@ -898,4 +905,3 @@ erase_env :: Env -> FEnv
 erase_env Empty         = FEmpty
 erase_env (Cons  x t g) = FCons  x (erase t) (erase_env g)
 erase_env (ConsT a k g) = FConsT a k         (erase_env g)
-

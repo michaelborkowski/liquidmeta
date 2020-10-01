@@ -6,7 +6,7 @@
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
 
-module STLCSoundness where
+module SystemFSoundness where
 
 import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
@@ -25,9 +25,9 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 
-{-@ reflect foo22 @-}
-foo22 x = Just x
-foo22 :: a -> Maybe a
+{-@ reflect foo23 @-}
+foo23 x = Just x
+foo23 :: a -> Maybe a
 
 -----------------------------------------------------------------------------
 ----- | SOUNDNESS of the SYSTEM F LAMBDA CALCULUS

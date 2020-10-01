@@ -22,9 +22,9 @@ import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
 
-{-@ reflect foo19 @-}
-foo19 x = Just x
-foo19 :: a -> Maybe a
+{-@ reflect foo20 @-}
+foo20 x = Just x
+foo20 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying STLC :: Technical LEMMAS
@@ -197,8 +197,9 @@ lem_weaken_wfft :: FEnv -> FEnv -> FType -> Kind -> WFFT -> Vname -> FType -> WF
 {- -}
 lem_weaken_wfft g g' t k p_t_wf@(WFFTBasic gg b) x t_x
   = WFFTBasic (concatF (FCons x t_x g) g') b
-lem_weaken_wfft g g' t k p_t_wf@(WFFTFV1 gg a' k') x t_x = case g' of
-  FEmpty               -> WFFTFV2 g a' k' p_t_wf x t_x
+lem_weaken_wfft g g' t k_t pf_t_wf@(WFFTFV1 gg a' k') x t_x = case g' of
+  FEmpty               -> WFFTFV2 g a' k' pf_t_wf 
+                            (x ? lem_ffreeTV_subset_bindsF g t k_t pf_t_wf) t_x
   (FConsT _a' _k' g'') -> WFFTFV1 (concatF (FCons x t_x g) g'') a' k'
 lem_weaken_wfft g g' t k_t pf_t_wf@(WFFTFV2 gg a' k' pf_gg_a' z t_z) x t_x = case g' of
   FEmpty             -> WFFTFV2 g {-(FCons z t_z gg)-} a' k_t pf_t_wf 
@@ -239,7 +240,8 @@ lem_weaken_tv_wfft :: FEnv -> FEnv -> FType -> Kind -> WFFT -> Vname -> Kind -> 
 lem_weaken_tv_wfft g g' t k_t p_t_wf@(WFFTBasic gg b) a k
   = WFFTBasic (concatF (FConsT a k g) g') b
 lem_weaken_tv_wfft g g' t k_t pf_t_wf@(WFFTFV1 gg a' k') a k = case g' of
-  FEmpty               -> WFFTFV3 g a' k_t pf_t_wf a k
+  FEmpty               -> WFFTFV3 g a' k_t pf_t_wf 
+                            (a ? lem_ffreeTV_subset_bindsF g t k_t pf_t_wf) k
   (FConsT _a' _k' g'') -> WFFTFV1 (concatF (FConsT a k g) g'') a' k'
 lem_weaken_tv_wfft g g' t k_t pf_t_wf@(WFFTFV2 gg a' k' pf_gg_a' z t_z)   a k = case g' of
   FEmpty             -> WFFTFV3 g a' k_t pf_t_wf 
@@ -288,7 +290,26 @@ lem_weaken_many_wfft g (FConsT a k_a g') t k p_g_t
 -- -- -- -- -- -- -- -- -- -- -- -- ---
 
 -- System F types have only type variables because there are no refineemnts, so there's only 
---     one version of the substitution lemma:
+--     one version of the substitution lemmas:
+{-
+{-@ lem_subst_tv_wffe :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
+        -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> t_a:FType -> k_a:Kind  
+        -> ProofOf(WFFT g t_a k_a) -> ProofOf(WFFE (concatF (FConsT a k_a g) g'))
+        -> ProofOf(WFFE (concatF g (fesubFV a t_a g'))) / [fenvSize g'] @-}
+lem_subst_tv_wffe :: FEnv -> FEnv -> Vname -> FType -> Kind -> WFFT -> WFFE -> WFFE
+lem_subst_tv_wffe g FEmpty  a t_a k_a pf_g_ta p_env_wf
+  = case p_env_wf of
+      (WFFBind _g p_g_wf _ _ _ _) -> p_g_wf
+      (WFFBindT _g p_g_wf _ _)    -> p_g_wf
+lem_subst_tv_wffe g (FCons x t_x g') a t_a k_a pf_g_ta p_env_wf
+  = case p_env_wf of
+      (WFFBind env' p_env'_wf _x _tx _kx p_env'_tx) 
+         -> WFFBind env'' p_env''_wf x (tsubFTV a t_a t_x) k_x p_env''_txta
+        where
+          env''        = concatF g (fesubFV a t_a g')
+          p_env''_wf   = lem_subst_tv_wffnv g g' a t_a k_a pf_g_ta p_env'_wf
+          p_env''_txta = lem_subst_tv_wfft ...
+-}
 
 {-@ lem_subst_tv_wfft :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> t_a:FType -> k_a:Kind 
@@ -306,26 +327,32 @@ lem_subst_tv_wfft g g' a t_a k_a pf_g_ta p_env_wf t k (WFFTFV1 _env a' k')
       (FConsT _a _k g'') -> WFFTFV1 (concatF g (fesubFV a t_a g'')) 
                                     (a' ? lem_in_env_concatF (FConsT a k_a g) g'' a'
                                         ? lem_in_env_concatF g g'' a') k
-lem_subst_tv_wfft g g' a t_a k_a pf_g_ta p_env_wf t k (WFFTFV2 _env a' k' pf_env_a' x t_x)
-  = undefined -- assume
-{-  = case g' of
-      (BEmpty)           -> case ( x == z ) of
+lem_subst_tv_wfft g g' a t_a k_a pf_g_ta p_env_wf t k (WFFTFV2 _env a' k' pf_env_a' w t_w)
+  = undefined {-  = case g' of
+      (FEmpty)           -> impossible "" {- case ( x == z ) of
                     (True)  -> impossible "it is"
-                    (False) -> p_z_t -- ? toProof ( e === (FV z) )
-      (BCons _w _tw g'') -> case ( x == z ) of
-                    (True)  -> lem_weaken_btyp (concatB g g'') BEmpty v_x t p_gg''_vx_tx w t_w 
+                    (False) -> p_z_t -- ? toProof ( e === (FV z) ) -}
+      (FCons _w _tw g'') -> case ( a == a' ) of
+                    (True)  -> lem_weaken_ftyp (concatF g g'') FEmpty v_x t p_gg''_vx_tx w t_w 
                                                ? toProof ( e === FV x )
                                  where
-                                   p_gg''_vx_tx = lem_subst_btyp g g'' x v_x t_x p_vx_tx e t p_z_t
-                    (False) -> BTVar2 (concatB g g'') (z ? lem_in_env_concatB (BCons x t_x g) g'' z
+                                   p_gg''_wf = lem_subst_tv_wffe ....
+                                   p_gg''_ta = lem_subst_tv_wfft g g'' a t_a k_a p_g_ta 
+
+                                                   e t p_z_t
+                    (False) -> simpleWFFTV (concatF g (fesubFV a t_a g')) (FTBasic (FTV a')) k' {-
+BTVar2 (concatB g g'') (z ? lem_in_env_concatB (BCons x t_x g) g'' z
                                                         ? lem_in_env_concatB g g'' z)
                                       t p_z_tvx (w ? lem_fv_bound_in_benv g v_x t_x p_vx_tx w
                                                    ? lem_in_env_concatB (BCons x t_x g) g'' w   
                                                    ? lem_in_env_concatB g g'' w) t_w
                                  where
-                                   p_z_tvx = lem_subst_btyp g g'' x v_x t_x p_vx_tx e t p_z_t-}
-lem_subst_tv_wfft g g' a t_a k_a pf_g_ta p_env_wf t k (WFFTFV2 _env a' k' pf_env_a' x t_x)
+                                   p_z_tvx = lem_subst_btyp g g'' x v_x t_x p_vx_tx e t p_z_t -}
+      (FConsT _ _ g'')   -> impossible "" -}
+lem_subst_tv_wfft g g' a t_a k_a pf_g_ta p_env_wf t k (WFFTFV3 _env a' k' pf_env_a' a1 k1)
   = undefined -- assume
+
+
 lem_subst_tv_wfft g g' a t_a k_a pf_g_ta p_env_wf t k (WFFTFunc _env t1 k1 p_env_t1 t2 k2 p_env_t2)
   = undefined -- assume
 {-  = WFFunc (concatE g (esubFV x v_x g')) z (tsubFV x v_x t_z) p_g'g_tzvx (tsubFV x v_x t') y p_yg'g_t'vx
