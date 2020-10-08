@@ -64,7 +64,7 @@ data HasFType where
                 -> ProofOf(HasFType g (LambdaT a k e) (FTPoly a k b))
  |  FTAppT :: g:FEnv -> e:Expr -> a:Vname -> k:Kind -> t':FType
                 -> ProofOf(HasFType g e (FTPoly a k t')) 
-                -> { rt:Type | Set_sub (Set_cup (free rt) (freeTV rt)) (bindsF g) }
+                -> { rt:Type | Set_sub (Set_cup (free rt) (freeTV rt)) (bindsF g) && same_bindersE rt e }
                 -> ProofOf(WFFT g (erase rt) k)
                 -> ProofOf(HasFType g (AppT e rt) (ftsubBV a (erase rt) t'))
  |  FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
@@ -272,7 +272,7 @@ checkType g (AppT e t2) t    = case ( synthType g e ) of
                                   ( isWFFT g (erase t2) Base ) &&
                                   ( S.isSubsetOf (free t2) (bindsF g) ) &&
                                   ( S.isSubsetOf (freeTV t2) (bindsF g) ) &&
-                                  ( S.null (tfreeBTV t2) )
+                                  ( S.null (tfreeBTV t2) ) && same_bindersE t2 e
     _                          -> False 
 checkType g (Annot e liqt) t   = ( checkType g e t ) && ( t == erase liqt ) &&
                                  ( S.isSubsetOf (free liqt) (bindsF g) ) &&
@@ -294,7 +294,7 @@ synthType g (App e e')      = case ( synthType g e' ) of
         _                     -> Nothing
 synthType g (AppT e t2)     = case ( synthType g e ) of
     (Just (FTPoly a Base t1)) -> (case ( isWFFT g (erase t2) Base && S.isSubsetOf (free t2) (bindsF g) &&
-                                         S.isSubsetOf (freeTV t2) (bindsF g) && 
+                                         S.isSubsetOf (freeTV t2) (bindsF g) && (same_bindersE t2 e) &&
                                          S.null (tfreeBTV t2) && isSimpleBase t2 ) of 
 	True                       -> Just (ftsubBV a (erase t2) t1)
         False                      -> Nothing)
