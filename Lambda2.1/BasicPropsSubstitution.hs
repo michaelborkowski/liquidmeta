@@ -12,9 +12,9 @@ import qualified Data.Set as S
 
 import Basics
 
-{-@ reflect foo17 @-}   
-foo17 x = Just x 
-foo17 :: a -> Maybe a 
+{-@ reflect foo18 @-}   
+foo18 x = Just x 
+foo18 :: a -> Maybe a 
 
 {-@ lem_union_subset :: a:S.Set Vname -> b:S.Set Vname 
         -> { c:S.Set Vname | Set_sub a c && Set_sub b c }

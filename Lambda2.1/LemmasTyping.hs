@@ -250,3 +250,71 @@ lem_fv_subset_binds g e t (TAnn _g e' _t p_e'_t) = undefined
 lem_fv_subset_binds g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t)
     = () ? lem_fv_subset_binds g e s p_e_s 
 
+
+
+--                              -> { pf:_ | Set_emp (freeBV e) && Set_emp (tfreeBV t) } @-}
+-- Lemma. If G |- e : t, then Set_emp (freeBV e)
+{-@ lem_freeBV_empty :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t) -> ProofOf(WFEnv g)
+                              -> { pf:_ | Set_emp (freeBV e) } @-}
+lem_freeBV_empty :: Env -> Expr -> Type -> HasType -> WFEnv -> Proof
+lem_freeBV_empty g e t (TBC _g b) p_g_wf   = ()
+lem_freeBV_empty g e t (TIC _g n) p_g_wf   = ()
+lem_freeBV_empty g e t (TVar1 _ x t') p_g_wf 
+    = case (p_g_wf) of
+--        (WFEEmpty)                         -> impossible ""
+        (WFEBind g' p_g'_wf _x _t _ p_g'_t') -> lem_tfreeBV_empty g t p_g_t p_g_wf
+          where
+            p_g_t = lem_selfify_wf g' t' p_g'_t' x
+lem_freeBV_empty g e t (TVar2 g' x _ p_x_t y s) p_g_wf
+    = case (p_g_wf) of
+--        (WFEEmpty)                        -> impossible ""
+        (WFEBind _g' p_g'_wf _ _s _ p_g'_s) -> lem_freeBV_empty g' e t p_x_t p_g'_wf
+lem_freeBV_empty g e t (TVare g' x _ p_x_t a k) p_g_wf
+    = case (p_g_wf) of
+        (WFEBindT _g' p_g'_wf _a _k)        -> lem_freeBV_empty g' e t p_x_t p_g'_wf
+lem_freeBV_empty g e t (TPrm _g c) p_g_wf  = () ? lem_freeBV_prim_empty c
+lem_freeBV_empty g e t (TAbs _g x t_x k_x 	p_g_tx e' t' y p_yg_e'_t') p_g_wf
+    = () -- ? lem_tfreeBV_empty g t_x k_x p_g_tx p_g_wf -- restore later?
+         ? lem_freeBV_unbind_empty x y (e' ? pf_unbinds_empty)
+         -- ? lem_tfreeBV_unbindT_empty x y (t' ? pf_unbinds_empty)
+        where
+          p_yg_wf = WFEBind g p_g_wf y t_x k_x p_g_tx
+          {-@ pf_unbinds_empty :: { pf:_ | Set_emp (freeBV (unbind x y e')) } @-}
+--                                        && Set_emp (tfreeBV (unbindT x y t')) } @-}
+          pf_unbinds_empty = lem_freeBV_empty (Cons y t_x g) (unbind x y e') (unbindT x y t') 
+                                              p_yg_e'_t' p_yg_wf
+lem_freeBV_empty g e t (TApp _g e' x t_x t' p_e'_txt' e_x p_ex_tx) p_g_wf
+    = () ? lem_freeBV_empty g e' (TFunc x t_x t') p_e'_txt' p_g_wf
+         ? lem_freeBV_empty g e_x t_x p_ex_tx p_g_wf
+lem_freeBV_empty g e t (TLet _g e_x t_x p_ex_tx x e' _t p_g_t y p_yg_e'_t) p_g_wf
+    = () ? lem_freeBV_empty g e_x t_x p_ex_tx p_g_wf
+         ? lem_freeBV_unbind_empty x y  (e' ? lem_freeBV_empty (Cons y t_x g) (unbind x y e')
+                                                               (unbindT x y t) p_yg_e'_t p_yg_wf)
+         ? lem_tfreeBV_empty g t p_g_t p_g_wf
+        where
+          p_g_tx = lem_typing_wf g e_x t_x p_ex_tx p_g_wf
+          p_yg_wf = WFEBind g p_g_wf y t_x p_g_tx
+lem_freeBV_empty g e t (TAnn _g e' _ p_e'_t) p_g_wf 
+    = () ? lem_freeBV_empty g e' t p_e'_t p_g_wf
+lem_freeBV_empty g e t (TSub _g _e s p_e_s _t p_g_t p_s_t) p_g_wf
+    = () ? lem_freeBV_empty g e s p_e_s p_g_wf
+         ? lem_tfreeBV_empty g t p_g_t p_g_wf
+
+{-@ lem_tfreeBV_empty :: g:Env -> t:Type -> ProofOf(WFType g t) -> ProofOf(WFEnv g)
+                               -> { pf:Proof | Set_emp (tfreeBV t) } @-}
+lem_tfreeBV_empty :: Env -> Type -> WFType -> WFEnv -> Proof
+lem_tfreeBV_empty g t (WFRefn _g x b p y p_yg_p_bl) p_g_wf
+    = () ? lem_freeBV_unbind_empty x y (p ? lem_freeBV_emptyB (BCons y (BTBase b) (erase_env g))
+                                                              (unbind x y p) (BTBase TBool) p_yg_p_bl) 
+lem_tfreeBV_empty g t (WFFunc _g x t_x p_g_tx t' y p_yg_t') p_g_wf
+    = () ? lem_tfreeBV_empty g t_x p_g_tx p_g_wf
+         ? lem_tfreeBV_unbindT_empty x y (t' ? lem_tfreeBV_empty (Cons y t_x g) (unbindT x y t')
+                                                                 p_yg_t' p_yg_wf)
+        where
+          p_yg_wf = WFEBind g p_g_wf y t_x p_g_tx
+lem_tfreeBV_empty g t (WFExis _g x t_x p_g_tx t' y p_yg_t') p_g_wf
+    = () ? lem_tfreeBV_empty g t_x p_g_tx p_g_wf
+         ? lem_tfreeBV_unbindT_empty x y (t' ? lem_tfreeBV_empty (Cons y t_x g) (unbindT x y t')
+                                                                 p_yg_t' p_yg_wf)
+        where
+          p_yg_wf = WFEBind g p_g_wf y t_x p_g_tx

@@ -25,9 +25,9 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 
-{-@ reflect foo23 @-}
-foo23 x = Just x
-foo23 :: a -> Maybe a
+{-@ reflect foo24 @-}
+foo24 x = Just x
+foo24 :: a -> Maybe a
 
 -----------------------------------------------------------------------------
 ----- | SOUNDNESS of the SYSTEM F LAMBDA CALCULUS

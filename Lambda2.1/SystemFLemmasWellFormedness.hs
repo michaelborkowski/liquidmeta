@@ -22,9 +22,9 @@ import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
 
-{-@ reflect foo20 @-}
-foo20 x = Just x
-foo20 :: a -> Maybe a
+{-@ reflect foo21 @-}
+foo21 x = Just x
+foo21 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying STLC :: Technical LEMMAS
@@ -291,26 +291,6 @@ lem_weaken_many_wfft g (FConsT a k_a g') t k p_g_t
 
 -- System F types have only type variables because there are no refineemnts, so there's only 
 --     one version of the substitution lemmas:
-{-
-{-@ lem_subst_tv_wffe :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
-        -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> t_a:FType -> k_a:Kind  
-        -> ProofOf(WFFT g t_a k_a) -> ProofOf(WFFE (concatF (FConsT a k_a g) g'))
-        -> ProofOf(WFFE (concatF g (fesubFV a t_a g'))) / [fenvSize g'] @-}
-lem_subst_tv_wffe :: FEnv -> FEnv -> Vname -> FType -> Kind -> WFFT -> WFFE -> WFFE
-lem_subst_tv_wffe g FEmpty  a t_a k_a pf_g_ta p_env_wf
-  = case p_env_wf of
-      (WFFBind _g p_g_wf _ _ _ _) -> p_g_wf
-      (WFFBindT _g p_g_wf _ _)    -> p_g_wf
-lem_subst_tv_wffe g (FCons x t_x g') a t_a k_a pf_g_ta p_env_wf
-  = case p_env_wf of
-      (WFFBind env' p_env'_wf _x _tx _kx p_env'_tx) 
-         -> WFFBind env'' p_env''_wf x (tsubFTV a t_a t_x) k_x p_env''_txta
-        where
-          env''        = concatF g (fesubFV a t_a g')
-          p_env''_wf   = lem_subst_tv_wffnv g g' a t_a k_a pf_g_ta p_env'_wf
-          p_env''_txta = lem_subst_tv_wfft ...
--}
-
 {-@ lem_subst_tv_wfft :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> t_a:FType -> k_a:Kind 
         -> ProofOf(WFFT g t_a k_a) -> ProofOf(WFFE (concatF (FConsT a k_a g) g')) -> t:FType 

@@ -23,14 +23,60 @@ import BasicPropsEnvironments
 import BasicPropsWellFormedness
 import SystemFLemmasWellFormedness
 
-{-@ reflect foo21 @-}
-foo21 x = Just x
-foo21 :: a -> Maybe a
+{-@ reflect foo22 @-}
+foo22 x = Just x
+foo22 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying STLC :: Technical LEMMAS
 ------------------------------------------------------------------------------
 
+{-@ lem_freeBV_unbind_empty :: x:Vname -> y:Vname -> { e:Expr | Set_emp (freeBV (unbind x y e)) }
+        -> { pf:_ | Set_emp (freeBV e) || freeBV e == Set_sng x } @-}
+lem_freeBV_unbind_empty :: Vname -> Vname -> Expr -> Proof
+lem_freeBV_unbind_empty x y e = toProof ( S.empty === freeBV (unbind x y e)
+                                      === S.difference (freeBV e) (S.singleton x) )
+
+{-@ lem_freeBTV_unbind_tv_empty :: a:Vname -> a':Vname -> { e:Expr | Set_emp (freeBTV (unbind_tv a a' e)) }
+        -> { pf:_ | Set_emp (freeBTV e) || freeBTV e == Set_sng a } @-}
+lem_freeBTV_unbind_tv_empty :: Vname -> Vname -> Expr -> Proof
+lem_freeBTV_unbind_tv_empty a a' e = toProof ( S.empty === freeBTV (unbind_tv a a' e)
+                                      === S.difference (freeBTV e) (S.singleton a) )
+
+{-@ lem_freeBV_emptyB :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
+                              -> { pf:_ | Set_emp (freeBV e) } @-}
+lem_freeBV_emptyB :: FEnv -> Expr ->  FType -> HasFType -> Proof 
+lem_freeBV_emptyB g e t (FTBC _g b)    = case e of
+  (Bc _) -> ()
+lem_freeBV_emptyB g e t (FTIC _g n)    = case e of
+  (Ic _) -> ()
+lem_freeBV_emptyB g e t (FTVar1 _ x _) = case e of 
+  (FV _) -> ()
+lem_freeBV_emptyB g e t (FTVar2 g' x _ p_x_t y s) = case e of
+  (FV _) -> () ? lem_freeBV_emptyB g' e t p_x_t
+lem_freeBV_emptyB g e t (FTVar3 g' x _ p_x_t a k) = case e of
+  (FV _) -> () ? lem_freeBV_emptyB g' e t p_x_t
+lem_freeBV_emptyB g e t (FTPrm _g c)   = case e of
+  (Prim _) -> ()
+lem_freeBV_emptyB g e t (FTAbs _g x t_x k_x p_g_tx e' t' y p_yg_e'_t') = case e of
+  (Lambda _ _) -> () ? lem_freeBV_unbind_empty x y (e' ? lem_freeBV_emptyB (FCons y t_x g) (unbind x y e')
+                                                               t' p_yg_e'_t')
+lem_freeBV_emptyB g e t (FTApp _g e' t_x t' p_e'_txt' e_x p_ex_tx) = case e of
+  (App _ _) -> () ? lem_freeBV_emptyB g e' (FTFunc t_x t') p_e'_txt'
+                  ? lem_freeBV_emptyB g e_x t_x p_ex_tx
+lem_freeBV_emptyB g e t (FTAbsT _g a k e' t' a' p_e'_t') = case e of 
+  (LambdaT {}) -> () ? lem_freeBV_emptyB (FConsT a' k g) (unbind_tv a a' e') (unbindFT a a' t') p_e'_t'
+{-lem_freeBV_emptyB g e t (FTAppT _g e' a k t' p_e_at' liqt p_g_ert)
+    = () ? lem_freeBV_emptyB g e' (FTPoly a k t') p_e_at'
+         ? undefined -}
+lem_freeBV_emptyB g e t (FTLet _g e_x t_x p_ex_tx x e' t' y p_yg_e'_t') = case e of
+  (Let {}) -> () ? lem_freeBV_emptyB g e_x t_x p_ex_tx
+                 ? lem_freeBV_unbind_empty x y (e' ? lem_freeBV_emptyB (FCons y t_x g) (unbind x y e')
+                                                               t' p_yg_e'_t')
+{- lem_freeBV_emptyB g e t (FTAnn _g e' _t t1 p_e'_t) 
+    = () ? lem_freeBV_emptyB g e' t p_e'_t
+          undefined -}
+ 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 -- Consequences of the System F Typing Judgments -
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
@@ -257,8 +303,7 @@ lem_change_var_ftyp g x t_x g' e t p_e_t@(FTAbsT _g a k e' t' a' p_a'_e'_t') y
         -> { a':Vname | not (in_envF a' g) && not (in_envF a' g') }
         -> { pf:HasFType | propOf pf == (HasFType (concatF (FConsT a' k g) 
                                                      (fesubFV a (FTBasic (FTV a')) g')) 
-                                                  (subFTV a (TRefn (FTV a') 1 (Bc True)) e) 
-                                                  (ftsubFV a (FTBasic (FTV a')) t)) && 
+                                           (chgFTV a a' e) (ftsubFV a (FTBasic (FTV a')) t)) && 
                              ftypSize pf == ftypSize p_e_t } / [ftypSize p_e_t] @-}
 lem_change_tvar_ftyp :: FEnv -> Vname -> Kind -> FEnv -> WFFE -> Expr -> FType 
                 -> HasFType ->  Vname -> HasFType

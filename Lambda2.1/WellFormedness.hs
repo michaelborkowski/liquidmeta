@@ -42,31 +42,31 @@ data WFType where
     WFKind :: Env -> Type -> WFType -> WFType
 
 {-@ data WFType where
-    WFBase :: g:Env -> { b:Basic | b == TBool || b == TInt } -> ProofOf(WFType g (TRefn b 1 (Bc True)) Base)
- |  WFRefn :: g:Env -> x:Vname -> b:Basic -> ProofOf(WFType g (TRefn b 1 (Bc True)) Base) -> p:Pred 
-        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
-        -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool)) 
-        -> ProofOf(WFType g (TRefn b x p) Base)
- |  WFVar1 :: g:Env -> { a:Vname | not (in_env a g) } -> k:Kind 
-        -> ProofOf(WFType (ConsT a k g) (TRefn (FTV a) 1 (Bc True)) k)
- |  WFVar2 :: g:Env -> { a:Vname | in_env a g } -> k:Kind -> ProofOf(WFType g (TRefn (FTV a) 1 (Bc True)) k)
-        -> { y:Vname | y != a && not (in_env y g) } -> t:Type 
-        -> ProofOf(WFType (Cons y t g)    (TRefn (FTV a) 1 (Bc True)) k)
- |  WFVar3 :: g:Env -> { a:Vname | in_env a g } -> k:Kind -> ProofOf(WFType g (TRefn (FTV a) 1 (Bc True)) k)
-        -> { a':Vname | a' != a && not (in_env a' g) } -> k':Kind 
-        -> ProofOf(WFType (ConsT a' k' g) (TRefn (FTV a) 1 (Bc True)) k)
- |  WFFunc :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind
-        -> ProofOf(WFType g t_x k_x) -> t:Type -> k:Kind
-        -> { y:Vname | not (in_env y g) && not (Set_mem y (free t)) && not (Set_mem y (freeTV t)) }
-        -> ProofOf(WFType (Cons y t_x g) (unbindT x y t) k) -> ProofOf(WFType g (TFunc x t_x t) Star)
- |  WFExis :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind
-        -> ProofOf(WFType g t_x k_x) -> t:Type -> k:Kind
-        -> { y:Vname | not (in_env y g) && not (Set_mem y (free t)) && not (Set_mem y (freeTV t)) }
-        -> ProofOf(WFType (Cons y t_x g) (unbindT x y t) k) -> ProofOf(WFType g (TExists x t_x t) k) 
- |  WFPoly :: g:Env -> a:Vname -> k:Kind -> t:Type -> k_t:Kind
-        -> { a':Vname | not (in_env a' g) && not (Set_mem a' (free t)) && not (Set_mem a' (freeTV t)) }
-        -> ProofOf(WFType (ConsT a' k g) (unbind_tvT a a' t) k_t) -> ProofOf(WFType g (TPoly a k t) Star) 
- |  WFKind :: g:Env -> t:Type -> ProofOf(WFType g t Base) -> ProofOf(WFType g t Star) @-}
+        WFBase :: g:Env -> { b:Basic | b == TBool || b == TInt } -> ProofOf(WFType g (TRefn b 1 (Bc True)) Base)
+     |  WFRefn :: g:Env -> x:Vname -> b:Basic -> ProofOf(WFType g (TRefn b 1 (Bc True)) Base) -> p:Pred 
+          -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
+          -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool)) 
+          -> ProofOf(WFType g (TRefn b x p) Base)
+     |  WFVar1 :: g:Env -> { a:Vname | not (in_env a g) } -> k:Kind 
+          -> ProofOf(WFType (ConsT a k g) (TRefn (FTV a) 1 (Bc True)) k)
+     |  WFVar2 :: g:Env -> { a:Vname | in_env a g } -> k:Kind -> ProofOf(WFType g (TRefn (FTV a) 1 (Bc True)) k)
+          -> { y:Vname | y != a && not (in_env y g) } -> t:Type 
+          -> ProofOf(WFType (Cons y t g)    (TRefn (FTV a) 1 (Bc True)) k)
+     |  WFVar3 :: g:Env -> { a:Vname | in_env a g } -> k:Kind -> ProofOf(WFType g (TRefn (FTV a) 1 (Bc True)) k)
+          -> { a':Vname | a' != a && not (in_env a' g) } -> k':Kind 
+          -> ProofOf(WFType (ConsT a' k' g) (TRefn (FTV a) 1 (Bc True)) k)
+     |  WFFunc :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind
+          -> ProofOf(WFType g t_x k_x) -> t:Type -> k:Kind
+          -> { y:Vname | not (in_env y g) && not (Set_mem y (free t)) && not (Set_mem y (freeTV t)) }
+          -> ProofOf(WFType (Cons y t_x g) (unbindT x y t) k) -> ProofOf(WFType g (TFunc x t_x t) Star)
+     |  WFExis :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind
+          -> ProofOf(WFType g t_x k_x) -> t:Type -> k:Kind
+          -> { y:Vname | not (in_env y g) && not (Set_mem y (free t)) && not (Set_mem y (freeTV t)) }
+          -> ProofOf(WFType (Cons y t_x g) (unbindT x y t) k) -> ProofOf(WFType g (TExists x t_x t) k) 
+     |  WFPoly :: g:Env -> a:Vname -> k:Kind -> t:Type -> k_t:Kind
+          -> { a':Vname | not (in_env a' g) && not (Set_mem a' (free t)) && not (Set_mem a' (freeTV t)) }
+          -> ProofOf(WFType (ConsT a' k g) (unbind_tvT a a' t) k_t) -> ProofOf(WFType g (TPoly a k t) Star) 
+     |  WFKind :: g:Env -> t:Type -> ProofOf(WFType g t Base) -> ProofOf(WFType g t Star) @-}
 
   -- TODO: what happened to k_t in WFPoly? why Star?
 
@@ -104,11 +104,11 @@ data WFEnv where
     WFEBindT :: Env -> WFEnv -> Vname -> Kind -> WFEnv
 
 {-@ data WFEnv where
-    WFEEmpty :: ProofOf(WFEnv Empty)
- |  WFEBind  :: g:Env -> ProofOf(WFEnv g) -> { x:Vname | not (in_env x g) } -> t:Type 
-                   -> k:Kind -> ProofOf(WFType g t k) -> ProofOf(WFEnv (Cons x t g)) 
- |  WFEBindT :: g:Env -> ProofOf(WFEnv g) -> { a:Vname | not (in_env a g) } -> k:Kind 
-                                                      -> ProofOf(WFEnv (ConsT a k g)) @-}
+        WFEEmpty :: ProofOf(WFEnv Empty)
+      | WFEBind  :: g:Env -> ProofOf(WFEnv g) -> { x:Vname | not (in_env x g) } -> t:Type 
+                     -> k:Kind -> ProofOf(WFType g t k) -> ProofOf(WFEnv (Cons x t g)) 
+      | WFEBindT :: g:Env -> ProofOf(WFEnv g) -> { a:Vname | not (in_env a g) } -> k:Kind 
+                                                        -> ProofOf(WFEnv (ConsT a k g)) @-}
 
 ------------------------------------------------------------------------------------------
 -- | AUTOMATING WELL-FORMEDNESS PROOF GENERATION for refinements that occur in practice --

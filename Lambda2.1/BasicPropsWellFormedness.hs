@@ -17,9 +17,9 @@ import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
 
-{-@ reflect foo19 @-}
-foo19 :: a -> Maybe a
-foo19 x = Just x
+{-@ reflect foo20 @-}
+foo20 :: a -> Maybe a
+foo20 x = Just x
 
 {-@ lem_btv_not_wf :: g:Env -> a:Vname -> x:Vname -> p:Pred -> k:Kind
                         -> ProofOf(WFType g (TRefn (BTV a) x p) k) -> { pf:_ | false } @-}
@@ -107,7 +107,7 @@ lem_erase_wftype _ _ _ (WFExis g x t_x k_x p_g_tx t k y pf_yg_t)
 lem_erase_wftype _ _ _ (WFPoly g a k t k_t a' pf_a'g_t)
   = WFFTPoly (erase_env g) a k (erase t) k_t a' 
              (lem_erase_wftype (ConsT a' k g) 
-                       (unbind_tvT a a' t ? lem_erase_tsubBTV a (TRefn (FTV a') 1 (Bc True)) t
+                       (unbind_tvT a a' t ? lem_erase_unbind_tvT a a' t
                                           ? lem_erase_freeTV t) 
                        k_t pf_a'g_t)
 lem_erase_wftype _ _ _ (WFKind g t pf_t_base) 

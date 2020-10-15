@@ -76,7 +76,7 @@ isValue (LambdaT a k e) = True
 isValue Crash           = True
 isValue _               = False
 
-{-@ reflect freeBV @-}
+{-@ measure freeBV @-}
 {-@ freeBV :: e:Expr -> S.Set Vname / [esize e] @-}
 freeBV :: Expr -> S.Set Vname
 freeBV (Bc _)          = S.empty
@@ -93,7 +93,7 @@ freeBV (Let x ex e)    = S.union (freeBV ex) (S.difference (freeBV e) (S.singlet
 freeBV (Annot e t)     = S.union (freeBV e)  (tfreeBV t) 
 freeBV Crash           = S.empty
 
-{-@ reflect freeBTV @-}
+{-@ measure freeBTV @-}
 {-@ freeBTV :: e:Expr -> S.Set Vname / [esize e] @-}
 freeBTV :: Expr -> S.Set Vname
 freeBTV (Bc _)          = S.empty
@@ -145,6 +145,7 @@ ftv (Crash)         = S.empty
   --- TERM-LEVEL SUBSTITUTION
 
 --  removed for now:                    ( (freeBV e) == (freeBV e') ) &&
+--                                ( (noDefns v && noDefns e) => noDefns e' ) } / [esize e] @-}
 {-@ reflect subFV @-} -- substitute a value for a term variable in a term 
 {-@ subFV :: x:Vname -> v:Value -> e:Expr 
                      -> { e':Expr | (Set_mem x (fv e) || e == e') &&
@@ -153,8 +154,7 @@ ftv (Crash)         = S.empty
                       ( (not (Set_mem x (fv v))) => not (Set_mem x (fv e')) ) && 
                         Set_sub (ftv e) (ftv e') &&
                         Set_sub (ftv e') (Set_cup (ftv e) (ftv v)) &&
-                      ( (isValue v && isValue e) => isValue e' ) &&
-                      ( (noDefns v && noDefns e) => noDefns e' ) } / [esize e] @-}
+                      ( (isValue v && isValue e) => isValue e' ) } / [esize e] @-}
 subFV :: Vname -> Expr -> Expr -> Expr
 subFV x v_x (Bc b)                    = Bc b
 subFV x v_x (Ic n)                    = Ic n
@@ -171,6 +171,7 @@ subFV x v_x (Annot e t)               = Annot (subFV x v_x e) (tsubFV x v_x t)
 subFV x v_x Crash                     = Crash
 
 --  removed for now:                    ( (freeBV e) == Set_cup (tfreeBV t) (freeBV e') ) &&
+--                      ( noDefns e => noDefns e' ) } / [esize e] @-}
 {-@ reflect subFTV @-} -- substitute a type for a type variable in a term 
 {-@ subFTV :: a:Vname -> t:Type -> { e:Expr | same_bindersE t e }
                       -> { e':Expr | (Set_mem a (ftv e) || e == e') &&
@@ -179,8 +180,7 @@ subFV x v_x Crash                     = Crash
                       ( (not (Set_mem a (freeTV t))) => not (Set_mem a (ftv e')) ) && 
                         Set_sub (fv e) (fv e') &&
                         Set_sub (fv e') (Set_cup (fv e) (free t)) &&
-                      ( isValue e => isValue e' ) &&
-                      ( noDefns e => noDefns e' ) } / [esize e] @-}
+                      ( isValue e => isValue e' ) } / [esize e] @-}
 subFTV :: Vname -> Type -> Expr -> Expr
 subFTV a t_a (Bc b)                    = Bc b
 subFTV a t_a (Ic n)                    = Ic n
@@ -197,14 +197,14 @@ subFTV a t_a Crash                     = Crash
 
 -- TODO removed for now: e' == (subBTV a (TRefn (FTV a') 1 (Bc True)) e) &&
 --                            (not (Set_mem a (ftv e))) => not (Set_mem a (ftv e')) &&
+--                                 (noDefns e => noDefns e') } / [esize e] @-}
 {-@ reflect chgFTV @-}
 {-@ chgFTV :: a:Vname -> a':Vname -> e:Expr
                   -> { e':Expr | (Set_mem a (ftv e) || e == e') &&
                                  Set_sub (ftv e)  (Set_cup (Set_sng a) (ftv e')) &&
                                  Set_sub (ftv e') (Set_cup (Set_sng a') (Set_dif (ftv e) (Set_sng a))) &&
                                  ( a != a'  => not (Set_mem a (ftv e'))) &&
-                                 fv e == fv e' && (isValue e => isValue e') &&
-                                 (noDefns e => noDefns e') } / [esize e] @-}
+                                 fv e == fv e' && (isValue e => isValue e') } / [esize e] @-}
 chgFTV :: Vname -> Vname -> Expr -> Expr
 chgFTV a a' (Bc b)                = Bc b
 chgFTV a a' (Ic n)                    = Ic n
@@ -219,6 +219,7 @@ chgFTV a a' (Let y e1 e2)             = Let y (chgFTV a a' e1) (chgFTV a a' e2)
 chgFTV a a' (Annot e t)               = Annot (chgFTV a a' e) (tchgFTV a a' t) 
 chgFTV a a' Crash                     = Crash
 
+--                                    ( (noDefns v && noDefns e) => noDefns e' ) } / [esize e] @-}
 {-@ reflect subBV @-} --substitute a value for x, which is a BOUND var
 {-@ subBV :: x:Vname ->  v:Value -> e:Expr 
                      -> { e':Expr | Set_sub (fv e) (fv e') &&
@@ -229,8 +230,7 @@ chgFTV a a' Crash                     = Crash
                                     Set_sub (Set_dif (freeBV e) (Set_sng x)) (freeBV e') &&
                                     Set_sub (freeBTV e') (Set_cup (freeBTV e) (freeBTV v)) &&
                                     Set_sub (freeBTV e) (freeBTV e') &&
-                                    ( esize v != 1  || esize e == esize e' ) && 
-                                    ( (noDefns v && noDefns e) => noDefns e' ) } / [esize e] @-}
+                                    ( esize v != 1  || esize e == esize e' ) } / [esize e] @-}
 subBV :: Vname -> Expr -> Expr -> Expr
 subBV x v_x (Bc b)                    = Bc b
 subBV x v_x (Ic n)                    = Ic n
@@ -254,14 +254,14 @@ subBV x v_x Crash                     = Crash
                                     Set_sub (freeBTV e') (Set_cup (Set_dif (freeBTV e) (Set_sng a)) (tfreeBTV t)) &&
                                     Set_sub (Set_dif (freeBTV e) (Set_sng a)) (freeBTV e') &&
 -}
+--                                    ( noDefns e => noDefns e' ) } / [esize e] @-}
 {-@ reflect subBTV @-} -- substitute in a type for a BOUND TYPE var
 {-@ subBTV :: a:Vname -> t:Type -> { e:Expr | same_bindersE t e }
                      -> { e':Expr | Set_sub (fv e) (fv e') &&
                                     Set_sub (fv e') (Set_cup (fv e) (free t)) &&
                                     Set_sub (ftv e) (ftv e') &&
                                     Set_sub (ftv e') (Set_cup (ftv e) (freeTV t)) &&
-                                    ( isTrivial t =>  esize e == esize e' ) && 
-                                    ( noDefns e => noDefns e' ) } / [esize e] @-}
+                                    ( isTrivial t =>  esize e == esize e' ) } / [esize e] @-}
 subBTV :: Vname -> Type -> Expr -> Expr
 subBTV a t_a (Bc b)                       = Bc b
 subBTV a t_a (Ic n)                       = Ic n
@@ -277,26 +277,26 @@ subBTV a t_a (Let y e1 e2)                = Let y (subBTV a t_a e1) (subBTV a t_
 subBTV a t_a (Annot e t)                  = Annot (subBTV a t_a e) (tsubBTV a t_a t)
 subBTV a t_a Crash                        = Crash  
 
+--                                   esize e == esize e' && (noDefns e => noDefns e') } / [esize e] @-}
 {-@ reflect unbind @-} -- unbind converts (BV x) to (FV y) in e 
 {-@ unbind :: x:Vname -> y:Vname -> e:Expr 
                     -> { e':Expr | Set_sub (fv e) (fv e') && 
                                    Set_sub (fv e') (Set_cup (Set_sng y) (fv e)) &&
                                    Set_sub (ftv e) (ftv e') && Set_sub (ftv e') (ftv e) &&
                                    freeBV e' == Set_dif (freeBV e) (Set_sng x) &&
-                                   freeBTV e' == freeBTV e &&
-                                   esize e == esize e' && (noDefns e => noDefns e') } / [esize e] @-}
+                                   freeBTV e' == freeBTV e && esize e == esize e' } / [esize e] @-}
 unbind :: Vname -> Vname -> Expr -> Expr
 unbind x y e = subBV x (FV y) e
 
 --TODO not strictly true anymore:   e' == (subBTV a (TRefn (FTV a') 1 (Bc True)) e)
+--                                   esize e == esize e' && (noDefns e => noDefns e') } / [esize e] @-} 
 {-@ reflect unbind_tv @-} -- unbind converts (BTV a) to (FTV a') in e -- aka "chgBTV"
 {-@ unbind_tv :: a:Vname -> a':Vname -> e:Expr 
                     -> { e':Expr | Set_sub (ftv e) (ftv e') && 
                                    Set_sub (ftv e') (Set_cup (Set_sng a') (ftv e)) &&
                                    Set_sub (fv e) (fv e') && Set_sub (fv e') (fv e) &&
-                                   freeBV e' == freeBV e &&
-                                   freeBTV e' == Set_dif (freeBTV e) (Set_sng a) &&
-                                   esize e == esize e' && (noDefns e => noDefns e') } / [esize e] @-} 
+                                   freeBV e' == freeBV e && esize e == esize e' &&
+                                   freeBTV e' == Set_dif (freeBTV e) (Set_sng a) } / [esize e] @-}
 unbind_tv :: Vname -> Vname -> Expr -> Expr
 unbind_tv a a' (Bc b)                       = Bc b
 unbind_tv a a' (Ic n)                       = Ic n
@@ -320,7 +320,7 @@ unbind_tv a a' Crash                        = Crash
    --      into a combined { x : p `And` q[x/y] }. It's only really \x and "let x=" that's the issue, 
    --      not /\a though.
 
-{-@ reflect noDefns @-}
+{-{-@ measure noDefns @-}
 noDefns :: Expr -> Bool
 noDefns (Bc _)          = True
 noDefns (Ic _)          = True
@@ -333,7 +333,7 @@ noDefns (LambdaT _ _ _) = False
 noDefns (AppT e t)      = noDefns e  -- False
 noDefns (Let _ _ _)     = False
 noDefns (Annot e t)     = noDefns e
-noDefns Crash           = True
+noDefns Crash           = True -}
 
 -- For now we'll allow refinements to have definitions in theory, but the ones we'll actually use won't,
 --   so the issue of the incorrect substitution def'n w/ capture (TODO) can be avoided for now.
@@ -375,10 +375,10 @@ ksize Base = 0
 ksize Star = 1
 
 {-@ data Type [tsize] where 
-    TRefn   :: Basic -> Vname -> Pred -> Type  
-  | TFunc   :: Vname -> Type  -> Type -> Type 
-  | TExists :: Vname -> Type  -> Type -> Type 
-  | TPoly   :: Vname -> Kind  -> Type -> Type @-} -- @-}
+        TRefn   :: Basic -> Vname -> Pred -> Type  
+      | TFunc   :: Vname -> Type  -> Type -> Type 
+      | TExists :: Vname -> Type  -> Type -> Type 
+      | TPoly   :: Vname -> Kind  -> Type -> Type @-} -- @-}
 data Type = TRefn   Basic Vname Pred     -- b{x : p}
           | TFunc   Vname Type Type      -- x:t_x -> t
           | TExists Vname Type Type      -- \exists x:t_x. t
@@ -429,8 +429,15 @@ same_bindersE t_a (Let x e_x e)   = same_bindersE t_a e_x && same_bindersE t_a e
 same_bindersE t_a (Annot e t)     = same_bindersE t_a e && same_binders t_a t
 same_bindersE t_a _               = True
 
+{-@ reflect same_binders_env @-}
+{-@ same_binders_env :: t_a:Type -> g:Env -> Bool @-}
+same_binders_env :: Type -> Env -> Bool
+same_binders_env t_a Empty          = True
+same_binders_env t_a (Cons x t_x g) = same_binders t_a t_x && same_binders_env t_a g
+same_binders_env t_a (ConsT a k  g) = same_binders_env t_a g
+
 -- a trivial type is b{x : Bc True}. Needed to argue that unbind_tvT preserves tsize.
-{-@ reflect isTrivial @-}
+{-@ measure isTrivial @-}
 isTrivial :: Type -> Bool
 isTrivial (TRefn b v r)     = ( r == Bc True)
 isTrivial (TFunc x t_x t)   = False
@@ -455,7 +462,7 @@ freeTV (TFunc x t_x t)    = S.union (freeTV t_x) (freeTV t)
 freeTV (TExists x t_x t)  = S.union (freeTV t_x) (freeTV t) 
 freeTV (TPoly a k   t)    = freeTV t
 
-{-@ reflect tfreeBV @-}
+{-@ measure tfreeBV @-}
 {-@ tfreeBV :: t:Type -> S.Set Vname / [tsize t] @-}
 tfreeBV :: Type -> S.Set Vname
 tfreeBV (TRefn b x r)     = S.difference (freeBV r) (S.singleton x)
@@ -463,7 +470,7 @@ tfreeBV (TFunc x t_x t)   = S.union (tfreeBV t_x) (S.difference (tfreeBV t) (S.s
 tfreeBV (TExists x t_x t) = S.union (tfreeBV t_x) (S.difference (tfreeBV t) (S.singleton x))
 tfreeBV (TPoly a  k  t)   = (tfreeBV t)
 
-{-@ reflect tfreeBTV @-}
+{-@ measure tfreeBTV @-}
 {-@ tfreeBTV :: t:Type -> S.Set Vname / [tsize t] @-}
 tfreeBTV :: Type -> S.Set Vname
 tfreeBTV (TRefn b x r)     = case b of --freeBTV r
@@ -660,9 +667,9 @@ data Env = Empty                         -- type Env = [(Vname, Type) or Vname]
          | ConsT Vname Kind Env
   deriving (Show)
 {-@ data Env where 
-    Empty :: Env 
-  | Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } -> Env 
-  | ConsT :: a:Vname -> k:Kind -> { g:Env | not (in_env a g) } -> Env @-}
+        Empty :: Env 
+      | Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } -> Env 
+      | ConsT :: a:Vname -> k:Kind -> { g:Env | not (in_env a g) } -> Env @-}
 
 {-@ measure envsize @-}
 {-@ envsize :: Env -> { n:Int | n >= 0 } @-}
@@ -749,7 +756,7 @@ ftsize (FTBasic b)      = 1
 ftsize (FTFunc t_x   t) = (ftsize t_x) + (ftsize t) + 1
 ftsize (FTPoly a  k  t) = (ftsize t)   + 1
 
-{-@ reflect isBaseF @-}
+{-@ measure isBaseF @-}
 isBaseF :: FType -> Bool
 isBaseF (FTBasic b)     = True
 isBaseF _               = False
@@ -810,26 +817,16 @@ unbindFT :: Vname -> Vname -> FType -> FType
 unbindFT a a' t = ftsubBV a (FTBasic (FTV a')) t
  
 
-
   --- BARE-TYPING ENVIRONMENTS
 
 data FEnv = FEmpty                       -- type FEnv = [(Vname, FType) or Vname]
           | FCons  Vname FType FEnv
           | FConsT Vname Kind  FEnv
-{-
- - data FEnv where
-{-@ FEmpty :: FEnv @-}
-    FEmpty :: FEnv                      -- type FEnv = [(Vname, FType) or Vname]
-{-@ FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } -> FEnv @-}
-    FCons  :: Vname -> FType -> FEnv -> FEnv
-{-@ FConsT :: a:Vname -> k:Kind  -> { g:FEnv | not (in_envF a g) } -> FEnv @-}
-    FConsT :: Vname -> Kind  -> FEnv -> FEnv
--}
   deriving (Show) 
 {-@ data FEnv where
-    FEmpty :: FEnv
-  | FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } -> FEnv
-  | FConsT :: a:Vname -> k:Kind  -> { g:FEnv | not (in_envF a g) } -> FEnv @-}
+        FEmpty :: FEnv
+      | FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } -> FEnv
+      | FConsT :: a:Vname -> k:Kind  -> { g:FEnv | not (in_envF a g) } -> FEnv @-}
 
 {-@ measure fenvsize @-}
 {-@ fenvsize :: FEnv -> { n:Int | n >= 0 } @-}
@@ -941,3 +938,11 @@ erase_env :: Env -> FEnv
 erase_env Empty         = FEmpty
 erase_env (Cons  x t g) = FCons  x (erase t) (erase_env g)
 erase_env (ConsT a k g) = FConsT a k         (erase_env g)
+
+{-@ lem_erase_freeTV :: t:Type -> { pf:_ | Set_sub (ffreeTV (erase t)) (freeTV t) } @-}
+lem_erase_freeTV :: Type -> Proof
+lem_erase_freeTV (TRefn   b   z p) = ()
+lem_erase_freeTV (TFunc   z t_z t) = () ? lem_erase_freeTV t_z
+                                        ? lem_erase_freeTV t
+lem_erase_freeTV (TExists z t_z t) = () ? lem_erase_freeTV t
+lem_erase_freeTV (TPoly   a' k' t) = () ? lem_erase_freeTV t
