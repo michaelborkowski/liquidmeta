@@ -31,9 +31,9 @@ import LemmasWeakenWF
 import LemmasWellFormedness
 import LemmasTyping
 
-{-@ reflect foo32 @-}
-foo32 x = Just x
-foo32 :: a -> Maybe a
+{-@ reflect foo33 @-}
+foo33 x = Just x
+foo33 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
@@ -46,17 +46,17 @@ lem_sub_refl g t k (WFBase _g b) p_g_wf
     = SBase g 1 b (Bc True) 1 (Bc True) y 
             (EntPred (Cons y (TRefn b 1 (Bc True)) g) (Bc True) eval_thp_func)
         where
-          {-@ eval_thp_func :: th':CSubst -> ProofOf(DenotesEnv (Cons y (TRefn b 1 (Bc True)) g) th') 
+          {-@ eval_thp_func :: th':CSub -> ProofOf(DenotesEnv (Cons y (TRefn b 1 (Bc True)) g) th') 
                                           -> ProofOf(EvalsTo (csubst th' (unbind 1 y (Bc True))) (Bc True)) @-}
-          eval_thp_func :: CSubst -> DenotesEnv -> EvalsTo
+          eval_thp_func :: CSub -> DenotesEnv -> EvalsTo
           eval_thp_func th' _ = Refl (Bc True) ? lem_csubst_bc th' True
           y = fresh_var g
 lem_sub_refl g t k (WFRefn _g x b p_g_b p y pf_p_bl) p_g_wf-- t = b{x:p}
     = SBase g x b p x p y (EntPred (Cons y (TRefn b x p) g) (unbind x y p) eval_thp_func)
         where
-          {-@ eval_thp_func :: th':CSubst -> ProofOf(DenotesEnv (Cons y (TRefn b x p) g) th') 
+          {-@ eval_thp_func :: th':CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x p) g) th') 
                                           -> ProofOf(EvalsTo (csubst th' (unbind x y p)) (Bc True)) @-}
-          eval_thp_func :: CSubst -> DenotesEnv -> EvalsTo
+          eval_thp_func :: CSub -> DenotesEnv -> EvalsTo
           eval_thp_func th' den_yg_th' = case den_yg_th' of 
             (DEmp)                                 -> impossible "Cons y t g != Empty"
             (DExt g th den_g_th _y _t v den_tht_v) -> case den_tht_v of 

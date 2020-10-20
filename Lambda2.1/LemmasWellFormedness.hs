@@ -27,9 +27,9 @@ import Entailments
 import LemmasChangeVarWF
 import LemmasWeakenWF
 
-{-@ reflect foo30 @-}
-foo30 x = Just x
-foo30 :: a -> Maybe a
+{-@ reflect foo34 @-}
+foo34 x = Just x
+foo34 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   

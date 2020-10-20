@@ -146,6 +146,7 @@ ftv (Crash)         = S.empty
 
 --  removed for now:                    ( (freeBV e) == (freeBV e') ) &&
 --                                ( (noDefns v && noDefns e) => noDefns e' ) } / [esize e] @-}
+--                      ( same_bindersEE v e => same_bindersEE 
 {-@ reflect subFV @-} -- substitute a value for a term variable in a term 
 {-@ subFV :: x:Vname -> v:Value -> e:Expr 
                      -> { e':Expr | (Set_mem x (fv e) || e == e') &&
@@ -172,8 +173,9 @@ subFV x v_x Crash                     = Crash
 
 --  removed for now:                    ( (freeBV e) == Set_cup (tfreeBV t) (freeBV e') ) &&
 --                      ( noDefns e => noDefns e' ) } / [esize e] @-}
+-- {-@ subFTV :: a:Vname -> t:Type -> { e:Expr | same_bindersE t e }
 {-@ reflect subFTV @-} -- substitute a type for a type variable in a term 
-{-@ subFTV :: a:Vname -> t:Type -> { e:Expr | same_bindersE t e }
+{-@ subFTV :: a:Vname -> t:Type -> e:Expr 
                       -> { e':Expr | (Set_mem a (ftv e) || e == e') &&
                       ( Set_sub (ftv e) (Set_cup (Set_sng a) (ftv e')) ) &&
                       ( Set_sub (ftv e') (Set_cup (freeTV t) (Set_dif (ftv e) (Set_sng a)))) &&
@@ -255,8 +257,9 @@ subBV x v_x Crash                     = Crash
                                     Set_sub (Set_dif (freeBTV e) (Set_sng a)) (freeBTV e') &&
 -}
 --                                    ( noDefns e => noDefns e' ) } / [esize e] @-}
+--{-@ subBTV :: a:Vname -> t:Type -> { e:Expr | same_bindersE t e }
 {-@ reflect subBTV @-} -- substitute in a type for a BOUND TYPE var
-{-@ subBTV :: a:Vname -> t:Type -> { e:Expr | same_bindersE t e }
+{-@ subBTV :: a:Vname -> t:Type -> e:Expr
                      -> { e':Expr | Set_sub (fv e) (fv e') &&
                                     Set_sub (fv e') (Set_cup (fv e) (free t)) &&
                                     Set_sub (ftv e) (ftv e') &&
@@ -399,6 +402,25 @@ tsize (TFunc x t_x t)       = (tsize t_x) + (tsize t) + 1
 tsize (TExists x t_x t)     = (tsize t_x) + (tsize t) + 1
 tsize (TPoly a k   t)       = (tsize t)   + 1
 
+{-@ reflect refn_binders @-}
+{-@ refn_binders :: e:Expr -> S.Set Vname / [esize e] @-}
+refn_binders :: Expr -> S.Set Vname
+refn_binders (Lambda x e)    = refn_binders e
+refn_binders (App e e')      = S.union (refn_binders e)   (refn_binders e')
+refn_binders (LambdaT a k e) = refn_binders e
+refn_binders (AppT e t)      = S.union (refn_binders e)   (refn_bindersT t)
+refn_binders (Let x e_x e)   = S.union (refn_binders e_x) (refn_binders e)
+refn_binders (Annot e t)     = S.union (refn_binders e)   (refn_bindersT t)
+refn_binders _               = S.empty
+
+{-@ reflect refn_bindersT @-}
+{-@ refn_bindersT :: t:Type -> S.Set Vname / [tsize t] @-}
+refn_bindersT :: Type -> S.Set Vname
+refn_bindersT (TRefn b' x' p')   = S.union (S.singleton x')    (refn_binders p')
+refn_bindersT (TFunc x t_x t')   = S.union (refn_bindersT t_x) (refn_bindersT t')
+refn_bindersT (TExists x t_x t') = S.union (refn_bindersT t_x) (refn_bindersT t')
+refn_bindersT (TPoly a k   t')   = refn_bindersT t'
+
 {-@ reflect binders_are @-}
 binders_are :: Type -> Vname -> Bool
 binders_are (TRefn b x p)     x' =  x == x'
@@ -428,6 +450,17 @@ same_bindersE t_a (AppT e t)      = same_bindersE t_a e && same_binders t_a t
 same_bindersE t_a (Let x e_x e)   = same_bindersE t_a e_x && same_bindersE t_a e
 same_bindersE t_a (Annot e t)     = same_bindersE t_a e && same_binders t_a t
 same_bindersE t_a _               = True
+
+{-@ reflect same_bindersEE @-}
+{-@ same_bindersEE :: v:Expr -> e:Expr -> Bool / [esize e] @-}
+same_bindersEE :: Expr -> Expr -> Bool
+same_bindersEE v (Lambda x e')    = same_bindersEE v e' 
+same_bindersEE v (App e1 e2)      = same_bindersEE v e1  && same_bindersEE v  e2
+same_bindersEE v (LambdaT a k e') = same_bindersEE v e' 
+same_bindersEE v (AppT e' t)      = same_bindersEE v e'  && same_bindersE  t  v
+same_bindersEE v (Let x e_x e')   = same_bindersEE v e_x && same_bindersEE v  e' 
+same_bindersEE v (Annot e' t)     = same_bindersEE v e'  && same_bindersE  t  v
+same_bindersEE v  _               = True
 
 {-@ reflect same_binders_env @-}
 {-@ same_binders_env :: t_a:Type -> g:Env -> Bool @-}
@@ -532,8 +565,9 @@ tsubFV x v_x (TExists z t_z t) = TExists z (tsubFV x v_x t_z) (tsubFV x v_x t)
 tsubFV x v_x (TPoly a k   t)   = TPoly   a k                  (tsubFV x v_x t)
 
 --  removed for now:               tfreeBV t' == Set_cup (tfreeBV t_a) (tfreeBV t) &&
+--{-@ tsubFTV :: a:Vname -> t_a:Type -> { t:Type | same_binders t_a t}
 {-@ reflect tsubFTV @-}
-{-@ tsubFTV :: a:Vname -> t_a:Type -> { t:Type | same_binders t_a t}
+{-@ tsubFTV :: a:Vname -> t_a:Type -> t:Type 
          -> { t':Type | ( Set_mem a (freeTV t) || t == t' ) && 
                         ( Set_sub (freeTV t) (Set_cup (Set_sng a) (freeTV t'))) &&
                 ( Set_sub (freeTV t') (Set_cup (freeTV t_a) (Set_dif (freeTV t) (Set_sng a))) ) &&
@@ -593,8 +627,9 @@ tsubBV x v_x (TPoly a  k  t)   = TPoly   a k                  (tsubBV x v_x t)
                                Set_sub (tfreeBTV t') (Set_cup (Set_dif (tfreeBTV t) (Set_sng a)) (tfreeBTV t_a)) &&
                                Set_sub (Set_dif (tfreeBTV t) (Set_sng a)) (tfreeBTV t') &&
  -}
+--{-@ tsubBTV :: a:Vname -> t_a:Type -> { t:Type | same_binders t_a t }
 {-@ reflect tsubBTV @-}
-{-@ tsubBTV :: a:Vname -> t_a:Type -> { t:Type | same_binders t_a t }
+{-@ tsubBTV :: a:Vname -> t_a:Type -> t:Type
                 -> { t':Type | Set_sub (free t) (free t') &&
                                Set_sub (free t') (Set_cup (free t_a) (free t)) &&
                                Set_sub (freeTV t) (freeTV t') && 
@@ -668,8 +703,10 @@ data Env = Empty                         -- type Env = [(Vname, Type) or Vname]
   deriving (Show)
 {-@ data Env where 
         Empty :: Env 
-      | Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } -> Env 
-      | ConsT :: a:Vname -> k:Kind -> { g:Env | not (in_env a g) } -> Env @-}
+      | Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } 
+                         -> { g':Env | Set_cup (vbinds g') (tvbinds g') == binds g' } 
+      | ConsT :: a:Vname -> k:Kind -> { g:Env | not (in_env a g) } 
+                         -> { g':Env | Set_cup (vbinds g') (tvbinds g') == binds g' }  @-}
 
 {-@ measure envsize @-}
 {-@ envsize :: Env -> { n:Int | n >= 0 } @-}
@@ -740,6 +777,25 @@ binds Empty         = S.empty
 binds (Cons x t g)  = S.union (S.singleton x) (binds g)
 binds (ConsT a k g) = S.union (S.singleton a) (binds g)
 
+{-@ reflect v_in_env @-}              -- (term) variables
+v_in_env :: Vname -> Env -> Bool
+v_in_env x g = S.member x (vbinds g) 
+
+{-@ reflect vbinds @-}
+vbinds :: Env -> S.Set Vname
+vbinds Empty         = S.empty
+vbinds (Cons x t g)  = S.union (S.singleton x) (vbinds g)
+vbinds (ConsT a k g) = vbinds g
+
+{-@ reflect tv_in_env @-}              -- type variables
+tv_in_env :: Vname -> Env -> Bool
+tv_in_env x g = S.member x (binds g) 
+
+{-@ reflect tvbinds @-}
+tvbinds :: Env -> S.Set Vname
+tvbinds Empty         = S.empty
+tvbinds (Cons x t g)  = tvbinds g
+tvbinds (ConsT a k g) = S.union (S.singleton a) (tvbinds g)
 
   --- BARE TYPES: i.e. System F types. These still contain type polymorphism and type variables, 
   --    but all the refinements, dependent arrow binders, and existentials have been erased.

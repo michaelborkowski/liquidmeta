@@ -29,19 +29,6 @@ import PrimitivesDenotationsEq
 {-@ reflect foo33 @-}
 foo33 x = Just x
 foo33 :: a -> Maybe a
-{-
-{-@ lem_freeBV_prim_empty :: c:Prim -> { pf:_ | Set_emp (freeBV (Prim c)) && 
-                                                Set_emp (tfreeBV (ty c)) } @-}
-lem_freeBV_prim_empty :: Prim -> Proof
-lem_freeBV_prim_empty And      = ()
-lem_freeBV_prim_empty Or       = ()
-lem_freeBV_prim_empty Not      = ()
-lem_freeBV_prim_empty Eqv      = ()
-lem_freeBV_prim_empty Leq      = ()
-lem_freeBV_prim_empty (Leqn n) = ()
-lem_freeBV_prim_empty Eq       = ()
-lem_freeBV_prim_empty (Eqn n)  = ()
--}
 
 -- Lemma. Denotations of Primitive/Constant Types
 {-@ lem_den_tybc :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th)

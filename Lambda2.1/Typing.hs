@@ -247,7 +247,7 @@ maxBTV (FTBasic _)      = 0
 maxBTV (FTFunc   t_x t) = max (maxBTV t_x) (maxBTV t)
 maxBTV (FTPoly a k   t) = (maxBTV t) + 1
 
-{-@ reflect normalize @-}
+{-@ reflect normalize @-} -- this is alpha-equivalence
 {-@ normalize :: FType -> FType @-}
 normalize :: FType -> FType
 normalize (FTBasic b)      = FTBasic b
@@ -256,6 +256,9 @@ normalize (FTPoly a k   t) = FTPoly  a' k  (ftsubBV a (FTBasic (BTV a')) t)
   where
     a' = maxBTV (FTPoly a k t)
 
+-- prove a lem_normalize_tpoly
+--                       texists
+--                       tfunc
 
 -------------------------------------------------------------------------
 ----- | CLOSING SUBSTITUTIONS 
@@ -265,33 +268,59 @@ normalize (FTPoly a k   t) = FTPoly  a' k  (ftsubBV a (FTBasic (BTV a')) t)
 --   the typing env downwards/leftwards. In order for a closing substitution to be
 --   "well formed" it must be an element of the denotation the corresponding enivornment
 
-data CSubst = CEmpty
-            | CCons  Vname Expr CSubst
-            | CConsT Vname Type CSubst
+data CSub = CEmpty
+            | CCons  Vname Expr CSub
+            | CConsT Vname Type CSub
   deriving (Show)
-{-@ data CSubst  where
-        CEmpty :: CSubst
+{-@ data CSub  where
+        CEmpty :: CSub
       | CCons  :: x:Vname -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) && 
                                          Set_emp (freeBV v) && Set_emp (freeBTV v) } 
-                          -> { th:CSubst | not (in_csubst x th ) } 
-                          -> { th':CSubst | bindsC th' == Set_cup (Set_sng x) (bindsC th) } 
+                          -> { th:CSub | not (in_csubst x th ) } 
+                          -> { th':CSub | bindsC th'   == Set_cup (Set_sng x)  (bindsC th) && 
+                                          vbindsC th'  == Set_cup (Set_sng x) (vbindsC th) &&
+                                          tvbindsC th' == tvbindsC th &&
+                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' } 
       | CConsT :: a:Vname -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) &&
                                         Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
-                          -> { th:CSubst | not (in_csubst a th) }
-                          -> { th':CSubst | bindsC th' == Set_cup (Set_sng a) (bindsC th) } @-}
+                          -> { th:CSub | not (in_csubst a th) }
+                          -> { th':CSub | bindsC th'   == Set_cup (Set_sng a)   (bindsC th) && 
+                                          vbindsC th'  == vbindsC th &&
+                                          tvbindsC th' == Set_cup (Set_sng a) (tvbindsC th) &&
+                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' } @-}
 
 {-@ reflect bindsC @-}
-bindsC :: CSubst -> S.Set Vname
+bindsC :: CSub -> S.Set Vname
 bindsC CEmpty          = S.empty
 bindsC (CCons  x v th) = S.union (S.singleton x) (bindsC th)
 bindsC (CConsT a t th) = S.union (S.singleton a) (bindsC th)
 
 {-@ reflect in_csubst @-}
-in_csubst :: Vname -> CSubst -> Bool
+in_csubst :: Vname -> CSub -> Bool
 in_csubst x th = S.member x (bindsC th)
 
+{-@ reflect vbindsC @-}
+vbindsC :: CSub -> S.Set Vname
+vbindsC CEmpty          = S.empty
+vbindsC (CCons  x v th) = S.union (S.singleton x) (vbindsC th)
+vbindsC (CConsT a t th) = vbindsC th
+
+{-@ reflect v_in_csubst @-}
+v_in_csubst :: Vname -> CSub -> Bool
+v_in_csubst x th = S.member x (vbindsC th)
+
+{-@ reflect tvbindsC @-}
+tvbindsC :: CSub -> S.Set Vname
+tvbindsC CEmpty          = S.empty
+tvbindsC (CCons  x v th) = tvbindsC th
+tvbindsC (CConsT a t th) = S.union (S.singleton a) (tvbindsC th)
+
+{-@ reflect tv_in_csubst @-}
+tv_in_csubst :: Vname -> CSub -> Bool
+tv_in_csubst a th = S.member a (tvbindsC th)
+
 {-@ reflect bound_inC @-}
-bound_inC :: Vname -> Expr -> CSubst -> Bool
+bound_inC :: Vname -> Expr -> CSub -> Bool
 bound_inC x v CEmpty                              = False
 bound_inC x v (CCons y v' th) | (x == y)          = (v == v')
                               | otherwise         = bound_inC x v th
@@ -299,7 +328,7 @@ bound_inC x v (CConsT a t th) | (x == a)          = False
                               | otherwise         = bound_inC x v th
 
 {-@ reflect tv_bound_inC @-}
-tv_bound_inC :: Vname -> Type -> CSubst -> Bool
+tv_bound_inC :: Vname -> Type -> CSub -> Bool
 tv_bound_inC a t CEmpty                                = False
 tv_bound_inC a t (CCons  y  v' th) | (a == y)          = False
                                    | otherwise         = tv_bound_inC a t th
@@ -307,73 +336,91 @@ tv_bound_inC a t (CConsT a' t' th) | (a == a')         = (t == t')
                                    | otherwise         = tv_bound_inC a t th
 
 {-{-@ measure uniqueC @-}
-uniqueC :: CSubst -> Bool
+uniqueC :: CSub -> Bool
 uniqueC CEmpty         = True
 uniqueC (CCons x v th) = (uniqueC th) && not (S.member x (bindsC th))
 
-{-@ lem_env_uniqueC :: th:CSubst -> { pf:_ | uniqueC th } @-}
-lem_env_uniqueC :: CSubst -> Proof
+{-@ lem_env_uniqueC :: th:CSub -> { pf:_ | uniqueC th } @-}
+lem_env_uniqueC :: CSub -> Proof
 lem_env_uniqueC CEmpty         = ()
 lem_env_uniqueC (CCons x v th) = () ? lem_env_uniqueC th-}
 
 {-@ reflect same_binders_cs @-}
-same_binders_cs :: CSubst -> Type -> Bool
+same_binders_cs :: CSub -> Type -> Bool
 same_binders_cs CEmpty          t' = True
-same_binders_cs (CCons  x v th) t' = same_binders_cs th t'
-same_binders_cs (CConsT a t th) t' = same_binders t t' && same_binders_cs th t'
+same_binders_cs (CCons  x v th) t' = same_binders_cs th (tsubFV x v t')
+same_binders_cs (CConsT a t th) t' = if same_binders t t' then same_binders_cs th (tsubFTV a t t') else False
+--same_binders_cs (CConsT a t th) t' = same_binders t t' && same_binders_cs th (tsubFTV a t t')
 
 {-@ reflect same_binders_csE @-}
-same_binders_csE :: CSubst -> Expr -> Bool
+same_binders_csE :: CSub -> Expr -> Bool
 same_binders_csE CEmpty          e = True
-same_binders_csE (CCons  x v th) e = same_binders_csE th e
-same_binders_csE (CConsT a t th) e = same_bindersE t e && same_binders_csE th e
+same_binders_csE (CCons  x v th) e = same_binders_csE th (subFV x v e)
+same_binders_csE (CConsT a t th) e = if same_bindersE t e then same_binders_csE th (subFTV a t e)  else False
+--same_binders_csE (CConsT a t th) e = same_bindersE t e && same_binders_csE th (subFTV a t e)
+{-
+{-@ reflect lem_same_binders_csE @-}
+{-@ lem_same_binders_csE :: a:Vname -> t:Type -> th:CSub 
+        -> { e:Expr | same_binders_csE (CConsT a t th) e } -> { pf:_ | same_binders_csE th (subFTV a t e) } @-}
+lem_same_binders_csE :: Vname -> Type -> CSub -> Expr -> Proof
+lem_same_binders_csE a  -}
 
+--{-@ csubst :: th:CSub -> { e:Expr | same_binders_csE th e } -> Expr @-}
 {-@ reflect csubst @-}
-{- @ csubst :: th:CSubst -> { e:Expr | same_binders_csE th e } -> Expr @-}
-csubst :: CSubst -> Expr -> Expr
+{-@ csubst :: th:CSub -> e:Expr -> Expr @-}
+csubst :: CSub -> Expr -> Expr
 csubst CEmpty          e = e
 csubst (CCons  x v th) e = csubst th (subFV x v e)
 csubst (CConsT a t th) e = csubst th (subFTV a t e)
 
-{-@ reflect csubst' @-}
-{-@ csubst' :: th:CSubst -> { e:Expr | same_binders_csE th e } -> Expr @-}
-csubst' :: CSubst -> Expr -> Expr
-csubst' CEmpty          e = e
-csubst' (CCons  x v th) e = csubst' th (subFV x v e)
-csubst' (CConsT a t th) e = csubst' th (subFTV a t e)
-
 -- Idea: ctsubst th t = foldr (\(x,e) t' -> tsubFV x e t') t th 
+--{-@ ctsubst :: th:CSub -> { t:Type | same_binders_cs th t } -> Type @-}
 {-@ reflect ctsubst @-}
-{-@ ctsubst :: th:CSubst -> { t:Type | same_binders_cs th t } -> Type @-}
-ctsubst :: CSubst -> Type -> Type
+{-@ ctsubst :: th:CSub -> t:Type -> Type @-}
+ctsubst :: CSub -> Type -> Type
 ctsubst CEmpty           t = t
 ctsubst (CCons  x v  th) t = ctsubst th (tsubFV x v t)
 ctsubst (CConsT a t' th) t = ctsubst th (tsubFTV a t' t)
 
 {-@ reflect concatCS @-}
-{-@ concatCS :: th:CSubst -> { th':CSubst | Set_emp (Set_cap (bindsC th) (bindsC th')) }
-                          -> { thC:CSubst | bindsC thC == Set_cup (bindsC th) (bindsC th') } @-}
-concatCS :: CSubst -> CSubst -> CSubst
+{-@ concatCS :: th:CSub -> { th':CSub | Set_emp (Set_cap (bindsC th) (bindsC th')) }
+                          -> { thC:CSub | bindsC thC == Set_cup (bindsC th) (bindsC th') } @-}
+concatCS :: CSub -> CSub -> CSub
 concatCS th CEmpty           = th
 concatCS th (CCons  x v th') = CCons x v (concatCS th th')
 concatCS th (CConsT a t th') = CConsT a t (concatCS th th')
 
 
 {-@ reflect change_varCS @-}
-{-@ change_varCS :: th:CSubst ->  { x:Vname | in_csubst x th } 
+{-@ change_varCS :: th:CSub ->  { x:Vname | v_in_csubst x th } 
         -> { y:Vname | y == x || not (in_csubst y th) } 
-        -> { th':CSubst | bindsC th' == Set_cup (Set_sng y) (Set_dif (bindsC th) (Set_sng x))} @-} 
-change_varCS :: CSubst -> Vname -> Vname -> CSubst
+        -> { th':CSub | bindsC th'  == Set_cup (Set_sng y) (Set_dif  (bindsC th) (Set_sng x)) &&
+                        vbindsC th' == Set_cup (Set_sng y) (Set_dif (vbindsC th) (Set_sng x)) &&
+                        tvbindsC th' == tvbindsC th } @-} 
+change_varCS :: CSub -> Vname -> Vname -> CSub
 change_varCS CEmpty            x y = CEmpty
 change_varCS (CCons  z v_z th) x y | ( x == z ) = CCons  y v_z th
                                    | otherwise  = CCons  z v_z (change_varCS th x y)
-change_varCS (CConsT a t_a th) x y | ( x == a ) = CConsT y t_a th
+change_varCS (CConsT a t_a th) x y | ( x == a ) = CConsT y t_a th {- impossible -}
                                    | otherwise  = CConsT a t_a (change_varCS th x y)
 
+{-@ reflect change_tvarCS @-}
+{-@ change_tvarCS :: th:CSub ->  { a:Vname | tv_in_csubst a th } 
+        -> { a':Vname | a' == a || not (in_csubst a' th) } 
+        -> { th':CSub | bindsC th'   == Set_cup (Set_sng a') (Set_dif   (bindsC th) (Set_sng a)) &&
+                        vbindsC th'  == vbindsC th &&
+                        tvbindsC th' == Set_cup (Set_sng a') (Set_dif (tvbindsC th) (Set_sng a)) } @-} 
+change_tvarCS :: CSub -> Vname -> Vname -> CSub
+change_tvarCS CEmpty             a a' = CEmpty
+change_tvarCS (CCons  z  v_z th) a a' | ( a == z )  = CCons  a' v_z th {- impossible -}
+                                      | otherwise   = CCons  z  v_z (change_tvarCS th a a')
+change_tvarCS (CConsT a1 t_a th) a a' | ( a == a1 ) = CConsT a' t_a th
+                                      | otherwise   = CConsT a1 t_a (change_tvarCS th a a')
+
 {-@ reflect remove_fromCS @-}
-{-@ remove_fromCS :: th:CSubst -> { x:Vname | in_csubst x th}
-        -> { th':CSubst | bindsC th' == Set_dif (bindsC th) (Set_sng x) } @-}
-remove_fromCS :: CSubst -> Vname -> CSubst
+{-@ remove_fromCS :: th:CSub -> { x:Vname | in_csubst x th}
+        -> { th':CSub | bindsC th' == Set_dif (bindsC th) (Set_sng x) } @-}
+remove_fromCS :: CSub -> Vname -> CSub
 remove_fromCS (CCons  z v_z th) x | ( x == z ) = th
                                   | otherwise  = CCons  z v_z (remove_fromCS th x)
 remove_fromCS (CConsT a t_a th) x | ( x == a ) = th
@@ -388,11 +435,11 @@ data EntailsP where
     Entails :: Env -> Pred -> EntailsP
 
 data Entails where
-    EntPred :: Env -> Pred -> (CSubst -> DenotesEnv -> EvalsTo) -> Entails
+    EntPred :: Env -> Pred -> (CSub -> DenotesEnv -> EvalsTo) -> Entails
 
 {-@ data Entails where
         EntPred :: g:Env -> p:Pred 
-                   -> (th:CSubst -> ProofOf(DenotesEnv g th) 
+                   -> (th:CSub -> ProofOf(DenotesEnv g th) 
                                  -> ProofOf(EvalsTo (csubst th p) (Bc True)) )
                    -> ProofOf(Entails g p) @-} 
 
@@ -467,28 +514,29 @@ get_obj_from_dfunc x s t v (DFunc _ _ _ _ _ prover) v' den_s_v' = prover v' den_
 --   1. [[ Empty ]] = { CEmpty }.
 --   2. [[ Cons x t g ]] = { CCons x v_x th | Denotes th(t) v_x && th \in [[ g ]] }
 data DenotesEnvP where 
-    DenotesEnv :: Env -> CSubst -> DenotesEnvP 
+    DenotesEnv :: Env -> CSub -> DenotesEnvP 
 
 data DenotesEnv where
     DEmp :: DenotesEnv
-    DExt :: Env -> CSubst -> DenotesEnv -> Vname -> Type -> Expr -> Denotes -> DenotesEnv
-    DExtT :: Env -> CSubst -> DenotesEnv -> Vname -> Kind -> Type -> WFType -> DenotesEnv
+    DExt :: Env -> CSub -> DenotesEnv -> Vname -> Type -> Expr -> Denotes -> DenotesEnv
+    DExtT :: Env -> CSub -> DenotesEnv -> Vname -> Kind -> Type -> WFType -> DenotesEnv
 {-@ data DenotesEnv where 
         DEmp  :: ProofOf(DenotesEnv Empty CEmpty)
-     |  DExt  :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th) 
+     |  DExt  :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
                  -> { x:Vname | not (in_env x g) } -> t:Type 
                  -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) && Set_emp (freeBV v) && Set_emp (freeBTV v) }
                  -> ProofOf(Denotes (ctsubst th t) v)
                  -> ProofOf(DenotesEnv (Cons x t g) (CCons x v th)) 
-     |  DExtT :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th)
+     |  DExtT :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
                    -> { a:Vname | not (in_env a g) } -> k:Kind
                    -> { t:Type  | Set_emp (free t) && Set_emp (freeTV t) && 
                                   Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
                    -> ProofOf(WFType Empty (ctsubst th (TRefn (FTV a) 1 (Bc True))) k)
                    -> ProofOf(DenotesEnv (ConsT a k g) (CConsT a t th)) @-}
 
-{-@ lem_binds_env_th :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th) -> { pf:_ | binds g == bindsC th } @-}
-lem_binds_env_th :: Env -> CSubst -> DenotesEnv -> Proof
+{-@ lem_binds_env_th :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
+        -> { pf:_ | binds g == bindsC th && vbinds g == vbindsC th && tvbinds g == tvbindsC th } @-}
+lem_binds_env_th :: Env -> CSub -> DenotesEnv -> Proof
 lem_binds_env_th g th DEmp                                      = ()
 lem_binds_env_th g th (DExt g' th' den_g'_th' x t v den_th't_v) = () ? lem_binds_env_th g' th' den_g'_th'
 lem_binds_env_th g th (DExtT {})

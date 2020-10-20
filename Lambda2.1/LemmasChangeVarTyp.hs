@@ -31,9 +31,9 @@ import LemmasWeakenWF
 import LemmasWellFormedness
 import LemmasTyping
 
-{-@ reflect foo33 @-}
-foo33 x = Just x
-foo33 :: a -> Maybe a
+{-@ reflect foo34 @-}
+foo34 x = Just x
+foo34 :: a -> Maybe a
 
 
 -----------------------------------------------------------
@@ -179,10 +179,9 @@ lem_change_var_typ g x t_x g' p_env_wf e t p_e_t@(TSub env _e s p_env_e_s _t k p
         -> ProofOf(WFEnv (concatE (ConsT a k_a g) g'))
         -> e:Expr -> t:Type -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t }
         -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
-        -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a' k_a g) 
-                                                         (esubFTV a (TRefn (FTV a') 1 (Bc True)) g')) 
-                           (subFTV a (TRefn (FTV a') 1 (Bc True)) e) (tsubFTV a (TRefn (FTV a') 1 (Bc True)) t) &&
-                           typSize p_e_t == typSize p'_e_t } / [typSize p_e_t] @-}
+        -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a' k_a g) (echgFTV a a' g')) 
+                                                       (chgFTV a a e) (tsubFTV a a' t) && 
+                              typSize p_e_t == typSize p'_e_t } / [typSize p_e_t] @-}
 lem_change_tvar_typ :: Env -> Vname -> Kind -> Env -> WFEnv -> Expr -> Type 
                 -> HasType ->  Vname -> HasType
 lem_change_tvar_typ g a k_a g' p_env_wf e t (TBC {}) a' = undefined
@@ -338,9 +337,8 @@ lem_change_var_subtype g x t_x g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t' (SPoly 
       -> t':Type -> k':Kind -> ProofOf(WFType (concatE (ConsT a k_a g) g') t' k')
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE (ConsT a k_a g) g') t t' } 
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
-      -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a' k_a g) 
-                                                         (esubFTV a (TRefn (FTV a') 1 (Bc True)) g')) 
-               (tsubFTV a (TRefn (FTV a') 1 (Bc True)) t) (tsubFTV a (TRefn (FTV a') 1 (Bc True)) t') &&
+      -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a' k_a g) (echgFTV a a' g')) 
+                                                       (tchgFTV a a' t) (tchgFTV a a' t') &&
                subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t'] @-}
 lem_change_tvar_subtype :: Env -> Vname -> Kind -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype

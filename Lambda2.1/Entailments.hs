@@ -27,20 +27,20 @@ import Typing
 import BasicPropsCSubst
 import BasicPropsDenotes
 
-{-@ reflect foo27 @-}   
-foo27 x = Just x 
-foo27 :: a -> Maybe a 
+{-@ reflect foo28 @-}   
+foo28 x = Just x 
+foo28 :: a -> Maybe a 
 
 -------------------------------------------------------------
 -- | Lemma. Selfified Types are subtypes of the Original Type
 -- -----------------------------------------------------------
 
 --        -> p:Pred -> { q:Pred | Set_emp (freeBV q) } -> ProofOf(HasFType (erase_env g) p (FTBasic TBool))
-{-@ lem_implies_elimination :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th) 
+{-@ lem_implies_elimination :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
         -> p:Pred ->  q:Pred  -> ProofOf(HasFType (erase_env g) p (FTBasic TBool))
         -> ProofOf(EvalsTo (csubst th (App (App (Prim And) p) q)) (Bc True))
         -> ProofOf(EvalsTo (csubst th p) (Bc True)) @-}
-lem_implies_elimination :: Env -> CSubst -> DenotesEnv -> Pred -> Pred -> HasFType -> EvalsTo -> EvalsTo
+lem_implies_elimination :: Env -> CSub -> DenotesEnv -> Pred -> Pred -> HasFType -> EvalsTo -> EvalsTo
 lem_implies_elimination g th den_g_th p q pf_p_bl ev_thpq_tt 
   = let thp     = csubst th p
         thq     = csubst th q -- ? lem_csubst_freeBV th q
@@ -88,9 +88,9 @@ lem_entails_elimination g b x p q y pf_p_bl pf_q_bl
 {- = undefined { - 1 -}  
  = EntPred (Cons y t1 g) (unbind x y p) ev_func
   where
-    {-@ ev_func :: th:CSubst -> ProofOf(DenotesEnv (Cons y t1 g) th) 
+    {-@ ev_func :: th:CSub -> ProofOf(DenotesEnv (Cons y t1 g) th) 
                        -> ProofOf(EvalsTo (csubst th (unbind x y p)) (Bc True)) @-}
-    ev_func :: CSubst -> DenotesEnv -> EvalsTo
+    ev_func :: CSub -> DenotesEnv -> EvalsTo
     ev_func th den_g1_th = case den_g1_th of
       (DExt _g th' den_g_th' _y _t1 th'y den_th't1_th'y) ->
             lem_implies_elimination (Cons y t1 g) th den_g1_th (unbind x y p) (unbind x y q) 
@@ -161,12 +161,12 @@ lem_self_refn_sub g b z p p_g_wf p_g_t x
 { - -}
 
 --        -> p:Pred -> { q:Pred | Set_emp (freeBV q) } -> ProofOf(HasFType (erase_env g) p (FTBasic TBool))
-{-@ lem_implies_and_commutes :: g:Env -> th:CSubst -> ProofOf(DenotesEnv g th) 
+{-@ lem_implies_and_commutes :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
         -> p:Pred -> q:Pred -> ProofOf(HasFType (erase_env g) p (FTBasic TBool))
         -> ProofOf(HasFType (erase_env g) q (FTBasic TBool))
         -> ProofOf(EvalsTo (csubst th (App (App (Prim And) p) q)) (Bc True))
         -> ProofOf(EvalsTo (csubst th (App (App (Prim And) q) p)) (Bc True)) @-}
-lem_implies_and_commutes :: Env -> CSubst -> DenotesEnv -> Pred -> Pred 
+lem_implies_and_commutes :: Env -> CSub -> DenotesEnv -> Pred -> Pred 
                                 -> HasFType -> HasFType -> EvalsTo -> EvalsTo
 {-lem_implies_and_commutes = undefined {- CHECKED -}-}
 lem_implies_and_commutes g th den_g_th p q pf_p_bl pf_q_bl ev_thpq_tt 
@@ -224,9 +224,9 @@ lem_entails_and_commutes :: Env -> Basic -> Vname -> Pred -> Pred -> Vname -> Ha
 {-lem_entails_and_commutes = undefined {- CHECKED -}-}
 lem_entails_and_commutes g b x p q y pf_p_bl pf_q_bl = EntPred (Cons y t1 g) (unbind x y qandp) ev_func
   where
-    {-@ ev_func :: th:CSubst -> ProofOf(DenotesEnv (Cons y t1 g) th) 
+    {-@ ev_func :: th:CSub -> ProofOf(DenotesEnv (Cons y t1 g) th) 
                        -> ProofOf(EvalsTo (csubst th (unbind x y qandp)) (Bc True)) @-}
-    ev_func :: CSubst -> DenotesEnv -> EvalsTo
+    ev_func :: CSub -> DenotesEnv -> EvalsTo
     ev_func th den_g1_th = case den_g1_th of
       (DExt _g th' den_g_th' _y _t1 th'y den_th't1_th'y) ->
             lem_implies_and_commutes (Cons y t1 g) th den_g1_th (unbind x y p) (unbind x y q) pf_p_bl
@@ -279,9 +279,9 @@ lem_entails_trans :: Env -> Basic -> Vname -> Pred -> Vname -> Pred -> Vname -> 
 lem_entails_trans g b x1 p x2 q x3 r y (EntPred gp _unq ev_thq_func) ent_gp_r = case ent_gp_r of
   (EntPred gq _unr ev_thr_func) -> EntPred gp (unbind x3 y r) ev_thr_func'
     where
-      {-@ ev_thr_func' :: th:CSubst -> ProofOf(DenotesEnv (Cons y (TRefn b x1 p) g) th) 
+      {-@ ev_thr_func' :: th:CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x1 p) g) th) 
                                     -> ProofOf(EvalsTo (csubst th (unbind x3 y r)) (Bc True)) @-}
-      ev_thr_func' :: CSubst -> DenotesEnv -> EvalsTo
+      ev_thr_func' :: CSub -> DenotesEnv -> EvalsTo
       ev_thr_func' th den_gp_th = case den_gp_th of
         (DExt _g th' den_g_th' _y _bxp v den_thbxp_v) -> ev_thr_func th den_gq_th
           where
@@ -303,9 +303,9 @@ lem_entails_change_bv :: Env -> Basic -> Vname -> Pred -> Vname -> Pred -> Vname
 lem_entails_change_bv g b x p x' p' y = EntPred (Cons y (TRefn b x p) g) 
                                              (unbind x' y p') ev_func
   where
-    {-@ ev_func :: th:CSubst -> ProofOf(DenotesEnv (Cons y (TRefn b x p) g) th)
+    {-@ ev_func :: th:CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x p) g) th)
                              -> ProofOf(EvalsTo (csubst th (unbind x' y p')) (Bc True)) @-}
-    ev_func :: CSubst -> DenotesEnv -> EvalsTo
+    ev_func :: CSub -> DenotesEnv -> EvalsTo
     ev_func th den_gp_th = case den_gp_th of   
       (DExt _g th' den_g_th' _y _bxp v den_th'bxp_v) -> ev_th'p'v_tt
         where

@@ -26,7 +26,9 @@ foo19 :: a -> Maybe a
 
 {-@ reflect concatE @-}
 {-@ concatE :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
-                     -> { h:Env | (binds h) == (Set_cup (binds g) (binds g')) } @-}
+                     -> { h:Env | binds h   == (Set_cup (binds g)   (binds g')) &&
+                                  vbinds h  == (Set_cup (vbinds g)  (vbinds g')) &&
+                                  tvbinds h == (Set_cup (tvbinds g) (tvbinds g')) } @-}
 concatE :: Env -> Env -> Env
 concatE g Empty          = g
 concatE g (Cons  x t g') = Cons x t  (concatE g g')
@@ -75,7 +77,8 @@ lem_erase_unbind_tvT a a' (TFunc   z t_z t) = () ? lem_erase_unbind_tvT a a' t_z
 lem_erase_unbind_tvT a a' (TExists z t_z t) = () ? lem_erase_unbind_tvT a a' t
 lem_erase_unbind_tvT a a' (TPoly   a1 k1 t) = () ? lem_erase_unbind_tvT a a' t
 
-{-@ lem_erase_tsubBTV :: a:Vname -> t_a:Type -> { t:Type | same_binders t_a t }
+--{-@ lem_erase_tsubBTV :: a:Vname -> t_a:Type -> { t:Type | same_binders t_a t }
+{-@ lem_erase_tsubBTV :: a:Vname -> t_a:Type -> t:Type
         -> { pf:_ | erase (tsubBTV a t_a t) == ftsubBV a (erase t_a) (erase t) } @-}
 lem_erase_tsubBTV :: Vname -> Type -> Type -> Proof
 lem_erase_tsubBTV a t_a (TRefn   b   z p) = case b of
@@ -130,7 +133,8 @@ lem_erase_concat g (ConsT a k g') = () ? lem_erase_concat g g'
 -- -- -- -- -- -- -- -- -- -- -- --
 
 {-@ reflect esubFV @-}
-{-@ esubFV :: x:Vname -> v:Value -> g:Env -> { g':Env | binds g == binds g' } @-}
+{-@ esubFV :: x:Vname -> v:Value -> g:Env 
+      -> { g':Env | binds g == binds g' && vbinds g == vbinds g' && tvbinds g == tvbinds g' } @-}
 esubFV :: Vname -> Expr -> Env -> Env
 esubFV x e_x Empty           = Empty
 esubFV x e_x (Cons  z t_z g) = Cons z (tsubFV x e_x t_z) (esubFV x e_x g)
@@ -177,15 +181,17 @@ lem_esubFV_inverse g0 x t_x (ConsT a k g') p_g0g_wf y = case p_g0g_wf of
   (WFEBindT env' p_env'_wf _a _k)  -> () ? lem_esubFV_inverse g0 x t_x g' p_env'_wf y
 
 {-@ reflect echgFTV @-}
-{-@ echgFTV :: a:Vname -> a':Vname -> g:Env -> { g':Env | binds g == binds g' } @-}
+{-@ echgFTV :: a:Vname -> a':Vname -> g:Env 
+      -> { g':Env | binds g == binds g' && vbinds g == vbinds g' && tvbinds g == tvbinds g' } @-}
 echgFTV :: Vname -> Vname -> Env -> Env
 echgFTV a a' Empty           = Empty
 echgFTV a a' (Cons  z t_z g) = Cons z (tchgFTV a a' t_z) (echgFTV a a' g)
 echgFTV a a' (ConsT a1 k1 g) = ConsT a1 k1               (echgFTV a a' g)
 
+--{-@ esubFTV :: a:Vname -> t_a:Type -> { g:Env | same_binders_env t_a g }
 {-@ reflect esubFTV @-}
-{-@ esubFTV :: a:Vname -> t_a:Type -> { g:Env | same_binders_env t_a g }
-                   -> { g':Env | binds g == binds g' } @-}
+{-@ esubFTV :: a:Vname -> t_a:Type -> g:Env 
+      -> { g':Env | binds g == binds g' && vbinds g == vbinds g' && tvbinds g == tvbinds g' } @-}
 esubFTV :: Vname -> Type -> Env -> Env
 esubFTV a t_a Empty           = Empty
 esubFTV a t_a (Cons  z t_z g) = Cons z (tsubFTV a t_a t_z) (esubFTV a t_a g)
