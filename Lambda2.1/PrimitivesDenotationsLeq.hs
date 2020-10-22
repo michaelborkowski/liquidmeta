@@ -29,9 +29,9 @@ import Typing
 import Entailments
 import PrimitivesSemantics
 
-{-@ reflect foo32 @-}
-foo32 x = Just x
-foo32 :: a -> Maybe a
+{-@ reflect foo46 @-}
+foo46 x = Just x
+foo46 :: a -> Maybe a
 
 
 {-@ lem_den_leq :: ProofOf(Denotes (ty Leq) (Prim Leq)) @-}

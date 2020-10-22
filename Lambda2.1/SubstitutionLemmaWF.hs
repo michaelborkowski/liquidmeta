@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs #-}
 
-{-@ LIQUID "--no-termination" @-}  
-{-@ LIQUID "--no-totality" @-}  
+{- @ LIQUID "--no-termination" @-}  
+{- @ LIQUID "--no-totality" @-}  
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -34,10 +34,9 @@ import LemmasSubtyping
 import LemmasChangeVarTyp
 import LemmasWeakenTyp
 
-{-@ reflect foo35 @-}
-foo35 x = Just x
-foo35 :: a -> Maybe a
-
+{-@ reflect foo39 @-}
+foo39 x = Just x
+foo39 :: a -> Maybe a
 
 -- -- -- -- -- -- -- -- -- -- -- ---
 -- Part of the Substitution Lemma --
@@ -53,7 +52,7 @@ lem_subst_wf :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> Kind -> WFType -> WFType
 lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFBase _env b)
   = WFBase (concatE g (esubFV x v_x g')) b
-{-lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFRefn env z b p_env_b p y_ p_env'_p_bl) 
+lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFRefn env z b p_env_b p y_ p_env'_p_bl)  = undefined {-
   = WFRefn (concatE g (esubFV x v_x g')) z b p_gg'_b (subFV x v_x p) y -- _env = g'; x:tx; g
            p_ygg'_pvx_bl 
       where
@@ -74,7 +73,7 @@ lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFBase _env b)
                            (p_env'_p_bl ? lem_erase_concat (Cons x t_x g) g')
                            ? lem_commute_subFV_subBV1 z (FV y) x v_x p
                            ? lem_erase_concat g (esubFV x v_x g')
-                           ? lem_erase_esubFV x v_x g'
+                           ? lem_erase_esubFV x v_x g'-}
 lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFVar1 _env a k_a)
   = undefined
 lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFVar2 {})
@@ -82,6 +81,7 @@ lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFVar2 {})
 lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFVar3 {}) 
   = undefined
 lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFFunc _env z t_z k_z p_env_tz t' k' y_ p_yenv_t')
+  = undefined {-
   = WFFunc (concatE g (esubFV x v_x g')) z (tsubFV x v_x t_z) k_z p_g'g_tzvx 
            (tsubFV x v_x t') k' y p_yg'g_t'vx
       where
@@ -116,7 +116,8 @@ lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFExis _env z t_z k_z p_env_tz
         p_g'g_tzvx  = lem_subst_wf g g'              x v_x t_x p_vx_tx p_env_wf t_z k_z p_env_tz
         p_yg'g_t'vx = lem_subst_wf g (Cons y t_z g') x v_x t_x p_vx_tx p_yenv_wf (unbindT z y t') k'
                          (p_yenv_t' ? lem_erase_concat (Cons x t_x g) g')
-                         ? lem_commute_tsubFV_tsubBV1 z (FV y) x v_x t'
+                         ? lem_commute_tsubFV_tsubBV1 z (FV y) x 
+                               (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) t'
 lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFPoly {})
   = undefined
 lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFKind _env _t p_env_t_base)

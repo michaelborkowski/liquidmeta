@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{-@ LIQUID "--no-termination" @-} 
-{-@ LIQUID "--no-totality" @-} 
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -31,9 +29,9 @@ import LemmasWeakenWF
 import LemmasWellFormedness
 import LemmasTyping
 
-{-@ reflect foo33 @-}
-foo33 x = Just x
-foo33 :: a -> Maybe a
+{-@ reflect foo36 @-}
+foo36 x = Just x
+foo36 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
@@ -85,7 +83,7 @@ lem_sub_refl g t k p_g_t@(WFExis _g x t_x k_x p_g_tx t' k' y p_yg_t') p_g_wf -- 
           p_y_self_tx  = TVar1 g y t_x
           {-@ p_y_tx :: ProofOf(HasType (Cons y t_x g) (FV y) t_x) @-}
           p_y_tx       = case t_x of 
-            (TRefn b z p) -> TSub (Cons y t_x g) (FV y) (self t_x y) p_y_self_tx t_x k_x p_yg_tx p_selftx_tx
+            (TRefn b z p) -> TSub (Cons y t_x g) (FV y) (self t_x (FV y)) p_y_self_tx t_x k_x p_yg_tx p_selftx_tx
               where
                 p_selftx_tx = lem_self_refn_sub g b z p p_g_tx y
             _             -> p_y_self_tx 

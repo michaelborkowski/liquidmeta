@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{-@ LIQUID "--no-termination" @-}  
-{-@ LIQUID "--no-totality" @-}  
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -33,9 +31,9 @@ import LemmasTyping
 import LemmasSubtyping
 import LemmasChangeVarTyp
 
-{-@ reflect foo34 @-}
-foo34 x = Just x
-foo34 :: a -> Maybe a
+{-@ reflect foo38 @-}
+foo38 x = Just x
+foo38 :: a -> Maybe a
 
 -----------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
@@ -160,6 +158,8 @@ lem_weaken_tv_typ g g' p_env_wf e t (TVar1 {}) a k_a
 lem_weaken_tv_typ g g' p_env_wf e t (TVar2 {}) a k_a
   = undefined
 lem_weaken_tv_typ g g' p_env_wf e t (TVar3 {}) a k_a
+  = undefined
+lem_weaken_tv_typ g g' p_env_wf e t (TPrm {}) a k_a
   = undefined
 lem_weaken_tv_typ g g' p_env_wf e t (TAbs {}) a k_a
   = undefined

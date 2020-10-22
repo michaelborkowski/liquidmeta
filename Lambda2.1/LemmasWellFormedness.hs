@@ -36,7 +36,7 @@ foo34 :: a -> Maybe a
 ------------------------------------------------------------------------------
 
 {-@ lem_selfify_wf :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k ) 
-        -> { x:Vname | not (in_env x g) } -> ProofOf(WFType (Cons x t g) (self t x) k) @-}
+        -> { x:Vname | not (in_env x g) } -> ProofOf(WFType (Cons x t g) (self t (FV x)) k) @-}
 lem_selfify_wf :: Env -> Type -> Kind -> WFType -> Vname -> WFType
 lem_selfify_wf g t@(TRefn b z p) k p_g_t x = case p_g_t of
   (WFBase _g b)                       -> case b of

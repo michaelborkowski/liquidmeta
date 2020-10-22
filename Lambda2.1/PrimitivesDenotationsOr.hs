@@ -28,9 +28,9 @@ import BasicPropsCSubst
 import BasicPropsDenotes
 import PrimitivesSemantics
 
-{-@ reflect foo30 @-}
-foo30 x = Just x
-foo30 :: a -> Maybe a
+{-@ reflect foo44 @-}
+foo44 x = Just x
+foo44 :: a -> Maybe a
 
 {-@ lem_den_or :: ProofOf(Denotes (ty Or) (Prim Or)) @-}
 lem_den_or :: Denotes

@@ -31,20 +31,22 @@ foo22 :: a -> Maybe a
 ----- | METATHEORY Development for the Underlying STLC :: Technical LEMMAS
 ------------------------------------------------------------------------------
 
-{-@ lem_freeBV_unbind_empty :: x:Vname -> y:Vname -> { e:Expr | Set_emp (freeBV (unbind x y e)) }
-        -> { pf:_ | Set_emp (freeBV e) || freeBV e == Set_sng x } @-}
+{-@ lem_freeBV_unbind_empty :: x:Vname -> y:Vname 
+        -> { e:Expr | Set_emp (freeBV (unbind x y e)) && Set_emp (freeBTV (unbind x y e)) }
+        -> { pf:_ | (Set_emp (freeBV e) || freeBV e == Set_sng x) && Set_emp (freeBTV e) } @-}
 lem_freeBV_unbind_empty :: Vname -> Vname -> Expr -> Proof
 lem_freeBV_unbind_empty x y e = toProof ( S.empty === freeBV (unbind x y e)
                                       === S.difference (freeBV e) (S.singleton x) )
 
-{-@ lem_freeBTV_unbind_tv_empty :: a:Vname -> a':Vname -> { e:Expr | Set_emp (freeBTV (unbind_tv a a' e)) }
-        -> { pf:_ | Set_emp (freeBTV e) || freeBTV e == Set_sng a } @-}
+{-@ lem_freeBTV_unbind_tv_empty :: a:Vname -> a':Vname 
+        -> { e:Expr | Set_emp (freeBTV (unbind_tv a a' e)) && Set_emp (freeBV (unbind_tv a a' e)) }
+        -> { pf:_ | (Set_emp (freeBTV e) || freeBTV e == Set_sng a) && Set_emp (freeBV e) } @-}
 lem_freeBTV_unbind_tv_empty :: Vname -> Vname -> Expr -> Proof
 lem_freeBTV_unbind_tv_empty a a' e = toProof ( S.empty === freeBTV (unbind_tv a a' e)
                                       === S.difference (freeBTV e) (S.singleton a) )
 
 {-@ lem_freeBV_emptyB :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
-                              -> { pf:_ | Set_emp (freeBV e) } @-}
+                              -> { pf:_ | Set_emp (freeBV e) && Set_emp (freeBTV e) } @-}
 lem_freeBV_emptyB :: FEnv -> Expr ->  FType -> HasFType -> Proof 
 lem_freeBV_emptyB g e t (FTBC _g b)    = case e of
   (Bc _) -> ()

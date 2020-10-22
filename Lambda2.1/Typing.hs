@@ -32,34 +32,34 @@ foo25 :: a -> Maybe a
 -----------------------------------------------------------------------------
 
 {-@ reflect selfify @-} 
-{-@ selfify :: p:Pred -> b:Basic -> z:Vname -> x:Vname 
-        -> { p':Pred | fv p' == Set_cup (fv p) (Set_sng x) && 
-                       TRefn b z p' == self (TRefn b z p) x } @-}
-selfify :: Pred -> Basic -> Vname -> Vname -> Pred
-selfify p TBool   z x = App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) (FV x))
-selfify p TInt    z x = App (App (Prim And) p) (App (App (Prim Eq)  (BV z)) (FV x))
-selfify p (FTV a) z x = App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                              (TRefn (FTV a) 1 (Bc True))) (BV z)) (FV x))
-selfify p (BTV a) z x = App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                              (TRefn (BTV a) 1 (Bc True))) (BV z)) (FV x))
+{-@ selfify :: p:Pred -> b:Basic -> z:Vname -> e:Expr
+        -> { p':Pred | fv p' == Set_cup (fv p) (fv e) && 
+                       TRefn b z p' == self (TRefn b z p) e } @-}
+selfify :: Pred -> Basic -> Vname -> Expr -> Pred
+selfify p TBool   z e = App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) e)
+selfify p TInt    z e = App (App (Prim And) p) (App (App (Prim Eq)  (BV z)) e)
+selfify p (FTV a) z e = App (App (Prim And) p) (App (App (AppT (Prim Eql)
+                                              (TRefn (FTV a) 1 (Bc True))) (BV z)) e)
+selfify p (BTV a) z e = App (App (Prim And) p) (App (App (AppT (Prim Eql)
+                                              (TRefn (BTV a) 1 (Bc True))) (BV z)) e)
 
 {-@ reflect self @-}
-{-@ self :: t:Type -> x:Vname -> { t':Type | Set_sub (free t') (Set_cup (free t) (Set_sng x)) &&
-                                             tfreeBV t' == tfreeBV t && erase t == erase t' } @-}
-self :: Type -> Vname -> Type
-self (TRefn b z p) x = case b of
-  TBool   -> TRefn b z (App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) (FV x)))
-  TInt    -> TRefn b z (App (App (Prim And) p) (App (App (Prim Eq)  (BV z)) (FV x)))
+{-@ self :: t:Type -> e:Expr -> { t':Type | Set_sub (free t') (Set_cup (free t) (fv e)) &&
+                 Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (freeBV e)) && erase t == erase t' } @-}
+self :: Type -> Expr -> Type
+self (TRefn b z p) e = case b of
+  TBool   -> TRefn b z (App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) e))
+  TInt    -> TRefn b z (App (App (Prim And) p) (App (App (Prim Eq)  (BV z)) e))
   (FTV a) -> TRefn b z (App (App (Prim And) p) (App (App (AppT (Prim Eql) 
-                                                  (TRefn b 1 (Bc True))) (BV z)) (FV x)))
+                                                  (TRefn b 1 (Bc True))) (BV z)) e))
   (BTV a) -> TRefn b z (App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                                  (TRefn b 1 (Bc True))) (BV z)) (FV x)))
-self (TFunc   z t_z t) x = TFunc   z t_z t
-self (TExists z t_z t) x = TExists z t_z (self t x)
-self (TPoly   a k_a t) x = TPoly   a k_a t
+                                                  (TRefn b 1 (Bc True))) (BV z)) e))
+self (TFunc   z t_z t) e = TFunc   z t_z t
+self (TExists z t_z t) e = TExists z t_z (self t e)
+self (TPoly   a k_a t) e = TPoly   a k_a t
 
 {-@ lem_tsubFV_self1 :: z:Vname -> z':Vname -> t:Type -> { x:Vname | x == z }
-        -> { pf:_ | tsubFV z (FV z') (self t x) == self (tsubFV z (FV z') t) z' } @-}
+        -> { pf:_ | tsubFV z (FV z') (self t (FV x)) == self (tsubFV z (FV z') t) (FV z') } @-}
 lem_tsubFV_self1 :: Vname -> Vname -> Type -> Vname -> Proof
 lem_tsubFV_self1 z z' (TRefn b w p)     x = case b of
   TBool   -> () 
@@ -71,7 +71,7 @@ lem_tsubFV_self1 z z' (TExists y t_y t) x = () ? lem_tsubFV_self1 z z' t x
 lem_tsubFV_self1 z z' (TPoly   a k_a t) x = ()
 
 {-@ lem_tsubFV_self2 :: z:Vname -> v:Value -> t:Type -> { x:Vname | x != z }
-        -> { pf:_ | tsubFV z v (self t x) == self (tsubFV z v t) x } @-}
+        -> { pf:_ | tsubFV z v (self t (FV x)) == self (tsubFV z v t) (FV x) } @-}
 lem_tsubFV_self2 :: Vname -> Expr -> Type -> Vname -> Proof
 lem_tsubFV_self2 z v (TRefn b w p) x      = case b of
   TBool   -> ()
@@ -84,7 +84,7 @@ lem_tsubFV_self2 z v  (TPoly   a k_a t) x = ()
 
 
 {-@ lem_tsubFV_value_self :: b:Basic -> z:Vname -> p:Pred -> { x:Vname | not (Set_mem x (fv p)) }
-        -> v:Value -> { pf:_ | tsubFV x v (self (TRefn b z p) x) 
+        -> v:Value -> { pf:_ | tsubFV x v (self (TRefn b z p) (FV x)) 
                                 == TRefn b z (App (App (Prim And) p)
                                                   (App (App (equals b) (BV z)) v)) } @-}
 lem_tsubFV_value_self :: Basic -> Vname -> Pred -> Vname -> Expr -> Proof
@@ -129,7 +129,7 @@ data HasType where
         TBC   :: g:Env -> b:Bool -> ProofOf(HasType g (Bc b) (tybc b))
      |  TIC   :: g:Env -> n:Int -> ProofOf(HasType g (Ic n) (tyic n))
      |  TVar1 :: g:Env -> { x:Vname | not (in_env x g) } -> t:Type 
-                    -> ProofOf(HasType (Cons x t g) (FV x) (self t x))
+                    -> ProofOf(HasType (Cons x t g) (FV x) (self t (FV x)))
      |  TVar2 :: g:Env -> { x:Vname | in_env x g } -> t:Type -> ProofOf(HasType g (FV x) t)
                     -> { y:Vname | y != x && not (in_env y g) && not (Set_mem y (free t)) } -> s:Type
                     -> ProofOf(HasType (Cons y s g) (FV x) t)

@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{- @ LIQUID "--no-termination" @-}  
-{- @ LIQUID "--no-totality" @-}  
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -31,9 +29,9 @@ import LemmasWeakenWF
 import LemmasWellFormedness
 import LemmasTyping
 
-{-@ reflect foo34 @-}
-foo34 x = Just x
-foo34 :: a -> Maybe a
+{-@ reflect foo37 @-}
+foo37 x = Just x
+foo37 :: a -> Maybe a
 
 
 -----------------------------------------------------------
@@ -59,7 +57,7 @@ lem_change_var_typ g x t_x g' p_env_wf e t (TBC _ b) y
     = TBC (concatE (Cons y t_x g) (esubFV x (FV y) g')) b ? lem_tsubFV_tybc x (FV y) b
 lem_change_var_typ g x t_x g' p_env_wf e t (TIC _ n) y  
     = TIC (concatE (Cons y t_x g) (esubFV x (FV y) g')) n ? lem_tsubFV_tyic x (FV y) n
-lem_change_var_typ g x t_x g' p_env_wf e t (TVar1 _ z t') y  -- t == self t' z
+lem_change_var_typ g x t_x g' p_env_wf e t (TVar1 _ z t') y  -- t == self t' (FV z)
     = case g' of 
         (Empty)           -> TVar1 g y (tsubFV x (FV y) t_x)  ? lem_free_bound_in_env g t_x k_x p_g_tx x
         {- x = z and t_x = t' -}                              ? lem_tsubFV_self1 x y t' z 
@@ -180,7 +178,7 @@ lem_change_var_typ g x t_x g' p_env_wf e t p_e_t@(TSub env _e s p_env_e_s _t k p
         -> e:Expr -> t:Type -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t }
         -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a' k_a g) (echgFTV a a' g')) 
-                                                       (chgFTV a a e) (tsubFTV a a' t) && 
+                                                       (chgFTV a a' e) (tchgFTV a a' t) && 
                               typSize p_e_t == typSize p'_e_t } / [typSize p_e_t] @-}
 lem_change_tvar_typ :: Env -> Vname -> Kind -> Env -> WFEnv -> Expr -> Type 
                 -> HasType ->  Vname -> HasType
