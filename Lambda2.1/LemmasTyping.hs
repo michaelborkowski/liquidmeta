@@ -57,6 +57,30 @@ lem_tsubFV_ty x v_x Eq       = ()
 lem_tsubFV_ty x v_x (Eqn n)  = ()
 lem_tsubFV_ty x v_x Eql      = ()
 
+{-@ lem_tsubFTV_tybc :: a:Vname -> t_a:Type -> b:Bool
+        -> { pf:_ | tsubFTV a t_a (tybc b) == tybc b } @-}
+lem_tsubFTV_tybc :: Vname -> Type -> Bool -> Proof
+lem_tsubFTV_tybc a t_a True  = ()
+lem_tsubFTV_tybc a t_a False = ()
+
+{-@ lem_tsubFTV_tyic :: a:Vname -> t_a:Type -> n:Int
+        -> { pf:_ | tsubFTV a t_a (tyic n) == tyic n } @-}
+lem_tsubFTV_tyic :: Vname -> Type -> Int -> Proof
+lem_tsubFTV_tyic a t_a n = ()
+
+{-@ lem_tsubFTV_ty :: a:Vname -> t_a:Type -> c:Prim
+        -> { pf:_ | tsubFTV a t_a (ty c) == ty c } @-}
+lem_tsubFTV_ty :: Vname -> Type -> Prim -> Proof
+lem_tsubFTV_ty a t_a And      = ()
+lem_tsubFTV_ty a t_a Or       = () 
+lem_tsubFTV_ty a t_a Not      = ()
+lem_tsubFTV_ty a t_a Eqv      = ()
+lem_tsubFTV_ty a t_a Leq      = ()
+lem_tsubFTV_ty a t_a (Leqn n) = ()
+lem_tsubFTV_ty a t_a Eq       = ()
+lem_tsubFTV_ty a t_a (Eqn n)  = ()
+lem_tsubFTV_ty a t_a Eql      = ()
+
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------

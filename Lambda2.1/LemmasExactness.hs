@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{-@ LIQUID "--no-termination" @-} -- TODO assume
-{-@ LIQUID "--no-totality" @-} -- TODO assume
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -45,12 +43,12 @@ foo52 x = Just x
 foo52 :: a -> Maybe a
 
 {-@ lem_self_idempotent_upper :: g:Env -> t:Type -> k:Kind -> e:Expr -> ProofOf(WFType g t k)
-        -> ProofOf(WFEnv g) -> ProofOf(Subtype (self t e) (self (self t e) e)) @-}
+        -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self t e) (self (self t e) e)) @-}
 lem_self_idempotent_upper :: Env -> Type -> Kind -> Expr -> WFType -> WFEnv -> Subtype
 lem_self_idempotent_upper = undefined
 
 {-@ lem_self_idempotent_lower :: g:Env -> t:Type -> k:Kind -> e:Expr -> ProofOf(WFType g t k)
-        -> ProofOf(WFEnv g) -> ProofOf(Subtype (self (self t e) e) (self t e)) @-}
+        -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self (self t e) e) (self t e)) @-}
 lem_self_idempotent_lower :: Env -> Type -> Kind -> Expr -> WFType -> WFEnv -> Subtype
 lem_self_idempotent_lower g (TRefn b z p) k e p_g_t p_g_wf 
   = undefined

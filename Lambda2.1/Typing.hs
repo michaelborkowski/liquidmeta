@@ -497,9 +497,16 @@ get_ftyp_from_den t v (DExis _ _ _ _ pf_v_b _ _ _) = pf_v_b
 get_ftyp_from_den t v (DPoly _ _ _ _ pf_v_b _)     = pf_v_b
 
 {-@ lem_den_nofv :: v:Value -> t:Type -> ProofOf(Denotes t v) 
-        -> { pf:_ | Set_emp (fv v) } @-}
+        -> { pf:_ | Set_emp (fv v) && Set_emp (ftv v) } @-}
 lem_den_nofv :: Expr -> Type -> Denotes -> Proof
 lem_den_nofv v t den_t_v = lem_fv_subset_bindsF FEmpty v (erase t) pf_v_bt
+  where
+    pf_v_bt = get_ftyp_from_den t v den_t_v
+
+{-@ lem_den_nobv :: v:Value -> t:Type -> ProofOf(Denotes t v) 
+        -> { pf:_ | Set_emp (freeBV v) && Set_emp (freeBTV v) } @-}
+lem_den_nobv :: Expr -> Type -> Denotes -> Proof
+lem_den_nobv v t den_t_v = lem_freeBV_emptyB FEmpty v (erase t) pf_v_bt
   where
     pf_v_bt = get_ftyp_from_den t v den_t_v
 

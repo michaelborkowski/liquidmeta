@@ -261,36 +261,31 @@ lem_fv_bound_in_fenv g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') x = cas
 lem_fv_bound_in_fenv g e t (FTAnn _g e' _t ann_t p_e'_t) x = () ? lem_fv_bound_in_fenv g e' t p_e'_t x
 
 {-@ lem_fv_subset_bindsF :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
-                -> { pf:_ | Set_sub (fv e) (bindsF g) } @-}
+                -> { pf:_ | Set_sub (Set_cup (fv e) (ftv e)) (bindsF g) } @-}
 lem_fv_subset_bindsF :: FEnv -> Expr -> FType -> HasFType -> Proof
-lem_fv_subset_bindsF g e t (FTBC _g b)       = case e of
-  (Bc _b) -> () 
-lem_fv_subset_bindsF g e t (FTIC _g n)       = case e of
-  (Ic _n) -> ()
-lem_fv_subset_bindsF g e t (FTVar1 _ y _t)   = case e of
-  (FV _y) -> ()
-lem_fv_subset_bindsF g e t (FTVar2 _ y _t p_y_t z t') = case e of
-  (FV _y) -> ()
-lem_fv_subset_bindsF g e t (FTVar3 _ y _t p_y_t a k)  = case e of
-  (FV _y) -> ()
-lem_fv_subset_bindsF g e t (FTPrm _g c)      = case e of
-  (Prim _c) -> ()
-lem_fv_subset_bindsF g e t (FTAbs _g y t_y _ _ e' t' y' p_e'_t') = case e of
-  (Lambda _ _) -> () ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
-lem_fv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) = case e of
-  (App _ _) -> () ? lem_fv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt' 
-                  ? lem_fv_subset_bindsF g e2 t_y p_e2_ty 
-lem_fv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t') = case e of
-  (LambdaT _ _ _) -> () ? lem_fv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e') 
-                                               (unbindFT a a' t') p_e'_t' 
-lem_fv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2 _) = case e of
-  (AppT _ _) -> () ? lem_fv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
-lem_fv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') = case e of
-  (Let _ _ _) -> () ? lem_fv_subset_bindsF g e_y t_y p_ey_ty 
-                    ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
-lem_fv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t) = case e of
-  (Annot _ _) -> () ? lem_fv_subset_bindsF g e' t p_e'_t 
+lem_fv_subset_bindsF g e t (FTBC _g b)       = ()
+lem_fv_subset_bindsF g e t (FTIC _g n)       = ()
+lem_fv_subset_bindsF g e t (FTVar1 _ y _t)   = ()
+lem_fv_subset_bindsF g e t (FTVar2 _ y _t p_y_t z t') = ()
+lem_fv_subset_bindsF g e t (FTVar3 _ y _t p_y_t a k)  = ()
+lem_fv_subset_bindsF g e t (FTPrm _g c)      = ()
+lem_fv_subset_bindsF g e t (FTAbs _g y t_y _ _ e' t' y' p_e'_t')  
+    = () ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_fv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) 
+    = () ? lem_fv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt' 
+         ? lem_fv_subset_bindsF g e2 t_y p_e2_ty 
+lem_fv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t')  
+    = () ? lem_fv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e') 
+                                (unbindFT a a' t') p_e'_t' 
+lem_fv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2 _) 
+    = () ? lem_fv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
+lem_fv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')  
+    = () ? lem_fv_subset_bindsF g e_y t_y p_ey_ty 
+         ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
+lem_fv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t) 
+    = () ? lem_fv_subset_bindsF g e' t p_e'_t 
 
+-- delete this one at some point, its predicate folded into the above
 {-@ lem_ftv_subset_bindsF :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
                 -> { pf:_ | Set_sub (ftv e) (bindsF g) } @-}
 lem_ftv_subset_bindsF :: FEnv -> Expr -> FType -> HasFType -> Proof
@@ -322,31 +317,6 @@ lem_ftv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') = case
 lem_ftv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t) = case e of
   (Annot _ _) -> () ? lem_ftv_subset_bindsF g e' t p_e'_t 
 
-{-
-{-@ lem_fv_ftv_subset_bindsF :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
-                -> { pf:_ | Set_sub (Set_cup (fv e) (ftv e)) (bindsF g) } @-}
-lem_fv_ftv_subset_bindsF :: FEnv -> Expr -> FType -> HasFType -> Proof
-lem_fv_ftv_subset_bindsF g e t (FTBC _g b)       = ()
-lem_fv_ftv_subset_bindsF g e t (FTIC _g n)       = ()
-lem_fv_ftv_subset_bindsF g e t (FTVar1 _ y _t)   = ()
-lem_fv_ftv_subset_bindsF g e t (FTVar2 _ y _t p_y_t z t') = ()
-lem_fv_ftv_subset_bindsF g e t (FTVar3 _ y _t p_y_t a k)  = ()
-lem_fv_ftv_subset_bindsF g e t (FTPrm _g c)      = ()
-lem_fv_ftv_subset_bindsF g e t (FTAbs _g y t_y e' t' y' p_e'_t')  
-    = () ? lem_fv_ftv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
-lem_fv_ftv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) 
-    = () ? lem_fv_ftv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt' 
-         ? lem_fv_ftv_subset_bindsF g e2 t_y p_e2_ty 
-lem_fv_ftv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t')  
-    = () ? lem_fv_ftv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e') t' p_e'_t' 
-lem_fv_ftv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2) 
-    = () ? lem_fv_ftv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
-lem_fv_ftv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')  
-    = () ? lem_fv_ftv_subset_bindsF g e_y t_y p_ey_ty 
-         ? lem_fv_ftv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
-lem_fv_ftv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t) 
-    = () ? lem_fv_ftv_subset_bindsF g e' t p_e'_t 
--}
 {-@ lem_free_bound_in_env :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
                 -> { x:Vname | not (in_env x g) }
                 -> { pf:_ | not (Set_mem x (free t)) && not (Set_mem x (freeTV t)) } @-}

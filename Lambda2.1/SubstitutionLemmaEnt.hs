@@ -33,7 +33,7 @@ import LemmasTyping
 import LemmasSubtyping
 import LemmasChangeVarTyp
 import LemmasWeakenTyp
---import SubstitutionLemmaWF
+import SubstitutionLemmaWF
 import DenotationsSelfify
 import DenotationsSoundnessSub
 import PrimitivesSemantics
@@ -62,13 +62,39 @@ lem_subst_wfenv g Empty           x v_x t_x p_vx_tx p_xg_wf  = case p_xg_wf of
   (WFEBind  _g p_g_wf _x _tx _ _) -> p_g_wf
   (WFEBindT _g p_g_wf _  _)       -> p_g_wf
 lem_subst_wfenv g (Cons z t_z g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
-  (WFEBind env' p_env'_wf _z _tz p_env'_tz) -> WFEBind env'' p_env''_wf z (tsubFV x v_x t_z) p_env''_tzvx
-    where
-      env''        = concatE g (esubFV x v_x g')
-      p_env''_wf   = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
-      p_env''_tzvx = lem_subst_wf g g' x v_x t_x p_vx_tx p_env'_wf t_z p_env'_tz
+  (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) 
+    -> WFEBind env'' p_env''_wf z (tsubFV x v_x t_z) k_z p_env''_tzvx
+      where
+        env''        = concatE g (esubFV x v_x g')
+        p_env''_wf   = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
+        p_env''_tzvx = lem_subst_wf g g' x v_x t_x p_vx_tx p_env'_wf t_z k_z p_env'_tz
 lem_subst_wfenv g (ConsT a k_a g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
-  (WFEBindT {}) -> undefined
+  (WFEBindT env' p_env'_wf _a _ka)           -> WFEBindT env'' p_env''_wf a k_a
+    where
+      env''      = concatE g (esubFV x v_x g')
+      p_env''_wf = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
+
+{-@ lem_subst_tv_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+        -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type
+        -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
+        -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') )
+        -> ProofOf(WFEnv (concatE g (esubFTV a t_a g')) ) / [envSize g'] @-}
+lem_subst_tv_wfenv :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv -> WFEnv
+lem_subst_tv_wfenv g Empty           a t_a k_a p_g_ta p_xg_wf  = case p_xg_wf of
+  (WFEBind  _g p_g_wf _ _ _ _) -> p_g_wf
+  (WFEBindT _g p_g_wf _ _)     -> p_g_wf
+lem_subst_tv_wfenv g (Cons z t_z g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
+  (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) 
+    -> WFEBind env'' p_env''_wf z (tsubFTV a t_a t_z) k_z p_env''_tzta
+      where
+        env''        = concatE g (esubFTV a t_a g')
+        p_env''_wf   = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env'_wf
+        p_env''_tzta = lem_subst_tv_wf    g g' a t_a k_a p_g_ta p_env'_wf t_z k_z p_env'_tz
+lem_subst_tv_wfenv g (ConsT a1 k1 g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
+  (WFEBindT env' p_env'_wf _a1 _k1)          -> WFEBindT env'' p_env''_wf a1 k1
+    where
+      env''      = concatE g (esubFTV a t_a g')
+      p_env''_wf = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env'_wf
 
 data AugmentedCSubP where
     AugmentedCSub :: Env -> Env -> Vname -> Expr -> Type -> CSub -> AugmentedCSubP
@@ -78,12 +104,28 @@ data AugmentedCSub where
                       -> (Expr -> Proof) -> (Type -> Proof) -> AugmentedCSub
 
 {-@ data AugmentedCSub where
-    InsertInCS :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
-        -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value -> t_x:Type 
-        -> th':CSub -> th:CSub -> ProofOf(DenotesEnv (concatE (Cons x t_x g) g') th)
-        -> ( p:Pred -> { pf:Proof | csubst th p  ==  csubst th'  (subFV x v_x p) } )
-        -> ( t:Type -> { pf:Proof | ctsubst th t == ctsubst th' (tsubFV x v_x t) } )
-        -> ProofOf(AugmentedCSub g g' x v_x t_x th') @-}
+      InsertInCS :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+          -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value -> t_x:Type 
+          -> th':CSub -> th:CSub -> ProofOf(DenotesEnv (concatE (Cons x t_x g) g') th)
+          -> ( p:Pred -> { pf:Proof | csubst th p  ==  csubst th'  (subFV x v_x p) } )
+          -> ( t:Type -> { pf:Proof | ctsubst th t == ctsubst th' (tsubFV x v_x t) } )
+          -> ProofOf(AugmentedCSub g g' x v_x t_x th') @-}
+
+data TVAugmentedCSubP where
+    TVAugmentedCSub :: Env -> Env -> Vname -> Type -> Kind -> CSub -> TVAugmentedCSubP
+
+data TVAugmentedCSub where
+    InsertTVInCS :: Env -> Env -> Vname -> Type -> Kind -> CSub -> CSub -> DenotesEnv
+                      -> (Expr -> Proof) -> (Type -> Proof) -> TVAugmentedCSub
+
+{-@ data TVAugmentedCSub where
+      InsertTVInCS :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+          -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type -> k_a:Kind
+          -> th':CSub -> th:CSub -> ProofOf(DenotesEnv (concatE (ConsT a k_a g) g') th)
+          -> ( p:Pred -> { pf:Proof | csubst th p  ==  csubst th'  (subFTV a t_a p) } )
+          -> ( t:Type -> { pf:Proof | ctsubst th t == ctsubst th' (tsubFTV a t_a t) } )
+          -> ProofOf(TVAugmentedCSub g g' a t_a k_a th') @-}
+
 
 {-@ lem_add_var_csubst :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
@@ -184,12 +226,26 @@ lem_add_var_csubst g (Cons z t_z g') x v_x_ t_x p_vx_tx p_zenv_wf zth' den_zenv'
                                             === ctsubst th (tsubFV z v_z t) ) -}
 lem_add_var_csubst g (ConsT a k_a g') x v_x_ t_x p_vx_tx p_zenv_wf zth' den_zenv'_zth' = undefined
 
+{-@ lem_add_tvar_csubst :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+        -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type
+        -> k_a:Kind -> ProofOf(WFType g t_a k_a)
+        -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') )
+        -> th':CSub -> ProofOf(DenotesEnv (concatE g (esubFTV a t_a g')) th')
+        -> ProofOf(TVAugmentedCSub g g' a t_a k_a th') / [envSize g'] @-}
+lem_add_tvar_csubst :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
+                          -> CSub -> DenotesEnv -> TVAugmentedCSub
+lem_add_tvar_csubst g Empty            a t_a k_a p_g_ta p_env_wf   th'   den_env'_th'
+  = undefined
+lem_add_tvar_csubst g (Cons  z t_z g') a t_a k_a p_g_ta p_zenv_wf  zth'  den_zenv'_zth'
+  = undefined
+lem_add_tvar_csubst g (ConsT a1 k1 g') a t_a k_a p_g_ta p_a1env_wf a1th' den_a1env'_a1th'
+  = undefined
 
 {-@ lem_subst_ent :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
             -> t_x:Type -> ProofOf(HasType g v_x t_x) 
             -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) 
-            -> { p:Pred | Set_sub (fv p) (binds (concatE (Cons x t_x g) g')) }
+            -> { p:Pred | Set_sub (Set_cup (fv p) (ftv p)) (binds (concatE (Cons x t_x g) g')) }
             -> ProofOf(Entails (concatE (Cons x t_x g) g') p) 
             -> ProofOf(Entails (concatE g (esubFV x v_x g')) (subFV x v_x p)) @-}
 lem_subst_ent :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv -> Pred -> Entails -> Entails
@@ -204,3 +260,22 @@ lem_subst_ent g g' x v_x t_x p_vx_tx p_env_wf p (EntPred env _p evals_func)
             (InsertInCS _ _ _ _ _ _ th den_env_th eq_func _) 
                 = lem_add_var_csubst g g' x v_x t_x p_vx_tx p_env_wf th' den_env'_th'
 
+{-@ lem_subst_tv_ent :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
+            -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type
+            -> k_a:Kind -> ProofOf(WFType g t_a k_a)
+            -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') ) 
+            -> { p:Pred | Set_sub (Set_cup (fv p) (ftv p)) (binds (concatE (ConsT a k_a g) g')) }
+            -> ProofOf(Entails (concatE (ConsT a k_a g) g') p) 
+            -> ProofOf(Entails (concatE g (esubFTV a t_a g')) (subFTV a t_a p)) @-}
+lem_subst_tv_ent :: Env -> Env -> Vname -> Type -> Kind -> WFType 
+                        -> WFEnv -> Pred -> Entails -> Entails
+lem_subst_tv_ent g g' a t_a k_a p_g_ta p_env_wf p (EntPred env _p evals_func)
+  = EntPred (concatE g (esubFTV a t_a g')) (subFTV a t_a p) evals_func'
+      where
+        {-@ evals_func' :: th':CSub -> ProofOf(DenotesEnv (concatE g (esubFTV a t_a g')) th')
+                                 -> ProofOf(EvalsTo (csubst th' (subFTV a t_a p)) (Bc True)) @-}
+        evals_func' :: CSub -> DenotesEnv -> EvalsTo
+        evals_func' th' den_env'_th' = evals_func th den_env_th ? eq_func p
+          where
+            (InsertTVInCS _ _ _ _ _ _ th den_env_th eq_func _) 
+                = lem_add_tvar_csubst g g' a t_a k_a p_g_ta p_env_wf th' den_env'_th'
