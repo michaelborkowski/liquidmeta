@@ -116,7 +116,7 @@ lem_weaken_wffunc g g' p_env_wf t k p_t_wf@(WFFunc env y t_y k_y p_ty_wf t' k' y
             -> ProofOf(WFEnv (concatE g g')) -> t:Type -> k:Kind
             -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && isWFExis p_t_wf }
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> t_x:Type 
-            -> WeakenWFHypothesis (wftypSize p_t_wf)            
+            -> WeakenWFHypothesis (wftypSize p_t_wf)
             -> { pf:WFType | propOf pf == (WFType (concatE (Cons x t_x g) g') t k) } / [wftypSize p_t_wf] @-}
 lem_weaken_wfexis :: Env -> Env -> WFEnv -> Type -> Kind -> WFType 
                          -> Vname -> Type -> WeakenWFHypothesis -> WFType 
@@ -157,14 +157,14 @@ lem_weaken_wfkind g g' p_env_wf t k p_t_wf@(WFKind env _t pf_env_t_base) x t_x
 -}
 {-@ type WeakenWFHypothesis N = g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> ProofOf(WFEnv (concatE g g')) -> t:Type -> k:Kind
-            -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && wftypSize p_t_wf <= N }
+            -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && wftypSize p_t_wf < N }
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> t_x:Type 
             -> { pf:WFType | propOf pf == (WFType (concatE (Cons x t_x g) g') t k) } @-}
 type WeakenWFHypothesis = Env -> Env -> WFEnv -> Type -> Kind -> WFType -> Vname -> Type -> WFType 
 
-{-@ lem_weaken_wf_ind :: { n:Int | n > 0 } -> g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
+{-@ lem_weaken_wf_ind :: { n:Int | n >= 0 } -> g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> ProofOf(WFEnv (concatE g g')) -> t:Type -> k:Kind
-            -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && wftypSize p_t_wf <= n }
+            -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && wftypSize p_t_wf < n }
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> t_x:Type 
             -> { pf:WFType | propOf pf == (WFType (concatE (Cons x t_x g) g') t k) } / [n] @-}
 lem_weaken_wf_ind :: Int -> Env -> Env -> WFEnv -> Type -> Kind -> WFType -> Vname -> Type -> WFType
@@ -187,7 +187,7 @@ lem_weaken_wf :: Env -> Env -> WFEnv -> Type -> Kind -> WFType -> Vname -> Type 
             -> { pf:WFType | propOf pf == (WFType (concatE (Cons x t_x g) g') t k) } @-}
 lem_weaken_wf :: Env -> Env -> WFEnv -> Type -> Kind -> WFType -> Vname -> Type -> WFType 
 lem_weaken_wf g g' p_env_wf t k p_t_wf x t_x 
-  = lem_weaken_wf_ind (wftypSize p_t_wf) g g' p_env_wf t k p_t_wf x t_x 
+  = lem_weaken_wf_ind ((wftypSize p_t_wf)+1) g g' p_env_wf t k p_t_wf x t_x 
 {-lem_weaken_wf g g' p_env_wf t k p_t_wf@(WFBase {}) x t_x
   = lem_weaken_wfbase g g' p_env_wf t k p_t_wf x t_x 
 lem_weaken_wf g g' p_env_wf t k p_t_wf@(WFRefn {}) x t_x
