@@ -29,15 +29,15 @@ foo12 x = Just x
 lem_wf_intype_leqn :: Int -> Proof
 lem_wf_intype_leqn n = ()
 
-{-@ lem_wf_ty'_leqn :: n:Int -> { pf:_ | noDefnsInRefns (Cons (firstBV (Leqn n)) (inType (Leqn n)) Empty) 
-                                           (unbindT (firstBV (Leqn n)) (firstBV (Leqn n)) (ty' (Leqn n)))
-                                 && isWellFormed (Cons (firstBV (Leqn n)) (inType (Leqn n)) Empty) 
-                                      (unbindT (firstBV (Leqn n)) (firstBV (Leqn n)) (ty' (Leqn n))) Star } @-}
-lem_wf_ty'_leqn :: Int -> Proof
-lem_wf_ty'_leqn n = ()
+{-@ lem_wf_ty'_leqn :: n:Int -> y:Int -> { pf:_ | noDefnsInRefns (Cons y (inType (Leqn n)) Empty) 
+                                           (unbindT (firstBV (Leqn n)) y (ty' (Leqn n)))
+                                 && isWellFormed (Cons y (inType (Leqn n)) Empty) 
+                                      (unbindT (firstBV (Leqn n)) y (ty' (Leqn n))) Star } @-}
+lem_wf_ty'_leqn :: Int -> Int -> Proof
+lem_wf_ty'_leqn n y = ()
 
 {-@ lem_wf_ty_leqn :: n:Int -> { pf:_ | noDefnsInRefns Empty (ty (Leqn n)) 
                                           && isWellFormed Empty (ty (Leqn n)) Star } @-}
 lem_wf_ty_leqn :: Int -> Proof
-lem_wf_ty_leqn n = () ? lem_wf_intype_leqn n ? lem_wf_ty'_leqn n
+lem_wf_ty_leqn n = () ? lem_wf_intype_leqn n ? lem_wf_ty'_leqn n (firstBV (Leqn n))
 

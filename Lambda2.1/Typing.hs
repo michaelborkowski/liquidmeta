@@ -185,6 +185,47 @@ typSize (TLet _ _ _ p_ex_b _ _ _ _ _ _ p_e_b') = (typSize p_ex_b)  + (typSize p_
 typSize (TAnn _ _ _ p_e_b)                     = (typSize p_e_b)   + 1
 typSize (TSub _ _ _ p_e_s _ _ _ p_s_t)         = (typSize p_e_s)   + (subtypSize p_s_t) + 1
 
+{-@ measure isTVar @-}
+isTVar :: HasType -> Bool
+isTVar (TVar1 {}) = True
+isTVar (TVar2 {}) = True
+isTVar (TVar3 {}) = True
+isTVar _          = False
+
+{-@ measure isTAbs @-}
+isTAbs :: HasType -> Bool
+isTAbs (TAbs {}) = True
+isTAbs _         = False
+
+{-@ measure isTApp @-}
+isTApp :: HasType -> Bool
+isTApp (TApp {}) = True
+isTApp _         = False
+
+{-@ measure isTAbsT @-}
+isTAbsT :: HasType -> Bool
+isTAbsT (TAbsT {}) = True
+isTAbsT _          = False
+
+{-@ measure isTAppT @-}
+isTAppT :: HasType -> Bool
+isTAppT (TAppT {}) = True
+isTAppT _          = False
+
+{-@ measure isTLet @-}
+isTLet :: HasType -> Bool
+isTLet (TLet {}) = True
+isTLet _         = False
+
+{-@ measure isTAnn @-}
+isTAnn :: HasType -> Bool
+isTAnn (TAnn {}) = True
+isTAnn _         = False
+
+{-@ measure isTSub @-}
+isTSub :: HasType -> Bool
+isTSub (TSub {}) = True
+isTSub _         = False
 
 ------------------------------------------------------------------------------
 ----- | SUBTYPING

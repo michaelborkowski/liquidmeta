@@ -28,14 +28,14 @@ foo08 x = Just x
 lem_wf_intype_or :: () -> Proof
 lem_wf_intype_or _ = ()
 
-{-@ lem_wf_ty'_or :: () -> { pf:_ | noDefnsInRefns (Cons (firstBV Or) (inType Or) Empty) 
-                                              (unbindT (firstBV Or) (firstBV Or) (ty' Or))
-                                 && isWellFormed (Cons (firstBV Or) (inType Or) Empty) 
-                                                 (unbindT (firstBV Or) (firstBV Or) (ty' Or)) Star } @-}
-lem_wf_ty'_or :: () -> Proof
-lem_wf_ty'_or _ = ()
+{-@ lem_wf_ty'_or :: y:Int -> { pf:_ | noDefnsInRefns (Cons y (inType Or) Empty) 
+                                              (unbindT (firstBV Or) y (ty' Or))
+                                 && isWellFormed (Cons y (inType Or) Empty) 
+                                                 (unbindT (firstBV Or) y (ty' Or)) Star } @-}
+lem_wf_ty'_or :: Int -> Proof
+lem_wf_ty'_or y = ()
 
 {-@ lem_wf_ty_or :: () -> { pf:_ | noDefnsInRefns Empty (ty Or) && isWellFormed Empty (ty Or) Star } @-}
 lem_wf_ty_or :: () -> Proof
-lem_wf_ty_or _ = () ? lem_wf_intype_or () ? lem_wf_ty'_or ()
+lem_wf_ty_or _ = () ? lem_wf_intype_or () ? lem_wf_ty'_or (firstBV Or)
 

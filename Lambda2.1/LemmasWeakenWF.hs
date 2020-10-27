@@ -34,12 +34,12 @@ foo32 :: a -> Maybe a
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------
 
+--                             wftypSize pf == wftypSize p_t_wf } / [wftypSize p_t_wf] @-}
 {-@ lem_weaken_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> ProofOf(WFEnv (concatE g g')) -> t:Type -> k:Kind
             -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k }
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> t_x:Type 
-            -> { pf:WFType | propOf pf == (WFType (concatE (Cons x t_x g) g') t k) &&
-                             wftypSize pf == wftypSize p_t_wf } / [wftypSize p_t_wf] @-}
+            -> { pf:WFType | propOf pf == (WFType (concatE (Cons x t_x g) g') t k) } / [wftypSize p_t_wf] @-}
 lem_weaken_wf :: Env -> Env -> WFEnv -> Type -> Kind -> WFType -> Vname -> Type -> WFType 
 lem_weaken_wf g g' p_env_wf t k p_t_wf@(WFBase env b) x t_x
     = WFBase (concatE (Cons x t_x g) g') b

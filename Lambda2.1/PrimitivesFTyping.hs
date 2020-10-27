@@ -44,6 +44,11 @@ isLambda :: Expr -> Bool
 isLambda (Lambda _ _ ) = True
 isLambda _             = False
 
+{-@ reflect isLambdaT @-}
+isLambdaT :: Expr -> Bool
+isLambdaT (LambdaT _ _ _) = True
+isLambdaT _               = False
+
 {-@ reflect isPrim @-}
 isPrim :: Expr -> Bool
 isPrim (Prim _) = True
@@ -55,6 +60,13 @@ isPrim _        = False
 lemma_function_values :: Expr -> FType -> FType -> HasFType -> Proof
 lemma_function_values e t t' (FTPrm {})   = ()     
 lemma_function_values e t t' (FTAbs {})   = ()    
+
+{-@ lemma_tfunction_values :: v:Value -> a:Vname -> k:Kind -> t:FType
+        -> ProofOf(HasFType FEmpty v (FTPoly a k t))
+        -> { pf:_ | isLambdaT v || isPrim v } @-}
+lemma_tfunction_values :: Expr -> Vname -> Kind -> FType -> HasFType -> Proof
+lemma_tfunction_values v a k t (FTPrm  {})   = ()     
+lemma_tfunction_values v a k t (FTAbsT {})   = ()    
 
 {-@ lem_delta_and_ftyp :: v:Value -> t_x:FType -> t':FType
         -> ProofOf(HasFType FEmpty (Prim And) (FTFunc t_x t')) -> ProofOf(HasFType FEmpty v t_x)

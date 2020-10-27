@@ -14,9 +14,6 @@ import Basics
 import SystemFWellFormedness
 import SystemFTyping
 
--- force these into scope for LH
-typing = HasFType
-
 {-@ reflect foo05 @-}
 foo05 :: a -> Maybe a
 foo05 x = Just x
@@ -71,7 +68,7 @@ data WFType where
   -- TODO: what happened to k_t in WFPoly? why Star?
 
 {-@ measure wftypSize @-}
-{-@ wftypSize :: WFType -> { v:Int | v >= 0 } @-}
+{-@ wftypSize :: WFType -> { v:Int | v > 0 } @-}
 wftypSize :: WFType -> Int
 wftypSize (WFBase _ _)                            = 1
 wftypSize (WFRefn g x b p_g_b p y p_yg_p_bl)      = (wftypSize p_g_b)  + 1
@@ -82,6 +79,43 @@ wftypSize (WFFunc g x t_x _ p_g_tx _ t y p_yg_t)  = (wftypSize p_g_tx) + (wftypS
 wftypSize (WFExis g x t_x _ p_g_tx _ t y p_yg_t)  = (wftypSize p_g_tx) + (wftypSize p_yg_t) + 1
 wftypSize (WFPoly _ _ _ _ _ _ p_a'g_t)            = (wftypSize p_a'g_t) + 1
 wftypSize (WFKind _ _ p_g_t)                      = (wftypSize p_g_t)  + 1
+
+{-@ reflect isWFBase @-}
+isWFBase :: WFType -> Bool
+isWFBase (WFBase {}) = True
+isWFBase _           = False
+
+{-@ reflect isWFRefn @-}
+isWFRefn :: WFType -> Bool
+isWFRefn (WFRefn {}) = True
+isWFRefn _           = False
+
+{-@ reflect isWFVar @-}
+isWFVar :: WFType -> Bool
+isWFVar (WFVar1 {}) = True
+isWFVar (WFVar2 {}) = True
+isWFVar (WFVar3 {}) = True
+isWFVar _           = False
+
+{-@ reflect isWFFunc @-}
+isWFFunc :: WFType -> Bool
+isWFFunc (WFFunc {}) = True
+isWFFunc _           = False
+
+{-@ reflect isWFExis @-}
+isWFExis :: WFType -> Bool
+isWFExis (WFExis {}) = True
+isWFExis _           = False
+
+{-@ reflect isWFPoly @-}
+isWFPoly :: WFType -> Bool
+isWFPoly (WFPoly {}) = True
+isWFPoly _           = False
+
+{-@ reflect isWFKind @-}
+isWFKind :: WFType -> Bool
+isWFKind (WFKind {}) = True
+isWFKind _           = False
 
 {-@ simpleWFVar :: g:Env -> { a:Vname | in_env a g } -> { k:Kind | tv_bound_in a k g }
                 -> ProofOf(WFType g (TRefn (FTV a) 1 (Bc True)) k) @-}

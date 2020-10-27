@@ -61,15 +61,49 @@ lem_wf_tyic g n = WFRefn g 1 TInt (WFBase g TInt) pred y pf_pr_bool
     pf_pr_bool  = FTApp g' (App (Prim Eq) (FV y)) (FTBasic TInt) (FTBasic TBool) 
                            pf_eq_v (Ic n) (FTIC g' n)
 
+{-@ lem_wf_intype :: { c:Prim | not (c == Eql) } -> ProofOf(WFType Empty (inType c) Base) @-}
+lem_wf_intype :: Prim -> WFType
+lem_wf_intype And      = makeWFType Empty (inType And)      Base ? lem_wf_intype_and ()
+lem_wf_intype Or       = makeWFType Empty (inType Or)       Base ? lem_wf_intype_or ()
+lem_wf_intype Not      = makeWFType Empty (inType Not)      Base ? lem_wf_intype_not ()
+lem_wf_intype Eqv      = makeWFType Empty (inType Eqv)      Base ? lem_wf_intype_eqv ()
+lem_wf_intype Leq      = makeWFType Empty (inType Leq)      Base ? lem_wf_intype_leq ()
+lem_wf_intype (Leqn n) = makeWFType Empty (inType (Leqn n)) Base ? lem_wf_intype_leqn n
+lem_wf_intype Eq       = makeWFType Empty (inType Eq)       Base ? lem_wf_intype_eq ()
+lem_wf_intype (Eqn n)  = makeWFType Empty (inType (Eqn n))  Base ? lem_wf_intype_eqn n
+{-lem_wf_intype Eql      = makeWFType Empty (inType Eql)      Base ? lem_wf_intype_eql () 
+                                                                 ? lem_wf_intype_eql' ()-}
+
+{-@ lem_wf_ty' :: { c:Prim | not (c == Eql) } -> y:Int 
+        -> ProofOf(WFType (Cons y (inType c) Empty) (unbindT (firstBV c) y (ty' c)) Star) @-}
+lem_wf_ty' :: Prim -> Int -> WFType
+lem_wf_ty' And      y = makeWFType (Cons y (inType And) Empty) (unbindT (firstBV And) y (ty' And)) 
+                                   Star ? lem_wf_ty'_and y
+lem_wf_ty' Or       y = makeWFType (Cons y (inType Or)  Empty) (unbindT (firstBV Or)  y (ty' Or)) 
+                                   Star ? lem_wf_ty'_or y
+lem_wf_ty' Not      y = makeWFType (Cons y (inType Not) Empty) (unbindT (firstBV Not) y (ty' Not)) 
+                                   Star ? lem_wf_ty'_not y
+lem_wf_ty' Eqv      y = makeWFType (Cons y (inType Eqv) Empty) (unbindT (firstBV Eqv) y (ty' Eqv)) 
+                                   Star ? lem_wf_ty'_eqv y
+lem_wf_ty' Leq      y = makeWFType (Cons y (inType Leq) Empty) (unbindT (firstBV Leq) y (ty' Leq)) 
+                                   Star ? lem_wf_ty'_leq y
+lem_wf_ty' (Leqn n) y = makeWFType (Cons y (inType (Leqn n)) Empty) 
+                                   (unbindT (firstBV (Leqn n)) y (ty' (Leqn n))) 
+                                   Star ? lem_wf_ty'_leqn n y
+lem_wf_ty' Eq       y = makeWFType (Cons y (inType Eq)  Empty) (unbindT (firstBV Eq)  y (ty' Eq)) 
+                                   Star ? lem_wf_ty'_eq y
+lem_wf_ty' (Eqn n) y  = makeWFType (Cons y (inType (Eqn n)) Empty) 
+                                   (unbindT (firstBV (Eqn n)) y (ty' (Eqn n))) 
+                                   Star ? lem_wf_ty'_eqn n y        
 
 {-@ lem_wf_ty :: c:Prim -> ProofOf(WFType Empty (ty c) Star) @-}
 lem_wf_ty :: Prim -> WFType
-lem_wf_ty And      = makeWFType Empty (ty And) Star      ? lem_wf_ty_and 
-lem_wf_ty Or       = makeWFType Empty (ty Or) Star       ? lem_wf_ty_or
-lem_wf_ty Not      = makeWFType Empty (ty Not) Star      ? lem_wf_ty_not
-lem_wf_ty Eqv      = makeWFType Empty (ty Eqv) Star      ? lem_wf_ty_eqv
-lem_wf_ty Leq      = makeWFType Empty (ty Leq) Star      ? lem_wf_ty_leq
+lem_wf_ty And      = makeWFType Empty (ty And) Star      ? lem_wf_ty_and ()
+lem_wf_ty Or       = makeWFType Empty (ty Or) Star       ? lem_wf_ty_or ()
+lem_wf_ty Not      = makeWFType Empty (ty Not) Star      ? lem_wf_ty_not ()
+lem_wf_ty Eqv      = makeWFType Empty (ty Eqv) Star      ? lem_wf_ty_eqv ()
+lem_wf_ty Leq      = makeWFType Empty (ty Leq) Star      ? lem_wf_ty_leq ()
 lem_wf_ty (Leqn n) = makeWFType Empty (ty (Leqn n)) Star ? lem_wf_ty_leqn n
-lem_wf_ty Eq       = makeWFType Empty (ty Eq) Star       ? lem_wf_ty_eq
+lem_wf_ty Eq       = makeWFType Empty (ty Eq) Star       ? lem_wf_ty_eq ()
 lem_wf_ty (Eqn n)  = makeWFType Empty (ty (Eqn n)) Star  ? lem_wf_ty_eqn n
-lem_wf_ty Eql      = makeWFType Empty (ty Eql) Star      ? lem_wf_ty_eql
+lem_wf_ty Eql      = makeWFType Empty (ty Eql) Star      ? lem_wf_ty_eql ()

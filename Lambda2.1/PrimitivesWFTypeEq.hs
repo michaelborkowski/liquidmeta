@@ -29,14 +29,14 @@ foo13 x = Just x
 lem_wf_intype_eq :: () -> Proof
 lem_wf_intype_eq _ = ()
 
-{-@ lem_wf_ty'_eq :: () -> { pf:_ | noDefnsInRefns (Cons (firstBV Eq) (inType Eq) Empty) 
-                                              (unbindT (firstBV Eq) (firstBV Eq) (ty' Eq))
-                                 && isWellFormed (Cons (firstBV Eq) (inType Eq) Empty) 
-                                                 (unbindT (firstBV Eq) (firstBV Eq) (ty' Eq)) Star } @-}
-lem_wf_ty'_eq :: () -> Proof
-lem_wf_ty'_eq _ = ()
+{-@ lem_wf_ty'_eq :: y:Int -> { pf:_ | noDefnsInRefns (Cons y (inType Eq) Empty) 
+                                              (unbindT (firstBV Eq) y (ty' Eq))
+                                 && isWellFormed (Cons y (inType Eq) Empty) 
+                                                 (unbindT (firstBV Eq) y (ty' Eq)) Star } @-}
+lem_wf_ty'_eq :: Int -> Proof
+lem_wf_ty'_eq y = ()
 
 {-@ lem_wf_ty_eq :: () -> { pf:_ | noDefnsInRefns Empty (ty Eq) && isWellFormed Empty (ty Eq) Star } @-}
 lem_wf_ty_eq :: () -> Proof
-lem_wf_ty_eq _ = () ? lem_wf_intype_eq () ? lem_wf_ty'_eq ()
+lem_wf_ty_eq _ = () ? lem_wf_intype_eq () ? lem_wf_ty'_eq (firstBV Eq)
 
