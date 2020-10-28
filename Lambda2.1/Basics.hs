@@ -469,6 +469,117 @@ same_binders_env t_a Empty          = True
 same_binders_env t_a (Cons x t_x g) = same_binders t_a t_x && same_binders_env t_a g
 same_binders_env t_a (ConsT a k  g) = same_binders_env t_a g
 
+{-@ lem_same_bindersE_subBV :: t:Type -> x:Vname -> { v:Value | same_bindersE t v}
+        -> { e:Expr | same_bindersE t e } -> { pf:_ | same_bindersE t (subBV x v e) } / [esize e] @-}
+lem_same_bindersE_subBV  :: Type -> Vname -> Expr -> Expr -> Proof
+lem_same_bindersE_subBV t x v (Bc b)              = () 
+lem_same_bindersE_subBV t x v (Ic n)              = () 
+lem_same_bindersE_subBV t x v (Prim p)            = () 
+lem_same_bindersE_subBV t x v (BV y) | x == y     = () 
+                                     | otherwise  = ()
+lem_same_bindersE_subBV t x v (FV y)              = () 
+lem_same_bindersE_subBV t x v (Lambda y e) 
+  | x == y     = () -- Lambda y e 
+  | otherwise  = () ? lem_same_bindersE_subBV t x v e --Lambda y (subBV x v e)
+lem_same_bindersE_subBV t x v (App e e')          
+  = () ? lem_same_bindersE_subBV t x v e
+       ? lem_same_bindersE_subBV t x v e' -- App   (subBV x v_x e)  (subBV x v_x e')
+lem_same_bindersE_subBV t x v (LambdaT a k e)           
+  = () ? lem_same_bindersE_subBV t x v e -- LambdaT a k (subBV x v_x e) 
+lem_same_bindersE_subBV t x v (AppT e t')          
+  = () ? lem_same_bindersE_subBV t x v e 
+       ? lem_same_binders_tsubBV t x v t' --AppT  (subBV x v_x e) (tsubBV x v_x t)
+lem_same_bindersE_subBV t x v (Let y e1 e2) 
+  | x == y    = () ? lem_same_bindersE_subBV t x v e1 --Let y (subBV x v_x e1) e2
+  | otherwise = () ? lem_same_bindersE_subBV t x v e1
+                   ? lem_same_bindersE_subBV t x v e2 --Let y (subBV x v_x e1) (subBV x v_x e2)
+lem_same_bindersE_subBV t x v (Annot e t')   
+  = () ? lem_same_bindersE_subBV t x v e
+       ? lem_same_binders_tsubBV t x v t' --Annot (subBV x v_x e) (tsubBV x v_x t)
+lem_same_bindersE_subBV t x v Crash               = ()
+
+{-@ lem_same_binders_tsubBV :: t_a:Type -> x:Vname -> { v:Value | same_bindersE t_a v }
+        -> { t:Type | same_binders t_a t} -> { pf:_ | same_binders t_a (tsubBV x v t) } / [tsize t] @-}
+lem_same_binders_tsubBV :: Type -> Vname -> Expr -> Type -> Proof
+lem_same_binders_tsubBV t_a x v (TRefn b y r)     
+  | x == y                     = ()
+  | otherwise                  = () ? lem_same_bindersE_subBV t_a x v r 
+lem_same_binders_tsubBV t_a x v (TFunc z t_z t)   
+  | x == z                     = () ? lem_same_binders_tsubBV t_a x v t_z 
+  | otherwise                  = () ? lem_same_binders_tsubBV t_a x v t_z
+                                    ? lem_same_binders_tsubBV t_a x v t 
+lem_same_binders_tsubBV t_a x v (TExists z t_z t) 
+  | x == z                     = () ? lem_same_binders_tsubBV t_a x v t_z 
+  | otherwise                  = () ? lem_same_binders_tsubBV t_a x v t_z
+                                    ? lem_same_binders_tsubBV t_a x v t
+lem_same_binders_tsubBV t_a x v (TPoly a  k  t)   
+                               = () ? lem_same_binders_tsubBV t_a x v t
+
+{-@ lem_same_bindersE_subBTV :: t:Type -> a:Vname -> { t':Type | same_binders t t' }
+        -> { e:Expr | same_bindersE t e } -> { pf:_ | same_bindersE t (subBTV a t' e) } / [esize e] @-}
+lem_same_bindersE_subBTV :: Type -> Vname -> Type -> Expr -> Proof
+lem_same_bindersE_subBTV t a t_a (Bc b)         = ()
+lem_same_bindersE_subBTV t a t_a (Ic n)         = ()
+lem_same_bindersE_subBTV t a t_a (Prim p)       = ()
+lem_same_bindersE_subBTV t a t_a (BV y)         = () 
+lem_same_bindersE_subBTV t a t_a (FV y)         = () 
+lem_same_bindersE_subBTV t a t_a (Lambda y e)   
+  = () ? lem_same_bindersE_subBTV t a t_a e  -- Lambda y (subBTV a t_a e)
+lem_same_bindersE_subBTV t a t_a (App e e')   
+  = () ? lem_same_bindersE_subBTV t a t_a e
+       ? lem_same_bindersE_subBTV t a t_a e' -- App   (subBTV a t_a e)  (subBTV a t_a e')
+lem_same_bindersE_subBTV t a t_a (LambdaT a' k e) 
+  | a == a'   = ()
+  | otherwise = () ? lem_same_bindersE_subBTV t a t_a e --LambdaT a' k (subBTV a t_a e)
+lem_same_bindersE_subBTV t a t_a (AppT e t')     
+  = () ? lem_same_bindersE_subBTV t a t_a e 
+       ? lem_same_binders_tsubBTV t a t_a t' -- AppT  (subBTV a t_a e) (tsubBTV a t_a t)
+lem_same_bindersE_subBTV t a t_a (Let y e1 e2)   
+  = () ? lem_same_bindersE_subBTV t a t_a e1
+       ? lem_same_bindersE_subBTV t a t_a e2 -- Let y (subBTV a t_a e1) (subBTV a t_a e2)
+lem_same_bindersE_subBTV t a t_a (Annot e t')    
+  = () ? lem_same_bindersE_subBTV t a t_a e 
+       ? lem_same_binders_tsubBTV t a t_a t' -- Annot (subBTV a t_a e) (tsubBTV a t_a t)
+lem_same_bindersE_subBTV t a t_a Crash          = ()   
+
+{-@ lem_same_binders_tsubBTV :: t:Type -> a:Vname -> { t_a:Type | same_binders t t_a }
+        -> { t':Type | same_binders t t'} -> { pf:_ | same_binders t (tsubBTV a t_a t') } / [tsize t'] @-}
+lem_same_binders_tsubBTV :: Type -> Vname -> Type -> Type -> Proof
+lem_same_binders_tsubBTV t a t_a (TRefn b x r)        = case b of 
+  (BTV a') | a == a'  -> () ? lem_same_bindersE_push t a 
+                                  (subBTV a t_a r ? lem_same_bindersE_subBTV t a t_a r) t_a 
+  _                   -> () ? lem_same_bindersE_subBTV t a t_a r 
+lem_same_binders_tsubBTV t a t_a (TFunc z t_z t')      
+  = () ? lem_same_binders_tsubBTV t a t_a t_z 
+       ? lem_same_binders_tsubBTV t a t_a t' --TFunc   z  (tsubBTV a t_a t_z) (tsubBTV a t_a t')
+lem_same_binders_tsubBTV t a t_a (TExists z t_z t')    
+  = () ? lem_same_binders_tsubBTV t a t_a t_z 
+       ? lem_same_binders_tsubBTV t a t_a t' --TExists z  (tsubBTV a t_a t_z) (tsubBTV a t_a t')
+lem_same_binders_tsubBTV t a t_a (TPoly a' k  t')    
+  | a == a'            = () -- TPoly   a' k t 
+  | otherwise          = () ? lem_same_binders_tsubBTV t a t_a t' --TPoly   a' k (tsubBTV a t_a t')
+
+{-@ lem_same_bindersE_push :: t:Type -> a:Vname -> { p:Pred | same_bindersE t p }
+        -> { t':Type | same_binders t t'} -> { pf:_ | same_binders t (push p t') } / [tsize t'] @-}
+lem_same_bindersE_push :: Type -> Vname -> Expr -> Type -> Proof
+lem_same_bindersE_push t a p (TRefn   b x   r) 
+  = () ? lem_same_bindersE_strengthen t p r --TRefn   b x            (strengthen p r)
+lem_same_bindersE_push t a p (TFunc   y t_y t') 
+  = () ? lem_same_bindersE_push t a p t_y
+       ? lem_same_bindersE_push t a p t' -- TFunc   y (push p t_y) (push p t')
+lem_same_bindersE_push t a p (TExists y t_y t') 
+  = () ? lem_same_bindersE_push t a p t' -- TExists y t_y          (push p t')
+lem_same_bindersE_push t a p (TPoly   a' k   t') 
+  = () ? lem_same_bindersE_push t a p t' -- TPoly   a k            (push p t') 
+
+{-@ lem_same_bindersE_strengthen :: t:Type -> { p:Pred | same_bindersE t p }
+        -> { r:Pred | same_bindersE t r } -> { pf:_ | same_bindersE t (strengthen p r) } @-}
+lem_same_bindersE_strengthen :: Type -> Expr -> Expr -> Proof
+lem_same_bindersE_strengthen t p r 
+  | (r == Bc True)  = ()
+  | (p == Bc True)  = ()
+  | otherwise       = () -- App (App (Prim And) p) r
+
 -- a trivial type is b{x : Bc True}. Needed to argue that unbind_tvT preserves tsize.
 {-@ measure isTrivial @-}
 isTrivial :: Type -> Bool

@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{-@ LIQUID "--no-termination" @-}  -- TODO assume
-{-@ LIQUID "--no-totality" @-}     -- TODO assume
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -60,8 +58,14 @@ lemma_progress _e _t (FTApp FEmpty e1 t_x t p_e1_txt e2 p_e2_tx)
                       Right (e1', p_e1_e1') = lemma_progress e1 (FTFunc t_x t) p_e1_txt
               True  -> impossible ("by lemma" ? lemma_function_values e1 t_x t p_e1_txt)
 lemma_progress e t  p_e_t@(FTAbsT {})         = Left () 
-lemma_progress e t  p_e_t@(FTAppT {})         
-      = undefined --assume
+lemma_progress e t  p_e_t@(FTAppT FEmpty e1 a k s  p_e1_as rt p_emp_er_rt) = case e1 of
+      (Prim c)            -> Right (deltaT c rt,      EPrimT c rt)
+      (LambdaT a' k' e'') -> Right (subBTV a' rt e'', EAppTAbs a' k' e'' rt)
+      _                   -> case (isValue e1) of
+        False             -> Right (AppT e2 rt,      EAppT e1 e2 p_e1_e2 rt)
+          where
+            Right (e2, p_e1_e2) = lemma_progress e1 (FTPoly a k s) p_e1_as
+        True              -> impossible ("by lemma" ? lemma_tfunction_values e1 a k s p_e1_as)
 lemma_progress _e _t (FTLet FEmpty e1 tx p_e1_tx x e2 t y p_e2_t)
       = case (lemma_progress e1 tx p_e1_tx) of
           Left ()               -> Right (subBV x e1 e2, ELetV x e1 e2)
@@ -117,8 +121,26 @@ lemma_preservation e t p_e_t@(FTApp FEmpty e1 t_x t' p_e1_txt' e2 p_e2_tx) e' st
                                     ? lem_sem_det e e' st_e_e' (App e1' e2)
                                                   (EApp1 e1 e1' st_e1_e1' e2)
 lemma_preservation e t (FTAbsT {}) e' st_e_e'          = Left () ? lem_value_stuck e e' st_e_e'
-lemma_preservation e t (FTAppT {}) e' st_e_e'           
-  = undefined -- assume
+lemma_preservation e t (FTAppT FEmpty (Prim c) a k s p_e1_as rt p_emp_er_rt) e' st_e_e'           
+  = Right (lem_deltaT_ftyp c a k s p_e1_as rt p_emp_er_rt)
+          ? lem_sem_det e e' st_e_e' (deltaT c rt) (EPrimT c rt)
+lemma_preservation e t (FTAppT FEmpty (LambdaT a1 k1 e2) a k s p_e1_as rt p_emp_er_rt) e' st_e_e'
+  = Right p_e2rt_srt ? lem_sem_det e e' st_e_e' (subBTV a rt e2) (EAppTAbs a1 k1 e2 rt)
+      where
+        (FTAbsT _ _ _ _ _ a' p_e2_s) = p_e1_as
+        p_wf_a'k                     = WFFBindT FEmpty WFFEmpty a' k
+        p_e2rt_srt                   = lem_subst_tv_ftyp FEmpty FEmpty a' rt k p_emp_er_rt
+                                           p_wf_a'k (unbind_tv a1 a' e2) (unbindFT a a' s) p_e2_s
+                                           ? lem_subFTV_unbind_tv a1 a' rt e2
+                                           ? lem_ftsubFV_unbindFT a  a' (erase rt) s  
+lemma_preservation e t (FTAppT FEmpty e1 a k s p_e1_as rt p_emp_er_rt) e' st_e_e'
+  = case (lemma_progress e1 (FTPoly a k s) p_e1_as) of
+      Left ()                -> impossible ("by lemma" ? lemma_tfunction_values e1 a k s p_e1_as)
+      Right (e1', st_e1_e1') -> Right (FTAppT FEmpty e1' a k s p_e1'_as
+                                        (rt ? lem_step_binders rt e1 e1' st_e1_e1') p_emp_er_rt)
+        where
+          Right p_e1'_as = lemma_preservation e1 (FTPoly a k s) p_e1_as e1' st_e1_e1'
+                             ? lem_sem_det e e' st_e_e' (AppT e1' rt) (EAppT e1 e1' st_e1_e1' rt)
 lemma_preservation e t p_e_t@(FTLet FEmpty e_x t_x p_ex_tx x e1 _t y p_e1_t) e' st_e_e'
   = case (lemma_progress e_x t_x p_ex_tx) of 
       Left ()                 -> Right p_e1ex_t

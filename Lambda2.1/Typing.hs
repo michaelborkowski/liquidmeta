@@ -148,12 +148,13 @@ data HasType where
                   -> e':Expr -> ProofOf(HasType g e' t_x) 
                   -> ProofOf(HasType g (App e e') (TExists x t_x t))
      |  TAbsT :: g:Env -> a:Vname -> k:Kind -> e:Expr -> t:Type -> k_t:Kind
-                  -> { a':Vname | not (in_env a' g) && not (Set_mem a' (fv e)) && not (Set_mem a' (ftv e)) }
+                  -> { a':Vname | not (in_env a' g) && not (Set_mem a' (fv e)) && not (Set_mem a' (ftv e)) &&
+                                                  not (Set_mem a' (free t)) && not (Set_mem a' (freeTV t)) }
                   -> ProofOf(HasType (ConsT a' k g) (unbind_tv a a' e) (unbind_tvT a a' t))
                   -> ProofOf(WFType  (ConsT a' k g) (unbind_tvT a a' t) k_t)
                   -> ProofOf(HasType g (LambdaT a k e) (TPoly a k t))
      |  TAppT :: g:Env -> e:Expr -> a:Vname -> k:Kind -> s:Type -> ProofOf(HasType g e (TPoly a k s)) 
-                  -> { t:Type | same_binders s t } -> ProofOf(WFType g t k)
+                  -> { t:Type | same_binders s t && same_bindersE t e } -> ProofOf(WFType g t k)
                   -> ProofOf(HasType g (AppT e t) (tsubBTV a t s))
      |  TLet  :: g:Env -> e_x:Expr -> t_x:Type -> ProofOf(HasType g e_x t_x)
                   -> x:Vname -> e:Expr -> t:Type -> k:Kind -> ProofOf(WFType g t k)

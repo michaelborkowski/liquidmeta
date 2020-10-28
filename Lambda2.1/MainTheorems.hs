@@ -84,7 +84,7 @@ thm_progress _e _t (TApp Empty e1 x t_x t p_e1_txt e2 p_e2_tx) = case e1 of
 thm_progress e t  p_e_t@(TAbsT {})        = Left () 
 thm_progress _e _t (TAppT Empty e' a k s p_e'_as t' p_emp_t') = case e' of
       (Prim c)          -> Right (deltaT c t',     EPrimT c t')
-      (LambdaT a' k' e'') -> Right (subBTV a t' e'', EAppTAbs a' k' e'' t')
+      (LambdaT a' k' e'') -> Right (subBTV a' t' e'', EAppTAbs a' k' e'' t')
       _                 -> case (isValue e') of
           False         -> Right (AppT e'' t',     EAppT e' e'' p_e'_e'' t')
               where
@@ -121,7 +121,9 @@ thm_preservation e t p_e_t@(TApp Empty (Prim c) x t_x t' p_c_txt' e2 p_e2_tx) e'
       Left ()                -> Right p_del_ex_t' ? lem_sem_det e e' st_e_e' (delta c e2) (EPrim c e2)
         where
           p_del_t'e2   = lem_delta_typ c e2 x t_x t' p_c_txt' p_e2_tx 
-          p_emp_ex_t'  = lem_typing_wf Empty e t p_e_t WFEEmpty
+          p_emp_ex_t'_ = lem_typing_wf Empty e t p_e_t WFEEmpty
+--          (WFExis _ _ _ _ _ _t' k' y p_y_t') = snd (lem_wfexis_for_wf_texists Empty x t_x t' Star p_emp_ex_t')
+          p_emp_ex_t'  = lem_wfexis_for_wf_texists Empty x t_x t' Star p_emp_ex_t'_
           (WFExis _ _ _ _ _ _t' k' y p_y_t') = p_emp_ex_t'
           p_t'e2_ex_t' = lem_witness_sub Empty e2 t_x p_e2_tx WFEEmpty x t' k' y p_y_t'
           p_del_ex_t'  = TSub Empty (delta c e2) (tsubBV x e2 t') p_del_t'e2 
@@ -136,13 +138,14 @@ thm_preservation e t p_e_t@(TApp Empty (Lambda w e1) x t_x t' p_lam_txt' e2 p_e2
       Left ()                -> Right p_e1e2_ex_t' ? lem_sem_det e e' st_e_e' 
                                                          (subBV w e2 e1) (EAppAbs w e1 e2)
         where
-          (y, p_e1_t')        = lem_invert_tabs Empty x e1 t_x t' p_lam_txt' WFEEmpty
+          (y, p_e1_t')        = lem_invert_tabs Empty w e1 x t_x t' p_lam_txt' WFEEmpty
           {-(TAbs _ _ _tx p_tx _ _ y p_e1_t') = p_lam_txt' -- y:t_x |- e1 : t'-}
           p_tx                = lem_typing_wf Empty e2 t_x p_e2_tx WFEEmpty
           p_wf_ytx            = WFEBind Empty WFEEmpty y t_x Star p_tx
           p_e1e2_t'e2         = lem_subst_typ Empty Empty y e2 t_x p_e2_tx p_wf_ytx
                                               (unbind w y e1) (unbindT x y t') p_e1_t'
-          p_emp_ex_t'         = lem_typing_wf Empty e t p_e_t WFEEmpty
+          p_emp_ex_t'_        = lem_typing_wf Empty e t p_e_t WFEEmpty
+          p_emp_ex_t'         = lem_wfexis_for_wf_texists Empty x t_x t' Star p_emp_ex_t'_
           (WFExis _ _ _ _ _ _ k' y' p_y_t') = p_emp_ex_t'
           p_t'e2_ex_t'        = lem_witness_sub Empty e2 t_x p_e2_tx WFEEmpty x t' k' y' p_y_t'
           p_e1e2_ex_t'        = TSub Empty (subBV w e2 e1) (tsubBV x e2 t') 
@@ -166,23 +169,29 @@ thm_preservation e t p_e_t@(TApp Empty e1 x t_x t' p_e1_txt' e2 p_e2_tx) e' st_e
                                     ? lem_sem_det e e' st_e_e' (App e1' e2)
                                                   (EApp1 e1 e1' st_e1_e1' e2)
 thm_preservation e t (TAbsT {}) e' st_e_e'          = Left () ? lem_value_stuck e e' st_e_e'
-thm_preservation e t (TAppT Empty e1 a k s p_e1_as t' p_emp_t') e' st_e_e' = case e1 of
-      (Prim c)          -> Right p_delT_st' -- deltaT c t' :: tsubBTV a t' s
-                                 ? lem_sem_det e e' st_e_e' (deltaT c t') (EPrimT c t') 
+thm_preservation e t (TAppT Empty (Prim c) a k s p_e1_as t' p_emp_t') e' st_e_e' 
+  = Right p_delT_st' -- deltaT c t' :: tsubBTV a t' s
+          ? lem_sem_det e e' st_e_e' (deltaT c t') (EPrimT c t') 
         where
           p_delT_st' = lem_deltaT_typ c a k s p_e1_as t' p_emp_t'
-      (LambdaT _ _ e2)  -> Right p_e2t'_st' -- subBTV a t' e2 :: tsubBTV a t' s
-                                 ? lem_sem_det e e' st_e_e' (subBTV a t' e2) (EAppTAbs a k e2 t') 
+thm_preservation e t (TAppT Empty (LambdaT a1 k1 e2) a k s p_e1_as t' p_emp_t') e' st_e_e' 
+  = Right p_e2t'_st' -- subBTV a1 t' e2 :: tsubBTV a t' s      
+          ? lem_sem_det e e' st_e_e' (subBTV a1 t' e2) (EAppTAbs a1 k1 e2 t') 
         where
-          (a', p_e2_s)    = lem_invert_tabst Empty a k e2 s p_e1_as WFEEmpty
+          (a', p_e2_s)    = lem_invert_tabst Empty a1 k1 e2 a k s p_e1_as WFEEmpty
           p_wf_a'k        = WFEBindT Empty WFEEmpty a' k
-          p_e2t'_st'      = lem_subst_tv_typ Empty Empty a' t' k p_emp_t' p_wf_a'k
-                                             (unbind_tv a a' e2) (unbind_tvT a a' s) p_e2_s
-      _                 -> case (thm_progress e1 (TPoly a k s) p_e1_as) of
+          p_e2t'_st'      = lem_subst_tv_typ Empty Empty a' t' k p_emp_t' 
+                                             p_wf_a'k
+                                             (unbind_tv a1 a' e2) (unbind_tvT a a' s) p_e2_s
+                                ? lem_subFTV_unbind_tv   a1 a' t' e2
+                                ? lem_tsubFTV_unbind_tvT a  a' t' s
+thm_preservation e t (TAppT Empty e1 a k s p_e1_as t' p_emp_t') e' st_e_e' 
+  = case (thm_progress e1 (TPoly a k s) p_e1_as) of
         Left ()                -> impossible ("by lemmas" ? lemma_tfunction_values e1 a k (erase s) p_e1_er_as)
               where
                 p_e1_er_as = lem_typing_hasftype Empty e1 (TPoly a k s) p_e1_as WFEEmpty
-        Right (e1', st_e1_e1') -> Right (TAppT Empty e1' a k s p_e1'_as t' p_emp_t')
+        Right (e1', st_e1_e1') -> Right (TAppT Empty e1' a k s p_e1'_as 
+                                          (t' ? lem_step_binders t' e1 e1' st_e1_e1') p_emp_t')
           where
             Right p_e1'_as = thm_preservation e1 (TPoly a k s) p_e1_as e1' st_e1_e1'
                               ? lem_sem_det e e' st_e_e' (AppT e1' t') (EAppT e1 e1' st_e1_e1' t')
@@ -199,8 +208,8 @@ thm_preservation e t p_e_t@(TLet Empty e_x t_x p_ex_tx x e1 _t k p_emp_t y p_e1_
                                            (unbind x y e1) (unbindT x y t) p_e1_t
                                            ? lem_subFV_unbind x y e_x e1 
                                            ? lem_tsubFV_unbindT x y e_x t
-                                     -- ? lem_tfreeBV_empty Empty t p_emp_t WFEEmpty
-                                     -- ? lem_tsubBV_inval x e_x t
+                                     ? lem_tfreeBV_empty Empty t k p_emp_t WFEEmpty
+                                     ? lem_tsubBV_notin x e_x t
                                      ? toProof ( t === tsubBV x e_x t ) 
       Right (e_x', st_ex_ex') -> Right (TLet Empty e_x' t_x p_ex'_tx x e1 t k p_emp_t y p_e1_t)
         where
@@ -237,24 +246,11 @@ thm_crashfree g e t (TAnn {})  = ()
 thm_crashfree g e t (TSub _ _ s p_e_s _ _ _ _)
   = thm_crashfree g e s p_e_s
 
-{-   undefined
-data ValueReducedP where
-    ValueReduced :: Expr -> Type -> ValueReducedP
-
-{-@ data ValueReduced where
-    ValRed :: e:Expr -> t:Type -> v:Value -> ProofOf(EvalsTo e v)
-                     -> ProofOf(HasType Empty v t) -> ProofOf(ValueReduced e t) @-}
-data ValueReduced where
-    ValRed :: Expr -> Type -> Expr -> EvalsTo -> HasType -> ValueReduced
-
-{-@ thm_soundness :: { e:Expr | not (e == Crash) } -> t:Type -> ProofOf(HasType Empty e t)
-                         -> ProofOf(ValueReduced e t) @-}
-thm_soundness :: Expr -> Type -> HasType -> ValueReduced
-thm_soundness e t p_e_t = case ( thm_progress e t p_e_t ) of
-  Left ()             -> ValRed e t e (Refl e) p_e_t
-  Right (e', st_e_e') -> ValRed e t v ev_e_v p_v_t
+{-@ thm_soundness :: e:Expr -> e':Expr -> ProofOf(EvalsTo e e') -> t:Type 
+        -> ProofOf(HasType Empty e t) -> ProofOf(HasType Empty e' t) @-}
+thm_soundness :: Expr -> Expr -> EvalsTo -> Type -> HasType -> HasType
+thm_soundness e e' ev_e_e' t p_e_t = case ev_e_e' of
+  (Refl e)                             -> p_e_t
+  (AddStep _e e1 st_e_e1 _e' ev_e1_e') -> thm_soundness e1 e' ev_e1_e' t p_e1_t
     where
-      Right p_e'_t     = thm_preservation e t p_e_t e' st_e_e'
-      ValRed _ _ v ev_e'_v p_v_t = thm_soundness (e' ? thm_crashfree Empty e' t p_e'_t) t p_e'_t 
-      ev_e_v           = AddStep e e' st_e_e' v ev_e'_v
--}
+      Right p_e1_t = thm_preservation e t p_e_t e1 st_e_e1 

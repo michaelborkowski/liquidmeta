@@ -186,11 +186,12 @@ lem_delta_ftyp Eql      _ t_x t' p_c_txt' _
 lem_base_types :: FType -> WFFT -> Proof
 lem_base_types t (WFFTBasic _ _) = ()
 
-{-@ lem_deltaT_ftyp :: t:Type -> { a:Vname | a == 1 } -> k:Kind -> s:FType
-        -> ProofOf(HasFType FEmpty (Prim Eql) (FTPoly a k s)) -> ProofOf(WFFT FEmpty (erase t) Base)
-        -> { pf:_ | propOf pf == HasFType FEmpty (deltaT Eql t) (ftsubBV a (erase t) s) } @-}
-lem_deltaT_ftyp :: Type -> Vname -> Kind -> FType -> HasFType -> WFFT -> HasFType
-lem_deltaT_ftyp t a k s p_c_aks p_emp_t = case p_c_aks of
+{-@ lem_deltaT_ftyp :: c:Prim -> a:Vname -> k:Kind -> s:FType
+        -> ProofOf(HasFType FEmpty (Prim c) (FTPoly a k s)) 
+        -> t:Type -> ProofOf(WFFT FEmpty (erase t) k)
+        -> { pf:_ | propOf pf == HasFType FEmpty (deltaT c t) (ftsubBV a (erase t) s) } @-}
+lem_deltaT_ftyp :: Prim -> Vname -> Kind -> FType -> HasFType -> Type -> WFFT -> HasFType
+lem_deltaT_ftyp c a k s p_c_aks t p_emp_t = case p_c_aks of
   (FTPrm FEmpty Eql) -> case (erase t) of 
       (FTBasic TBool) -> FTPrm FEmpty Eqv
       (FTBasic TInt)  -> FTPrm FEmpty Eq 

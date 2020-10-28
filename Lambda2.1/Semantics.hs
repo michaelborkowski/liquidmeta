@@ -46,6 +46,23 @@ delta Eq       (Ic n) = Prim (Eqn n)
 delta (Eqn n)  (Ic m) = Bc (n == m)
 delta _ _             = Crash
 
+{-@ lem_delta_binders :: t:Type -> c:Prim -> v:Value -> { pf:_ | same_bindersE t (delta c v) } @-}
+lem_delta_binders :: Type -> Prim -> Expr -> Proof
+lem_delta_binders t And (Bc True)   = () --Lambda 1 (BV 1)
+lem_delta_binders t And (Bc False)  = () --Lambda 1 (Bc False)
+lem_delta_binders t Or  (Bc True)   = () --Lambda 1 (Bc True)
+lem_delta_binders t Or  (Bc False)  = () --Lambda 1 (BV 1)
+lem_delta_binders t Not (Bc True)   = () --Bc False
+lem_delta_binders t Not (Bc False)  = () --Bc True
+lem_delta_binders t Eqv (Bc True)   = () --Lambda 1 (BV 1)
+lem_delta_binders t Eqv (Bc False)  = () --Lambda 1 (App (Prim Not) (BV 1))
+lem_delta_binders t Leq      (Ic n) = () --Prim (Leqn n)
+lem_delta_binders t (Leqn n) (Ic m) = () --Bc (n <= m)
+lem_delta_binders t Eq       (Ic n) = () --Prim (Eqn n)
+lem_delta_binders t (Eqn n)  (Ic m) = () --Bc (n == m)
+lem_delta_binders t _ _             = () --Crash
+
+
 {-@ reflect deltaT @-}
 {-@ deltaT :: c:Prim -> t:Type -> { e':Value | Set_emp (fv e') && Set_emp (ftv e') } @-}
 deltaT :: Prim -> Type -> Expr
@@ -56,6 +73,16 @@ deltaT Eql t = case (erase t) of
     _                 -> Crash
   _              -> Crash
 deltaT _   _ = Crash
+
+{-@ lem_deltaT_binders :: t:Type -> c:Prim -> t':Type -> { pf:_ | same_bindersE t (deltaT c t') } @-}
+lem_deltaT_binders :: Type -> Prim -> Type -> Proof
+lem_deltaT_binders t Eql t' = case (erase t) of
+  (FTBasic b)     -> case b of
+    TBool              -> ()
+    TInt               -> ()
+    _                  -> ()
+  _               -> ()
+lem_deltaT_binders t _   _  = ()
 
 data StepP where
     Step :: Expr -> Expr -> StepP
@@ -275,6 +302,30 @@ lem_value_refl :: Expr -> Expr -> EvalsTo -> Proof
 lem_value_refl v v' (Refl _v) = ()
 lem_value_refl v v' (AddStep _v v1 st_v_v1 _v' ev_v1_v')
     = impossible ("stuck" ? lem_value_stuck v v1 st_v_v1)
+
+{-@ lem_step_binders :: t:Type -> { e:Expr | same_bindersE t e } -> e1:Expr 
+                   -> ProofOf(Step e e1) -> { pf:_ | same_bindersE t e1 } @-}
+lem_step_binders :: Type -> Expr -> Expr -> Step -> Proof
+lem_step_binders t e e1 p1@(EPrim c v) = () ? lem_delta_binders t c v  -- e = App (Prim c) w
+lem_step_binders t e e' (EApp1 e1 e1' p_e1e1' e2) 
+  = () ? lem_step_binders t e1 e1' p_e1e1'     -- e = e1 e2, e' = e1' e2, e'' = e1'' e2
+lem_step_binders t e e' (EApp2 e1 e1' p_e1e1' v1) 
+  = () ? lem_step_binders t e1 e1' p_e1e1'     -- e = v1 e1, e' = v1 e1', e'' = v1 e1''
+lem_step_binders t e e1 (EAppAbs x e' v) 
+  = () ? lem_same_bindersE_subBV t x v e'
+lem_step_binders t e e' (EPrimT c t')   = () ? lem_deltaT_binders t c t'
+lem_step_binders t e e' (EAppT e1 e1' p_e1e1' t') 
+  = () ? lem_step_binders t e1 e1' p_e1e1'
+lem_step_binders t e e1 (EAppTAbs a k e' t') 
+  = () ? lem_same_bindersE_subBTV t a t' e' -- Step (AppT (LambdaT a k e') t') (subBTV a t' e'))
+lem_step_binders t e e1 (ELet e_x e_x' p_ex_ex' x e1') 
+  = () ? lem_step_binders t e_x e_x' p_ex_ex'
+lem_step_binders t e e1 (ELetV x v e') 
+  = () ? lem_same_bindersE_subBV t x v e'
+lem_step_binders t e e1 (EAnn e' e1' p_e_e1' t')
+  = () ? lem_step_binders t e' e1' p_e_e1'
+lem_step_binders t e e1 (EAnnV v t') 
+  = ()
 
 
 {-@ lem_sem_det :: e:Expr -> e1:Expr -> ProofOf(Step e e1)

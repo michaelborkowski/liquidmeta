@@ -420,7 +420,7 @@ lem_delta_eqn_typ n v x t_x t' p_c_txt' p_v_tx = undefined
 lem_delta_ty'c :: Prim -> Expr -> HasType -> HasType
 lem_delta_ty'c c v p_v_tx = undefined
 
-{-@ lem_delta_typ :: { c:Prim | c != Eql } -> v:Value -> x:Vname -> t_x:Type -> t':Type
+{-@ lem_delta_typ :: c:Prim -> v:Value -> x:Vname -> t_x:Type -> t':Type
         -> ProofOf(HasType Empty (Prim c) (TFunc x t_x t')) -> ProofOf(HasType Empty v t_x)
         -> { pf:_ | propOf pf == HasType Empty (delta c v) (tsubBV x v t') } @-} 
 lem_delta_typ :: Prim -> Expr -> Vname -> Type -> Type 
@@ -465,9 +465,10 @@ lem_delta_typ Eq       v x t_x t' p_c_txt' p_v_tx = lem_delta_eq_typ     v x t_x
 lem_delta_typ (Eqn n)  v x t_x t' p_c_txt' p_v_tx = lem_delta_eqn_typ  n v x t_x t' p_c_txt' p_v_tx
 -}
 
-{-@ lem_deltaT_typ :: { c:Prim | c == Eql } -> a:Vname -> k:Kind -> s:Type
+{-@ lem_deltaT_typ :: c:Prim -> a:Vname -> k:Kind -> s:Type
         -> ProofOf(HasType Empty (Prim c) (TPoly a k s)) -> t:Type -> ProofOf(WFType Empty t k)
         -> ProofOf(HasType Empty (deltaT c t) (tsubBTV a t s)) @-}
 lem_deltaT_typ :: Prim -> Vname -> Kind -> Type -> HasType -> Type -> WFType -> HasType
 lem_deltaT_typ Eql a k s p_c_aks t p_emp_t = undefined
+lem_deltaT_typ _   a k s p_c_aks t p_emp_t = undefined
 -- do I need: also Denotes t[v/x] delta(c,v)
