@@ -391,7 +391,6 @@ data Type = TRefn   Basic Vname Pred     -- b{x : p}
   -- ONLY types with Base Kind may have non-trivial refinements. Star kinded type variables 
   --     may only have the refinement { x : Bc True }.
 
-
 {-@ lazy tsize @-}
 {-@ measure tsize @-}
 {-@ tsize :: t:Type -> { v:Int | v >= 0 } @-} 
@@ -401,6 +400,16 @@ tsize (TRefn b v r)         = (esize r) + 1
 tsize (TFunc x t_x t)       = (tsize t_x) + (tsize t) + 1
 tsize (TExists x t_x t)     = (tsize t_x) + (tsize t) + 1
 tsize (TPoly a k   t)       = (tsize t)   + 1
+
+{-@ reflect isTFunc @-}
+isTFunc :: Type -> Bool
+isTFunc (TFunc {}) = True
+isTFunc _          = False
+
+{-@ reflect isTPoly @-}
+isTPoly :: Type -> Bool
+isTPoly (TPoly {}) = True
+isTPoly _          = False
 
 {-@ reflect refn_binders @-}
 {-@ refn_binders :: e:Expr -> S.Set Vname / [esize e] @-}

@@ -27,6 +27,31 @@ import Typing
 foo26 x = Just x 
 foo26 :: a -> Maybe a 
 
+-- | Alpha equivalence in System F. Normalization is basically de Bruijn indices
+{-@ reflect maxBinder @-}
+{-@ maxBinder :: FType -> { v:Int | v >= 0 } @-}
+maxBinder :: FType -> Int
+maxBinder (FTBasic _)      = 0
+maxBinder (FTFunc   t_x t) = max (maxBinder t_x) (maxBinder t)
+maxBinder (FTPoly a k   t) = (maxBinder t) + 1
+
+{-@ reflect normalize @-} -- this is alpha-equivalence
+{-@ normalize :: FType -> FType @-}
+normalize :: FType -> FType
+normalize (FTBasic b)      = FTBasic b
+normalize (FTFunc   t_x t) = FTFunc  (normalize t_x) (normalize t)
+normalize (FTPoly a k   t) = FTPoly  a' k  (ftsubBV a (FTBasic (BTV a')) (normalize t))
+  where
+    a' = maxBinder (FTPoly a k t)
+
+-- prove a lem_normalize_tpoly
+-- --                       texists
+{-@ lem_normalize_ftfunc :: t_x:FType -> t:FType 
+        -> { s_x:FType | normalize t_x == normalize s_x }
+        -> { s:FType   | normalize t   == normalize s }
+        -> { pf:_ | normalize (FTFunc t_x t) == normalize (FTFunc s_x s) } @-}
+lem_normalize_ftfunc :: FType -> FType -> FType -> FType -> Proof
+lem_normalize_ftfunc t_x t s_x s = ()
 
 -- | Substitution Properties
 

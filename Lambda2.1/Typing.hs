@@ -253,8 +253,9 @@ data Subtype where
                  -> ProofOf(Subtype g (TRefn b v1 p1) (TRefn b v2 p2))
      |  SFunc :: g:Env -> x1:Vname -> s1:Type -> x2:Vname -> s2:Type
                  -> ProofOf(Subtype g s2 s1) -> t1:Type -> t2:Type
-                 -> { y:Vname | not (in_env y g) && not (Set_mem y (free t1)) 
-                                                 && not (Set_mem y (free t2)) }
+                 -> { y:Vname | not (in_env y g) && not (Set_mem y (free t1))
+                                                 && not (Set_mem y (free t2))
+                                && not (Set_mem y (freeTV t1)) && not (Set_mem y (freeTV t2)) }
                  -> ProofOf(Subtype (Cons y s2 g) (unbindT x1 y t1) (unbindT x2 y t2))
                  -> ProofOf(Subtype g (TFunc x1 s1 t1) (TFunc x2 s2 t2))
      |  SWitn :: g:Env -> e:Value  -> t_x:Type -> ProofOf(HasType g e t_x) 
@@ -266,8 +267,9 @@ data Subtype where
                  -> ProofOf(Subtype (Cons y t_x g) (unbindT x y t) t')
                  -> ProofOf(Subtype g (TExists x t_x t) t')
      |  SPoly :: g:Env -> a1:Vname -> k:Kind -> t1:Type -> a2:Vname -> t2:Type 
-                 -> { a:Vname | not (in_env a g) && not (Set_mem a (freeTV t1))
-                                                 && not (Set_mem a (freeTV t2)) }
+                 -> { a:Vname | not (in_env a g) 
+                                && not (Set_mem a (free t1)) && not (Set_mem a (freeTV t1))
+                                && not (Set_mem a (free t2)) && not (Set_mem a (freeTV t2)) }
                  -> ProofOf(Subtype (ConsT a k g) (unbind_tvT a1 a t1) (unbind_tvT a2 a t2))
                  -> ProofOf(Subtype g (TPoly a1 k t1) (TPoly a2 k t2))  @-}
 
@@ -281,26 +283,6 @@ subtypSize (SWitn _ _ _ p_e_tx _ _ _ p_t_t')       = (subtypSize p_t_t')  + (typ
 subtypSize (SBind _ _ _ _ _ _ p_t_t')              = (subtypSize p_t_t')  + 1
 subtypSize (SPoly _ _ _ _ _ _ _ p_t1_t2)           = (subtypSize p_t1_t2) + 1 
 
--- perhaps move this somewhere else later
-{-@ reflect maxBTV @-}
-{-@ maxBTV :: FType -> { v:Int | v >= 0 } @-}
-maxBTV :: FType -> Int
-maxBTV (FTBasic _)      = 0
-maxBTV (FTFunc   t_x t) = max (maxBTV t_x) (maxBTV t)
-maxBTV (FTPoly a k   t) = (maxBTV t) + 1
-
-{-@ reflect normalize @-} -- this is alpha-equivalence
-{-@ normalize :: FType -> FType @-}
-normalize :: FType -> FType
-normalize (FTBasic b)      = FTBasic b
-normalize (FTFunc   t_x t) = FTFunc    t_x t
-normalize (FTPoly a k   t) = FTPoly  a' k  (ftsubBV a (FTBasic (BTV a')) t)
-  where
-    a' = maxBTV (FTPoly a k t)
-
--- prove a lem_normalize_tpoly
---                       texists
---                       tfunc
 
 -------------------------------------------------------------------------
 ----- | CLOSING SUBSTITUTIONS 
