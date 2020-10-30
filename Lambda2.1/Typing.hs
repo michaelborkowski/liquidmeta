@@ -88,8 +88,11 @@ lem_tsubFV_self2 z v  (TPoly   a k_a t) x = ()
                                 == TRefn b z (App (App (Prim And) p)
                                                   (App (App (equals b) (BV z)) v)) } @-}
 lem_tsubFV_value_self :: Basic -> Vname -> Pred -> Vname -> Expr -> Proof
-lem_tsubFV_value_self b z p x v 
-  = undefined -- toProof ( subFV x v p === p )
+lem_tsubFV_value_self TBool   z p x v = () ? lem_subFV_notin x v p
+lem_tsubFV_value_self TInt    z p x v = () ? lem_subFV_notin x v p
+lem_tsubFV_value_self (FTV a) z p x v = () ? lem_subFV_notin x v p
+lem_tsubFV_value_self (BTV a) z p x v = () ? lem_subFV_notin x v p
+ -- toProof ( subFV x v p === p )
 
 {- @ equals :: b:Basic -> { c:Prim | Set_emp (fv (Prim c)) && Set_emp (freeBV (Prim c)) &&
                   erase_ty c == FTFunc (FTBasic b) (FTFunc (FTBasic b) (FTBasic TBool)) } @-}
@@ -568,7 +571,6 @@ data DenotesEnv where
 {-@ lem_binds_env_th :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
         -> { pf:_ | binds g == bindsC th && vbinds g == vbindsC th && tvbinds g == tvbindsC th } @-}
 lem_binds_env_th :: Env -> CSub -> DenotesEnv -> Proof
-lem_binds_env_th g th DEmp                                      = ()
-lem_binds_env_th g th (DExt g' th' den_g'_th' x t v den_th't_v) = () ? lem_binds_env_th g' th' den_g'_th'
-lem_binds_env_th g th (DExtT {})
-    = undefined
+lem_binds_env_th g th DEmp                                       = ()
+lem_binds_env_th g th (DExt  g' th' den_g'_th' x t v den_th't_v) = () ? lem_binds_env_th g' th' den_g'_th'
+lem_binds_env_th g th (DExtT g' th' den_g'_th' a k t p_emp_tha)  = () ? lem_binds_env_th g' th' den_g'_th'

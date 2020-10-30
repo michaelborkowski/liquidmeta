@@ -27,7 +27,6 @@ import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
 import LemmasChangeVarWF
---import LemmasWeakenWF.LemmasWeakenWFRefn
 
 {-@ reflect foo32 @-}
 foo32 x = Just x
@@ -36,7 +35,7 @@ foo32 :: a -> Maybe a
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------
-{-
+
 {-@ lem_weaken_wfbase :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> ProofOf(WFEnv (concatE g g')) -> t:Type -> k:Kind
             -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && isWFBase p_t_wf }
@@ -45,16 +44,13 @@ foo32 :: a -> Maybe a
 lem_weaken_wfbase :: Env -> Env -> WFEnv -> Type -> Kind -> WFType -> Vname -> Type -> WFType 
 lem_weaken_wfbase g g' p_env_wf t k p_t_wf@(WFBase env b) x t_x
     = WFBase (concatE (Cons x t_x g) g') b
--}
-{-
+
 {-@ lem_weaken_wfrefn :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> ProofOf(WFEnv (concatE g g')) -> t:Type -> k:Kind
             -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && isWFRefn p_t_wf }
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> t_x:Type 
-            -> WeakenWFHypothesis (wftypSize p_t_wf)            
             -> { pf:WFType | propOf pf == (WFType (concatE (Cons x t_x g) g') t k) } / [wftypSize p_t_wf] @-}
-lem_weaken_wfrefn :: Env -> Env -> WFEnv -> Type -> Kind -> WFType 
-                         -> Vname -> Type -> WeakenWFHypothesis Int -> WFType 
+lem_weaken_wfrefn :: Env -> Env -> WFEnv -> Type -> Kind -> WFType -> Vname -> Type -> WFType 
 lem_weaken_wfrefn g g' p_env_wf t k p_t_wf@(WFRefn env y b pf_env_b p y' pf_p_bl) x t_x inductive_hyp
     = WFRefn (concatE (Cons x t_x g) g') y b pf_env'_b p y''
           (lem_weaken_ftyp (erase_env g) (FCons y'' (FTBasic b) (erase_env g'))
@@ -111,7 +107,7 @@ lem_weaken_wffunc g g' p_env_wf t k p_t_wf@(WFFunc env y t_y k_y p_ty_wf t' k' y
           p_y''env_wf = WFEBind env p_env_wf y'' t_y k_y p_ty_wf
           p_y''_t'_wf = lem_change_var_wf (concatE g g') y' t_y Empty p_y'env_wf
                              (unbindT y y' t') k' p_y'_t'_wf y''
--}
+
 {-@ lem_weaken_wfexis :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> ProofOf(WFEnv (concatE g g')) -> t:Type -> k:Kind
             -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && isWFExis p_t_wf }

@@ -179,8 +179,9 @@ lem_narrow_typ g g' x s_x t_x p_sx_tx {-p_env_wf-} e t (TSub env_ e_ s p_env_e_s
 {-@ lem_narrow_sub :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
         -> t_x:Type -> ProofOf(Subtype g s_x t_x) -> s:Type -> t:Type
-        -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t }
-        -> ProofOf(Subtype (concatE (Cons x s_x g) g') s t) / [subtypSize p_s_t] @-}
+        -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t }
+        -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) 
+                              && subtypSize p_s_t == subtypSize p'_s_t } / [subtypSize p_s_t] @-}
 lem_narrow_sub :: Env -> Env -> Vname -> Type -> Type -> Subtype {--> WFEnv-}
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_narrow_sub g g' x s_x t_x p_sx_tx {-p_env_wf-} s {-k_s p_env_s-} t {-k_t p_env_t-}

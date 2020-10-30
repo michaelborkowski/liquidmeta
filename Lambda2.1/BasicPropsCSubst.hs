@@ -42,7 +42,7 @@ normalize (FTBasic b)      = FTBasic b
 normalize (FTFunc   t_x t) = FTFunc  (normalize t_x) (normalize t)
 normalize (FTPoly a k   t) = FTPoly  a' k  (ftsubBV a (FTBasic (BTV a')) (normalize t))
   where
-    a' = maxBinder (FTPoly a k t)
+    a' = maxBinder (FTPoly a k (normalize t))
 
 -- prove a lem_normalize_tpoly
 -- --                       texists
@@ -61,18 +61,29 @@ lem_normalize_ftfunc t_x t s_x s = ()
 lem_erase_subtype :: Env -> Type -> Type -> Subtype -> Proof
 lem_erase_subtype g t1 t2 (SBase _g x1 b p1 x2 p2 y _) = ()
 lem_erase_subtype g t1 t2 (SFunc _g x1 s1 x2 s2 p_s2_s1 t1' t2' y p_t1'_t2')
-    = undefined {-() ? lem_erase_subtype g s2 s1 p_s2_s1
+    = () ? lem_erase_subtype g s2 s1 p_s2_s1
          ? lem_erase_tsubBV x1 (FV y) t1' ? lem_erase_tsubBV x2 (FV y) t2'
-         ? lem_erase_subtype (Cons y s2 g) (unbindT x1 y t1') (unbindT x2 y t2') p_t1'_t2'  -}
+         ? lem_erase_subtype (Cons y s2 g) (unbindT x1 y t1') (unbindT x2 y t2') p_t1'_t2'  
 lem_erase_subtype g t1 t2 (SWitn _g v t_x p_v_tx _t1 x t' p_t1_t'v)
-    = undefined {- toProof ( erase t1 ? lem_erase_subtype g t1 (tsubBV x v t') p_t1_t'v
+    = () ? lem_erase_subtype g t1 (tsubBV x v t') p_t1_t'v
+         ? lem_erase_tsubBV x v t'  {- toProof ( erase t1 ? lem_erase_subtype g t1 (tsubBV x v t') p_t1_t'v
             === erase (tsubBV x v t') ? lem_erase_tsubBV x v t'
             === erase t' === erase (TExists x t_x t') ) -}
 lem_erase_subtype g t1 t2 (SBind _g x t_x t _t2 y p_t_t')
     = () ? lem_erase_subtype (Cons y t_x g) (unbindT x y t) t2 p_t_t'
          ? lem_erase_tsubBV x (FV y) t
-lem_erase_subtype g t1 t2 (SPoly {}) 
-    = undefined
+lem_erase_subtype g t1 t2 (SPoly _g a1 k t1' a2 t2' a p_ag_t1'_t2') = undefined
+{-    = toProof ( normalize (erase (TPoly a1 k t1))
+            === normalize (FTPoly a1 k (erase t1))
+            === let a' = maxbinder (FTPoly a1 k (normalize t1)) in
+                  FTPoly a' k (ftsubBV a1 (FTBasic (BTV a')) (normalize t1))
+            === let a' = maxbinder (FTPoly a2 k (normalize t2)) in 
+                  FTPoly a' k (ftsubBV a1 (FTBasic (BTV a')) (normalize t1)) -}
+{-    = () ? lem_erase_subtype (ConsT a k g) (unbind_tvT a1 a t1') (unbind_tvT a2 a t2') p_ag_t1'_t2'
+         ? lem_erase_tsubBTV a1 (TRefn (BTV (maxBinder (FTPoly a1 k (normalize (erase t1))))) 1 (Bc True))
+                                (normalize (erase t1))  
+         ? lem_erase_tsubBTV a2 (TRefn (BTV (maxBinder (FTPoly a2 k (normalize (erase t2))))) 1 (Bc True))
+                                (normalize (erase t2))  -}
 
 {-@ lem_erase_th_sub :: g:Env -> t1:Type -> t2:Type -> ProofOf(Subtype g t1 t2) -> th:CSub 
         -> { pf:_ | normalize (erase (ctsubst th t1)) == normalize (erase (ctsubst th t2)) } @-}
@@ -182,30 +193,29 @@ lem_csubst_app (CConsT a t th) e e' = () ? lem_csubst_app th (subFTV a t e) (sub
 {-@ lem_csubst_let :: th:CSub -> x:Vname -> e_x:Expr -> e:Expr 
         -> { pf:_ | csubst th (Let x e_x e) == Let x (csubst th e_x) (csubst th e) } @-}
 lem_csubst_let :: CSub -> Vname -> Expr -> Expr -> Proof
-lem_csubst_let (CEmpty)       x e_x e = ()
-lem_csubst_let (CCons y v th) x e_x e = () ? lem_csubst_let th x (subFV y v e_x) (subFV y v e)
+lem_csubst_let (CEmpty)       x e_x e  = ()
+lem_csubst_let (CCons y v th) x e_x e  = () ? lem_csubst_let th x (subFV y v e_x) (subFV y v e)
 lem_csubst_let (CConsT a t th) x e_x e = () ? lem_csubst_let th x (subFTV a t e_x) (subFTV a t e)
 
 {-@ lem_csubst_annot :: th:CSub -> e:Expr
         -> t:Type -> { pf:_ | csubst th (Annot e t) == Annot (csubst th e) (ctsubst th t) } @-}
 lem_csubst_annot :: CSub -> Expr -> Type -> Proof
-lem_csubst_annot (CEmpty)       e t = ()
-lem_csubst_annot (CCons y v th) e t = () ? lem_csubst_annot th (subFV y v e) (tsubFV y v t)
+lem_csubst_annot (CEmpty)       e t    = ()
+lem_csubst_annot (CCons y v th) e t    = () ? lem_csubst_annot th (subFV y v e) (tsubFV y v t)
 lem_csubst_annot (CConsT a t_a th) e t = () ? lem_csubst_annot th (subFTV a t_a e) (tsubFTV a t_a t)
 
 {-@ lem_ctsubst_refn :: th:CSub -> b:Basic -> x:Vname -> p:Expr
                -> { pf:_ | ctsubst th (TRefn b x p) == TRefn b x (csubst th p) } @-}
 lem_ctsubst_refn :: CSub -> Basic -> Vname -> Expr -> Proof
-lem_ctsubst_refn (CEmpty)       b x p = ()
-lem_ctsubst_refn (CCons y v th) b x p 
-  = undefined {-toProof ( ctsubst (CCons y v th) (TRefn b x p)
+lem_ctsubst_refn (CEmpty)       b x p    = ()
+lem_ctsubst_refn (CCons y v th) b x p    = () ? lem_ctsubst_refn th b x (subFV y v p)
+ {-toProof ( ctsubst (CCons y v th) (TRefn b x p)
                                               === ctsubst th (tsubFV y v (TRefn b x p))
                                               === ctsubst th (TRefn b x (subFV y v p))
                                                 ? lem_ctsubst_refn th b x (subFV y v p)
                                               === TRefn b x (csubst th (subFV y v p)) 
                                               === TRefn b x (csubst (CCons y v th) p) )-}
-lem_ctsubst_refn (CConsT a t_a th) b x p
-  = undefined
+lem_ctsubst_refn (CConsT a t_a th) b x p = undefined -- fix () ? lem_ctsubst_refn th b x (subFTV a t_a p)
 
 {-@ lem_ctsubst_func :: th:CSub -> x:Vname -> t_x:Type -> t:Type
         -> { pf:_ | ctsubst th (TFunc x t_x t) == TFunc x (ctsubst th t_x) (ctsubst th t) } @-}  
@@ -223,7 +233,7 @@ lem_ctsubst_exis (CEmpty)       x t_x t = ()
 lem_ctsubst_exis (CCons y v th) x t_x t 
     = () ? lem_ctsubst_exis th x (tsubFV y v t_x) (tsubFV y v t) 
 lem_ctsubst_exis (CConsT a t_a th) x t_x t 
-    = undefined
+    = () ? lem_ctsubst_exis th x (tsubFTV a t_a t_x) (tsubFTV a t_a t)
 
 {-@ lem_ctsubst_poly :: th:CSub -> a:Vname -> k:Kind -> t:Type
         -> { pf:_ | ctsubst th (TPoly a k t) == TPoly a k (ctsubst th t) } @-}  

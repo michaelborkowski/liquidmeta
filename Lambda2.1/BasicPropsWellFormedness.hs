@@ -36,6 +36,67 @@ lem_btv_not_wf g a x p k (WFPoly {}) = ()
 lem_btv_not_wf g a x p k (WFKind _ _ pf_g_t_base) 
   = () ? lem_btv_not_wf g a x p Base pf_g_t_base
 
+
+-- These lemmas allow us to directly invert the Well Formedness Judgments of certain types 
+--     by allowing us to bypass the possibility of WFKind
+{-@ lem_wffunc_for_wf_tfunc :: g:Env -> x:Vname -> t_x:Type -> t:Type 
+        -> { p_g_txt : WFType | propOf p_g_txt  == WFType g (TFunc x t_x t) Star }
+        -> { p_g_txt': WFType | propOf p_g_txt' == WFType g (TFunc x t_x t) Star && isWFFunc p_g_txt' } @-}
+lem_wffunc_for_wf_tfunc :: Env -> Vname -> Type -> Type -> WFType -> WFType
+lem_wffunc_for_wf_tfunc g x t_x t p_g_txt@(WFFunc {})           = p_g_txt
+lem_wffunc_for_wf_tfunc g x t_x t (WFKind _g _ext p_g_txt_base) 
+  = impossible ("by lemma" ? lem_wf_tfunc_star g x t_x t p_g_txt_base)
+
+{-@ lem_wf_tfunc_star :: g:Env -> x:Vname -> t_x:Type -> t:Type
+        -> ProofOf(WFType g (TFunc x t_x t) Base) -> { pf:_ | false } @-}
+lem_wf_tfunc_star :: Env -> Vname -> Type -> Type -> WFType -> Proof
+lem_wf_tfunc_star g x t_x t (WFBase {}) = ()
+lem_wf_tfunc_star g x t_x t (WFRefn {}) = ()
+lem_wf_tfunc_star g x t_x t (WFVar1 {}) = ()
+lem_wf_tfunc_star g x t_x t (WFVar2 {}) = ()
+lem_wf_tfunc_star g x t_x t (WFVar3 {}) = ()
+lem_wf_tfunc_star g x t_x t (WFFunc {}) = ()
+lem_wf_tfunc_star g x t_x t (WFExis {}) = ()
+lem_wf_tfunc_star g x t_x t (WFPoly {}) = ()
+lem_wf_tfunc_star g x t_x t (WFKind _g txt p_g_txt_base) = ()
+
+-- Given G |-w \exists x:t_x. t : k, we can produce a proof tree ending in WFExis
+{-@ lem_wfexis_for_wf_texists :: g:Env -> x:Vname -> t_x:Type -> t:Type -> k:Kind
+        -> { p_g_ex_t : WFType | propOf p_g_ex_t  == WFType g (TExists x t_x t) k }
+        -> { p_g_ex_t': WFType | propOf p_g_ex_t' == WFType g (TExists x t_x t) k && isWFExis p_g_ex_t' } @-}
+lem_wfexis_for_wf_texists :: Env -> Vname -> Type -> Type -> Kind -> WFType -> WFType
+lem_wfexis_for_wf_texists g x t_x t k p_g_ex_t@(WFExis {})           = p_g_ex_t
+lem_wfexis_for_wf_texists g x t_x t k (WFKind _g _ext p_g_ex_t_base) = p_g_ex_t_star
+  where
+    (WFExis _ _ _ k_x p_g_tx _ k_t y p_yg_t_kt) = p_g_ex_t_base
+    {-@ p_yg_t_star :: { pf:WFType | propOf pf == WFType (Cons y t_x g) (unbindT x y t) Star } @-}
+    p_yg_t_star = case k_t of 
+      Base -> WFKind (Cons y t_x g) (unbindT x y t) p_yg_t_kt
+      Star -> p_yg_t_kt
+    p_g_ex_t_star = WFExis g x t_x k_x p_g_tx t Star y p_yg_t_star
+
+{-@ lem_wfpoly_for_wf_tpoly :: g:Env -> a:Vname -> k:Kind -> t:Type 
+        -> { p_g_at : WFType | propOf p_g_at  == WFType g (TPoly a k t) Star }
+        -> { p_g_at': WFType | propOf p_g_at' == WFType g (TPoly a k t) Star && isWFPoly p_g_at' } @-}
+lem_wfpoly_for_wf_tpoly :: Env -> Vname -> Kind -> Type -> WFType -> WFType
+lem_wfpoly_for_wf_tpoly g a k t p_g_at@(WFPoly {})           = p_g_at
+lem_wfpoly_for_wf_tpoly g a k t (WFKind _g _at p_g_at_base) 
+  = impossible ("by lemma" ? lem_wf_tpoly_star g a k t p_g_at_base)
+
+{-@ lem_wf_tpoly_star :: g:Env -> a:Vname -> k:Kind -> t:Type
+        -> ProofOf(WFType g (TPoly a k t) Base) -> { pf:_ | false } @-}
+lem_wf_tpoly_star :: Env -> Vname -> Kind -> Type -> WFType -> Proof
+lem_wf_tpoly_star g a k t (WFBase {}) = ()
+lem_wf_tpoly_star g a k t (WFRefn {}) = ()
+lem_wf_tpoly_star g a k t (WFVar1 {}) = ()
+lem_wf_tpoly_star g a k t (WFVar2 {}) = ()
+lem_wf_tpoly_star g a k t (WFVar3 {}) = ()
+lem_wf_tpoly_star g a k t (WFFunc {}) = ()
+lem_wf_tpoly_star g a k t (WFExis {}) = ()
+lem_wf_tpoly_star g a k t (WFPoly {}) = ()
+lem_wf_tpoly_star g a k t (WFKind {}) = ()
+
+
 ------------------------------------------------------------------------------------------
 -- | LEMMAS relating REFINEMENT ERASURE and WELL FORMEDNESS notions
 ------------------------------------------------------------------------------------------

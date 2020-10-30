@@ -58,15 +58,15 @@ data SubtypeStar where
         SubRefl :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
                          -> ProofOf(WFEnv g) -> ProofOf(SubtypeStar g t t)
       | SubStep :: g:Env -> t:Type -> t':Type -> t'':Type -> ProofOf(Subtype g t t')
-                         -> ProofOf(SubtypeStar g t' t'') -> ProofOf(SubtypeStar g t t'') @-}
+            -> ProofOf(SubtypeStar g t' t'') -> ProofOf(WFEnv g) -> ProofOf(SubtypeStar g t t'') @-}
 
 {-@ lem_subtype_closed :: g:Env -> s:Type -> t:Type -> ProofOf(SubtypeStar g s t) 
                                 -> ProofOf(Subtype g s t) @-}
 lem_subtype_closed :: Env -> Type -> Type -> SubtypeStar -> Subtype
 lem_subtype_closed g _ t (SubRefl _g _t k p_g_t p_g_wf)
   = lem_sub_refl g t k p_g_t p_g_wf
-lem_subtype_closed g s t (SubStep _g _s s' _t p_s_s' seq_s'_t)
-  = lem_sub_trans g s s' t p_s_s' p_s'_t
+lem_subtype_closed g s t (SubStep _g _s s' _t p_s_s' seq_s'_t p_g_wf)
+  = lem_sub_trans g p_g_wf s s' t p_s_s' p_s'_t
       where
         p_s'_t = lem_subtype_closed g s' t seq_s'_t
 
@@ -93,7 +93,7 @@ lem_typ_lower_bound g e t p_wf_g (TSub _g _e s p_e_s _t k p_t_k p_s_t)
   = LBForType g e t t' p_t'_t p_e_t'
       where
         (LBForType _g _e _s t' p_t'_s p_e_t') = lem_typ_lower_bound g e s p_wf_g p_e_s
-        p_t'_t = lem_sub_trans g t' s t p_t'_s p_s_t
+        p_t'_t = lem_sub_trans g p_wf_g t' s t p_t'_s p_s_t
 lem_typ_lower_bound g e t p_wf_g p_e_t = LBForType g e t t p_t_t p_e_t
   where
     p_t_t = lem_sub_refl  g t Star p_g_t p_wf_g
