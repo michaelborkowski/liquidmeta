@@ -13,6 +13,10 @@ import qualified Data.Set as S
 import Basics
 import SystemFWellFormedness
 
+{-@ reflect foo4 @-}
+foo4 :: a -> Maybe a
+foo4 x = Just x
+
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : the Bare-Typing Relation
 -----------------------------------------------------------------------------
@@ -64,7 +68,7 @@ data HasFType where
                   -> ProofOf(HasFType g (LambdaT a k e) (FTPoly a k b))
      |  FTAppT :: g:FEnv -> e:Expr -> a:Vname -> k:Kind -> t':FType
                 -> ProofOf(HasFType g e (FTPoly a k t')) 
-                -> { rt:Type | Set_sub (Set_cup (free rt) (freeTV rt)) (bindsF g) && same_bindersE rt e }
+                -> { rt:BareType | Set_sub (Set_cup (free rt) (freeTV rt)) (bindsF g) && same_bindersE rt e }
                 -> ProofOf(WFFT g (erase rt) k)
                 -> ProofOf(HasFType g (AppT e rt) (ftsubBV a (erase rt) t'))
      |  FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
@@ -92,6 +96,43 @@ ftypSize (FTAbsT _ _ _ _ _ _ p_e_b)          = (ftypSize p_e_b)  + 1
 ftypSize (FTAppT _ _ _ _ _ p_e_at' _ _)      = (ftypSize p_e_at') + 1
 ftypSize (FTLet _ _ _ p_ex_b _ _ _ _ p_e_b') = (ftypSize p_ex_b)  + (ftypSize p_e_b') + 1
 ftypSize (FTAnn _ _ _ _ p_e_b)               = (ftypSize p_e_b)   + 1
+
+{-@ reflect isFTVar @-}
+isFTVar :: HasFType -> Bool
+isFTVar (FTVar1 {}) = True
+isFTVar (FTVar2 {}) = True
+isFTVar (FTVar3 {}) = True
+isFTVar _           = False
+
+{-@ reflect isFTAbs @-}
+isFTAbs :: HasFType -> Bool
+isFTAbs (FTAbs {}) = True
+isFTAbs _          = False
+
+{-@ reflect isFTApp @-}
+isFTApp :: HasFType -> Bool
+isFTApp (FTApp {}) = True
+isFTApp _          = False
+
+{-@ reflect isFTAbsT @-}
+isFTAbsT :: HasFType -> Bool
+isFTAbsT (FTAbsT {}) = True
+isFTAbsT _           = False
+
+{-@ reflect isFTAppT @-}
+isFTAppT :: HasFType -> Bool
+isFTAppT (FTAppT {}) = True
+isFTAppT _           = False
+
+{-@ reflect isFTLet @-}
+isFTLet :: HasFType -> Bool
+isFTLet (FTLet {}) = True
+isFTLet _          = False
+
+{-@ reflect isFTAnn @-}
+isFTAnn :: HasFType -> Bool
+isFTAnn (FTAnn {}) = True
+isFTAnn _          = False
 
 {-@ simpleFTVar :: g:FEnv -> { x:Vname | in_envF x g} -> { t:FType | bound_inF x t g } 
                 -> ProofOf(HasFType g (FV x) t) @-}

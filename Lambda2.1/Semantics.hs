@@ -110,8 +110,8 @@ data Step where
                    -> ProofOf( Step (App (Lambda x e) v) (subBV x v e)) 
       | EPrimT :: c:Prim -> t:Type -> ProofOf( Step (AppT (Prim c) t) (deltaT c t) ) 
       | EAppT :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
-                   -> t:Type -> ProofOf( Step (AppT e t) (AppT e' t)) 
-      | EAppTAbs :: a:Vname -> k:Kind -> e:Expr -> { t:Type | same_bindersE t e }
+                   -> t:BareType -> ProofOf( Step (AppT e t) (AppT e' t)) 
+      | EAppTAbs :: a:Vname -> k:Kind -> e:Expr -> { t:BareType | same_bindersE t e }
                    -> ProofOf( Step (AppT (LambdaT a k e) t) (subBTV a t e)) 
       | ELet  :: e_x:Expr -> e_x':Expr -> ProofOf( Step e_x e_x' )
                    -> x:Vname -> e:Expr -> ProofOf( Step (Let x e_x e) (Let x e_x' e)) 

@@ -101,6 +101,25 @@ lem_wf_tpoly_star g a k t (WFKind {}) = ()
 -- | LEMMAS relating REFINEMENT ERASURE and WELL FORMEDNESS notions
 ------------------------------------------------------------------------------------------
 
+{-@ lem_strengthen_wffe :: g:FEnv -> { x:Vname | not (in_envF x g) } -> t_x:FType 
+        -> { g':FEnv | not (in_envF x g') && Set_emp (Set_cap (bindsF g) (bindsF g')) }
+        -> ProofOf(WFFE (concatF (FCons x t_x g) g')) -> ProofOf(WFFE (concatF g g')) @-}
+lem_strengthen_wffe :: FEnv -> Vname -> FType -> FEnv -> WFFE -> WFFE
+lem_strengthen_wffe g x t_x (FEmpty)          p_env_wf = p_g_wf
+  where
+    (WFFBind _g p_g_wf _ _ _ _) = p_env_wf
+lem_strengthen_wffe g x t_x (FCons  z t_z g') p_env_wf = p_gg'z_wf
+  where
+    (WFFBind _env' p_env'_wf _ _ k_z p_env'_tz) = p_env_wf
+    p_gg'_wf  = lem_strengthen_wffe g x t_x g' p_env'_wf
+    p_gg'_tz  = lem_strengthen_wfft g x t_x g' t_z k_z p_env'_tz
+    p_gg'z_wf = WFFBind (concatF g g') p_gg'_wf z t_z k_z p_gg'_tz
+lem_strengthen_wffe g x t_x (FConsT a k_a g') p_env_wf = p_gg'a_wf
+  where
+    (WFFBindT _env' p_env'_wf  _ _) = p_env_wf
+    p_gg'_wf  = lem_strengthen_wffe g x t_x g' p_env'_wf
+    p_gg'a_wf = WFFBindT (concatF g g') p_gg'_wf a k_a
+
 {-@ lem_strengthen_wfft :: g:FEnv -> { x:Vname | not (in_envF x g) } -> t_x:FType 
         -> { g':FEnv | not (in_envF x g') && Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> t:FType -> k:Kind -> ProofOf(WFFT (concatF (FCons x t_x g) g') t k) 

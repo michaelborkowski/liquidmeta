@@ -58,6 +58,18 @@ self (TFunc   z t_z t) e = TFunc   z t_z t
 self (TExists z t_z t) e = TExists z t_z (self t e)
 self (TPoly   a k_a t) e = TPoly   a k_a t
 
+{-@ lem_tsubFV_self :: z:Vname -> v_z:Expr -> t:Type -> { x:Vname | x == z }
+        -> { pf:_ | tsubFV z v_z (self t (FV x)) == self (tsubFV z v_z t) v_z } @-}
+lem_tsubFV_self :: Vname -> Expr -> Type -> Vname -> Proof
+lem_tsubFV_self z v_z (TRefn b w p)     x = case b of
+  TBool   -> () 
+  TInt    -> () 
+  (FTV a) -> ()
+  (BTV a) -> ()
+lem_tsubFV_self z v_z (TFunc   y t_y t) x = ()
+lem_tsubFV_self z v_z (TExists y t_y t) x = () ? lem_tsubFV_self z v_z t x
+lem_tsubFV_self z v_z (TPoly   a k_a t) x = ()
+
 {-@ lem_tsubFV_self1 :: z:Vname -> z':Vname -> t:Type -> { x:Vname | x == z }
         -> { pf:_ | tsubFV z (FV z') (self t (FV x)) == self (tsubFV z (FV z') t) (FV z') } @-}
 lem_tsubFV_self1 :: Vname -> Vname -> Type -> Vname -> Proof
@@ -189,44 +201,59 @@ typSize (TLet _ _ _ p_ex_b _ _ _ _ _ _ p_e_b') = (typSize p_ex_b)  + (typSize p_
 typSize (TAnn _ _ _ p_e_b)                     = (typSize p_e_b)   + 1
 typSize (TSub _ _ _ p_e_s _ _ _ p_s_t)         = (typSize p_e_s)   + (subtypSize p_s_t) + 1
 
-{-@ measure isTVar @-}
+{-@ reflect isTVar @-}
 isTVar :: HasType -> Bool
 isTVar (TVar1 {}) = True
 isTVar (TVar2 {}) = True
 isTVar (TVar3 {}) = True
 isTVar _          = False
 
-{-@ measure isTAbs @-}
+{-@ reflect isTVar1 @-}
+isTVar1 :: HasType -> Bool
+isTVar1 (TVar1 {}) = True
+isTVar1 _          = False
+
+{-@ reflect isTVar2 @-}
+isTVar2 :: HasType -> Bool
+isTVar2 (TVar2 {}) = True
+isTVar2 _          = False
+
+{-@ reflect isTVar3 @-}
+isTVar3 :: HasType -> Bool
+isTVar3 (TVar3 {}) = True
+isTVar3 _          = False
+
+{-@ reflect isTAbs @-}
 isTAbs :: HasType -> Bool
 isTAbs (TAbs {}) = True
 isTAbs _         = False
 
-{-@ measure isTApp @-}
+{-@ reflect isTApp @-}
 isTApp :: HasType -> Bool
 isTApp (TApp {}) = True
 isTApp _         = False
 
-{-@ measure isTAbsT @-}
+{-@ reflect isTAbsT @-}
 isTAbsT :: HasType -> Bool
 isTAbsT (TAbsT {}) = True
 isTAbsT _          = False
 
-{-@ measure isTAppT @-}
+{-@ reflect isTAppT @-}
 isTAppT :: HasType -> Bool
 isTAppT (TAppT {}) = True
 isTAppT _          = False
 
-{-@ measure isTLet @-}
+{-@ reflect isTLet @-}
 isTLet :: HasType -> Bool
 isTLet (TLet {}) = True
 isTLet _         = False
 
-{-@ measure isTAnn @-}
+{-@ reflect isTAnn @-}
 isTAnn :: HasType -> Bool
 isTAnn (TAnn {}) = True
 isTAnn _         = False
 
-{-@ measure isTSub @-}
+{-@ reflect isTSub @-}
 isTSub :: HasType -> Bool
 isTSub (TSub {}) = True
 isTSub _         = False

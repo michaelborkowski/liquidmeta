@@ -41,6 +41,13 @@ import DenotationsSoundnessTyp
 {-@ reflect foo52 @-}
 foo52 x = Just x
 foo52 :: a -> Maybe a
+{-
+{-@ lem_self_is_subtype :: g:Env -> t:Type -> k:Kind -> ProoOf(WFType g t k) -> e:Expr
+        -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self t e) t) @-}
+lem_self_is_subtype :: Env -> Type -> Kind -> WFType -> Expr -> WFEnv -> Subtype 
+lem_self_is_subtype g (TRefn b x p)     e 
+lem_self_is_subtype g (TFunc x t_x t)   e
+lem_self_is_subtypeu-} 
 
 {-@ lem_self_idempotent_upper :: g:Env -> t:Type -> k:Kind -> e:Expr -> ProofOf(WFType g t k)
         -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self t e) (self (self t e) e)) @-}
@@ -72,16 +79,16 @@ lem_exact_subtype g s t (SPoly {}) e t_e p_e_te = undefined
 {-@ lem_exact_type :: g:Env -> v:Value -> t:Type -> ProofOf(HasType g v t)
         -> ProofOf(HasType g v (self t v)) @-}
 lem_exact_type :: Env -> Expr -> Type -> HasType -> HasType
-lem_exact_type g e t (TBC {}) = undefined
-lem_exact_type g e t (TIC {}) = undefined
+lem_exact_type g e t (TBC {})   = undefined
+lem_exact_type g e t (TIC {})   = undefined
 lem_exact_type g e t (TVar1 {}) = undefined
 lem_exact_type g e t (TVar2 {}) = undefined
 lem_exact_type g e t (TVar3 {}) = undefined
-lem_exact_type g e t (TPrm {}) = undefined
-lem_exact_type g e t (TAbs {}) = undefined
-lem_exact_type g e t (TApp {}) = undefined
+lem_exact_type g e t (TPrm {})  = undefined
+lem_exact_type g e t (TAbs {})  = undefined
+lem_exact_type g e t (TApp {})  = impossible "not a value"
 lem_exact_type g e t (TAbsT {}) = undefined
-lem_exact_type g e t (TAppT {}) = undefined
-lem_exact_type g e t (TLet {}) = undefined
-lem_exact_type g e t (TAnn {}) = undefined
-lem_exact_type g e t (TSub {}) = undefined
+lem_exact_type g e t (TAppT {}) = impossible "not a value"
+lem_exact_type g e t (TLet {})  = impossible "not a value"
+lem_exact_type g e t (TAnn {})  = impossible "not a value"
+lem_exact_type g e t (TSub {})  = undefined

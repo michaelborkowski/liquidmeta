@@ -155,6 +155,7 @@ ftv (Crash)         = S.empty
                       ( (not (Set_mem x (fv v))) => not (Set_mem x (fv e')) ) && 
                         Set_sub (ftv e) (ftv e') &&
                         Set_sub (ftv e') (Set_cup (ftv e) (ftv v)) &&
+                      ( e == Bc True => e' == Bc True ) &&
                       ( (isValue v && isValue e) => isValue e' ) } / [esize e] @-}
 subFV :: Vname -> Expr -> Expr -> Expr
 subFV x v_x (Bc b)                    = Bc b
@@ -170,7 +171,9 @@ subFV x v_x (AppT e bt)               = AppT  (subFV x v_x e) (tsubFV x v_x bt)
 subFV x v_x (Let y e1 e2)             = Let y (subFV x v_x e1) (subFV x v_x e2)
 subFV x v_x (Annot e t)               = Annot (subFV x v_x e) (tsubFV x v_x t) 
 subFV x v_x Crash                     = Crash
-
+{-
+                      ( (not (Set_mem a (freeTV t))) => not (Set_mem a (ftv e')) ) && 
+ -}
 --  removed for now:                    ( (freeBV e) == Set_cup (tfreeBV t) (freeBV e') ) &&
 --                      ( noDefns e => noDefns e' ) } / [esize e] @-}
 -- {-@ subFTV :: a:Vname -> t:Type -> { e:Expr | same_bindersE t e }
@@ -179,10 +182,9 @@ subFV x v_x Crash                     = Crash
                       -> { e':Expr | (Set_mem a (ftv e) || e == e') &&
                       ( Set_sub (ftv e) (Set_cup (Set_sng a) (ftv e')) ) &&
                       ( Set_sub (ftv e') (Set_cup (freeTV t) (Set_dif (ftv e) (Set_sng a)))) &&
-                      ( (not (Set_mem a (freeTV t))) => not (Set_mem a (ftv e')) ) && 
                         Set_sub (fv e) (fv e') &&
                         Set_sub (fv e') (Set_cup (fv e) (free t)) &&
-                      ( isValue e => isValue e' ) } / [esize e] @-}
+                      ( isValue e => isValue e' ) && ( e == Bc True => e' == Bc True )} / [esize e] @-}
 subFTV :: Vname -> Type -> Expr -> Expr
 subFTV a t_a (Bc b)                    = Bc b
 subFTV a t_a (Ic n)                    = Ic n
@@ -192,7 +194,7 @@ subFTV a t_a (FV y)                    = FV y
 subFTV a t_a (Lambda y e)              = Lambda  y  (subFTV a t_a e)
 subFTV a t_a (App e e')                = App   (subFTV a t_a e)  (subFTV a t_a e')
 subFTV a t_a (LambdaT a' k e)          = LambdaT a' k (subFTV a t_a e)
-subFTV a t_a (AppT e bt)               = AppT  (subFTV a t_a e) (tsubFTV a t_a bt)
+subFTV a t_a (AppT e bt)               = AppT  (subFTV a t_a e) (tsubFTV a (toBare t_a) bt)
 subFTV a t_a (Let y e1 e2)             = Let y (subFTV a t_a e1) (subFTV a t_a e2)
 subFTV a t_a (Annot e t)               = Annot (subFTV a t_a e) (tsubFTV a t_a t) 
 subFTV a t_a Crash                     = Crash
@@ -206,6 +208,7 @@ subFTV a t_a Crash                     = Crash
                                  Set_sub (ftv e)  (Set_cup (Set_sng a) (ftv e')) &&
                                  Set_sub (ftv e') (Set_cup (Set_sng a') (Set_dif (ftv e) (Set_sng a))) &&
                                  ( a != a'  => not (Set_mem a (ftv e'))) &&
+                                 ( e == Bc True => e' == Bc True ) &&
                                  fv e == fv e' && (isValue e => isValue e') } / [esize e] @-}
 chgFTV :: Vname -> Vname -> Expr -> Expr
 chgFTV a a' (Bc b)                = Bc b
@@ -232,6 +235,7 @@ chgFTV a a' Crash                     = Crash
                                     Set_sub (Set_dif (freeBV e) (Set_sng x)) (freeBV e') &&
                                     Set_sub (freeBTV e') (Set_cup (freeBTV e) (freeBTV v)) &&
                                     Set_sub (freeBTV e) (freeBTV e') &&
+                                    ( e == Bc True => e' == Bc True ) &&
                                     ( esize v != 1  || esize e == esize e' ) } / [esize e] @-}
 subBV :: Vname -> Expr -> Expr -> Expr
 subBV x v_x (Bc b)                    = Bc b
@@ -260,10 +264,12 @@ subBV x v_x Crash                     = Crash
 --{-@ subBTV :: a:Vname -> t:Type -> { e:Expr | same_bindersE t e }
 {-@ reflect subBTV @-} -- substitute in a type for a BOUND TYPE var
 {-@ subBTV :: a:Vname -> t:Type -> e:Expr
-                     -> { e':Expr | Set_sub (fv e) (fv e') &&
+                     -> { e':Expr | ( Set_mem a (freeBTV e) || e == e' ) &&
+                                    Set_sub (fv e) (fv e') &&
                                     Set_sub (fv e') (Set_cup (fv e) (free t)) &&
                                     Set_sub (ftv e) (ftv e') &&
                                     Set_sub (ftv e') (Set_cup (ftv e) (freeTV t)) &&
+                                    ( e == Bc True => e' == Bc True ) &&
                                     ( isTrivial t =>  esize e == esize e' ) } / [esize e] @-}
 subBTV :: Vname -> Type -> Expr -> Expr
 subBTV a t_a (Bc b)                       = Bc b
@@ -275,7 +281,7 @@ subBTV a t_a (Lambda y e)                 = Lambda y (subBTV a t_a e)
 subBTV a t_a (App e e')                   = App   (subBTV a t_a e)  (subBTV a t_a e')
 subBTV a t_a (LambdaT a' k e) | a == a'   = LambdaT a' k e
                               | otherwise = LambdaT a' k (subBTV a t_a e)
-subBTV a t_a (AppT e t)                   = AppT  (subBTV a t_a e) (tsubBTV a t_a t)
+subBTV a t_a (AppT e t)                   = AppT  (subBTV a t_a e) (tsubBTV a (toBare t_a) t)
 subBTV a t_a (Let y e1 e2)                = Let y (subBTV a t_a e1) (subBTV a t_a e2)
 subBTV a t_a (Annot e t)                  = Annot (subBTV a t_a e) (tsubBTV a t_a t)
 subBTV a t_a Crash                        = Crash  
@@ -299,7 +305,8 @@ unbind x y e = subBV x (FV y) e
                                    Set_sub (ftv e') (Set_cup (Set_sng a') (ftv e)) &&
                                    Set_sub (fv e) (fv e') && Set_sub (fv e') (fv e) &&
                                    freeBV e' == freeBV e && esize e == esize e' &&
-                                   freeBTV e' == Set_dif (freeBTV e) (Set_sng a) } / [esize e] @-}
+                                   freeBTV e' == Set_dif (freeBTV e) (Set_sng a) &&
+                                   ( e == Bc True => e' == Bc True ) } / [esize e] @-}
 unbind_tv :: Vname -> Vname -> Expr -> Expr
 unbind_tv a a' (Bc b)                       = Bc b
 unbind_tv a a' (Ic n)                       = Ic n
@@ -391,6 +398,29 @@ data Type = TRefn   Basic Vname Pred     -- b{x : p}
   -- ONLY types with Base Kind may have non-trivial refinements. Star kinded type variables 
   --     may only have the refinement { x : Bc True }.
 
+-- for use in TAppT: all refinements are "holes" i.e. (x : Bc True)
+{-@ type BareType = { t:Type | isBare t } @-}
+
+{-@ reflect isBare @-}
+isBare :: Type -> Bool
+isBare (TRefn b x p)     = p == Bc True
+isBare (TFunc x t_x t)   = isBare t_x && isBare t
+isBare (TExists x t_x t) = {-isBare t_x && isBare t-} False
+isBare (TPoly a k   t)   = isBare t
+
+{-@ reflect toBare @-}
+{-@ toBare :: t:Type -> { t':BareType | erase t == erase t' && Set_emp (free t') &&
+                                        (isTrivial t => isTrivial t') &&
+                                        (isBare t => (t == t')) && Set_sub (freeTV t') (freeTV t) &&
+                                        Set_sub (tfreeBTV t') (tfreeBTV t) && Set_emp (tfreeBV t') } @-}
+toBare (TRefn b x p)     = case b of
+  (FTV a)  -> TRefn b x (Bc True)
+  (BTV a)  -> TRefn b x (Bc True)
+  _        -> TRefn b x (Bc True)
+toBare (TFunc x t_x t)   = TFunc   x (toBare t_x) (toBare t)
+toBare (TExists x t_x t) = {-TExists x (toBare t_x)-} (toBare t)
+toBare (TPoly a k   t)   = TPoly a k (toBare t)
+
 {-@ lazy tsize @-}
 {-@ measure tsize @-}
 {-@ tsize :: t:Type -> { v:Int | v >= 0 } @-} 
@@ -478,6 +508,16 @@ same_binders_env t_a Empty          = True
 same_binders_env t_a (Cons x t_x g) = same_binders t_a t_x && same_binders_env t_a g
 same_binders_env t_a (ConsT a k  g) = same_binders_env t_a g
 
+{-@ lem_same_binders_toBare :: t:Type -> t':Type 
+        -> { pf:_ | same_binders t t' => same_binders t (toBare t') } @-}
+lem_same_binders_toBare :: Type -> Type -> Proof
+lem_same_binders_toBare t (TRefn b x p)      = ()
+lem_same_binders_toBare t (TFunc   x t_x t') = () ? lem_same_binders_toBare t t_x
+                                                  ? lem_same_binders_toBare t t'
+lem_same_binders_toBare t (TExists x t_x t') = () ? lem_same_binders_toBare t t_x
+                                                  ? lem_same_binders_toBare t t'
+lem_same_binders_toBare t (TPoly   a  k  t') = () ? lem_same_binders_toBare t t'
+
 {-@ lem_same_bindersE_subBV :: t:Type -> x:Vname -> { v:Value | same_bindersE t v}
         -> { e:Expr | same_bindersE t e } -> { pf:_ | same_bindersE t (subBV x v e) } / [esize e] @-}
 lem_same_bindersE_subBV  :: Type -> Vname -> Expr -> Expr -> Proof
@@ -541,8 +581,8 @@ lem_same_bindersE_subBTV t a t_a (LambdaT a' k e)
   | a == a'   = ()
   | otherwise = () ? lem_same_bindersE_subBTV t a t_a e --LambdaT a' k (subBTV a t_a e)
 lem_same_bindersE_subBTV t a t_a (AppT e t')     
-  = () ? lem_same_bindersE_subBTV t a t_a e 
-       ? lem_same_binders_tsubBTV t a t_a t' -- AppT  (subBTV a t_a e) (tsubBTV a t_a t)
+  = () ? lem_same_bindersE_subBTV t a t_a e  -- AppT  (subBTV a t_a e) (tsubBTV a t_a t)
+       ? lem_same_binders_tsubBTV t a (toBare t_a ? lem_same_binders_toBare t t_a) t' 
 lem_same_bindersE_subBTV t a t_a (Let y e1 e2)   
   = () ? lem_same_bindersE_subBTV t a t_a e1
        ? lem_same_bindersE_subBTV t a t_a e2 -- Let y (subBTV a t_a e1) (subBTV a t_a e2)
@@ -590,7 +630,7 @@ lem_same_bindersE_strengthen t p r
   | otherwise       = () -- App (App (Prim And) p) r
 
 -- a trivial type is b{x : Bc True}. Needed to argue that unbind_tvT preserves tsize.
-{-@ measure isTrivial @-}
+{-@ reflect isTrivial @-}
 isTrivial :: Type -> Bool
 isTrivial (TRefn b v r)     = ( r == Bc True)
 isTrivial (TFunc x t_x t)   = False
@@ -633,18 +673,10 @@ tfreeBTV (TFunc x t_x t)   = S.union (tfreeBTV t_x) (tfreeBTV t)
 tfreeBTV (TExists x t_x t) = S.union (tfreeBTV t_x) (tfreeBTV t) 
 tfreeBTV (TPoly a  k  t)   = S.difference (tfreeBTV t) (S.singleton a)
 
-
 -- When substituting in for a type variable, say a{x:p}[t_a/a], where t_a is not a refined
 --     basic type, then we need to express "t_a {x:p}" by pushing the refinement down into t_a.
 --     For example a{x:p}[ ( \exists y:Int{y:q}. a'{z:r} )/a] becomes roughly speaking
 --             \exists Int{y:q}. a'{z:r `And` p}
---     TODO not 100% sure here: should it instead be
---             \exists Int{y:q `And` p}. a'{z:r `And` p}  ?
---     I think no because the refinements inside a type that is part of an existential binder
---         can be moved to the type that is inside the existential quantifier, so long as they 
---         don't include a locally bound variable from there.
---{-@ push :: x:Vname -> p:Pred -> { t:Type | isBase t }
---                -> { t':Type | isBase t' && Set_sub (free t') (Set_cup (free t) (fv p)) && 
 -- Assumption: x is the same as the binder of any refinement types
 {-@ reflect push @-}
 {-@ push ::  p:Pred -> t:Type 
@@ -656,7 +688,7 @@ tfreeBTV (TPoly a  k  t)   = S.difference (tfreeBTV t) (S.singleton a)
                                Set_sub (tfreeBV t) (tfreeBV t') &&
                                Set_sub (tfreeBTV t') (Set_cup (tfreeBTV t) (freeBTV p)) &&
                                Set_sub (tfreeBTV t)  (tfreeBTV t') &&
-                               ( p != Bc True || tsize t' == tsize t) &&
+                               ( p != Bc True || t' == t) &&
                                ( erase t' == erase t ) && 
                                ( isTrivial t => tsize t' == esize p + 1 ) } @-}
 push :: Pred -> Type -> Type
@@ -672,7 +704,7 @@ push p (TPoly   a k   t) = TPoly   a k            (push p t) -- remove this late
 --  removed for now:              ( tfreeBV t == tfreeBV t' ) &&
 {-@ reflect tsubFV @-}
 {-@ tsubFV :: x:Vname -> e:Value -> t:Type  
-         -> { t':Type | ( Set_mem x (free t) || t == t' ) && 
+         -> { t':Type | (isBare t => isBare t') && ( Set_mem x (free t) || t == t' ) && 
                         ( Set_sub (free t) (Set_cup (Set_sng x) (free t'))) &&
                 ( Set_sub (free t') (Set_cup (fv e) (Set_dif (free t) (Set_sng x))) ) &&
                         Set_sub (freeTV t) (freeTV t') &&
@@ -683,12 +715,13 @@ tsubFV x v_x (TRefn b z r)     = TRefn b z  (subFV x v_x r)
 tsubFV x v_x (TFunc z t_z t)   = TFunc   z (tsubFV x v_x t_z) (tsubFV x v_x t)
 tsubFV x v_x (TExists z t_z t) = TExists z (tsubFV x v_x t_z) (tsubFV x v_x t)
 tsubFV x v_x (TPoly a k   t)   = TPoly   a k                  (tsubFV x v_x t)
-
+{-
+-}
 --  removed for now:               tfreeBV t' == Set_cup (tfreeBV t_a) (tfreeBV t) &&
 --{-@ tsubFTV :: a:Vname -> t_a:Type -> { t:Type | same_binders t_a t}
 {-@ reflect tsubFTV @-}
 {-@ tsubFTV :: a:Vname -> t_a:Type -> t:Type 
-         -> { t':Type | ( Set_mem a (freeTV t) || t == t' ) && 
+         -> { t':Type | ( Set_mem a (freeTV t) || t == t' ) && ((isBare t_a && isBare t) => isBare t') && 
                         ( Set_sub (freeTV t) (Set_cup (Set_sng a) (freeTV t'))) &&
                 ( Set_sub (freeTV t') (Set_cup (freeTV t_a) (Set_dif (freeTV t) (Set_sng a))) ) &&
                         Set_sub (free t) (free t') &&
@@ -706,7 +739,7 @@ tsubFTV a t_a (TPoly   a' k  t)    = TPoly   a' k                   (tsubFTV a t
 {-@ reflect tchgFTV @-}
 {-@ tchgFTV :: a:Vname -> a':Vname -> t:Type
                 -> { t':Type | (Set_mem a (freeTV t) || t == t') &&
-                               (free t' == free t) && 
+                               (isBare t => isBare t') && (free t' == free t) && 
                                Set_sub (freeTV t) (Set_cup (Set_sng a) (freeTV t')) &&
                                Set_sub (freeTV t') (Set_cup (Set_sng a') (Set_dif (freeTV t) (Set_sng a))) &&
                                ( a != a' => not (Set_mem a (freeTV t')) ) } / [tsize t] @-}
@@ -727,7 +760,7 @@ tchgFTV a a' (TPoly   a1 k   t) = TPoly   a1 k                 (tchgFTV a a' t)
                                Set_sub (tfreeBV t') (Set_cup (Set_dif (tfreeBV t) (Set_sng x)) (freeBV v_x)) &&
                                Set_sub (Set_dif (tfreeBV t) (Set_sng x)) (tfreeBV t') &&
                                Set_sub (tfreeBTV t') (Set_cup (tfreeBTV t) (freeBTV v_x)) &&
-                               Set_sub (tfreeBTV t) (tfreeBTV t') &&
+                               Set_sub (tfreeBTV t) (tfreeBTV t') && (isBare t => isBare t') &&
                                ( esize v_x != 1 || tsize t == tsize t' ) } / [tsize t] @-}
 tsubBV :: Vname -> Expr -> Type -> Type
 tsubBV x v_x (TRefn b y r)     
@@ -750,7 +783,9 @@ tsubBV x v_x (TPoly a  k  t)   = TPoly   a k                  (tsubBV x v_x t)
 --{-@ tsubBTV :: a:Vname -> t_a:Type -> { t:Type | same_binders t_a t }
 {-@ reflect tsubBTV @-}
 {-@ tsubBTV :: a:Vname -> t_a:Type -> t:Type
-                -> { t':Type | Set_sub (free t) (free t') &&
+                -> { t':Type | ( Set_mem a (tfreeBTV t) || t == t' ) &&
+                               (( isBare t_a && isBare t ) => isBare t') &&
+                               Set_sub (free t) (free t') && 
                                Set_sub (free t') (Set_cup (free t_a) (free t)) &&
                                Set_sub (freeTV t) (freeTV t') && 
                                Set_sub (freeTV t') (Set_cup (freeTV t_a) (freeTV t)) && 
@@ -771,7 +806,7 @@ tsubBTV a t_a (TPoly a' k  t)
                                       Set_sub (free t') (Set_cup (Set_sng y) (free t)) &&
                                       freeTV t == freeTV t' &&
                                       tfreeBV t' == Set_dif (tfreeBV t) (Set_sng x) &&
-                                      tfreeBTV t' == tfreeBTV t &&
+                                      tfreeBTV t' == tfreeBTV t && (isBare t => isBare t') &&
                                       tsize t == tsize t' } / [tsize t] @-} 
 unbindT :: Vname -> Vname -> Type -> Type
 unbindT x y t = tsubBV x (FV y) t
@@ -784,7 +819,7 @@ unbindT x y t = tsubBV x (FV y) t
                                       Set_sub (free t) (free t') && Set_sub (free t') (free t) &&
                                       tfreeBV t' == tfreeBV t &&
                                       tfreeBTV t' == Set_dif (tfreeBTV t) (Set_sng a) &&
-                                      tsize t == tsize t' } / [tsize t] @-} 
+                                      (isBare t => isBare t') && tsize t == tsize t' } / [tsize t] @-} 
 unbind_tvT :: Vname -> Vname -> Type -> Type
 unbind_tvT a a' (TRefn b x r)        = case b of 
   (BTV a1) | a == a1  -> TRefn (FTV a') x (unbind_tv a a' r) -- (subBV x (BV 1) (unbind_tv a a' r))

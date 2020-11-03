@@ -19,6 +19,7 @@ import SystemFTyping
 import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
+import BasicPropsWellFormedness
 import SystemFWellFormedness
 import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
@@ -35,6 +36,62 @@ foo23 :: a -> Maybe a
 -- THE SUBSTITUTION LEMMA -
 -- -- -- -- -- -- -- -- ---
 
+{-@ lem_subst_ftyp_ftvar :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
+      -> { x:Vname | (not (in_envF x g)) && not (in_envF x g') } -> v_x:Value
+      -> t_x:FType -> ProofOf(HasFType g v_x t_x) 
+      -> ProofOf(WFFE (concatF (FCons x t_x g) g')) -> e:Expr -> t:FType
+      -> {p_e_t:HasFType | propOf p_e_t == HasFType (concatF (FCons x t_x g) g') e t && isFTVar p_e_t}
+      -> ProofOf(HasFType (concatF g g') (subFV x v_x e) t) @-}
+lem_subst_ftyp_ftvar :: FEnv -> FEnv -> Vname -> Expr -> FType -> HasFType -> WFFE
+        -> Expr -> FType -> HasFType -> HasFType
+lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar1 _env z _t)
+  = case g' of
+      (FEmpty)         -> p_vx_tx   
+      (FCons _z _ g'') -> FTVar1 (concatF g g'') (z ? lem_in_env_concatF (FCons x t_x g) g'' z
+                                                    ? lem_in_env_concatF g g'' z) t
+lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar2 _env z _t p_z_t w t_w)
+  = case g' of
+      (FEmpty)           -> case ( x == z ) of
+        (True)  -> impossible "it is"
+        (False) -> p_z_t -- ? toProof ( e === (FV z) )
+      (FCons _w _tw g'') -> case ( x == z ) of
+        (True)  -> lem_weaken_ftyp (concatF g g'') FEmpty p_gg''_wf v_x t p_gg''_vx_tx w t_w 
+         --                                      ? toProof ( e === FV x )
+          where
+            (WFFBind _env' p_env'_wf _ _ _ _) = p_env_wf
+            p_gg''_wf = lem_strengthen_wffe g x t_x g'' p_env'_wf
+            p_gg''_vx_tx = lem_subst_ftyp g g'' x v_x t_x p_vx_tx p_env'_wf e t p_z_t
+        (False) -> FTVar2 (concatF g g'') (z ? lem_in_env_concatF (FCons x t_x g) g'' z
+                                             ? lem_in_env_concatF g g'' z)
+                          t p_z_tvx (w ? lem_fv_bound_in_fenv g v_x t_x p_vx_tx w
+                                       ? lem_in_env_concatF (FCons x t_x g) g'' w   
+                                       ? lem_in_env_concatF g g'' w) t_w
+          where
+            (WFFBind _gg'' p_gg''_wf _ _ _ _) = p_env_wf
+            p_z_tvx = lem_subst_ftyp g g'' x v_x t_x p_vx_tx p_gg''_wf e t p_z_t
+lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar3 _env z _t p_z_t a_ k_a)
+  = case g' of             -- g'' = Empty so x = w and p_z_t :: HasFType(g (FV z) t)
+      (FEmpty)            -> impossible "a != x" 
+      (FConsT _ _ka g'')  -> case (x == z) of
+        (True)  -> lem_weaken_tv_ftyp (concatF g g'') FEmpty p_gg''_wf v_x t p_gg''_vx_tx a k_a
+--                                      ? toProof ( e === (FV x) )
+          where
+            (WFFBindT _env' p_env'_wf _ _) = p_env_wf
+            p_gg''_wf = lem_strengthen_wffe g x t_x g'' p_env'_wf
+            a = a_ ? lem_in_env_concatF g g'' a_
+                   ? lem_in_env_concatF (FCons x t_x g) g'' a_
+                   ? lem_fv_bound_in_fenv g v_x t_x p_vx_tx a_
+            p_gg''_vx_tx = lem_subst_ftyp g g'' x v_x t_x p_vx_tx p_env'_wf e t p_z_t
+        (False) -> FTVar3 (concatF g g'') (z ? lem_in_env_concatF g g'' z
+                                             ? lem_in_env_concatF (FCons x t_x g) g'' z) 
+                          t p_z_tvx a k_a
+          where
+            (WFFBindT _gg'' p_gg''_wf _ _) = p_env_wf
+            a = a_ ? lem_in_env_concatF g g'' a_
+                   ? lem_in_env_concatF (FCons x t_x g) g'' a_
+                   ? lem_fv_bound_in_fenv g v_x t_x p_vx_tx a_
+            p_z_tvx = lem_subst_ftyp g g'' x v_x t_x p_vx_tx p_gg''_wf e t p_z_t
+
 {-@ lem_subst_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> { x:Vname | (not (in_envF x g)) && not (in_envF x g') } -> v_x:Value
         -> t_x:FType -> ProofOf(HasFType g v_x t_x) 
@@ -45,33 +102,12 @@ lem_subst_ftyp :: FEnv -> FEnv -> Vname -> Expr -> FType -> HasFType -> WFFE
         -> Expr -> FType -> HasFType -> HasFType
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTBC _env b) = FTBC (concatF g g') b
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTIC _env n) = FTIC (concatF g g') n
-lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar1 _env z _t)
-  = undefined --assume
-{-  = case g' of
-      (FEmpty)         -> p_vx_tx   
-      (FCons _z _ g'') -> FTVar1 (concatF g g'') (z ? lem_in_env_concatF (FCons x t_x g) g'' z
-                                                    ? lem_in_env_concatF g g'' z) t-}
-lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar2 _env z _t p_z_t w t_w)
-  = undefined -- assume
-{-
-  = case g' of
-      (FEmpty)           -> case ( x == z ) of
-                    (True)  -> impossible "it is"
-                    (False) -> p_z_t -- ? toProof ( e === (FV z) )
-      (FCons _w _tw g'') -> case ( x == z ) of
-                    (True)  -> lem_weaken_ftyp (concatF g g'') FEmpty v_x t p_gg''_vx_tx w t_w 
-                                               ? toProof ( e === FV x )
-                                 where
-                                   p_gg''_vx_tx = lem_subst_ftyp g g'' x v_x t_x p_vx_tx e t p_z_t
-                    (False) -> FTVar2 (concatF g g'') (z ? lem_in_env_concatF (FCons x t_x g) g'' z
-                                                        ? lem_in_env_concatF g g'' z)
-                                      t p_z_tvx (w ? lem_fv_bound_in_fenv g v_x t_x p_vx_tx w
-                                                   ? lem_in_env_concatF (FCons x t_x g) g'' w   
-                                                   ? lem_in_env_concatF g g'' w) t_w
-                                 where
-                                   p_z_tvx = lem_subst_ftyp g g'' x v_x t_x p_vx_tx e t p_z_t-}
-lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar3 _env z _t p_z_t a k)
-  = undefined -- assume
+lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(FTVar1 _env z _t)
+  = lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t
+lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(FTVar2 _env z _t p_z_t w t_w)
+  = lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t
+lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(FTVar3 _env z _t p_z_t a k)
+  = lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTPrm _env c) = FTPrm (concatF g g') c
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTAbs env_ z t_z e' t' _ _ y_ p_yenv_e'_t')
   = undefined -- assume

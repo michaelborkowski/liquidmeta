@@ -40,6 +40,7 @@ lem_empty_concatE Empty         = ()
 lem_empty_concatE (Cons  x t g) = () ? lem_empty_concatE g
 lem_empty_concatE (ConsT a k g) = () ? lem_empty_concatE g
 
+--             && (not (in_env x (concatE g g')) <=> (not (in_env x g) && not (in_env x g'))) } @-}
 {-@ lem_in_env_concat :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
       ->  x:Vname -> {pf:_ | (in_env x (concatE g g')) <=> ((in_env x g) || (in_env x g'))} @-}
 lem_in_env_concat :: Env -> Env -> Vname -> Proof
@@ -77,13 +78,41 @@ lem_erase_unbind_tvT a a' (TFunc   z t_z t) = () ? lem_erase_unbind_tvT a a' t_z
 lem_erase_unbind_tvT a a' (TExists z t_z t) = () ? lem_erase_unbind_tvT a a' t
 lem_erase_unbind_tvT a a' (TPoly   a1 k1 t) = () ? lem_erase_unbind_tvT a a' t
 
---{-@ lem_erase_tsubBTV :: a:Vname -> t_a:Type -> { t:Type | same_binders t_a t }
+{-@ lem_erase_push :: p:Pred -> t:Type -> { pf:_ | erase (push p t) == erase t } @-}
+lem_erase_push :: Pred -> Type -> Proof
+lem_erase_push p (TRefn   b x   r) = ()
+lem_erase_push p (TFunc   y t_y t) = () ? lem_erase_push p t_y ? lem_erase_push p t
+lem_erase_push p (TExists y t_y t) = () ? lem_erase_push p t_y ? lem_erase_push p t
+lem_erase_push p (TPoly   a k_a t) = () ? lem_erase_push p t
+
+{-@ lem_erase_tchgFTV :: a:Vname -> a1:Vname -> t:Type
+        -> { pf:_ | erase (tchgFTV a a1 t) == ftsubFV a (FTBasic (FTV a1)) (erase t) } @-}
+lem_erase_tchgFTV :: Vname -> Vname -> Type -> Proof
+lem_erase_tchgFTV a a1 (TRefn   b   z p) = case b of
+  (FTV a') | a == a' -> () -- ? lem_erase_chgFTV a a1 p
+  _                  -> () -- ? lem_erase_chgFTV a a1 p
+lem_erase_tchgFTV a a1 (TFunc   z t_z t) = () ? lem_erase_tchgFTV a a1 t_z
+                                              ? lem_erase_tchgFTV a a1 t
+lem_erase_tchgFTV a a1 (TExists z t_z t) = () ? lem_erase_tchgFTV a a1 t
+lem_erase_tchgFTV a a1 (TPoly   a' k' t) = () ? lem_erase_tchgFTV a a1 t
+
+{-@ lem_erase_tsubFTV :: a:Vname -> t_a:Type -> t:Type
+        -> { pf:_ | erase (tsubFTV a t_a t) == ftsubFV a (erase t_a) (erase t) } @-}
+lem_erase_tsubFTV :: Vname -> Type -> Type -> Proof
+lem_erase_tsubFTV a t_a (TRefn   b   z p) = case b of
+  (FTV a') | a == a' -> () ? lem_erase_push (subFTV a t_a p) t_a 
+  _                  -> ()
+lem_erase_tsubFTV a t_a (TFunc   z t_z t) = () ? lem_erase_tsubFTV a t_a t_z
+                                               ? lem_erase_tsubFTV a t_a t
+lem_erase_tsubFTV a t_a (TExists z t_z t) = () ? lem_erase_tsubFTV a t_a t
+lem_erase_tsubFTV a t_a (TPoly   a' k' t) = () ? lem_erase_tsubFTV a t_a t
+
 {-@ lem_erase_tsubBTV :: a:Vname -> t_a:Type -> t:Type
         -> { pf:_ | erase (tsubBTV a t_a t) == ftsubBV a (erase t_a) (erase t) } @-}
 lem_erase_tsubBTV :: Vname -> Type -> Type -> Proof
 lem_erase_tsubBTV a t_a (TRefn   b   z p) = case b of
-  (BTV a') -> () ? toProof ( erase (push (subBTV a t_a p) t_a) === erase t_a )
-  _        -> ()
+  (BTV a') | a == a' -> () ? lem_erase_push (subBTV a t_a p) t_a 
+  _                  -> ()
 lem_erase_tsubBTV a t_a (TFunc   z t_z t) = () ? lem_erase_tsubBTV a t_a t_z
                                                ? lem_erase_tsubBTV a t_a t
 lem_erase_tsubBTV a t_a (TExists z t_z t) = () ? lem_erase_tsubBTV a t_a t
@@ -188,6 +217,21 @@ echgFTV a a' Empty           = Empty
 echgFTV a a' (Cons  z t_z g) = Cons z (tchgFTV a a' t_z) (echgFTV a a' g)
 echgFTV a a' (ConsT a1 k1 g) = ConsT a1 k1               (echgFTV a a' g)
 
+{-@ lem_in_env_echgFTV :: g:Env -> a:Vname -> a':Vname -> y:Vname
+        -> { pf:_ | in_env y (echgFTV a a' g) <=> in_env y g } @-}
+lem_in_env_echgFTV :: Env -> Vname -> Vname -> Vname -> Proof
+lem_in_env_echgFTV Empty           a a' y = ()
+lem_in_env_echgFTV (Cons  z t_z g) a a' y = () ? lem_in_env_echgFTV g a a' y
+lem_in_env_echgFTV (ConsT a1 k1 g) a a' y = () ? lem_in_env_echgFTV g a a' y
+
+{-@ lem_erase_echgFTV :: a:Vname -> a':Vname -> g:Env
+        -> { pf:_ | erase_env (echgFTV a a' g) == fesubFV a (FTBasic (FTV a')) (erase_env g) } @-}
+lem_erase_echgFTV :: Vname -> Vname -> Env -> Proof
+lem_erase_echgFTV a a' (Empty)         = ()
+lem_erase_echgFTV a a' (Cons  y t g)   = () ? lem_erase_echgFTV a a' g
+                                            ? lem_erase_tchgFTV a a' t
+lem_erase_echgFTV a a' (ConsT a1 k1 g) = () ? lem_erase_echgFTV a a' g
+
 --{-@ esubFTV :: a:Vname -> t_a:Type -> { g:Env | same_binders_env t_a g }
 {-@ reflect esubFTV @-}
 {-@ esubFTV :: a:Vname -> t_a:Type -> g:Env 
@@ -196,6 +240,21 @@ esubFTV :: Vname -> Type -> Env -> Env
 esubFTV a t_a Empty           = Empty
 esubFTV a t_a (Cons  z t_z g) = Cons z (tsubFTV a t_a t_z) (esubFTV a t_a g)
 esubFTV a t_a (ConsT a' k' g) = ConsT a' k'                (esubFTV a t_a g)
+
+{-@ lem_in_env_esubFTV :: g:Env -> a:Vname -> t_a:Type -> y:Vname
+        -> { pf:_ | in_env y (esubFTV a t_a g) <=> in_env y g } @-}
+lem_in_env_esubFTV :: Env -> Vname -> Type -> Vname -> Proof
+lem_in_env_esubFTV Empty           a t_a y = ()
+lem_in_env_esubFTV (Cons  z t_z g) a t_a y = () ? lem_in_env_esubFTV g a t_a y
+lem_in_env_esubFTV (ConsT a' k' g) a t_a y = () ? lem_in_env_esubFTV g a t_a y
+
+{-@ lem_erase_esubFTV :: a:Vname -> t_a:Type -> g:Env
+        -> { pf:_ | erase_env (esubFTV a t_a g) == fesubFV a (erase t_a) (erase_env g) } @-}
+lem_erase_esubFTV :: Vname -> Type -> Env -> Proof
+lem_erase_esubFTV a t_a (Empty)        = ()
+lem_erase_esubFTV a t_a (Cons  y t g)  = () ? lem_erase_esubFTV a t_a g
+                                            ? lem_erase_tsubFTV a t_a t
+lem_erase_esubFTV a t_a (ConsT a' k g) = () ? lem_erase_esubFTV a t_a g
 
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- --

@@ -96,6 +96,23 @@ lem_selfify_wf g t@(TRefn b z p) k p_g_t x = case p_g_t of
 lem_selfify_wf g t@(TExists z t_z t') k p_g_t x = undefined
 lem_selfify_wf g t                    k p_g_t x = undefined -- lem_weaken_wf g Empty t k p_g_t x t 
 
+{-
+{-@ lem_push_wf :: g:Env -> g':Env -> t_a:Type -> k_a:Kind -> ProofOf(WFType g t_a k_a) -> x:Vname -> p:Pred
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
+        -> ProofOf(HasFType (FCons y (erase t_a) (erase_env g)) (unbind x y p) (FTBasic TBool))
+        -> ProofOf(WFType g (push p t_a) k) @-}
+
+{-@ lem_push_wf :: g:Env -> t_a:Type -> k:Kind -> ProofOf(WFType g t_a k) -> x:Vname -> p:Pred
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
+        -> ProofOf(HasFType (FCons y (erase t_a) (erase_env g)) (unbind x y p) (FTBasic TBool))
+        -> ProofOf(WFType g (push p t_a) k) @-}
+lem_push_wf :: Env -> Type -> Kind -> WFType -> Vname -> Expr -> Vname -> HasFType -> WFType
+lem_push_wf g (TRefn   b z   r) k p_g_ta x p y p_yg_p_bl = undefined
+lem_push_wf g (TFunc   z t_z t) k p_g_ta x p y p_yg_p_bl = undefined
+lem_push_wf g (TExists z t_z t) k p_g_ta x p y p_yg_p_bl = undefined
+lem_push_wf g (TPoly   a' k' t) k p_g_ta x p y p_yg_p_bl = undefined
+-}
+
 {-@ lem_subtype_in_env_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
       -> { x:Vname | (not (in_env x g)) && not (in_env x g') }
       -> s_x:Type -> t_x:Type -> ProofOf(Subtype g s_x t_x) -> t:Type -> k:Kind

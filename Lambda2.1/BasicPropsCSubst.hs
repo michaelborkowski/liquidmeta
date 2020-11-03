@@ -44,15 +44,6 @@ normalize (FTPoly a k   t) = FTPoly  a' k  (ftsubBV a (FTBasic (BTV a')) (normal
   where
     a' = maxBinder (FTPoly a k (normalize t))
 
--- prove a lem_normalize_tpoly
--- --                       texists
-{-@ lem_normalize_ftfunc :: t_x:FType -> t:FType 
-        -> { s_x:FType | normalize t_x == normalize s_x }
-        -> { s:FType   | normalize t   == normalize s }
-        -> { pf:_ | normalize (FTFunc t_x t) == normalize (FTFunc s_x s) } @-}
-lem_normalize_ftfunc :: FType -> FType -> FType -> FType -> Proof
-lem_normalize_ftfunc t_x t s_x s = ()
-
 -- | Substitution Properties
 
 -- with bound type vars, these are only equiv up to alhpa-renaming bound variables
