@@ -90,10 +90,10 @@ lem_tsubFTV_ty a t_a Eql      = ()
 lem_typing_wf :: Env -> Expr -> Type -> HasType -> WFEnv -> WFType
 lem_typing_wf g e t (TBC _g b) p_wf_g  = WFKind g t (lem_wf_tybc g b)
 lem_typing_wf g e t (TIC _g n) p_wf_g  = WFKind g t (lem_wf_tyic g n)
-lem_typing_wf g e t (TVar1 _g' x t') p_wf_g -- x:t',g |- (FV x) : t == self(t', x)
+lem_typing_wf g e t (TVar1 _g' x t' k' _) p_wf_g -- x:t',g |- (FV x) : t == self(t', x)
     = case p_wf_g of
         (WFEEmpty)                          -> impossible "surely"
-        (WFEBind g' p_g' _x _t' k' p_g'_t') -> case k' of 
+        (WFEBind g' p_g' _x _t' _  p_g'_t') -> case k' of 
           Base  -> WFKind g t (lem_selfify_wf g' t' k' p_g'_t' x)
           Star  -> lem_selfify_wf g' t' k' p_g'_t' x
                                             -- lem_weaken_wf g' Empty t p_g'_t' x t -- p_g'_t
@@ -145,7 +145,7 @@ lem_typing_wf g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_wf_g
 lem_typing_hasftype :: Env -> Expr -> Type -> HasType -> WFEnv -> HasFType
 lem_typing_hasftype g e t (TBC _g b) p_g_wf      = FTBC (erase_env g) b
 lem_typing_hasftype g e t (TIC _g n) p_g_wf      = FTIC (erase_env g) n
-lem_typing_hasftype g e t (TVar1 g' x t') p_g_wf = undefined 
+lem_typing_hasftype g e t (TVar1 g' x t' _ _) p_g_wf = undefined 
 -- FTVar1 (erase_env g') x (erase t') -- need erase self lemma
 {-    ? toProof ( erase_env (Cons x t' g') === FCons x (erase t') (erase_env g')
             === FCons x (erase t) (erase_env g') )-}
@@ -206,12 +206,12 @@ lem_typing_hasftype g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf
                 -> { x:Vname | not (in_env x g) }
                 -> { pf:_ | not (Set_mem x (fv e)) && not (Set_mem x (ftv e)) } @-}
 lem_fv_bound_in_env :: Env -> Expr -> Type -> HasType -> Vname -> Proof
-lem_fv_bound_in_env g e t (TBC _g b) x      = ()
-lem_fv_bound_in_env g e t (TIC _g n) x      = ()
-lem_fv_bound_in_env g e t (TVar1 _ y _t) x  = ()
+lem_fv_bound_in_env g e t (TBC _g b) x          = ()
+lem_fv_bound_in_env g e t (TIC _g n) x          = ()
+lem_fv_bound_in_env g e t (TVar1 _ y _t _ _) x  = ()
 lem_fv_bound_in_env g e t (TVar2 _ y _t p_y_t z t') x = ()
 lem_fv_bound_in_env g e t (TVar3 _ y _y p_y_t z k)  x = ()
-lem_fv_bound_in_env g e t (TPrm _g c) x     = ()
+lem_fv_bound_in_env g e t (TPrm _g c) x         = ()
 lem_fv_bound_in_env g e t (TAbs _g y t_y _ _ e' t' y' p_e'_t') x 
     = case ( x == y' ) of
         (True)  -> ()
@@ -245,9 +245,9 @@ lem_fv_bound_in_env g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) x
 {-@ lem_fv_subset_binds :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
                 -> { pf:_ | Set_sub (Set_cup (fv e) (ftv e)) (binds g) } @-}
 lem_fv_subset_binds :: Env -> Expr -> Type -> HasType -> Proof
-lem_fv_subset_binds g e t (TBC _g b)       = ()
-lem_fv_subset_binds g e t (TIC _g n)       = ()
-lem_fv_subset_binds g e t (TVar1 _ y _t)   = ()
+lem_fv_subset_binds g e t (TBC _g b)         = ()
+lem_fv_subset_binds g e t (TIC _g n)         = ()
+lem_fv_subset_binds g e t (TVar1 _ y _t _ _) = ()
 lem_fv_subset_binds g e t (TVar2 _ y _t p_y_t z t') = ()
 lem_fv_subset_binds g e t (TVar3 _ y _t p_y_t a k)  = ()
 lem_fv_subset_binds g e t (TPrm _g c)      = ()
@@ -280,8 +280,8 @@ lem_tfreeBV_unbindT_empty :: Vname -> Vname -> Type -> Proof
 lem_tfreeBV_unbindT_empty x y t = toProof ( S.empty === tfreeBV (unbindT x y t)
                                         === S.difference (tfreeBV t) (S.singleton x) )
 
-{-@ lem_freeBV_prim_empty :: c:Prim -> { pf:_ | Set_emp (freeBV (Prim c)) &&
-                                                Set_emp (tfreeBV (ty c)) } @-}
+{-@ lem_freeBV_prim_empty :: c:Prim -> { pf:_ | Set_emp (freeBV (Prim c)) && Set_emp (freeBTV (Prim c))
+                                            && Set_emp (tfreeBV (ty c)) && Set_emp (tfreeBTV (ty c)) } @-}
 lem_freeBV_prim_empty :: Prim -> Proof
 lem_freeBV_prim_empty And      = ()
 lem_freeBV_prim_empty Or       = ()
@@ -302,7 +302,7 @@ lem_freeBV_empty g e t (TBC _g b) p_g_wf   = case e of
   (Bc _) -> ()
 lem_freeBV_empty g e t (TIC _g n) p_g_wf   = case e of
   (Ic _) -> ()
-lem_freeBV_empty g e t (TVar1 _ x t') p_g_wf = case e of
+lem_freeBV_empty g e t (TVar1 _ x t' _ _) p_g_wf = case e of
   (FV _) -> () 
 lem_freeBV_empty g e t (TVar2 g' x _ p_x_t y s) p_g_wf
     = case (p_g_wf) of

@@ -237,7 +237,7 @@ lem_ctsubst_poly (CConsT a' t'  th) a k t
 
 
 {-@ lem_ctsubst_self_refn :: th:CSub -> b:Basic -> z:Vname -> p:Pred -> x:Vname 
-        -> { pf:_ | ctsubst th (self (TRefn b z p) (FV x)) == 
+        -> { pf:_ | ctsubst th (self (TRefn b z p) (FV x) Base) == 
 		        TRefn b z (App (App (Prim And) (csubst th p)) 
                                        (App (App (equals b) (BV z)) (csubst th (FV x)))) } @-}
 lem_ctsubst_self_refn :: CSub -> Basic -> Vname -> Pred -> Vname -> Proof
@@ -265,9 +265,9 @@ lem_ctsubst_self_refn th b z p x  = undefined {-
 -}
 
 {-@ lem_ctsubst_self_refn_notin :: th:CSub -> b:Basic -> z:Vname -> p:Pred -> { x:Vname | not (in_csubst x th) }
-        -> { pf:_ | ctsubst th (self (TRefn b z p) (FV x)) == self (ctsubst th (TRefn b z p)) (FV x) } @-}
-lem_ctsubst_self_refn_notin :: CSub -> Basic -> Vname -> Pred -> Vname -> Proof
-lem_ctsubst_self_refn_notin th b z p x 
+      -> k:Kind -> { pf:_ | ctsubst th (self (TRefn b z p) (FV x) k) == self (ctsubst th (TRefn b z p)) (FV x) k} @-}
+lem_ctsubst_self_refn_notin :: CSub -> Basic -> Vname -> Pred -> Vname -> Kind -> Proof
+lem_ctsubst_self_refn_notin th b z p x Base
           = ()--toProof ( ctsubst th (self (TRefn b z p) x) 
                     ? lem_ctsubst_self_refn th b z p x 
 {-                  === TRefn b z (App (App (Prim And) (csubst th p))
@@ -279,17 +279,20 @@ lem_ctsubst_self_refn_notin th b z p x
                   === self (TRefn b z (csubst th p)) x-}
                     ? lem_ctsubst_refn th b z p
 --                  === self (ctsubst th (TRefn b z p)) x )
+lem_ctsubst_self_refn_notin th b z p x Star = () ? toProof ( ctsubst th (self (TRefn b z p) (FV x) Star)
+                                                         === ctsubst th (TRefn b z p)
+                                                         === self (ctsubst th (TRefn b z p)) (FV x) Star )
 
-{-@ lem_ctsubst_self_notin :: th:CSub -> t:Type -> { x:Vname | not (in_csubst x th) }
-        -> { pf:_ | ctsubst th (self t (FV x)) == self (ctsubst th t) (FV x) } @-}
-lem_ctsubst_self_notin :: CSub -> Type -> Vname -> Proof
-lem_ctsubst_self_notin th (TRefn b z p)      x = () ? lem_ctsubst_self_refn_notin th b z p x
-lem_ctsubst_self_notin th (TFunc z t_z t')   x = () ? lem_ctsubst_func th z t_z t'
-lem_ctsubst_self_notin th (TExists z t_z t') x = () ? lem_ctsubst_exis th z t_z (self t' (FV x))
-                                                    ? lem_ctsubst_self_notin th t' x
-                                                    ? lem_ctsubst_exis th z t_z t'
+{-@ lem_ctsubst_self_notin :: th:CSub -> t:Type -> { x:Vname | not (in_csubst x th) } -> k:Kind
+        -> { pf:_ | ctsubst th (self t (FV x) k) == self (ctsubst th t) (FV x) k } @-}
+lem_ctsubst_self_notin :: CSub -> Type -> Vname -> Kind -> Proof
+lem_ctsubst_self_notin th (TRefn b z p)      x k = () ? lem_ctsubst_self_refn_notin th b z p x k
+lem_ctsubst_self_notin th (TFunc z t_z t')   x k = () ? lem_ctsubst_func th z t_z t'
+lem_ctsubst_self_notin th (TExists z t_z t') x k = () ? lem_ctsubst_exis th z t_z (self t' (FV x) k)
+                                                      ? lem_ctsubst_self_notin th t' x k
+                                                      ? lem_ctsubst_exis th z t_z t'
 --     ctsubst th (self (TExists z t_z t') x) === ctsubst th (TExists z t_z (self t' x))
-lem_ctsubst_self_notin th (TPoly a k   t')   x = () ? lem_ctsubst_poly th a k   t' 
+lem_ctsubst_self_notin th (TPoly a' k' t')   x k = () ? lem_ctsubst_poly th a' k' t' 
 
 
 -- TODO: this. TODO: lem_ctsubst_fv

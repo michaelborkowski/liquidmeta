@@ -122,9 +122,9 @@ lem_entails_elimination g b x p q y pf_p_bl pf_q_bl
 
 
 {-@ lem_self_refn_sub :: g:Env -> b:Basic -> z:Vname -> p:Pred -> ProofOf(WFEnv g)
-        -> ProofOf(WFType g (TRefn b z p) Base) -> { x:Vname | not (in_env x g) } 
-        -> ProofOf(Subtype (Cons x (TRefn b z p) g) (self (TRefn b z p) (FV x)) (TRefn b z p)) @-}          
-lem_self_refn_sub :: Env -> Basic -> Vname -> Pred -> WFEnv -> WFType -> Vname -> Subtype
+        -> ProofOf(WFType g (TRefn b z p) Base) -> { x:Vname | not (in_env x g) } -> k:Kind
+        -> ProofOf(Subtype (Cons x (TRefn b z p) g) (self (TRefn b z p) (FV x) k) (TRefn b z p)) @-}          
+lem_self_refn_sub :: Env -> Basic -> Vname -> Pred -> WFEnv -> WFType -> Vname -> Kind -> Subtype
 lem_self_refn_sub = undefined {- TODO: need to account for new definition of equals and self
 lem_self_refn_sub g b z p p_g_wf p_g_t x 
   = SBase (Cons x t g) z b p' z p w ent_p'_p
@@ -320,7 +320,7 @@ lem_entails_change_bv g b x p x' p' y = EntPred (Cons y (TRefn b x p) g)
 
 {-@ lem_self_tt_sub_eql :: g:Env -> b:Basic -> z:Vname -> z':Vname -> { x:Vname | not (in_env x g) } 
         -> ProofOf(Subtype (Cons x (TRefn b z (Bc True)) g) 
-                     (self (TRefn b z (Bc True)) (FV x)) (TRefn b z' (App (App (equals b) (BV z')) (FV x)))) @-} 
+             (self (TRefn b z (Bc True)) (FV x) Base) (TRefn b z' (App (App (equals b) (BV z')) (FV x)))) @-} 
 lem_self_tt_sub_eql :: Env -> Basic -> Vname -> Vname -> Vname -> Subtype
 lem_self_tt_sub_eql = undefined {- TODO: update for new def'n of equals
 lem_self_tt_sub_eql g b z z' x = SBase (Cons x t g) z b ttq z' eqx' w ent_ttq_eqx'

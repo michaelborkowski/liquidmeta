@@ -230,7 +230,6 @@ lem_weaken_tv_wf g g' p_env_wf t k p_t_wf@(WFPoly {}) a k_a
 lem_weaken_tv_wf g g' p_env_wf t k p_t_wf@(WFKind {}) a k_a
     = undefined
 
-{-
 {-@ lem_weaken_many_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
       -> ProofOf(WFEnv (concatE g g')) -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
       -> ProofOf(WFType (concatE g g') t k) @-}
@@ -246,4 +245,3 @@ lem_weaken_many_wf g (ConsT a k_a g') p_env_wf t k p_g_t
      where
        (WFEBindT env' p_env'_wf _ _)     = p_env_wf
        p_gg'_t   = lem_weaken_many_wf g g' p_env'_wf t k p_g_t 
--}

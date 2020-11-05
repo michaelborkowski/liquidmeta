@@ -859,9 +859,11 @@ data Env = Empty                         -- type Env = [(Vname, Type) or Vname]
 {-@ data Env where 
         Empty :: Env 
       | Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } 
-                         -> { g':Env | Set_cup (vbinds g') (tvbinds g') == binds g' } 
+                         -> { g':Env | Set_cup (vbinds g') (tvbinds g') == binds g' &&
+                                       Set_emp (Set_cap (vbinds g') (tvbinds g')) } 
       | ConsT :: a:Vname -> k:Kind -> { g:Env | not (in_env a g) } 
-                         -> { g':Env | Set_cup (vbinds g') (tvbinds g') == binds g' }  @-}
+                         -> { g':Env | Set_cup (vbinds g') (tvbinds g') == binds g' &&
+                                       Set_emp (Set_cap (vbinds g') (tvbinds g')) }  @-}
 
 {-@ measure envsize @-}
 {-@ envsize :: Env -> { n:Int | n >= 0 } @-}
@@ -944,7 +946,7 @@ vbinds (ConsT a k g) = vbinds g
 
 {-@ reflect tv_in_env @-}              -- type variables
 tv_in_env :: Vname -> Env -> Bool
-tv_in_env x g = S.member x (binds g) 
+tv_in_env x g = S.member x (tvbinds g) 
 
 {-@ reflect tvbinds @-}
 tvbinds :: Env -> S.Set Vname

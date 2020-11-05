@@ -45,12 +45,50 @@ import LemmasExactness
 foo53 x = Just x
 foo53 :: a -> Maybe a
 
-{-@ measure envSize @-}
-{-@ envSize :: Env -> { n:Int | n >= 0 } @-}
-envSize :: Env -> Int
-envSize Empty          = 0
-envSize (Cons x t_x g) = 1 + envSize g
-envSize (ConsT a k g)  = 1 + envSize g
+
+{-@ lem_subst_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+        -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
+        -> t_x:Type -> ProofOf(HasType g v_x t_x)
+        -> ProofOf(WFEnv (concatE (Cons x t_x g) g') )
+        -> ProofOf(WFEnv (concatE g (esubFV x v_x g')) ) / [envsize g'] @-}
+lem_subst_wfenv :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv -> WFEnv
+lem_subst_wfenv g Empty           x v_x t_x p_vx_tx p_xg_wf  = case p_xg_wf of
+  (WFEBind  _g p_g_wf _x _tx _ _) -> p_g_wf
+  (WFEBindT _g p_g_wf _  _)       -> p_g_wf
+lem_subst_wfenv g (Cons z t_z g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
+  (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) 
+    -> WFEBind env'' p_env''_wf z (tsubFV x v_x t_z) k_z p_env''_tzvx
+      where
+        env''        = concatE g (esubFV x v_x g')
+        p_env''_wf   = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
+        p_env''_tzvx = lem_subst_wf g g' x v_x t_x p_vx_tx p_env'_wf t_z k_z p_env'_tz
+lem_subst_wfenv g (ConsT a k_a g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
+  (WFEBindT env' p_env'_wf _a _ka)           -> WFEBindT env'' p_env''_wf a k_a
+    where
+      env''      = concatE g (esubFV x v_x g')
+      p_env''_wf = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
+
+{-@ lem_subst_tv_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+        -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type
+        -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
+        -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') )
+        -> ProofOf(WFEnv (concatE g (esubFTV a t_a g')) ) / [envsize g'] @-}
+lem_subst_tv_wfenv :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv -> WFEnv
+lem_subst_tv_wfenv g Empty           a t_a k_a p_g_ta p_xg_wf  = case p_xg_wf of
+  (WFEBind  _g p_g_wf _ _ _ _) -> p_g_wf
+  (WFEBindT _g p_g_wf _ _)     -> p_g_wf
+lem_subst_tv_wfenv g (Cons z t_z g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
+  (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) 
+    -> WFEBind env'' p_env''_wf z (tsubFTV a t_a t_z) k_z p_env''_tzta
+      where
+        env''        = concatE g (esubFTV a t_a g')
+        p_env''_wf   = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env'_wf
+        p_env''_tzta = lem_subst_tv_wf    g g' a t_a k_a p_g_ta p_env'_wf t_z k_z p_env'_tz
+lem_subst_tv_wfenv g (ConsT a1 k1 g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
+  (WFEBindT env' p_env'_wf _a1 _k1)          -> WFEBindT env'' p_env''_wf a1 k1
+    where
+      env''      = concatE g (esubFTV a t_a g')
+      p_env''_wf = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env'_wf
 
 data AugmentedCSubP where
     AugmentedCSub :: Env -> Env -> Vname -> Expr -> Type -> CSub -> AugmentedCSubP
@@ -88,7 +126,7 @@ data TVAugmentedCSub where
         -> t_x:Type -> ProofOf(HasType g v_x t_x)
         -> ProofOf(WFEnv (concatE (Cons x t_x g) g') )
         -> th':CSub -> ProofOf(DenotesEnv (concatE g (esubFV x v_x g')) th')
-        -> ProofOf(AugmentedCSub g g' x v_x t_x th') / [envSize g'] @-}
+        -> ProofOf(AugmentedCSub g g' x v_x t_x th') / [envsize g'] @-}
 lem_add_var_csubst :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                           -> CSub -> DenotesEnv -> AugmentedCSub
 lem_add_var_csubst g Empty           x v_x_ t_x p_vx_tx p_env_wf zth' den_env'_th' 
@@ -187,7 +225,7 @@ lem_add_var_csubst g (ConsT a k_a g') x v_x_ t_x p_vx_tx p_zenv_wf zth' den_zenv
         -> k_a:Kind -> ProofOf(WFType g t_a k_a)
         -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') )
         -> th':CSub -> ProofOf(DenotesEnv (concatE g (esubFTV a t_a g')) th')
-        -> ProofOf(TVAugmentedCSub g g' a t_a k_a th') / [envSize g'] @-}
+        -> ProofOf(TVAugmentedCSub g g' a t_a k_a th') / [envsize g'] @-}
 lem_add_tvar_csubst :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                           -> CSub -> DenotesEnv -> TVAugmentedCSub
 lem_add_tvar_csubst g Empty            a t_a k_a p_g_ta p_env_wf   th'   den_env'_th'

@@ -75,12 +75,9 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
       where
         z           = z_ ? lem_free_bound_in_env g t   k   p_g_t   z_
                          ? lem_free_bound_in_env g t'' k'' p_g_t'' z_
-        (WFFunc _ _ _ k_s1 p_g_s1 _ k_t1 w1 p_w1g_t1) = case k of
-          Star -> lem_wffunc_for_wf_tfunc g x1 s1 t1 p_g_t
-        (WFFunc _ _ _ k_s2 p_g_s2 _ k_t2 w2 p_w2g_t2) = case k' of 
-          Star -> lem_wffunc_for_wf_tfunc g x2 s2 t2 p_g_t' 
-        (WFFunc _ _ _ k_s3 p_g_s3 _ k_t3 w3 p_w3g_t3) = case k'' of 
-          Star -> lem_wffunc_for_wf_tfunc g x3 s3 t3 p_g_t'' 
+        (WFFunc _ _ _ k_s1 p_g_s1 _ k_t1 w1 p_w1g_t1) = lem_wffunc_for_wf_tfunc g x1 s1 t1 p_g_t
+        (WFFunc _ _ _ k_s2 p_g_s2 _ k_t2 w2 p_w2g_t2) = lem_wffunc_for_wf_tfunc g x2 s2 t2 p_g_t' 
+        (WFFunc _ _ _ k_s3 p_g_s3 _ k_t3 w3 p_w3g_t3) = lem_wffunc_for_wf_tfunc g x3 s3 t3 p_g_t'' 
         p_s3_s1     = lem_sub_trans g p_g_wf s3 k_s3 p_g_s3 s2 k_s2 p_g_s2 
                                              s1 k_s1 p_g_s1 p_s3_s2 p_s2_s1
         p_w1g_wf    = WFEBind g p_g_wf w1 s3 k_s3 p_g_s3
@@ -99,7 +96,7 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
         p_z3g_t2    = lem_change_var_wf g w2 s3 Empty p_w2g_wf (unbindT x2 w2 t2) k_t2 p_w3g_t2 z
                                              ? lem_tsubFV_unbindT x2 w2 (FV z) t2
         p_z3g_t3    = lem_change_var_wf g w3 s3 Empty p_w3g_wf (unbindT x3 w3 t3) k_t3 p_w3g_t3 z
-                                             ? lem_tsubFV_unbindT x2 w3 (FV z) t3
+                                             ? lem_tsubFV_unbindT x3 w3 (FV z) t3
         p_y3g_t1_t2 = lem_narrow_sub g Empty y s3 s2 p_s3_s2 (unbindT x1 y t1) (unbindT x2 y t2) p_y2g_t1_t2
         p_z3g_t1_t2 = lem_change_var_subtype g y s3 Empty p_y3g_wf (unbindT x1 y t1) k_t1 p_y3g_t1
                                              (unbindT x2 y t2) k_t2 p_y3g_t2 p_y3g_t1_t2 z
@@ -114,12 +111,9 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
       where
         a'          = a'_ ? lem_free_bound_in_env g t   k   p_g_t   a'_
                           ? lem_free_bound_in_env g t'' k'' p_g_t'' a'_
-        (WFPoly _ _ _ _ k_t1 a'1 p_a'1g_t1) = case k of 
-          Star -> lem_wfpoly_for_wf_tpoly g a1 k1 t1 p_g_t
-        (WFPoly _ _ _ _ k_t2 a'2 p_a'2g_t2) = case k of 
-          Star -> lem_wfpoly_for_wf_tpoly g a2 k1 t2 p_g_t' 
-        (WFPoly _ _ _ _ k_t3 a'3 p_a'3g_t3) = case k of
-          Star -> lem_wfpoly_for_wf_tpoly g a3 k1 t3 p_g_t'' 
+        (WFPoly _ _ _ _ k_t1 a'1 p_a'1g_t1) = lem_wfpoly_for_wf_tpoly g a1 k1 t1 p_g_t
+        (WFPoly _ _ _ _ k_t2 a'2 p_a'2g_t2) = lem_wfpoly_for_wf_tpoly g a2 k1 t2 p_g_t' 
+        (WFPoly _ _ _ _ k_t3 a'3 p_a'3g_t3) = lem_wfpoly_for_wf_tpoly g a3 k1 t3 p_g_t'' 
         p_a'1g_wf   = WFEBindT g p_g_wf a'1 k1        
         p_a'2g_wf   = WFEBindT g p_g_wf a'2 k1        
         p_a'3g_wf   = WFEBindT g p_g_wf a'3 k1
@@ -159,7 +153,7 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
   = lem_sub_trans g p_g_wf t k p_g_t (tsubBV x v_x s') k' p_g_s'vx 
                   t'' k'' p_g_t'' p_g_t_s'vx p_g_s'vx_t''
       where
-        (WFExis _ _ _ k_sx p_g_sx _ k_s' w p_wg_s') = lem_wfexis_for_wf_texists g x s_x s' k_s' p_g_t'
+        (WFExis _ _ _ k_sx p_g_sx _ k_s' w p_wg_s') = lem_wfexis_for_wf_texists g x s_x s' k' p_g_t'
 --                                                        ? toProof ( t' === TExists x s_x s')
         p_wg_wf      = WFEBind g p_g_wf w s_x k_sx p_g_sx
         p_yg_wf      = WFEBind g p_g_wf y s_x k_sx p_g_sx

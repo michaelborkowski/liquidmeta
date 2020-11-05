@@ -57,14 +57,19 @@ lem_change_var_typ g x t_x g' p_env_wf e t (TBC _ b) y
     = TBC (concatE (Cons y t_x g) (esubFV x (FV y) g')) b ? lem_tsubFV_tybc x (FV y) b
 lem_change_var_typ g x t_x g' p_env_wf e t (TIC _ n) y  
     = TIC (concatE (Cons y t_x g) (esubFV x (FV y) g')) n ? lem_tsubFV_tyic x (FV y) n
-lem_change_var_typ g x t_x g' p_env_wf e t (TVar1 _ z t') y  -- t == self t' (FV z)
+lem_change_var_typ g x t_x g' p_env_wf e t (TVar1 _ z t' k' p_env'_t') y  -- t == self t' (FV z)
     = case g' of 
-        (Empty)           -> TVar1 g y (tsubFV x (FV y) t_x)  ? lem_free_bound_in_env g t_x k_x p_g_tx x
+        (Empty)           -> TVar1 g y (tsubFV x (FV y) t_x) k' p'_env'_t'
+                                                              ? lem_free_bound_in_env g t_x k_x p_g_tx x
         {- x = z and t_x = t' -}                              ? lem_tsubFV_self1 x y t' z 
           where
             (WFEBind _g p_g_wf _x _tx k_x p_g_tx) = p_env_wf
-        (Cons _z _ g'')   -> TVar1 (concatE (Cons y t_x g) (esubFV x (FV y) g'')) z (tsubFV x (FV y) t')
+            p'_env'_t' = lem_change_var_wf g x t_x Empty p_env_wf t' k' p_env'_t' y
+        (Cons _z _ g'')   -> TVar1 (concatE (Cons y t_x g) (esubFV x (FV y) g'')) z 
+                                   (tsubFV x (FV y) t') k' p'_env'_t'
                                                               ?	lem_tsubFV_self2 x (FV y) t' z
+          where
+            p'_env'_t' = lem_change_var_wf g x t_x Empty p_env_wf t' k' p_env'_t' y
 lem_change_var_typ g x t_x g' p_env_wf e t (TVar2 _ z _t p_z_t w t_w) y = undefined {-
     = case g' of             -- g''=Emp so x=w and p_z_t :: HasBType(g (FV z) t)
         (Empty)           -> case (x == z) of

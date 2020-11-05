@@ -48,7 +48,7 @@ foo38 :: a -> Maybe a
 lem_weaken_typ :: Env -> Env -> WFEnv -> Expr -> Type -> HasType -> Vname -> Type -> HasType          
 lem_weaken_typ g g' p_env_wf e t (TBC _g b)      x t_x = TBC  (concatE (Cons x t_x g) g') b
 lem_weaken_typ g g' p_env_wf e t (TIC _g n)      x t_x = TIC  (concatE (Cons x t_x g) g') n
-lem_weaken_typ g g' p_env_wf e t p_y_t@(TVar1 gg y t_y) x_ t_x -- env == concatE g (Cons y t_y g'') 
+lem_weaken_typ g g' p_env_wf e t p_y_t@(TVar1 gg y t_y k_y p_gg_ty) x_ t_x -- env == concatE g (Cons y t_y g'') 
     = case g' of 
         (Empty)           -> TVar2 (Cons y t_y gg) (y ? lem_free_bound_in_env gg t_y k_y p_gg_ty y) 
                                    t p_y_t x t_x 
@@ -57,7 +57,10 @@ lem_weaken_typ g g' p_env_wf e t p_y_t@(TVar1 gg y t_y) x_ t_x -- env == concatE
                    ? lem_free_bound_in_env g t Star p_g_t x_
             (WFEBind _gg p_gg_wf _y _ty k_y p_gg_ty) = p_env_wf
             p_g_t  = lem_typing_wf g (FV y) t p_y_t p_env_wf
-        (Cons _y _ty g'') -> TVar1 (concatE (Cons x_ t_x g) g'') y t_y 
+        (Cons _y _ty g'') -> TVar1 (concatE (Cons x_ t_x g) g'') y t_y k_y p_gxg_ty
+          where
+            (WFEBind _gg p_gg_wf _y _ty _ky _) = p_env_wf
+            p_gxg_ty = lem_weaken_wf g g'' p_gg_wf t_y k_y p_gg_ty x_ t_x
 -- (g; g' == _g, z:t_z) |- y : t_y
 lem_weaken_typ g g' p_env_wf e t p_y_ty@(TVar2 gg y t_y p_gg_y_ty z t_z) x_ t_x
     = undefined {- = case g' of
