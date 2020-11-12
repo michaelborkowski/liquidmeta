@@ -24,6 +24,7 @@ import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import SystemFSoundness
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 

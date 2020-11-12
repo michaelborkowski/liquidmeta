@@ -93,9 +93,9 @@ lem_typing_wf g e t (TIC _g n) p_wf_g  = WFKind g t (lem_wf_tyic g n)
 lem_typing_wf g e t (TVar1 _g' x t' k' _) p_wf_g -- x:t',g |- (FV x) : t == self(t', x)
     = case p_wf_g of
         (WFEEmpty)                          -> impossible "surely"
-        (WFEBind g' p_g' _x _t' _  p_g'_t') -> case k' of 
+        (WFEBind g' p_g' _x _t' _  p_g'_t') -> undefined {-case k' of 
           Base  -> WFKind g t (lem_selfify_wf g' t' k' p_g'_t' x)
-          Star  -> lem_selfify_wf g' t' k' p_g'_t' x
+          Star  -> lem_selfify_wf g' t' k' p_g'_t' x -} -- FIXME
                                             -- lem_weaken_wf g' Empty t p_g'_t' x t -- p_g'_t
         (WFEBindT g' p_g' a k_a)            -> impossible ""
 lem_typing_wf g e t (TVar2 g' x _t p_g'_x_t y s) p_wf_g
@@ -273,13 +273,6 @@ lem_fv_subset_binds g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t)
     = () ? lem_fv_subset_binds g e s p_e_s 
 
 
-{-@ lem_tfreeBV_unbindT_empty :: x:Vname -> y:Vname 
-         -> { t:Type | Set_emp (tfreeBV (unbindT x y t)) && Set_emp (tfreeBTV (unbindT x y t)) }
-         -> { pf:_ | (Set_emp (tfreeBV t) || tfreeBV t == Set_sng x) && Set_emp (tfreeBTV t) } @-}
-lem_tfreeBV_unbindT_empty :: Vname -> Vname -> Type -> Proof
-lem_tfreeBV_unbindT_empty x y t = toProof ( S.empty === tfreeBV (unbindT x y t)
-                                        === S.difference (tfreeBV t) (S.singleton x) )
-
 {-@ lem_freeBV_prim_empty :: c:Prim -> { pf:_ | Set_emp (freeBV (Prim c)) && Set_emp (freeBTV (Prim c))
                                             && Set_emp (tfreeBV (ty c)) && Set_emp (tfreeBTV (ty c)) } @-}
 lem_freeBV_prim_empty :: Prim -> Proof
@@ -341,38 +334,3 @@ lem_freeBV_empty g e t (TAnn _g e' _ p_e'_t) p_g_wf = case e of
         p_g_t = lem_typing_wf g e' t p_e'_t p_g_wf 
 lem_freeBV_empty g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf
     = () ? lem_freeBV_empty g e s p_e_s p_g_wf
-
-{-@ lem_tfreeBV_empty :: g:Env -> t:Type -> k:Kind -> { p_g_t:WFType | propOf p_g_t == WFType g t k }
-            -> ProofOf(WFEnv g) -> { pf:Proof | Set_emp (tfreeBV t) &&
-                                                Set_emp (tfreeBTV t) } / [wftypSize p_g_t] @-}
-lem_tfreeBV_empty :: Env -> Type -> Kind -> WFType -> WFEnv -> Proof
-lem_tfreeBV_empty g t k (WFBase _g b) p_g_wf = case t of 
-  (TRefn _ _ _) -> () ? lem_freeBV_emptyB FEmpty (Bc True) (FTBasic TBool) (FTBC FEmpty True)
-lem_tfreeBV_empty g t k p_g_t@(WFRefn _g x b p_g_b p y p_yg_p_bl) p_g_wf = case t of
-  (TRefn _ _ _) -> case b of 
-    (BTV a) -> impossible ("by lemma" ? lem_btv_not_wf g a x p k p_g_t)
-    _       -> () ? lem_freeBV_unbind_empty x y (p ? pf_unbinds_empty)
-      where
-        {-@ pf_unbinds_empty :: { pf:_ | Set_emp (freeBV (unbind x y p)) 
-                                      && Set_emp (freeBTV (unbind x y p)) } @-}
-        pf_unbinds_empty = lem_freeBV_emptyB (FCons y (FTBasic b) (erase_env g)) (unbind x y p) 
-                                             (FTBasic TBool) p_yg_p_bl
-lem_tfreeBV_empty g t k (WFVar1 {}) p_g_wf = undefined
-lem_tfreeBV_empty g t k (WFVar2 {}) p_g_wf = undefined
-lem_tfreeBV_empty g t k (WFVar3 {}) p_g_wf = undefined
-lem_tfreeBV_empty g t k (WFFunc _g x t_x k_x p_g_tx t' k' y p_yg_t') p_g_wf = case t of
-  (TFunc _ _ _) -> () 
-        ? lem_tfreeBV_empty g t_x k_x p_g_tx p_g_wf
-        ? lem_tfreeBV_unbindT_empty x y (t' ? lem_tfreeBV_empty (Cons y t_x g) (unbindT x y t') k'
-                                                                p_yg_t' p_yg_wf)
-      where
-        p_yg_wf = WFEBind g p_g_wf y t_x k_x p_g_tx
-lem_tfreeBV_empty g t k (WFExis _g x t_x k_x p_g_tx t' k' y p_yg_t') p_g_wf = case t of
-  (TExists _ _ _) -> () 
-        ? lem_tfreeBV_empty g t_x k_x p_g_tx p_g_wf
-        ? lem_tfreeBV_unbindT_empty x y (t' ? lem_tfreeBV_empty (Cons y t_x g) (unbindT x y t') k'
-                                                                p_yg_t' p_yg_wf)
-      where
-        p_yg_wf = WFEBind g p_g_wf y t_x k_x p_g_tx
-lem_tfreeBV_empty g t k (WFPoly {}) p_g_wf = undefined
-lem_tfreeBV_empty g t k (WFKind _g _t p_g_t_base) p_g_wf = () ? lem_tfreeBV_empty g t Base p_g_t_base p_g_wf 

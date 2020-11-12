@@ -74,7 +74,10 @@ lemma_progress _e _t (FTAnn FEmpty e1 t liqt p_e1_t)
       = case (lemma_progress e1 t p_e1_t) of
           Left ()               -> Right (e1, EAnnV e1 liqt)
           Right (e1', p_e1_e1') -> Right (Annot e1' liqt, EAnn e1 e1' p_e1_e1' liqt)
-
+lemma_progress _e _t (FTEqv FEmpty e a1 k t1 p_e_a1t1 a2 t2 a)
+      = case (lemma_progress e (FTPoly a1 k t1) p_e_a1t1) of
+          Left ()               -> Left ()
+          Right (e', p_e_e')    -> Right (e', p_e_e')
 
 {-@ lemma_preservation :: e:Expr -> t:FType -> ProofOf(HasFType FEmpty e t) -> e':Expr
         -> ProofOf(Step e e') -> Either { pf:_ | false } { pf:_ | propOf pf == HasFType FEmpty e' t} @-}
@@ -125,14 +128,14 @@ lemma_preservation e t (FTAppT FEmpty (Prim c) a k s p_e1_as rt p_emp_er_rt) e' 
   = Right (lem_deltaT_ftyp c a k s p_e1_as rt p_emp_er_rt)
           ? lem_sem_det e e' st_e_e' (deltaT c rt) (EPrimT c rt)
 lemma_preservation e t (FTAppT FEmpty (LambdaT a1 k1 e2) a k s p_e1_as rt p_emp_er_rt) e' st_e_e'
-  = Right p_e2rt_srt ? lem_sem_det e e' st_e_e' (subBTV a rt e2) (EAppTAbs a1 k1 e2 rt)
+  = Right p_e2rt_srt ? lem_sem_det e e' st_e_e' (subBTV a1 rt e2) (EAppTAbs a1 k1 e2 rt)
       where
-        (FTAbsT _ _ _ _ _ a' p_e2_s) = p_e1_as
-        p_wf_a'k                     = WFFBindT FEmpty WFFEmpty a' k
-        p_e2rt_srt                   = lem_subst_tv_ftyp FEmpty FEmpty a' rt k p_emp_er_rt
-                                           p_wf_a'k (unbind_tv a1 a' e2) (unbindFT a a' s) p_e2_s
-                                           ? lem_subFTV_unbind_tv a1 a' rt e2
-                                           ? lem_ftsubFV_unbindFT a  a' (erase rt) s  
+        (a', p_e2_s) = lem_invert_ftabst FEmpty a1 k1 e2 a k s p_e1_as WFFEmpty
+        p_wf_a'k     = WFFBindT FEmpty WFFEmpty a' k
+        p_e2rt_srt   = lem_subst_tv_ftyp FEmpty FEmpty a' rt k p_emp_er_rt
+                                        p_wf_a'k (unbind_tv a1 a' e2) (unbindFT a a' s) p_e2_s
+                                        ? lem_subFTV_unbind_tv a1 a' rt e2
+                                        ? lem_ftsubFV_unbindFT a  a' (erase rt) s  
 lemma_preservation e t (FTAppT FEmpty e1 a k s p_e1_as rt p_emp_er_rt) e' st_e_e'
   = case (lemma_progress e1 (FTPoly a k s) p_e1_as) of
       Left ()                -> impossible ("by lemma" ? lemma_tfunction_values e1 a k s p_e1_as)
@@ -168,6 +171,11 @@ lemma_preservation e t (FTAnn FEmpty e1 t_ liqt p_e1_t) e' st_e_e'
                                   ? lem_sem_det e e' st_e_e' (Annot e1' liqt) (EAnn e1 e1' st_e1_e1' liqt)
           where
             Right p_e1'_t = lemma_preservation e1 t p_e1_t e1' st_e1_e1'
+lemma_preservation e t (FTEqv FEmpty _e a1 k t1 p_e_a1t1 a2 t2 a) e' st_e_e'
+  = case (lemma_preservation e (FTPoly a1 k t1) p_e_a1t1 e' st_e_e') of
+      Left ()         -> Left ()
+      Right p_e'_a1t1 -> Right (FTEqv FEmpty e' a1 k t1 p_e'_a1t1 a2 t2 
+                                 (a ? lem_fv_bound_in_fenv FEmpty e' (FTPoly a1 k t1) p_e'_a1t1 a))
 
 -- Lemma. The underlying bare type system is sound. This is the textbook
 --          soundness proof for the STLC.

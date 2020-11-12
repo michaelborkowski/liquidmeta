@@ -66,7 +66,7 @@ lem_delta_binders t _ _             = () --Crash
 {-@ reflect deltaT @-}
 {-@ deltaT :: c:Prim -> t:Type -> { e':Value | Set_emp (fv e') && Set_emp (ftv e') } @-}
 deltaT :: Prim -> Type -> Expr
-deltaT Eql t = case (erase t) of
+deltaT  Eql    t = case (erase t) of
   (FTBasic b)    -> case b of
     TBool             -> Prim Eqv
     TInt              -> Prim Eq
@@ -76,7 +76,7 @@ deltaT _   _ = Crash
 
 {-@ lem_deltaT_binders :: t:Type -> c:Prim -> t':Type -> { pf:_ | same_bindersE t (deltaT c t') } @-}
 lem_deltaT_binders :: Type -> Prim -> Type -> Proof
-lem_deltaT_binders t Eql t' = case (erase t) of
+lem_deltaT_binders t  Eql    t' = case (erase t) of
   (FTBasic b)     -> case b of
     TBool              -> ()
     TInt               -> ()
@@ -121,10 +121,6 @@ data Step where
                    -> t:Type -> ProofOf(Step (Annot e t) (Annot e' t)) 
       | EAnnV :: v:Value -> t:Type -> ProofOf(Step (Annot v t) v) @-} -- @-}
 
-{- old versions with isValue only
- |  EApp2 :: e:Expr -> e':Expr -> ProofOf( Step e e' )
-                 -> { v:Expr | isValue v } -> ProofOf( Step (App v e) (App v e'))
- |  EAnnV :: { v:Expr | isValue v } -> t:Type -> ProofOf( Step (Annot v t) v) @ -}
 
 data EvalsToP where
     EvalsTo :: Expr -> Expr -> EvalsToP

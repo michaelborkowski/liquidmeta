@@ -40,6 +40,8 @@ data HasFType where
     FTLet  :: FEnv -> Expr -> FType -> HasFType -> Vname -> Expr
                    -> FType -> Vname -> HasFType -> HasFType
     FTAnn  :: FEnv -> Expr -> FType -> Type -> HasFType -> HasFType
+    FTEqv  :: FEnv -> Expr -> Vname -> Kind -> FType -> HasFType 
+                   -> Vname -> FType -> Vname -> HasFType
 
 {-@ data HasFType where
         FTBC   :: g:FEnv -> b:Bool -> ProofOf(HasFType g (Bc b) (FTBasic TBool))
@@ -78,8 +80,13 @@ data HasFType where
                 -> ProofOf(HasFType g (Let x e_x e) b')
      |  FTAnn  :: g:FEnv -> e:Expr -> b:FType 
                 -> { t1:Type | (erase t1 == b) && Set_sub (Set_cup (free t1) (freeTV t1)) (bindsF g) }
-                -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b)  @-} 
--- old version : -> { t1:Type | (erase t1 == b) && Set_sub (free t1) (bindsF g) && Set_emp (tfreeBV t1) }
+                -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b)  
+     |  FTEqv  :: g:FEnv -> e:Expr -> a1:Vname -> k:Kind -> t1:FType 
+                -> ProofOf(HasFType g e (FTPoly a1 k t1)) -> a2:Vname -> t2:FType
+                -> { a:Vname | not (in_envF a g) && not (Set_mem a (fv e)) && not (Set_mem a (ftv e))
+                            && not (Set_mem a (ffreeTV t1)) && not (Set_mem a (ffreeTV t2))
+                            && unbindFT a1 a t1 == unbindFT a2 a t2 } 
+                -> ProofOf(HasFType g e (FTPoly a2 k t2)) @-} 
   
 {-@ measure ftypSize @-}
 {-@ ftypSize :: HasFType -> { v:Int | v >= 0 } @-}
@@ -96,6 +103,7 @@ ftypSize (FTAbsT _ _ _ _ _ _ p_e_b)          = (ftypSize p_e_b)  + 1
 ftypSize (FTAppT _ _ _ _ _ p_e_at' _ _)      = (ftypSize p_e_at') + 1
 ftypSize (FTLet _ _ _ p_ex_b _ _ _ _ p_e_b') = (ftypSize p_ex_b)  + (ftypSize p_e_b') + 1
 ftypSize (FTAnn _ _ _ _ p_e_b)               = (ftypSize p_e_b)   + 1
+ftypSize (FTEqv _ _ _ _ _ p_e_at1 _ _ _)     = (ftypSize p_e_at1) + 1
 
 {-@ reflect isFTVar @-}
 isFTVar :: HasFType -> Bool
@@ -244,14 +252,14 @@ firstBV _        = 1
 {-@ inType :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 --                                   && noDefnsBaseAppTInRefns Empty t && isWellFormed Empty t Base } @-}
 inType :: Prim -> Type
-inType And = TRefn TBool   1 (Bc True)
-inType Or  = TRefn TBool   1 (Bc True)
-inType Eqv = TRefn TBool   1 (Bc True)
-inType Not = TRefn TBool   2 (Bc True)
-inType Leq = TRefn TInt    1 (Bc True)
-inType Eq  = TRefn TInt    1 (Bc True)
-inType Eql = TRefn (BTV 1) 1 (Bc True)
-inType _   = TRefn TInt    2 (Bc True)
+inType And     = TRefn TBool   1 (Bc True)
+inType Or      = TRefn TBool   1 (Bc True)
+inType Eqv     = TRefn TBool   1 (Bc True)
+inType Not     = TRefn TBool   2 (Bc True)
+inType Leq     = TRefn TInt    1 (Bc True)
+inType Eq      = TRefn TInt    1 (Bc True)
+inType Eql     = TRefn (BTV 1) 1 (Bc True)
+inType _       = TRefn TInt    2 (Bc True)
 
 {-@ reflect ty' @-}
 {-@ ty' :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
@@ -275,7 +283,8 @@ ty' Eql      = TFunc 2 (TRefn (BTV 1) 2 (Bc True)) (TRefn TBool 3 (refn_pred Eql
 -- The only expressions fow which we are trying to automate the production of
 --    are the refinements found in the types of the built in primitives, in ty(c)
 --    These consist of constants, primitives, variables, function application, and
---    simplepolymorphic type application.
+--    simplepolymorphic type application. We also won't support typing judgments that
+--    involve rule FTEqv in any way 
 
 {-@ reflect isSimpleBase @-}
 isSimpleBase :: Type -> Bool
@@ -297,7 +306,7 @@ noDefnsBaseAppT (Let _ _ _)     = False
 noDefnsBaseAppT (Annot e t)     = noDefnsBaseAppT e
 noDefnsBaseAppT Crash           = True
 
-{-@ reflect checkType @-}
+{-@ reflect checkType @-} -- no FTEqv allowed (not change of bound type var)
 {-@ checkType :: FEnv -> { e:Expr | noDefnsBaseAppT e } -> t:FType -> Bool / [esize e] @-}
 checkType :: FEnv -> Expr -> FType -> Bool
 checkType g (Bc b) t         = ( t == FTBasic TBool )

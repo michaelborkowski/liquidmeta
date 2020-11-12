@@ -31,15 +31,15 @@ import PrimitivesSemantics
 import PrimitivesDenotationsEqv
 import PrimitivesDenotationsEq
 
-{-@ reflect foo49 @-}
-foo49 x = Just x
-foo49 :: a -> Maybe a
+{-@ reflect foo57 @-}
+foo57 x = Just x
+foo57 :: a -> Maybe a
 
 -- {-@ lem_den_eqv' :: ProofOf(Denotes (
 
-{-@ lem_den_eql :: ProofOf(Denotes (ty Eql) (Prim Eql)) @-}
-lem_den_eql :: Denotes
-lem_den_eql = DPoly 1 Base t'{-(TFunc (firstBV Eql) (inType Eql) (ty' Eql))-} (Prim Eql)
+{-@ lem_den_eql :: () -> ProofOf(Denotes (ty Eql) (Prim Eql)) @-}
+lem_den_eql :: () -> Denotes
+lem_den_eql () = DPoly 1 Base t'{-(TFunc (firstBV Eql) (inType Eql) (ty' Eql))-} (Prim Eql)
                     (FTPrm FEmpty Eql) val_den_func
   where
     {-@ val_den_func :: t_a:Type -> ProofOf(WFType Empty t_a Base)

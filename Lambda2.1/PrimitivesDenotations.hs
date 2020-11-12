@@ -27,9 +27,9 @@ import PrimitivesDenotationsLeq
 import PrimitivesDenotationsEq
 import PrimitivesDenotationsEql
 
-{-@ reflect foo50 @-}
-foo50 x = Just x
-foo50 :: a -> Maybe a
+{-@ reflect foo58 @-}
+foo58 x = Just x
+foo58 :: a -> Maybe a
 
 -- Lemma. Denotations of Primitive/Constant Types
 {-@ lem_den_tybc :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
@@ -61,4 +61,4 @@ lem_den_ty g th den_g_th Leq      = lem_den_leq    ? lem_ctsubst_nofree th (ty L
 lem_den_ty g th den_g_th (Leqn n) = lem_den_leqn n ? lem_ctsubst_nofree th (ty (Leqn n))
 lem_den_ty g th den_g_th Eq       = lem_den_eq     ? lem_ctsubst_nofree th (ty Eq)
 lem_den_ty g th den_g_th (Eqn n)  = lem_den_eqn  n ? lem_ctsubst_nofree th (ty (Eqn n))
-lem_den_ty g th den_g_th Eql      = lem_den_eql    ? lem_ctsubst_nofree th (ty Eql)
+lem_den_ty g th den_g_th Eql      = lem_den_eql () ? lem_ctsubst_nofree th (ty Eql)

@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{-@ LIQUID "--no-termination" @-}  -- TODO: assume
-{-@ LIQUID "--no-totality" @-}     -- TODO: assume
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -31,54 +29,19 @@ foo22 :: a -> Maybe a
 ----- | METATHEORY Development for the Underlying STLC :: Technical LEMMAS
 ------------------------------------------------------------------------------
 
-{-@ lem_freeBV_unbind_empty :: x:Vname -> y:Vname 
-        -> { e:Expr | Set_emp (freeBV (unbind x y e)) && Set_emp (freeBTV (unbind x y e)) }
-        -> { pf:_ | (Set_emp (freeBV e) || freeBV e == Set_sng x) && Set_emp (freeBTV e) } @-}
-lem_freeBV_unbind_empty :: Vname -> Vname -> Expr -> Proof
-lem_freeBV_unbind_empty x y e = toProof ( S.empty === freeBV (unbind x y e)
-                                      === S.difference (freeBV e) (S.singleton x) )
+{-@ lem_invert_ftabst :: g:FEnv -> a1:Vname -> k1:Kind -> e1:Expr -> a:Vname -> k:Kind -> t:FType
+        -> ProofOf(HasFType g (LambdaT a1 k1 e1) (FTPoly a k t)) -> ProofOf(WFFE g)
+        -> (Vname, HasFType)<{\a' pf -> not (in_envF a' g) &&  
+               not (Set_mem a' (fv e1)) && not (Set_mem a' (ftv e1)) && not (Set_mem a' (ffreeTV t)) &&
+               propOf pf == HasFType (FConsT a' k g) (unbind_tv a1 a' e1) (unbindFT a a' t)}> @-}
+lem_invert_ftabst :: FEnv -> Vname -> Kind -> Expr -> Vname -> Kind -> FType -> HasFType
+                          -> WFFE  -> (Vname, HasFType)
+lem_invert_ftabst g a1 k1 e1 a k t p_a1e1_at p_wf_g = (a', p_a'g_e1_t)
+                  ? lem_fv_bound_in_fenv g (LambdaT a1 k1 e1) (FTPoly a k t) p_a1e1_at a'
+  where
+    a' = undefined
+    p_a'g_e1_t = undefined
 
-{-@ lem_freeBTV_unbind_tv_empty :: a:Vname -> a':Vname 
-        -> { e:Expr | Set_emp (freeBTV (unbind_tv a a' e)) && Set_emp (freeBV (unbind_tv a a' e)) }
-        -> { pf:_ | (Set_emp (freeBTV e) || freeBTV e == Set_sng a) && Set_emp (freeBV e) } @-}
-lem_freeBTV_unbind_tv_empty :: Vname -> Vname -> Expr -> Proof
-lem_freeBTV_unbind_tv_empty a a' e = toProof ( S.empty === freeBTV (unbind_tv a a' e)
-                                      === S.difference (freeBTV e) (S.singleton a) )
-
-{-@ lem_freeBV_emptyB :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
-                              -> { pf:_ | Set_emp (freeBV e) && Set_emp (freeBTV e) } @-}
-lem_freeBV_emptyB :: FEnv -> Expr ->  FType -> HasFType -> Proof 
-lem_freeBV_emptyB g e t (FTBC _g b)    = case e of
-  (Bc _) -> ()
-lem_freeBV_emptyB g e t (FTIC _g n)    = case e of
-  (Ic _) -> ()
-lem_freeBV_emptyB g e t (FTVar1 _ x _) = case e of 
-  (FV _) -> ()
-lem_freeBV_emptyB g e t (FTVar2 g' x _ p_x_t y s) = case e of
-  (FV _) -> () ? lem_freeBV_emptyB g' e t p_x_t
-lem_freeBV_emptyB g e t (FTVar3 g' x _ p_x_t a k) = case e of
-  (FV _) -> () ? lem_freeBV_emptyB g' e t p_x_t
-lem_freeBV_emptyB g e t (FTPrm _g c)   = case e of
-  (Prim _) -> ()
-lem_freeBV_emptyB g e t (FTAbs _g x t_x k_x p_g_tx e' t' y p_yg_e'_t') = case e of
-  (Lambda _ _) -> () ? lem_freeBV_unbind_empty x y (e' ? lem_freeBV_emptyB (FCons y t_x g) (unbind x y e')
-                                                               t' p_yg_e'_t')
-lem_freeBV_emptyB g e t (FTApp _g e' t_x t' p_e'_txt' e_x p_ex_tx) = case e of
-  (App _ _) -> () ? lem_freeBV_emptyB g e' (FTFunc t_x t') p_e'_txt'
-                  ? lem_freeBV_emptyB g e_x t_x p_ex_tx
-lem_freeBV_emptyB g e t (FTAbsT _g a k e' t' a' p_e'_t') = case e of 
-  (LambdaT {}) -> () ? lem_freeBV_emptyB (FConsT a' k g) (unbind_tv a a' e') (unbindFT a a' t') p_e'_t'
-{-lem_freeBV_emptyB g e t (FTAppT _g e' a k t' p_e_at' liqt p_g_ert)
-    = () ? lem_freeBV_emptyB g e' (FTPoly a k t') p_e_at'
-         ? undefined -}
-lem_freeBV_emptyB g e t (FTLet _g e_x t_x p_ex_tx x e' t' y p_yg_e'_t') = case e of
-  (Let {}) -> () ? lem_freeBV_emptyB g e_x t_x p_ex_tx
-                 ? lem_freeBV_unbind_empty x y (e' ? lem_freeBV_emptyB (FCons y t_x g) (unbind x y e')
-                                                               t' p_yg_e'_t')
-{- lem_freeBV_emptyB g e t (FTAnn _g e' _t t1 p_e'_t) 
-    = () ? lem_freeBV_emptyB g e' t p_e'_t
-          undefined -}
- 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 -- Consequences of the System F Typing Judgments -
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
@@ -146,6 +109,8 @@ lem_ftyping_wfft g e t (FTLet _g e_x t_x p_ex_tx x e' _t {-p_g_t-} y p_e'_t) p_w
           p_wf_yg = WFFBind g p_wf_g y t_x Star pf_g_tx-}
 lem_ftyping_wfft g e t (FTAnn _g e' _t liqt p_e'_t) p_wf_g
     = lem_ftyping_wfft g e' t p_e'_t p_wf_g
+lem_ftyping_wfft g e t (FTEqv _g _e a1 k t1 p_e_a1t1 a2 t2 a) p_wf_g
+    = undefined
 
 --        -> e:Expr -> { t:FType | Set_sub (ffreeTV t) (bindsF (concatF (FCons x t_x g) g')) }
 -- We can alpha-rename a variable anywhere in the environment and recursively alter the type
@@ -202,7 +167,6 @@ lem_change_var_ftyp g x t_x g' pf_wf_env e t (FTVar3 _ z _t p_z_t a k) y
             (WFFBindT _ pf_wf_env' _ _) = pf_wf_env
 lem_change_var_ftyp g x t_x g' pf_wf_env e t (FTPrm _ c) y
     = FTPrm (concatF (FCons y t_x g) g') c
-{- -}
 lem_change_var_ftyp g x t_x g' pf_wf_env e t p_e_t@(FTAbs gg z b k p_gg_b e' b' z' p_z'_e'_b') y
     = undefined 
 {- = FTAbs (concatF (FCons y t_x g) g') z b (subFV x (FV y) e') b' 
@@ -251,7 +215,6 @@ lem_change_var_ftyp g x t_x g' pf_wf_env e t (FTAppT _ e' a k t' p_e'_at' rt pf_
                                  ? lem_binds_cons_concatF g g' y t_x) -- ? free bound env with y
              -- ? lem_binds_cons_concatF g g' x t_x
 --}
-
 lem_change_var_ftyp g x t_x g' pf_wf_env e t p_e_t@(FTLet gg e_z t_z p_ez_tz z e' t' z' p_z'_e'_t') y
     = undefined -- assume
 {-    = FTLet (concatF (FCons y t_x g) g') (subFV x (FV y) e_z) t_z
@@ -276,7 +239,8 @@ lem_change_var_ftyp g x t_x g' pf_wf_env e t (FTAnn _ e' _t t' p_e'_t) y
                                 `withProof` lem_binds_cons_concatF g g' x t_x)
             (lem_change_var_ftyp g x t_x g' e' t p_e'_t y)
 -}
-
+lem_change_var_ftyp g x t_x g' pf_wf_env e t (FTEqv _ _e a1 k t1 p_e_a1t1 a2 t2 a) y
+    = undefined
 -- delete this later
 {-
 lem_change_var_ftyp g x t_x g' e t p_e_t@(FTAbsT _g a k e' t' a' p_a'_e'_t') y
@@ -341,9 +305,9 @@ lem_change_tvar_ftyp g a k g' pf_wf_env e t p_e_t@(FTLet gg e_z t_z p_ez_tz z e'
     = undefined -- assume
 lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTAnn _ e' _t t' p_e'_t) a'
     = undefined -- assume
-
-
-
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTEqv _g _e a1 k1 t1 p_e_a1t1 a2 t2 aa) a'
+    = undefined
+   
 {-@ assume lem_weaken_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> ProofOf(WFFE (concatF g g')) -> e:Expr -> t:FType 
         -> { p_e_t:HasFType | propOf p_e_t == HasFType (concatF g g') e t }
@@ -364,6 +328,8 @@ lem_weaken_ftyp g g' pf_wf_env e t (FTAbsT {}) x t_x  = undefined -- assume
 lem_weaken_ftyp g g' pf_wf_env e t (FTAppT {}) x t_x  = undefined -- assume
 lem_weaken_ftyp g g' pf_wf_env e t (FTLet {})  x t_x  = undefined -- assume
 lem_weaken_ftyp g g' pf_wf_env e t (FTAnn {})  x t_x  = undefined -- assume
+lem_weaken_ftyp g g' pf_wf_env e t (FTEqv _g _e a1 k t1 p_e_a1t1 a2 t2 a) x t_x
+  = undefined
 {-
 {-@ lem_weaken_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> e:Expr -> bt:FType -> { p_e_bt:HasFType | propOf p_e_bt == HasFType (concatF g g') e bt }
@@ -440,6 +406,8 @@ lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAbsT {}) a k  = undefined -- assume
 lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAppT {}) a k  = undefined -- assume
 lem_weaken_tv_ftyp g g' pf_wf_env e t (FTLet {}) a k  = undefined -- assume
 lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAnn {}) a k  = undefined -- assume
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTEqv _g _e a1 k1 t1 p_e_a1t1 a2 t2 aa) a k 
+  = undefined -- assume
 
 {-@ lem_weaken_many_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> ProofOf(WFFE (concatF g g')) -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
@@ -456,4 +424,3 @@ lem_weaken_many_ftyp g (FConsT a k g') p_xenv_wf e t p_g_e_t
       where
         (WFFBindT _ p_env_wf _ _) = p_xenv_wf
         p_g'g_e_t = lem_weaken_many_ftyp g g' p_env_wf e t p_g_e_t
-

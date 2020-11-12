@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{-@ LIQUID "--no-termination" @-}  -- TODO: assume
-{-@ LIQUID "--no-totality" @-}     -- TODO: assume
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -40,7 +38,6 @@ foo21 :: a -> Maybe a
       -> { y:Vname | not (in_envF y g) && not (in_envF y g') }
       -> ProofOf(WFFE (concatF (FCons y t_x g)  g')) @-}
 lem_change_var_wffe :: FEnv -> Vname -> FType -> FEnv -> WFFE -> Vname -> WFFE
-{- -}
 lem_change_var_wffe g x t_x FEmpty           p_env_wf y = case p_env_wf of
   (WFFBind  _g p_g_wf _x _tx k_x p_g_tx)         -> WFFBind g p_g_wf y t_x k_x p_g_tx
 lem_change_var_wffe g x t_x (FCons z t_z g') p_env_wf y = case p_env_wf of
@@ -54,7 +51,6 @@ lem_change_var_wffe g x t_x (FConsT a k g') p_env_wf y  = case p_env_wf of
     where
       env''      = concatF (FCons y t_x g) g'
       p_env''_wf = lem_change_var_wffe g x t_x g' p_env'_wf y
-{- -}
 
 {-@ lem_change_tvar_wffe :: g:FEnv -> { a:Vname | not (in_envF a g) } -> k:Kind
       -> { g':FEnv | not (in_envF a g') && Set_emp (Set_cap (bindsF g) (bindsF g')) }
@@ -62,7 +58,6 @@ lem_change_var_wffe g x t_x (FConsT a k g') p_env_wf y  = case p_env_wf of
       -> { a':Vname | not (in_envF a' g) && not (in_envF a' g') }
       -> ProofOf(WFFE (concatF (FConsT a' k g) (fesubFV a (FTBasic (FTV a')) g'))) @-}
 lem_change_tvar_wffe :: FEnv -> Vname -> Kind -> FEnv -> WFFE -> Vname -> WFFE
-{- -}
 lem_change_tvar_wffe g a k FEmpty           p_env_wf a'  = case p_env_wf of
   (WFFBindT _g p_g_wf _a _k)                    -> WFFBindT g p_g_wf a' k
 lem_change_tvar_wffe g a k (FCons z t_z g') p_env_wf a'  = case p_env_wf of
@@ -77,14 +72,13 @@ lem_change_tvar_wffe g a k (FConsT a1 k1 g') p_env_wf a' = case p_env_wf of
     where
       env''      = concatF (FConsT a' k g) (fesubFV a (FTBasic (FTV a')) g')
       p_env''_wf = lem_change_tvar_wffe g a k g' p_env'_wf a'
-{- -}
 
 {-@ lem_change_var_wfft :: g:FEnv -> { x:Vname | not (in_envF x g) } -> t_x:FType
       -> { g':FEnv | not (in_envF x g') && Set_emp (Set_cap (bindsF g) (bindsF g')) }
       -> t:FType -> k:Kind -> { p_t_wf:WFFT | propOf p_t_wf == WFFT (concatF (FCons x t_x g) g') t k }
       -> { y:Vname | not (in_envF y g) && not (in_envF y g')  }
       -> { pf:WFFT | propOf pf == (WFFT (concatF (FCons y t_x g) g') t k)
-                     && (wfftypSize pf == wfftypSize p_t_wf) } @-} -- / [wfftypSize p_t_wf ] @-}
+                     && (wfftypSize pf == wfftypSize p_t_wf) } / [wfftypSize p_t_wf ] @-}
 lem_change_var_wfft :: FEnv -> Vname -> FType -> FEnv -> FType -> Kind -> WFFT -> Vname -> WFFT
 --lem_change_var_wfft = undefined
 {- -}
@@ -129,7 +123,7 @@ lem_change_var_wfft g x t_x g' _ _ (WFFTKind env t pf_t_base) y
       -> { a':Vname | not (in_envF a' g) && not (in_envF a' g') }
       -> { pf:WFFT | propOf pf == (WFFT (concatF (FConsT a' k g) (fesubFV a (FTBasic (FTV a')) g')) 
                                         (ftsubFV a (FTBasic (FTV a')) t) k_t)
-                     && (wfftypSize pf == wfftypSize p_t_wf) } @-} -- / [wfftypSize p_t_wf ] @-}
+                     && (wfftypSize pf == wfftypSize p_t_wf) } / [wfftypSize p_t_wf ] @-}
 lem_change_tvar_wfft :: FEnv -> Vname -> Kind -> FEnv -> FType -> Kind -> WFFT -> Vname -> WFFT
 --lem_change_tvar_wfft = undefined
 {- -}
@@ -190,7 +184,7 @@ lem_change_tvar_wfft g a k g' _ _ (WFFTKind env t pf_t_base) a1
 {-@ lem_weaken_wfft :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
       -> t:FType -> k:Kind -> { p_t_wf:WFFT | propOf p_t_wf == WFFT (concatF g g') t k }
       -> { x:Vname | not (in_envF x g) && not (in_envF x g') } -> t_x:FType
-      -> { pf:WFFT | propOf pf == (WFFT (concatF (FCons x t_x g) g') t k) } @-}
+      -> { pf:WFFT | propOf pf == (WFFT (concatF (FCons x t_x g) g') t k) } / [wfftypSize p_t_wf ] @-}
 -- not true with WFFTFV rules:    && (wfftypSize pf == wfftypSize p_t_wf) } @-} -- / [wfftypSize p_t_wf ] @-}
 lem_weaken_wfft :: FEnv -> FEnv -> FType -> Kind -> WFFT -> Vname -> FType -> WFFT
 --lem_weaken_wfft = undefined
@@ -232,7 +226,7 @@ lem_weaken_wfft g g' _ _ (WFFTKind env t pf_t_base) x t_x
 {-@ lem_weaken_tv_wfft :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
       -> t:FType -> k_t:Kind -> { pf_t_wf:WFFT | propOf pf_t_wf == WFFT (concatF g g') t k_t }
       -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> k:Kind
-      -> { pf:WFFT | propOf pf == (WFFT (concatF (FConsT a k g) g') t k_t) } @-}
+      -> { pf:WFFT | propOf pf == (WFFT (concatF (FConsT a k g) g') t k_t) } / [wfftypSize pf_t_wf ] @-}
 --                     && (wfftypSize pf == wfftypSize pf_t_wf) } @-} -- / [wfftypSize p_t_wf ] @-}
 lem_weaken_tv_wfft :: FEnv -> FEnv -> FType -> Kind -> WFFT -> Vname -> Kind -> WFFT
 --lem_weaken_tv_wfft = undefined

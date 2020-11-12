@@ -23,67 +23,9 @@ import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
 
-{-@ reflect foo26 @-}   
-foo26 x = Just x 
-foo26 :: a -> Maybe a 
-
--- | Alpha equivalence in System F. Normalization is basically de Bruijn indices
-{-@ reflect maxBinder @-}
-{-@ maxBinder :: FType -> { v:Int | v >= 0 } @-}
-maxBinder :: FType -> Int
-maxBinder (FTBasic _)      = 0
-maxBinder (FTFunc   t_x t) = max (maxBinder t_x) (maxBinder t)
-maxBinder (FTPoly a k   t) = (maxBinder t) + 1
-
-{-@ reflect normalize @-} -- this is alpha-equivalence
-{-@ normalize :: FType -> FType @-}
-normalize :: FType -> FType
-normalize (FTBasic b)      = FTBasic b
-normalize (FTFunc   t_x t) = FTFunc  (normalize t_x) (normalize t)
-normalize (FTPoly a k   t) = FTPoly  a' k  (ftsubBV a (FTBasic (BTV a')) (normalize t))
-  where
-    a' = maxBinder (FTPoly a k (normalize t))
-
--- | Substitution Properties
-
--- with bound type vars, these are only equiv up to alhpa-renaming bound variables
-{-@ lem_erase_subtype :: g:Env -> t1:Type -> t2:Type -> ProofOf(Subtype g t1 t2)
-               -> { pf:_ | normalize (erase t1) == normalize (erase t2) } @-}
-lem_erase_subtype :: Env -> Type -> Type -> Subtype -> Proof
-lem_erase_subtype g t1 t2 (SBase _g x1 b p1 x2 p2 y _) = ()
-lem_erase_subtype g t1 t2 (SFunc _g x1 s1 x2 s2 p_s2_s1 t1' t2' y p_t1'_t2')
-    = () ? lem_erase_subtype g s2 s1 p_s2_s1
-         ? lem_erase_tsubBV x1 (FV y) t1' ? lem_erase_tsubBV x2 (FV y) t2'
-         ? lem_erase_subtype (Cons y s2 g) (unbindT x1 y t1') (unbindT x2 y t2') p_t1'_t2'  
-lem_erase_subtype g t1 t2 (SWitn _g v t_x p_v_tx _t1 x t' p_t1_t'v)
-    = () ? lem_erase_subtype g t1 (tsubBV x v t') p_t1_t'v
-         ? lem_erase_tsubBV x v t'  {- toProof ( erase t1 ? lem_erase_subtype g t1 (tsubBV x v t') p_t1_t'v
-            === erase (tsubBV x v t') ? lem_erase_tsubBV x v t'
-            === erase t' === erase (TExists x t_x t') ) -}
-lem_erase_subtype g t1 t2 (SBind _g x t_x t _t2 y p_t_t')
-    = () ? lem_erase_subtype (Cons y t_x g) (unbindT x y t) t2 p_t_t'
-         ? lem_erase_tsubBV x (FV y) t
-lem_erase_subtype g t1 t2 (SPoly _g a1 k t1' a2 t2' a p_ag_t1'_t2') = undefined
-{-    = toProof ( normalize (erase (TPoly a1 k t1))
-            === normalize (FTPoly a1 k (erase t1))
-            === let a' = maxbinder (FTPoly a1 k (normalize t1)) in
-                  FTPoly a' k (ftsubBV a1 (FTBasic (BTV a')) (normalize t1))
-            === let a' = maxbinder (FTPoly a2 k (normalize t2)) in 
-                  FTPoly a' k (ftsubBV a1 (FTBasic (BTV a')) (normalize t1)) -}
-{-    = () ? lem_erase_subtype (ConsT a k g) (unbind_tvT a1 a t1') (unbind_tvT a2 a t2') p_ag_t1'_t2'
-         ? lem_erase_tsubBTV a1 (TRefn (BTV (maxBinder (FTPoly a1 k (normalize (erase t1))))) 1 (Bc True))
-                                (normalize (erase t1))  
-         ? lem_erase_tsubBTV a2 (TRefn (BTV (maxBinder (FTPoly a2 k (normalize (erase t2))))) 1 (Bc True))
-                                (normalize (erase t2))  -}
-
-{-@ lem_erase_th_sub :: g:Env -> t1:Type -> t2:Type -> ProofOf(Subtype g t1 t2) -> th:CSub 
-        -> { pf:_ | normalize (erase (ctsubst th t1)) == normalize (erase (ctsubst th t2)) } @-}
-lem_erase_th_sub :: Env -> Type -> Type -> Subtype -> CSub -> Proof
-lem_erase_th_sub g t1 t2 p_t1_t2 th = toProof ( normalize (erase (ctsubst th t1))
-                                              ? lem_erase_ctsubst th t1
-                                            === normalize (erase t1) ? lem_erase_subtype g t1 t2 p_t1_t2
-                                            === normalize (erase t2) ? lem_erase_ctsubst th t2
-                                            === normalize (erase (ctsubst th t2)) ) 
+{-@ reflect foo27 @-}   
+foo27 x = Just x 
+foo27 :: a -> Maybe a 
 
 -- | Closing Substitution Properties
 
@@ -264,6 +206,11 @@ lem_ctsubst_self_refn th b z p x  = undefined {-
                                      (App (App (Prim (equals b)) (BV z)) (csubst th (FV x)))) ) -}
 -}
 
+{-@ lem_ctsubst_self :: th:CSub -> t:Type -> x:Vname -> k:Kind 
+        -> { pf:_ | ctsubst th (self t (FV x) k) == self (ctsubst th t) (csubst th (FV x)) k } @-}
+lem_ctsubst_self :: CSub -> Type -> Vname -> Kind -> Proof
+lem_ctsubst_self th t x k = undefined
+
 {-@ lem_ctsubst_self_refn_notin :: th:CSub -> b:Basic -> z:Vname -> p:Pred -> { x:Vname | not (in_csubst x th) }
       -> k:Kind -> { pf:_ | ctsubst th (self (TRefn b z p) (FV x) k) == self (ctsubst th (TRefn b z p)) (FV x) k} @-}
 lem_ctsubst_self_refn_notin :: CSub -> Basic -> Vname -> Pred -> Vname -> Kind -> Proof
@@ -385,6 +332,18 @@ lem_ctsubst_tsubBV x v bt pf_v_b (CCons y v_y th) t
 lem_ctsubst_tsubBV x v bt pf_v_b (CConsT a t_a th) t 
     = undefined
 
+{-@ lem_ctsubst_tsubBTV :: a1:Vname -> t_a:Type -> k:Kind 
+        -> ProofOf(WFType Empty t_a k) -> th:CSub -> t:Type 
+        -> { pf:_ | ctsubst th (tsubBTV a1 t_a t) == tsubBTV a1 t_a (ctsubst th t) } @-}
+lem_ctsubst_tsubBTV :: Vname -> Type -> Kind -> WFType -> CSub -> Type -> Proof
+lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CEmpty)            t = ()
+lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CCons y v_y th)    t = undefined
+{-    = () ? lem_commute_tsubFV_tsubBV1 x v 
+                   (y `withProof` lem_fv_bound_in_fenv FEmpty v bt pf_v_b y) v_y t
+         ? lem_ctsubst_tsubBV x v bt pf_v_b th (tsubFV y v_y t)-}
+lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CConsT a' t_a' th) t 
+    = undefined
+
 {-@ lem_csubst_and_unbind :: x:Vname -> y:Vname 
            -> v:Value -> bt:FType -> ProofOf(HasFType FEmpty v bt)
            -> { th:CSub | not (Set_mem y (bindsC th)) } -> { p:Expr | not (Set_mem y (fv p)) }
@@ -411,6 +370,18 @@ lem_ctsubst_and_unbindT x y v bt pf_v_b th t = () {-toProof (
 --   === ctsubst th (tsubBV x v t)
      ? lem_ctsubst_tsubBV x v bt pf_v_b th t
 --   === tsubBV x v (ctsubst th t) )
+
+{-@ lem_ctsubst_and_unbind_tvT :: a1:Vname -> a:Vname -> t_a:Type 
+        -> k:Kind -> ProofOf(WFType Empty t_a k)
+        -> { th:CSub | not (Set_mem a (bindsC th)) } -> { t:Type | not (Set_mem a (freeTV t)) }
+        -> { pf:_ | ctsubst (CConsT a t_a th) (unbind_tvT a1 a t) == tsubBTV a1 t_a (ctsubst th t) } @-}
+lem_ctsubst_and_unbind_tvT :: Vname -> Vname -> Type -> Kind -> WFType  
+           -> CSub -> Type -> Proof
+lem_ctsubst_and_unbind_tvT a1 a t_a k p_emp_ta th t 
+  = () ? lem_free_subset_binds  Empty t_a k p_emp_ta
+       ? lem_tfreeBV_empty      Empty t_a k p_emp_ta WFEEmpty
+       ? lem_tsubFTV_unbind_tvT a1 a t_a t   
+       ? lem_ctsubst_tsubBTV    a1 t_a k p_emp_ta th t
 
 {-@ lem_commute_csubst_subBV :: th:CSub -> x:Vname -> v:Value -> e:Expr
            -> { pf:_ | csubst th (subBV x v e) == subBV x (csubst th v) (csubst th e) } @-} 
@@ -502,19 +473,6 @@ lem_ctsubst_tsubFV  (CCons y v_y th)  x v_x t
 lem_ctsubst_tsubFV  (CConsT a t_a th) x v_x t 
     = undefined
    
-{-@ lem_erase_ctsubst :: th:CSub -> t:Type 
-               -> { pf:_ | erase (ctsubst th t) == erase t } @-}
-lem_erase_ctsubst :: CSub -> Type -> Proof
-lem_erase_ctsubst (CEmpty)       t = ()
-lem_erase_ctsubst (CCons y v th) t = () {-toProof ( erase (ctsubst (CCons y v th) t)
-                                           === erase (ctsubst th (tsubFV y v t))-}
-                                             ? lem_erase_ctsubst th (tsubFV y v t)
-{-                                           === erase (tsubFV y v t)-}
-                                             ? lem_erase_tsubFV y v t
-{-                                           === erase t )-}
-lem_erase_ctsubst (CConsT a t_a th) t
-    = undefined
-
   --- Closing Substitutions and Technical Operations
 
 

@@ -53,7 +53,7 @@ data WFFT where
       | WFFTPoly  :: g:FEnv -> a:Vname -> k:Kind -> t:FType -> k_t:Kind
           -> { a':Vname | not (in_envF a' g) && not (Set_mem a' (ffreeTV t)) }
           -> ProofOf(WFFT (FConsT a' k g) (unbindFT a a' t) k_t) -> ProofOf(WFFT g (FTPoly a k t) Star)   
-     | WFFTKind  :: g:FEnv -> t:FType -> ProofOf(WFFT g t Base) -> ProofOf(WFFT g t Star) @-} 
+      | WFFTKind  :: g:FEnv -> t:FType -> ProofOf(WFFT g t Base) -> ProofOf(WFFT g t Star) @-} 
 
   -- TODO: what happened to k_t in WFPoly? why Star?
 

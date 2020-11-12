@@ -23,7 +23,7 @@ type Vname = Int
 
 data Prim = And | Or | Not | Eqv
           | Leq | Leqn Int 
-          | Eq  | Eqn Int | Eql       -- Eql is polymorphic
+          | Eq  | Eqn Int | Eql       -- Eql is polymorphic. TODO: add Leql and Lqb
   deriving (Eq, Show)
 
 {-@ data Expr [esize] @-}
@@ -323,27 +323,6 @@ unbind_tv a a' (Annot e t)                  = Annot (unbind_tv a a' e) (unbind_t
 unbind_tv a a' Crash                        = Crash  
 
   ---  Refinement Level: Names, Terms (in FO), FO Predicates, SMT Formulae
-   --      To simplify the definition of strengthening refinements, the refinement predicates in 
-   --      language Lambda 2.1 are not longer arbitrary expression that are (F-Typed as) Boolean. We
-   --      now require that they contain no lambda abstractions (\x or /\a) or let binders so that we 
-   --      don't have to worry about capture in substitution when strengthening {x : p} and {y : q} 
-   --      into a combined { x : p `And` q[x/y] }. It's only really \x and "let x=" that's the issue, 
-   --      not /\a though.
-
-{-{-@ measure noDefns @-}
-noDefns :: Expr -> Bool
-noDefns (Bc _)          = True
-noDefns (Ic _)          = True
-noDefns (BV _)          = True
-noDefns (FV _)          = True
-noDefns (Prim _)        = True
-noDefns (Lambda _ _)    = False
-noDefns (App e e')      = (noDefns e) && (noDefns e')
-noDefns (LambdaT _ _ _) = False
-noDefns (AppT e t)      = noDefns e  -- False
-noDefns (Let _ _ _)     = False
-noDefns (Annot e t)     = noDefns e
-noDefns Crash           = True -}
 
 -- For now we'll allow refinements to have definitions in theory, but the ones we'll actually use won't,
 --   so the issue of the incorrect substitution def'n w/ capture (TODO) can be avoided for now.
@@ -441,7 +420,7 @@ isTPoly :: Type -> Bool
 isTPoly (TPoly {}) = True
 isTPoly _          = False
 
-{-@ reflect refn_binders @-}
+{-@ reflect refn_binders @-} -- all of the "binders" are term variable binders only
 {-@ refn_binders :: e:Expr -> S.Set Vname / [esize e] @-}
 refn_binders :: Expr -> S.Set Vname
 refn_binders (Lambda x e)    = refn_binders e
@@ -508,15 +487,73 @@ same_binders_env t_a Empty          = True
 same_binders_env t_a (Cons x t_x g) = same_binders t_a t_x && same_binders_env t_a g
 same_binders_env t_a (ConsT a k  g) = same_binders_env t_a g
 
-{-@ lem_same_binders_toBare :: t:Type -> t':Type 
-        -> { pf:_ | same_binders t t' => same_binders t (toBare t') } @-}
+{-@ lem_same_binders_refl :: t_a:Type -> { t:Type | same_binders t_a t } 
+        -> { pf:_ | same_binders t_a t_a && same_binders t t } @-}
+lem_same_binders_refl :: Type -> Type -> Proof
+lem_same_binders_refl t_a t = undefined {- 2 -}
+
+{-@ lem_same_binders_commute :: t:Type ->  t':Type  
+        -> { pf:_ | (same_binders t t' => same_binders t' t) 
+                 && (same_binders t' t => same_binders t t') } / [tsize t + tsize t'] @-}
+lem_same_binders_commute :: Type -> Type -> Proof
+lem_same_binders_commute (TRefn b' x' p')   (TRefn   b   y q) = undefined
+lem_same_binders_commute (TRefn b' x' p')   (TFunc   y t_y t) = undefined
+lem_same_binders_commute (TRefn b' x' p')   (TExists y t_y t) = undefined
+lem_same_binders_commute (TRefn b' x' p')   (TPoly   a   k t) = undefined
+lem_same_binders_commute (TFunc   x t_x t') (TRefn   b   y q) = undefined
+lem_same_binders_commute (TFunc   x t_x t') (TFunc   y t_y t) = undefined {-
+  = () ? lem_same_binders_commute (TFunc   x t_x t') t_y 
+       ? lem_same_binders_commute (TFunc   x t_x t') t 
+--       ? lem_same_binders_commute t_y t' 
+--       ? lem_same_binders_commute t   t' -}
+lem_same_binders_commute (TFunc   x t_x t') (TExists y t_y t) = undefined {-
+  = () ? lem_same_binders_commute t_y t_x 
+       ? lem_same_binders_commute t   t_x 
+       ? lem_same_binders_commute t_y t' 
+       ? lem_same_binders_commute t   t' -}
+lem_same_binders_commute (TFunc   x t_x t') (TPoly   a   k t) = undefined {-
+  = () ? lem_same_binders_commute t t_x 
+       ? lem_same_binders_commute t t'  -}
+lem_same_binders_commute (TExists x t_x t') (TRefn   b   y q) = undefined 
+lem_same_binders_commute (TExists x t_x t') (TFunc   y t_y t) = undefined {-
+  = () ? lem_same_binders_commute t_y t_x 
+       ? lem_same_binders_commute t   t_x 
+       ? lem_same_binders_commute t_y t' 
+       ? lem_same_binders_commute t   t' -}
+lem_same_binders_commute (TExists x t_x t') (TExists y t_y t) = undefined {-
+  = () ? lem_same_binders_commute t_y t_x 
+       ? lem_same_binders_commute t   t_x 
+       ? lem_same_binders_commute t_y t' 
+       ? lem_same_binders_commute t   t' -}
+lem_same_binders_commute (TExists x t_x t') (TPoly   a   k t) = undefined {-
+  = () ? lem_same_binders_commute t t_x
+       ? lem_same_binders_commute t t' -}
+lem_same_binders_commute (TPoly   a' k' t') (TRefn   b   y q) = undefined
+lem_same_binders_commute (TPoly   a' k' t') (TFunc   y t_y t) = undefined {-
+  = () ? lem_same_binders_commute t_y t' 
+       ? lem_same_binders_commute t   t'-}
+lem_same_binders_commute (TPoly   a' k' t') (TExists y t_y t) = undefined {-
+  = () ? lem_same_binders_commute t_y t' 
+       ? lem_same_binders_commute t   t' -}
+lem_same_binders_commute (TPoly   a' k' t') (TPoly   a   k t) = undefined {-
+  = () ? lem_same_binders_commute t   t' -}
+
+{-@ lem_same_binders_toBare :: t_a:Type -> t:Type 
+        -> { pf:_ | same_binders t_a t => same_binders (toBare t_a) t } @-}
 lem_same_binders_toBare :: Type -> Type -> Proof
-lem_same_binders_toBare t (TRefn b x p)      = ()
-lem_same_binders_toBare t (TFunc   x t_x t') = () ? lem_same_binders_toBare t t_x
-                                                  ? lem_same_binders_toBare t t'
-lem_same_binders_toBare t (TExists x t_x t') = () ? lem_same_binders_toBare t t_x
-                                                  ? lem_same_binders_toBare t t'
-lem_same_binders_toBare t (TPoly   a  k  t') = () ? lem_same_binders_toBare t t'
+lem_same_binders_toBare t_a t = () ? lem_same_binders_commute t_a t
+                                   ? lem_same_binders_toBare' t t_a
+                                   ? lem_same_binders_commute (toBare t_a) t
+ 
+{-@ lem_same_binders_toBare' :: t:Type -> t':Type 
+        -> { pf:_ | same_binders t t' => same_binders t (toBare t') } @-}
+lem_same_binders_toBare' :: Type -> Type -> Proof
+lem_same_binders_toBare' t (TRefn b x p)      = ()
+lem_same_binders_toBare' t (TFunc   x t_x t') = () ? lem_same_binders_toBare' t t_x
+                                                   ? lem_same_binders_toBare' t t'
+lem_same_binders_toBare' t (TExists x t_x t') = () ? lem_same_binders_toBare' t t_x
+                                                   ? lem_same_binders_toBare' t t'
+lem_same_binders_toBare' t (TPoly   a  k  t') = () ? lem_same_binders_toBare' t t'
 
 {-@ lem_same_bindersE_subBV :: t:Type -> x:Vname -> { v:Value | same_bindersE t v}
         -> { e:Expr | same_bindersE t e } -> { pf:_ | same_bindersE t (subBV x v e) } / [esize e] @-}
@@ -564,6 +601,11 @@ lem_same_binders_tsubBV t_a x v (TExists z t_z t)
 lem_same_binders_tsubBV t_a x v (TPoly a  k  t)   
                                = () ? lem_same_binders_tsubBV t_a x v t
 
+{-@ lem_same_bindersE_subFTV :: t:Type -> a:Vname -> { t':Type | same_binders t t' }
+        -> { e:Expr | same_bindersE t e } -> { pf:_ | same_bindersE t (subFTV a t' e) } / [esize e] @-}
+lem_same_bindersE_subFTV :: Type -> Vname -> Type -> Expr -> Proof
+lem_same_bindersE_subFTV t a t_a e         = undefined {- 2 -}
+
 {-@ lem_same_bindersE_subBTV :: t:Type -> a:Vname -> { t':Type | same_binders t t' }
         -> { e:Expr | same_bindersE t e } -> { pf:_ | same_bindersE t (subBTV a t' e) } / [esize e] @-}
 lem_same_bindersE_subBTV :: Type -> Vname -> Type -> Expr -> Proof
@@ -582,7 +624,7 @@ lem_same_bindersE_subBTV t a t_a (LambdaT a' k e)
   | otherwise = () ? lem_same_bindersE_subBTV t a t_a e --LambdaT a' k (subBTV a t_a e)
 lem_same_bindersE_subBTV t a t_a (AppT e t')     
   = () ? lem_same_bindersE_subBTV t a t_a e  -- AppT  (subBTV a t_a e) (tsubBTV a t_a t)
-       ? lem_same_binders_tsubBTV t a (toBare t_a ? lem_same_binders_toBare t t_a) t' 
+       ? lem_same_binders_tsubBTV t a (toBare t_a ? lem_same_binders_toBare' t t_a) t' 
 lem_same_bindersE_subBTV t a t_a (Let y e1 e2)   
   = () ? lem_same_bindersE_subBTV t a t_a e1
        ? lem_same_bindersE_subBTV t a t_a e2 -- Let y (subBTV a t_a e1) (subBTV a t_a e2)
@@ -590,6 +632,33 @@ lem_same_bindersE_subBTV t a t_a (Annot e t')
   = () ? lem_same_bindersE_subBTV t a t_a e 
        ? lem_same_binders_tsubBTV t a t_a t' -- Annot (subBTV a t_a e) (tsubBTV a t_a t)
 lem_same_bindersE_subBTV t a t_a Crash          = ()   
+
+{-@ lem_same_bindersE_unbind_tv :: t:Type -> a:Vname -> a':Vname 
+        -> { e:Expr | same_bindersE t e } -> { pf:_ | same_bindersE t (unbind_tv a a' e) } / [esize e] @-}
+lem_same_bindersE_unbind_tv :: Type -> Vname -> Vname -> Expr -> Proof
+lem_same_bindersE_unbind_tv t a a' (Bc b)         = ()
+lem_same_bindersE_unbind_tv t a a' (Ic n)         = ()
+lem_same_bindersE_unbind_tv t a a' (Prim p)       = ()
+lem_same_bindersE_unbind_tv t a a' (BV y)         = () 
+lem_same_bindersE_unbind_tv t a a' (FV y)         = () 
+lem_same_bindersE_unbind_tv t a a' (Lambda y e)   
+  = () ? lem_same_bindersE_unbind_tv t a a' e  
+lem_same_bindersE_unbind_tv t a a' (App e e')   
+  = () ? lem_same_bindersE_unbind_tv t a a' e
+       ? lem_same_bindersE_unbind_tv t a a' e' 
+lem_same_bindersE_unbind_tv t a a' (LambdaT a1 k e) 
+  | a == a1   = ()
+  | otherwise = () ? lem_same_bindersE_unbind_tv t a a' e 
+lem_same_bindersE_unbind_tv t a a' (AppT e t')     
+  = () ? lem_same_bindersE_unbind_tv t a a' e  
+       ? lem_same_binders_unbind_tvT t a a' t' 
+lem_same_bindersE_unbind_tv t a a' (Let y e1 e2)   
+  = () ? lem_same_bindersE_unbind_tv t a a' e1
+       ? lem_same_bindersE_unbind_tv t a a' e2 
+lem_same_bindersE_unbind_tv t a a' (Annot e t')    
+  = () ? lem_same_bindersE_unbind_tv t a a' e 
+       ? lem_same_binders_unbind_tvT t a a' t' 
+lem_same_bindersE_unbind_tv t a a' Crash          = ()   
 
 {-@ lem_same_binders_tsubBTV :: t:Type -> a:Vname -> { t_a:Type | same_binders t t_a }
         -> { t':Type | same_binders t t'} -> { pf:_ | same_binders t (tsubBTV a t_a t') } / [tsize t'] @-}
@@ -607,6 +676,22 @@ lem_same_binders_tsubBTV t a t_a (TExists z t_z t')
 lem_same_binders_tsubBTV t a t_a (TPoly a' k  t')    
   | a == a'            = () -- TPoly   a' k t 
   | otherwise          = () ? lem_same_binders_tsubBTV t a t_a t' --TPoly   a' k (tsubBTV a t_a t')
+
+{-@ lem_same_binders_unbind_tvT :: t:Type -> a:Vname -> a':Vname 
+        -> { t':Type | same_binders t t'} -> { pf:_ | same_binders t (unbind_tvT a a' t') } / [tsize t'] @-}
+lem_same_binders_unbind_tvT :: Type -> Vname -> Vname -> Type -> Proof
+lem_same_binders_unbind_tvT t a a' (TRefn b x r)        = case b of 
+  (BTV a1) | a == a1  -> () ? lem_same_bindersE_unbind_tv t a a' r
+  _                   -> () ? lem_same_bindersE_unbind_tv t a a' r 
+lem_same_binders_unbind_tvT t a a' (TFunc z t_z t')      
+  = () ? lem_same_binders_unbind_tvT t a a' t_z 
+       ? lem_same_binders_unbind_tvT t a a' t'
+lem_same_binders_unbind_tvT t a a' (TExists z t_z t')    
+  = () ? lem_same_binders_unbind_tvT t a a' t_z 
+       ? lem_same_binders_unbind_tvT t a a' t' 
+lem_same_binders_unbind_tvT t a a' (TPoly a1 k  t')    
+  | a == a1            = () 
+  | otherwise          = () ? lem_same_binders_unbind_tvT t a a' t' 
 
 {-@ lem_same_bindersE_push :: t:Type -> a:Vname -> { p:Pred | same_bindersE t p }
         -> { t':Type | same_binders t t'} -> { pf:_ | same_binders t (push p t') } / [tsize t'] @-}

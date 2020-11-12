@@ -15,6 +15,7 @@ import Semantics
 import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
+import BasicPropsSubstitution
 
 {-@ reflect foo06 @-}
 foo06 :: a -> Maybe a
@@ -54,6 +55,11 @@ isPrim :: Expr -> Bool
 isPrim (Prim _) = True
 isPrim _        = False
 
+{-@ reflect isEql @-}
+isEql :: Prim -> Bool
+isEql Eql     = True
+isEql _       = False
+
 {-@ lemma_function_values :: v:Value -> t:FType -> t':FType
         -> ProofOf(HasFType FEmpty v (FTFunc t t'))
         -> { pf:_ | isLambda v || isPrim v } @-}
@@ -67,6 +73,8 @@ lemma_function_values e t t' (FTAbs {})   = ()
 lemma_tfunction_values :: Expr -> Vname -> Kind -> FType -> HasFType -> Proof
 lemma_tfunction_values v a k t (FTPrm  {})   = ()     
 lemma_tfunction_values v a k t (FTAbsT {})   = ()    
+lemma_tfunction_values v a k t (FTEqv _ _ a1 _ t1 p_v_a1t1 _ _ _) 
+  = lemma_tfunction_values v a1 k t1 p_v_a1t1
 
 {-@ lem_delta_and_ftyp :: v:Value -> t_x:FType -> t':FType
         -> ProofOf(HasFType FEmpty (Prim And) (FTFunc t_x t')) -> ProofOf(HasFType FEmpty v t_x)
@@ -80,7 +88,6 @@ lem_delta_and_ftyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
                               (Bc False) (FTBasic TBool) 
                               1 (FTBC (FCons 1 (FTBasic TBool) FEmpty) False)  
           _          -> impossible ("by lemma" ? lem_bool_values v p_v_tx) 
-
 
 {-@ lem_delta_or_ftyp :: v:Value -> t_x:FType -> t':FType
         -> ProofOf(HasFType FEmpty (Prim Or) (FTFunc t_x t')) -> ProofOf(HasFType FEmpty v t_x)
@@ -162,7 +169,7 @@ lem_delta_eqn_ftyp n v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
       _      -> impossible ("by lemma" ? lem_int_values v p_v_tx)
 
 {-@ lem_prim_ftyp_ftfunc :: c:Prim -> t_x:FType -> t':FType
-        -> ProofOf(HasFType FEmpty (Prim c) (FTFunc t_x t')) -> { pf:_ | c != Eql } @-}
+        -> ProofOf(HasFType FEmpty (Prim c) (FTFunc t_x t')) -> { pf:_ | not (isEql c) } @-}
 lem_prim_ftyp_ftfunc :: Prim -> FType -> FType -> HasFType -> Proof
 lem_prim_ftyp_ftfunc c t_x t' (FTPrm _ _c) = ()
 
@@ -186,13 +193,34 @@ lem_delta_ftyp Eql      _ t_x t' p_c_txt' _
 lem_base_types :: FType -> WFFT -> Proof
 lem_base_types t (WFFTBasic _ _) = ()
 
+{-@ lem_base_types_star :: b:Basic -> ProofOf(WFFT FEmpty (FTBasic b) Star)  
+        -> { pf:_ | b == TBool || b == TInt } @-}
+lem_base_types_star :: Basic -> WFFT -> Proof
+lem_base_types_star b (WFFTKind FEmpty _ p_t_star) = lem_base_types (FTBasic b) p_t_star
+
 {-@ lem_deltaT_ftyp :: c:Prim -> a:Vname -> k:Kind -> s:FType
         -> ProofOf(HasFType FEmpty (Prim c) (FTPoly a k s)) 
         -> t:Type -> ProofOf(WFFT FEmpty (erase t) k)
         -> { pf:_ | propOf pf == HasFType FEmpty (deltaT c t) (ftsubBV a (erase t) s) } @-}
 lem_deltaT_ftyp :: Prim -> Vname -> Kind -> FType -> HasFType -> Type -> WFFT -> HasFType
 lem_deltaT_ftyp c a k s p_c_aks t p_emp_t = case p_c_aks of
-  (FTPrm FEmpty Eql) -> case (erase t) of 
-      (FTBasic TBool) -> FTPrm FEmpty Eqv
-      (FTBasic TInt)  -> FTPrm FEmpty Eq 
+  (FTPrm FEmpty _c) -> case c of 
+    (Eql)            -> case (erase t) of 
+      (FTBasic TBool) -> FTPrm FEmpty Eqv ? toProof (
+                             ftsubBV 1 (FTBasic TBool) (FTFunc (FTBasic (BTV 1)) 
+                                     (FTFunc (FTBasic (BTV 1)) (FTBasic TBool)))
+                         === (FTFunc (ftsubBV 1 (FTBasic TBool) (FTBasic (BTV 1)))
+                               (ftsubBV 1 (FTBasic TBool) (FTFunc (FTBasic (BTV 1)) (FTBasic TBool))))
+                         === (FTFunc (FTBasic TBool) 
+                               (FTFunc (FTBasic TBool) (FTBasic TBool))) )
+      (FTBasic TInt)  -> FTPrm FEmpty Eq  ? toProof (
+                             ftsubBV 1 (FTBasic TInt) (FTFunc (FTBasic (BTV 1)) 
+                                     (FTFunc (FTBasic (BTV 1)) (FTBasic TBool)))
+                         === (FTFunc (ftsubBV 1 (FTBasic TInt) (FTBasic (BTV 1)))
+                               (ftsubBV 1 (FTBasic TInt) (FTFunc (FTBasic (BTV 1)) (FTBasic TBool))))
+                         === (FTFunc (FTBasic TInt) 
+                               (FTFunc (FTBasic TInt) (FTBasic TBool))) )
       _               -> impossible ("by lemma" ? lem_base_types (erase t) p_emp_t)
+  (FTEqv FEmpty _ a1 _k s1 p_c_a1s1 _ _ a') -> lem_deltaT_ftyp c a1 k s1 p_c_a1s1 t p_emp_t 
+                                                   ? lem_ftsubFV_unbindFT a1 a' (erase t) s1
+                                                   ? lem_ftsubFV_unbindFT a  a' (erase t) s
