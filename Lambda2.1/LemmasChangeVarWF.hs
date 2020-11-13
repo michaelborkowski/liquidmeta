@@ -13,6 +13,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -27,9 +28,9 @@ import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
 
-{-@ reflect foo29 @-}
-foo29 x = Just x
-foo29 :: a -> Maybe a
+{-@ reflect foo34 @-}
+foo34 x = Just x
+foo34 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas  

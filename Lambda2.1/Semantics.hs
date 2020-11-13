@@ -11,7 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-
+import SameBinders
 
 --------------------------------------------------------------------------
 ----- | OPERATIONAL SEMANTICS (Small Step)

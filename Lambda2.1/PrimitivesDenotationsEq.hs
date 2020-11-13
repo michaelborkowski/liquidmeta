@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -29,13 +30,13 @@ import Typing
 import Entailments
 import PrimitivesSemantics
 
-{-@ reflect foo47 @-}
-foo47 x = Just x
-foo47 :: a -> Maybe a
+{-@ reflect foo55 @-}
+foo55 x = Just x
+foo55 :: a -> Maybe a
 
 {-@ lem_den_eq :: ProofOf(Denotes (ty Eq) (Prim Eq)) @-}
 lem_den_eq :: Denotes
-lem_den_eq = DFunc 1 (TRefn TInt 1 (Bc True)) t' (Prim Eq) (FTPrm FEmpty Eq) val_den_func
+lem_den_eq = undefined {- DFunc 1 (TRefn TInt 1 (Bc True)) t' (Prim Eq) (FTPrm FEmpty Eq) val_den_func
   where
     t' = TFunc 2 (TRefn TInt 2 (Bc True)) (TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
                                                          (App (App (Prim Eq) (BV 1)) (BV 2)) ))
@@ -66,10 +67,11 @@ lem_den_eq = DFunc 1 (TRefn TInt 1 (Bc True)) t' (Prim Eq) (FTPrm FEmpty Eq) val
                 ev_prt'nm_eq = reduce_eq_tt n m
             _      -> impossible ("by lemma" ? lem_den_ints v_x (TRefn TInt 2 (Bc True)) den_tx_vx)
       _      -> impossible ("by lemma" ? lem_den_ints v_x (TRefn TInt 1 (Bc True)) den_tx_vx)
+-}
 
 {-@ lem_den_eqn :: n:Int -> ProofOf(Denotes (ty (Eqn n)) (Prim (Eqn n))) @-}
 lem_den_eqn :: Int -> Denotes
-lem_den_eqn n = DFunc 2 (TRefn TInt 2 (Bc True)) t'n (Prim (Eqn n)) (FTPrm FEmpty (Eqn n)) val_den_func
+lem_den_eqn n = undefined {- DFunc 2 (TRefn TInt 2 (Bc True)) t'n (Prim (Eqn n)) (FTPrm FEmpty (Eqn n)) val_den_func
   where
     t'n = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) (App (App (Prim Eq) (Ic n)) (BV 2)) )
     {-@ val_den_func :: v_x:Value -> ProofOf(Denotes (TRefn TInt 2 (Bc True)) v_x)
@@ -87,3 +89,4 @@ lem_den_eqn n = DFunc 2 (TRefn TInt 2 (Bc True)) t'n (Prim (Eqn n)) (FTPrm FEmpt
                                                     (App (App (Prim Eq) (Ic n)) (Ic m))) (Bc True)) @-}
           ev_prt'nm_neq = reduce_eqn_tt n m
       _      -> impossible ("by lemma" ? lem_den_ints v_x (TRefn TInt 2 (Bc True)) den_tx_vx)
+-}

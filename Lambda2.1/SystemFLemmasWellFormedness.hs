@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -20,9 +21,9 @@ import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
 
-{-@ reflect foo21 @-}
-foo21 x = Just x
-foo21 :: a -> Maybe a
+{-@ reflect foo22 @-}
+foo22 x = Just x
+foo22 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying STLC :: Technical LEMMAS
@@ -80,7 +81,6 @@ lem_change_tvar_wffe g a k (FConsT a1 k1 g') p_env_wf a' = case p_env_wf of
       -> { pf:WFFT | propOf pf == (WFFT (concatF (FCons y t_x g) g') t k)
                      && (wfftypSize pf == wfftypSize p_t_wf) } / [wfftypSize p_t_wf ] @-}
 lem_change_var_wfft :: FEnv -> Vname -> FType -> FEnv -> FType -> Kind -> WFFT -> Vname -> WFFT
---lem_change_var_wfft = undefined
 {- -}
 lem_change_var_wfft g x t_x g' t k p_t_wf@(WFFTBasic gg b) y
   = WFFTBasic (concatF (FCons y t_x g) g') b
@@ -125,7 +125,6 @@ lem_change_var_wfft g x t_x g' _ _ (WFFTKind env t pf_t_base) y
                                         (ftsubFV a (FTBasic (FTV a')) t) k_t)
                      && (wfftypSize pf == wfftypSize p_t_wf) } / [wfftypSize p_t_wf ] @-}
 lem_change_tvar_wfft :: FEnv -> Vname -> Kind -> FEnv -> FType -> Kind -> WFFT -> Vname -> WFFT
---lem_change_tvar_wfft = undefined
 {- -}
 lem_change_tvar_wfft g a k g' _ _ p_t_wf@(WFFTBasic gg b) a'
   = WFFTBasic (concatF (FConsT a' k g) (fesubFV a (FTBasic (FTV a')) g')) b
@@ -187,7 +186,6 @@ lem_change_tvar_wfft g a k g' _ _ (WFFTKind env t pf_t_base) a1
       -> { pf:WFFT | propOf pf == (WFFT (concatF (FCons x t_x g) g') t k) } / [wfftypSize p_t_wf ] @-}
 -- not true with WFFTFV rules:    && (wfftypSize pf == wfftypSize p_t_wf) } @-} -- / [wfftypSize p_t_wf ] @-}
 lem_weaken_wfft :: FEnv -> FEnv -> FType -> Kind -> WFFT -> Vname -> FType -> WFFT
---lem_weaken_wfft = undefined
 {- -}
 lem_weaken_wfft g g' t k p_t_wf@(WFFTBasic gg b) x t_x
   = WFFTBasic (concatF (FCons x t_x g) g') b
@@ -229,7 +227,6 @@ lem_weaken_wfft g g' _ _ (WFFTKind env t pf_t_base) x t_x
       -> { pf:WFFT | propOf pf == (WFFT (concatF (FConsT a k g) g') t k_t) } / [wfftypSize pf_t_wf ] @-}
 --                     && (wfftypSize pf == wfftypSize pf_t_wf) } @-} -- / [wfftypSize p_t_wf ] @-}
 lem_weaken_tv_wfft :: FEnv -> FEnv -> FType -> Kind -> WFFT -> Vname -> Kind -> WFFT
---lem_weaken_tv_wfft = undefined
 {- -}
 lem_weaken_tv_wfft g g' t k_t p_t_wf@(WFFTBasic gg b) a k
   = WFFTBasic (concatF (FConsT a k g) g') b

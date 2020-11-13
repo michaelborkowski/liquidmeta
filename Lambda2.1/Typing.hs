@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -20,9 +21,9 @@ import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
 
-{-@ reflect foo25 @-}   
-foo25 x = Just x 
-foo25 :: a -> Maybe a 
+{-@ reflect foo26 @-}   
+foo26 x = Just x 
+foo26 :: a -> Maybe a 
 
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : the Typing Relation and the Subtyping Relation
@@ -370,6 +371,32 @@ isSPoly (SPoly {}) = True
 isSPoly _          = False
 
 -------------------------------------------------------------------------
+----- | ALPHA EQUIVALENCE for SYSTEM F
+-------------------------------------------------------------------------
+
+-- | Alpha equivalence in System F. These partition the set of FTypes into equivlance 
+-- |     classes. We need a separate formalization of this because our System F has
+-- |     no notion of subtypes. Cf Pierce, TAPL, Chapter 23 (Figure 23-1)
+
+data AlphaEqvP where
+    AlphaEqv :: FEnv -> FType -> FType -> AlphaEqvP
+
+data AlphaEqv where
+    AEBasic :: FEnv -> Basic -> AlphaEqv
+    AEFunc  :: FEnv -> FType -> FType -> AlphaEqv -> FType -> FType -> AlphaEqv -> AlphaEqv
+    AEPoly  :: FEnv -> Vname -> Kind -> FType -> Vname -> FType -> Vname -> AlphaEqv -> AlphaEqv
+
+{-@ data AlphaEqv where
+        AEBasic :: g:FEnv -> b:Basic -> ProofOf(AlphaEqv g (FTBasic b) (FTBasic b))
+     |  AEFunc  :: g:FEnv -> s1:FType -> s2:FType -> ProofOf(AlphaEqv g s1 s2) 
+                     -> t1:FType -> t2:FType -> ProofOf(AlphaEqv g t1 t2)
+                     -> ProofOf(AlphaEqv g (FTFunc s1 t1) (FTFunc s2 t2))
+     |  AEPoly  :: g:FEnv -> a1:Vname -> k:Kind -> t1:FType -> a2:Vname -> t2:FType 
+                     -> { a:Vname | not (Set_mem a (bindsF g)) }
+                     -> ProofOf(AlphaEqv (FConsT a k g) (unbindFT a1 a t1) (unbindFT a2 a t2))
+                     -> ProofOf(AlphaEqv g (FTPoly a1 k t1) (FTPoly a2 k t2)) @-} -- @-}
+
+-------------------------------------------------------------------------
 ----- | CLOSING SUBSTITUTIONS 
 -------------------------------------------------------------------------
 
@@ -534,7 +561,6 @@ remove_fromCS (CCons  z v_z th) x | ( x == z ) = th
 remove_fromCS (CConsT a t_a th) x | ( x == a ) = th
                                   | otherwise  = CConsT a t_a (remove_fromCS th x)
 
-
 -------------------------------------------------------------------------
 ----- | ENTAILMENTS and DENOTATIONAL SEMANTICS 
 -------------------------------------------------------------------------
@@ -569,11 +595,11 @@ data DenotesP where
 
 data Denotes where
     DRefn :: Basic -> Vname -> Pred -> Expr -> HasFType -> EvalsTo -> Denotes
-    DFunc :: Vname -> Type -> Type -> Expr -> HasFType
+    DFunc :: Vname -> Type -> Type -> Expr -> FType -> FType -> AlphaEqv -> HasFType
               -> (Expr -> Denotes -> ValueDenoted) -> Denotes
-    DExis :: Vname -> Type -> Type -> Expr -> HasFType
+    DExis :: Vname -> Type -> Type -> Expr -> FType -> AlphaEqv -> HasFType
               -> Expr -> Denotes -> Denotes -> Denotes
-    DPoly :: Vname -> Kind -> Type -> Expr -> HasFType
+    DPoly :: Vname -> Kind -> Type -> Expr -> Vname -> FType -> AlphaEqv -> HasFType
               -> (Type -> WFType -> ValueDenoted) -> Denotes
 {-@ data Denotes where
         DRefn :: b:Basic -> x:Vname -> p:Pred -> v:Value  
@@ -581,57 +607,60 @@ data Denotes where
                   -> ProofOf(EvalsTo (subBV x v p) (Bc True)) 
                   -> ProofOf(Denotes (TRefn b x p) v)
       | DFunc :: x:Vname -> t_x:Type -> t:Type -> v:Value  
-                  -> ProofOf(HasFType FEmpty v (erase (TFunc x t_x t)))
+                  -> s_x:FType -> s:FType 
+                  -> ProofOf(AlphaEqv FEmpty (FTFunc s_x s) (erase (TFunc x t_x t)))
+                  -> ProofOf(HasFType FEmpty v (FTFunc s_x s))
                   -> ( v_x:Value -> ProofOf(Denotes t_x v_x)
                                  -> ProofOf(ValueDenoted (App v v_x) (tsubBV x v_x t)) ) 
                   -> ProofOf(Denotes (TFunc x t_x t) v)
-      | DExis :: x:Vname -> t_x:Type -> t:Type -> v:Value 
-                  -> ProofOf(HasFType FEmpty v (erase t)) 
+      | DExis :: x:Vname -> t_x:Type -> t:Type -> v:Value -> s:FType 
+                  -> ProofOf(AlphaEqv FEmpty s (erase t)) -> ProofOf(HasFType FEmpty v s) 
                   -> v_x:Value -> ProofOf(Denotes t_x v_x)
                   -> ProofOf(Denotes (tsubBV x v_x t) v)
                   -> ProofOf(Denotes (TExists x t_x t) v)  
-      | DPoly :: a:Vname -> k:Kind -> t:Type -> v:Value
-                  -> ProofOf(HasFType FEmpty v (FTPoly a k (erase t)))
+      | DPoly :: a:Vname -> k:Kind -> t:Type -> v:Value -> a0:Vname -> s:FType 
+                  -> ProofOf(AlphaEqv FEmpty (FTPoly a0 k s) (FTPoly a k (erase t)))
+                  -> ProofOf(HasFType FEmpty v (FTPoly a0 k s))
                   -> ( t_a:Type -> ProofOf(WFType Empty t_a k) 
                                 -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a t)) )
                   -> ProofOf(Denotes (TPoly a k t) v) @-} -- @-}
 -- was:           -> ( { t_a:Type | same_binders t_a t } -> ProofOf(WFType Empty t_a k) 
 
 {-@ get_ftyp_from_den :: t:Type -> v:Value -> ProofOf(Denotes t v)
-              -> ProofOf(HasFType FEmpty v (erase t)) @-}
-get_ftyp_from_den :: Type -> Expr -> Denotes -> HasFType    
-get_ftyp_from_den t v (DRefn _ _ _ _ pf_v_b _)     = pf_v_b
-get_ftyp_from_den t v (DFunc _ _ _ _ pf_v_b _)     = pf_v_b
-get_ftyp_from_den t v (DExis _ _ _ _ pf_v_b _ _ _) = pf_v_b
-get_ftyp_from_den t v (DPoly _ _ _ _ pf_v_b _)     = pf_v_b
+              -> (FType,HasFType)<{\s pf -> propOf pf == HasFType FEmpty v s }> @-}
+get_ftyp_from_den :: Type -> Expr -> Denotes -> (FType,HasFType)
+get_ftyp_from_den t v (DRefn b _ _ _ pf_v_b _)         = (FTBasic b,     pf_v_b)
+get_ftyp_from_den t v (DFunc _ _ _ _ s_x s _ pf_v_b _) = (FTFunc s_x s,  pf_v_b)
+get_ftyp_from_den t v (DExis _ _ _ _ s _ pf_v_b _ _ _) = (s,             pf_v_b)
+get_ftyp_from_den t v (DPoly _ k _ _ a0 s _ pf_v_b _)  = (FTPoly a0 k s, pf_v_b)
 
 {-@ lem_den_nofv :: v:Value -> t:Type -> ProofOf(Denotes t v) 
         -> { pf:_ | Set_emp (fv v) && Set_emp (ftv v) } @-}
 lem_den_nofv :: Expr -> Type -> Denotes -> Proof
-lem_den_nofv v t den_t_v = lem_fv_subset_bindsF FEmpty v (erase t) pf_v_bt
+lem_den_nofv v t den_t_v = lem_fv_subset_bindsF FEmpty v bt pf_v_bt
   where
-    pf_v_bt = get_ftyp_from_den t v den_t_v
+    (bt, pf_v_bt) = get_ftyp_from_den t v den_t_v
 
 {-@ lem_den_nobv :: v:Value -> t:Type -> ProofOf(Denotes t v) 
         -> { pf:_ | Set_emp (freeBV v) && Set_emp (freeBTV v) } @-}
 lem_den_nobv :: Expr -> Type -> Denotes -> Proof
-lem_den_nobv v t den_t_v = lem_freeBV_emptyB FEmpty v (erase t) pf_v_bt
+lem_den_nobv v t den_t_v = lem_freeBV_emptyB FEmpty v bt pf_v_bt
   where
-    pf_v_bt = get_ftyp_from_den t v den_t_v
+   (bt, pf_v_bt) = get_ftyp_from_den t v den_t_v
 
 {-@ get_obj_from_dfunc :: x:Vname -> s:Type -> t:Type -> v:Value 
         -> ProofOf(Denotes (TFunc x s t) v) -> v':Value 
         -> ProofOf(Denotes s v') -> ProofOf(ValueDenoted (App v v') (tsubBV x v' t)) @-}  
 get_obj_from_dfunc :: Vname -> Type -> Type -> Expr -> Denotes 
                                     -> Expr -> Denotes -> ValueDenoted
-get_obj_from_dfunc x s t v (DFunc _ _ _ _ _ prover) v' den_s_v' = prover v' den_s_v' 
+get_obj_from_dfunc x s t v (DFunc _ _ _ _ _ _ _ _ prover) v' den_s_v' = prover v' den_s_v' 
 
 {-@ get_obj_from_dpoly :: a:Vname -> k:Kind -> t:Type -> v:Value -> ProofOf(Denotes (TPoly a k t) v) 
         -> t_a:Type -> ProofOf(WFType Empty t_a k)
         -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a t)) @-}
 get_obj_from_dpoly :: Vname -> Kind -> Type -> Expr -> Denotes 
                                     -> Type -> WFType -> ValueDenoted
-get_obj_from_dpoly a k t v (DPoly _ _ _ _ _ prover) t_a p_emp_ta = prover t_a p_emp_ta
+get_obj_from_dpoly a k t v (DPoly _ _ _ _ _ _ _ _ prover) t_a p_emp_ta = prover t_a p_emp_ta
 
 -- Denotations of Environments, [[g]]. There are two cases:
 --   1. [[ Empty ]] = { CEmpty }.

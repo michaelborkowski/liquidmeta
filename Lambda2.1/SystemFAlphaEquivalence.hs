@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -23,81 +24,44 @@ import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
 
-{-@ reflect foo26a @-}   
-foo26a x = Just x 
-foo26a :: a -> Maybe a 
+{-@ reflect foo27 @-}   
+foo27 x = Just x 
+foo27 :: a -> Maybe a 
 
--- | Alpha equivalence in System F. Normalization is basically de Bruijn indices
-
-data AlphaEqvP where
-    AlphaEqv :: FType -> FType -> AlphaEqvP
-
-data AlphaEqv where
-    AEBasic :: Basic -> AlphaEqv
-    AEFunc  :: FType -> FType -> AlphaEqv -> FType -> FType -> AlphaEqv -> AlphaEqv
-    AEPoly  :: Vname -> Kind -> FType -> Vname -> FType -> Vname -> AlphaEqv -> AlphaEqv
-
-{-@ data AlphaEqv where
-        AEBasic :: b:Basic -> ProofOf(AlphaEqv (FTBasic b) (FTBasic b))
+{-      AEBasic :: b:Basic -> ProofOf(AlphaEqv (FTBasic b) (FTBasic b))
      |  AEFunc  :: s1:FType -> s2:FType -> ProofOf(AlphaEqv s1 s2) 
                      -> t1:FType -> t2:FType -> ProofOf(AlphaEqv t1 t2)
                      -> ProofOf(AlphaEqv (FTFunc s1 t1) (FTFunc s2 t2))
      |  AEPoly  :: a1:Vname -> k:Kind -> t1:FType -> a2:Vname -> t2:FType 
                      -> a:Vname -> ProofOf(AlphaEqv (unbindFT a1 a t1) (unbindFT a2 a t2))
-                     -> ProofOf(AlphaEqv (FTPoly a1 k t1) (FTPoly a2 k t2)) @-} -- @-}
-                       
--- Lemma. Given a System F Typing judgment in the empty environment, FEmpty |- e : t1,
---   we can produce an F-Typing judgment for any alpha-equiv type t2 such that t1 =a= t2,
---   FEmpty |- e : t2. i
---   This is more complciated to prove for non-empty environments because
---   we'd have to argue about the alpha-equivalence of types in the environment.
-{-@ lem_alpha_eqv_ftyp :: g:FEnv -> e:Expr -> t1:FType -> ProofOf(HasFType g e t1)
-        ->  t2:FType -> ProofOf(AlphaEqv t1 t2) -> ProofOf(HasFType g e t2) @-}
-lem_alpha_eqv_ftyp :: FEnv -> Expr -> FType -> HasFType -> FType -> AlphaEqv -> HasFType
-lem_alpha_eqv_ftyp g e t1 (FTBC _g b) t2 alpha_t1_t2  = case alpha_t1_t2 of
-  (AEBasic _tbool) -> FTBC g b
-lem_alpha_eqv_ftyp g e t1 (FTIC _g n) t2 alpha_t1_t2  = case alpha_t1_t2 of
-  (AEBasic _tint)  -> FTIC g n
-lem_alpha_eqv_ftyp g e t1 (FTVar1 _g x t) t2 alpha_t1_t2
-  = undefined
-lem_alpha_eqv_ftyp g e t1 (FTVar2 _g x t p_x_t y t') t2 alpha_t1_t2
-  = undefined
-lem_alpha_eqv_ftyp g e t1 (FTVar3 _g x t p_x_t a k)  t2 alpha_t1_t2
-  = undefined
-lem_alpha_eqv_ftyp g e t1 (FTPrm _g c) t2 alpha_t1_t2 = undefined {-case c of 
-  (Eql a1) -> case alpha_t1_t2 of
-    (AEPoly a1 k ty'1 a2 ty'2 a alpha_ty'1_ty'2) -> FTPrm FEmpty (Eql a2)
-  _        -> case alpha_t1_t2 of
-    (FTFunc {})                                  -> FTPrm FEtmpy c-}
-lem_alpha_eqv_ftyp g e t1 (FTAbs _g x s1 k_s p_emp_s1 e' t1' y p_e'_t1') t2 alpha_t1_t2 
-  = undefined {-case alpha_t1_t2 of
-      (AEFunc _s1 s2 alpha_s1_s2 _t1' t2' alpha_t1'_t2') 
-         -> FTAbs FEmpty x s2 k_s ???? e' t2' 
-              where
-                ????     =
-                p_e'_t2' = lem_alpha_eqv_ftyp  -}
-lem_alpha_eqv_ftyp g e t1 (FTApp _g e1 s s' p_e1_ss' e2 p_e2_s) t2 alpha_t1_t2 
-  = undefined
-lem_alpha_eqv_ftyp g e t1 (FTAbsT _g a k e' t1' a' p_e'_t1') t2 alpha_t1_t2 
-  = undefined
-lem_alpha_eqv_ftyp g e t1 (FTAppT _g e' a k t1' p_e_at1' rt p_g_er_rt) t2 alpha_t1_t2
-  = undefined
-lem_alpha_eqv_ftyp g e t1 (FTLet _g e_x t_x p_ex_tx x e' t1' y p_e'_t1') t2 alpha_t1_t2
-  = undefined
-lem_alpha_eqv_ftyp g e t1 (FTAnn _g e' _t1 rt p_e'_t1) t2 alpha_t1_t2
-  = undefined
-lem_alpha_eqv_ftyp g e t1 (FTEqv _g _e a0 k t0' p_e_a0t0' a1 t1' a) t2 alpha_t1_t2 
-  = undefined {-
-  = case alpha_t1_t2 of
-      (AEPoly _a1 _k _t1' a2 t2' a' alpha_t1'_t2') -}
+                     -> ProofOf(AlphaEqv (FTPoly a1 k t1) (FTPoly a2 k t2)) -} 
 
--- | Substitution Properties
+data EqvFTypingP where
+    EqvFTyping :: FEnv -> Expr -> FType -> EqvFTypingP
+
+{-@ data EqvFTyping where
+        AEWitness :: g:FEnv -> e:Expr -> t:FType -> s:FType -> ProofOf(AlphaEqv g s t)
+                            -> ProofOf(HasFType g e s) -> ProofOf(EqvFTyping g e t) @-}
+data EqvFTyping where
+    AEWitness :: FEnv -> Expr -> FType -> FType -> AlphaEqv -> HasFType -> EqvFTyping
+
+{-@ get_aewitness_from_den :: t:Type -> v:Value -> ProofOf(Denotes t v)
+        -> ProofOf(EqvFTyping FEmpty v (erase t)) @-}
+get_aewitness_from_den :: Type -> Expr -> Denotes -> EqvFTyping
+get_aewitness_from_den t v (DRefn b _ _ _ pf_v_b _)         
+  = AEWitness FEmpty v (FTBasic b) (FTBasic b) (AEBasic FEmpty b) pf_v_b
+get_aewitness_from_den t v (DFunc _ _ _ _ s_x s eqv_sxs_t pf_v_b _) 
+  = AEWitness FEmpty v (erase t) (FTFunc s_x s) eqv_sxs_t pf_v_b
+get_aewitness_from_den t v (DExis _ _ _ _ s eqv_s_t pf_v_b _ _ _) 
+  = AEWitness FEmpty v (erase t) s eqv_s_t pf_v_b
+get_aewitness_from_den t v (DPoly _ k _ _ a0 s eqv_a0s_t pf_v_b _)  
+  = AEWitness FEmpty v (erase t) (FTPoly a0 k s) eqv_a0s_t pf_v_b
 
 -- with bound type vars, these are only equiv up to alhpa-renaming bound variables
 {-@ lem_erase_subtype :: g:Env -> t1:Type -> t2:Type -> ProofOf(Subtype g t1 t2)
-               -> ProofOf(AlphaEqv (erase t1) (erase t2)) @-}
+               -> ProofOf(AlphaEqv (erase_env g) (erase t1) (erase t2)) @-}
 lem_erase_subtype :: Env -> Type -> Type -> Subtype -> AlphaEqv
-lem_erase_subtype g t1 t2 (SBase _g x1 b p1 x2 p2 y _) = AEBasic b
+lem_erase_subtype g t1 t2 (SBase _g x1 b p1 x2 p2 y _) = AEBasic (erase_env g) b
 lem_erase_subtype g t1 t2 (SFunc _g x1 s1 x2 s2 p_s2_s1 t1' t2' y p_t1'_t2')
     = undefined {-
     = () ? lem_erase_subtype g s2 s1 p_s2_s1
@@ -127,7 +91,7 @@ lem_erase_subtype g t1 t2 (SPoly _g a1 k t1' a2 t2' a p_ag_t1'_t2') = undefined
                                 (normalize (erase t2))  -}
 
 {-@ lem_erase_ctsubst :: th:CSub -> t:Type 
-               -> { pf:_ | erase (ctsubst th t) == erase t } @-} -- not quite true
+               -> { pf:_ | erase (ctsubst th t) == erase t } @-} -- not quite true undefined undefined
 lem_erase_ctsubst :: CSub -> Type -> Proof
 lem_erase_ctsubst (CEmpty)       t = ()
 lem_erase_ctsubst (CCons y v th) t = () {-toProof ( erase (ctsubst (CCons y v th) t)
@@ -140,7 +104,7 @@ lem_erase_ctsubst (CConsT a t_a th) t
     = undefined
 
 {-@ lem_erase_th_sub :: g:Env -> t1:Type -> t2:Type -> ProofOf(Subtype g t1 t2) -> th:CSub 
-        -> ProofOf(AlphaEqv (erase (ctsubst th t1)) (erase (ctsubst th t2))) @-}
+        -> ProofOf(AlphaEqv FEmpty (erase (ctsubst th t1)) (erase (ctsubst th t2))) @-}
 lem_erase_th_sub :: Env -> Type -> Type -> Subtype -> CSub -> AlphaEqv
 lem_erase_th_sub g t1 t2 p_t1_t2 th = undefined {-
 toProof ( normalize (erase (ctsubst th t1))
@@ -148,3 +112,38 @@ toProof ( normalize (erase (ctsubst th t1))
                                             === normalize (erase t1) ? lem_erase_subtype g t1 t2 p_t1_t2
                                             === normalize (erase t2) ? lem_erase_ctsubst th t2
                                             === normalize (erase (ctsubst th t2)) ) -}
+
+{-@ lem_alpha_refl :: g:FEnv -> t1:FType -> ProofOf(AlphaEqv g t1 t1) / [ftsize t1] @-}
+lem_alpha_refl :: FEnv -> FType -> AlphaEqv
+lem_alpha_refl g (FTBasic b)    = AEBasic g b
+lem_alpha_refl g (FTFunc t t')  
+  = AEFunc g t t (lem_alpha_refl g t) t' t' (lem_alpha_refl g t')
+lem_alpha_refl g (FTPoly a k t) = AEPoly g a k t a t a' eqv_t_t
+  where
+    a'      = fresh_varF g
+    eqv_t_t = lem_alpha_refl (FConsT a' k g) (unbindFT a a' t) 
+
+{-@ lem_alpha_trans :: g:FEnv -> t1:FType -> t2:FType -> t3:FType 
+        -> ProofOf(AlphaEqv g t1 t2) -> ProofOf(AlphaEqv g t2 t3) -> ProofOf(AlphaEqv g t1 t3) @-}
+lem_alpha_trans :: FEnv -> FType -> FType -> FType -> AlphaEqv -> AlphaEqv -> AlphaEqv
+lem_alpha_trans g t1 t2 t3 (AEBasic _ b) (AEBasic _ _) = AEBasic g b
+lem_alpha_trans g t1 t2 t3 (AEFunc _ s1 s2 eqv_s1_s2 t1' t2' eqv_t1'_t2') eqv_t2_t3
+  = case eqv_t2_t3 of
+      (AEFunc _ _ s3 eqv_s2_s3 _ t3' eqv_t2'_t3') 
+          -> AEFunc g s1 s3 eqv_s1_s3 t1' t3' eqv_t1'_t3'
+        where
+          eqv_s1_s3   = lem_alpha_trans g s1  s2  s3  eqv_s1_s2   eqv_s2_s3
+          eqv_t1'_t3' = lem_alpha_trans g t1' t2' t3' eqv_t1'_t2' eqv_t2'_t3'
+lem_alpha_trans g t1 t2 t3 (AEPoly _ a1 k t1' a2 t2' a eqv_t1'_t2') eqv_t2_t3
+  = case eqv_t2_t3 of
+      (AEPoly _ _ _ _ a3 t3' a' eqv_t2'_t3') 
+          -> AEPoly g a1 k t1' a3 t3' a eqv_t1'_t3'
+        where
+          eqv_t1'_t3' = undefined
+
+{-@ lem_alpha_ftapp :: g:FEnv -> v:Expr -> v_x:Expr -> t_x:FType -> t:FType
+        -> ProofOf(EqvFTyping g v (FTFunc t_x t)) -> ProofOf(EqvFTyping g v_x t_x)
+        -> ProofOf(EqvFTyping g (App v v_x) t) @-}
+lem_alpha_ftapp :: FEnv -> Expr -> Expr -> FType -> FType -> EqvFTyping 
+                        -> EqvFTyping -> EqvFTyping
+lem_alpha_ftapp = undefined

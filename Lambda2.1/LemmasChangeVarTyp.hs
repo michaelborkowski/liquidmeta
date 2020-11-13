@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -29,10 +30,9 @@ import LemmasWeakenWF
 import LemmasWellFormedness
 import LemmasTyping
 
-{-@ reflect foo37 @-}
-foo37 x = Just x
-foo37 :: a -> Maybe a
-
+{-@ reflect foo44 @-}
+foo44 x = Just x
+foo44 :: a -> Maybe a
 
 -----------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   

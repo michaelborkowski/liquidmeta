@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -21,26 +22,13 @@ import BasicPropsEnvironments
 import BasicPropsWellFormedness
 import SystemFLemmasWellFormedness
 
-{-@ reflect foo22 @-}
-foo22 x = Just x
-foo22 :: a -> Maybe a
+{-@ reflect foo23 @-}
+foo23 x = Just x
+foo23 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying STLC :: Technical LEMMAS
 ------------------------------------------------------------------------------
-
-{-@ lem_invert_ftabst :: g:FEnv -> a1:Vname -> k1:Kind -> e1:Expr -> a:Vname -> k:Kind -> t:FType
-        -> ProofOf(HasFType g (LambdaT a1 k1 e1) (FTPoly a k t)) -> ProofOf(WFFE g)
-        -> (Vname, HasFType)<{\a' pf -> not (in_envF a' g) &&  
-               not (Set_mem a' (fv e1)) && not (Set_mem a' (ftv e1)) && not (Set_mem a' (ffreeTV t)) &&
-               propOf pf == HasFType (FConsT a' k g) (unbind_tv a1 a' e1) (unbindFT a a' t)}> @-}
-lem_invert_ftabst :: FEnv -> Vname -> Kind -> Expr -> Vname -> Kind -> FType -> HasFType
-                          -> WFFE  -> (Vname, HasFType)
-lem_invert_ftabst g a1 k1 e1 a k t p_a1e1_at p_wf_g = (a', p_a'g_e1_t)
-                  ? lem_fv_bound_in_fenv g (LambdaT a1 k1 e1) (FTPoly a k t) p_a1e1_at a'
-  where
-    a' = undefined
-    p_a'g_e1_t = undefined
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 -- Consequences of the System F Typing Judgments -
@@ -109,8 +97,6 @@ lem_ftyping_wfft g e t (FTLet _g e_x t_x p_ex_tx x e' _t {-p_g_t-} y p_e'_t) p_w
           p_wf_yg = WFFBind g p_wf_g y t_x Star pf_g_tx-}
 lem_ftyping_wfft g e t (FTAnn _g e' _t liqt p_e'_t) p_wf_g
     = lem_ftyping_wfft g e' t p_e'_t p_wf_g
-lem_ftyping_wfft g e t (FTEqv _g _e a1 k t1 p_e_a1t1 a2 t2 a) p_wf_g
-    = undefined
 
 --        -> e:Expr -> { t:FType | Set_sub (ffreeTV t) (bindsF (concatF (FCons x t_x g) g')) }
 -- We can alpha-rename a variable anywhere in the environment and recursively alter the type
@@ -239,8 +225,6 @@ lem_change_var_ftyp g x t_x g' pf_wf_env e t (FTAnn _ e' _t t' p_e'_t) y
                                 `withProof` lem_binds_cons_concatF g g' x t_x)
             (lem_change_var_ftyp g x t_x g' e' t p_e'_t y)
 -}
-lem_change_var_ftyp g x t_x g' pf_wf_env e t (FTEqv _ _e a1 k t1 p_e_a1t1 a2 t2 a) y
-    = undefined
 -- delete this later
 {-
 lem_change_var_ftyp g x t_x g' e t p_e_t@(FTAbsT _g a k e' t' a' p_a'_e'_t') y
@@ -305,8 +289,6 @@ lem_change_tvar_ftyp g a k g' pf_wf_env e t p_e_t@(FTLet gg e_z t_z p_ez_tz z e'
     = undefined -- assume
 lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTAnn _ e' _t t' p_e'_t) a'
     = undefined -- assume
-lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTEqv _g _e a1 k1 t1 p_e_a1t1 a2 t2 aa) a'
-    = undefined
    
 {-@ assume lem_weaken_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> ProofOf(WFFE (concatF g g')) -> e:Expr -> t:FType 
@@ -328,8 +310,6 @@ lem_weaken_ftyp g g' pf_wf_env e t (FTAbsT {}) x t_x  = undefined -- assume
 lem_weaken_ftyp g g' pf_wf_env e t (FTAppT {}) x t_x  = undefined -- assume
 lem_weaken_ftyp g g' pf_wf_env e t (FTLet {})  x t_x  = undefined -- assume
 lem_weaken_ftyp g g' pf_wf_env e t (FTAnn {})  x t_x  = undefined -- assume
-lem_weaken_ftyp g g' pf_wf_env e t (FTEqv _g _e a1 k t1 p_e_a1t1 a2 t2 a) x t_x
-  = undefined
 {-
 {-@ lem_weaken_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> e:Expr -> bt:FType -> { p_e_bt:HasFType | propOf p_e_bt == HasFType (concatF g g') e bt }
@@ -406,8 +386,6 @@ lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAbsT {}) a k  = undefined -- assume
 lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAppT {}) a k  = undefined -- assume
 lem_weaken_tv_ftyp g g' pf_wf_env e t (FTLet {}) a k  = undefined -- assume
 lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAnn {}) a k  = undefined -- assume
-lem_weaken_tv_ftyp g g' pf_wf_env e t (FTEqv _g _e a1 k1 t1 p_e_a1t1 a2 t2 aa) a k 
-  = undefined -- assume
 
 {-@ lem_weaken_many_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> ProofOf(WFFE (concatF g g')) -> e:Expr -> t:FType -> ProofOf(HasFType g e t)

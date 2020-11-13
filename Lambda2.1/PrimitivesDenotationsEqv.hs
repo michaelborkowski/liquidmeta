@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -29,14 +30,14 @@ import Typing
 import Entailments
 import PrimitivesSemantics
 
-{-@ reflect foo45 @-}
-foo45 x = Just x
-foo45 :: a -> Maybe a
+{-@ reflect foo53 @-}
+foo53 x = Just x
+foo53 :: a -> Maybe a
   
 {-@ lem_den_eqv :: ProofOf(Denotes (ty Eqv) (Prim Eqv)) @-}
 lem_den_eqv :: Denotes
-lem_den_eqv = DFunc 1 (TRefn TBool 1 (Bc True)) t'
-                    (Prim Eqv) (FTPrm FEmpty Eqv) val_den_func
+lem_den_eqv = undefined {- DFunc 1 (TRefn TBool 1 (Bc True)) t'
+                    (Prim Eqv) (FTPrm FEmpty Eqv) val_den_func 
   where
     val_den_func :: Expr -> Denotes -> ValueDenoted
     val_den_func v_x den_tx_vx = case v_x of 
@@ -128,3 +129,4 @@ lem_den_eqv = DFunc 1 (TRefn TBool 1 (Bc True)) t'
                         (Bc True) (FTBC FEmpty True) eqv_ev_prt'''f_tt
     {-@ eqv_ev_prt'''f_tt :: ProofOf(EvalsTo (App (App (Prim Eqv) (Bc True)) (App (App (Prim Or) (App (App (Prim And) (Bc False)) (Bc False)) ) (App (App (Prim And) (App (Prim Not) (Bc False))) (App (Prim Not) (Bc False))))) (Bc True)) @-}
     eqv_ev_prt'''f_tt = reduce_eqv_tt False False
+-}

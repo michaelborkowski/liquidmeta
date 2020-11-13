@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -26,9 +27,9 @@ import PrimitivesWFTypeEq
 import PrimitivesWFTypeEqn
 import PrimitivesWFTypeEql
 
-{-@ reflect foo17 @-}
-foo17 :: a -> Maybe a
-foo17 x = Just x
+{-@ reflect foo19 @-}
+foo19 :: a -> Maybe a
+foo19 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES

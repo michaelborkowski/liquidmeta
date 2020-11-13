@@ -11,15 +11,16 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
 
-{-@ reflect foo20 @-}
-foo20 :: a -> Maybe a
-foo20 x = Just x
+{-@ reflect foo21 @-}
+foo21 :: a -> Maybe a
+foo21 x = Just x
 
 {-@ lem_btv_not_wf :: g:Env -> a:Vname -> x:Vname -> p:Pred -> k:Kind
                         -> ProofOf(WFType g (TRefn (BTV a) x p) k) -> { pf:_ | false } @-}
@@ -261,8 +262,6 @@ lem_freeBV_emptyB g e t (FTLet _g e_x t_x p_ex_tx x e' t' y p_yg_e'_t') = case e
                                                                t' p_yg_e'_t')
 lem_freeBV_emptyB g e t (FTAnn _g e' _t t1 p_e'_t) 
     = {-() ? lem_freeBV_emptyB g e' t p_e'_t-}          undefined 
-lem_freeBV_emptyB g e t (FTEqv _g _e a1 k t1 p_e_a1t1 a2 t2 a)
-    = lem_freeBV_emptyB g e (FTPoly a1 k t1) p_e_a1t1 
 
 {-@ lem_tfreeBV_empty :: g:Env -> t:Type -> k:Kind -> { p_g_t:WFType | propOf p_g_t == WFType g t k }
             -> ProofOf(WFEnv g) -> { pf:Proof | Set_emp (tfreeBV t) &&
@@ -298,4 +297,3 @@ lem_tfreeBV_empty g t k (WFExis _g x t_x k_x p_g_tx t' k' y p_yg_t') p_g_wf = ca
         p_yg_wf = WFEBind g p_g_wf y t_x k_x p_g_tx
 lem_tfreeBV_empty g t k (WFPoly {}) p_g_wf = undefined
 lem_tfreeBV_empty g t k (WFKind _g _t p_g_t_base) p_g_wf = () ? lem_tfreeBV_empty g t Base p_g_t_base p_g_wf 
-

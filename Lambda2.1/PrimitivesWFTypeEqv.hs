@@ -16,9 +16,9 @@ import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-{-@ reflect foo10 @-}
-foo10 :: a -> Maybe a
-foo10 x = Just x
+{-@ reflect foo12 @-}
+foo12 :: a -> Maybe a
+foo12 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES
@@ -26,13 +26,7 @@ foo10 x = Just x
 
 {-@ lem_wf_intype_eqv :: () -> { pf:_ | noDefnsInRefns Empty (inType Eqv) && isWellFormed Empty (inType Eqv) Base } @-}
 lem_wf_intype_eqv :: () -> Proof
-lem_wf_intype_eqv _ = () {-noDefnsInRefns Empty (inType Eqv)
-                  === noDefnsInRefns Empty (TRefn TBool 1 (Bc True))
-                  === noDefns (unbind 1 (fresh_var Empty) (Bc True))
---                  ? toProof (isValue (FV (fresh_var Empty)) === True)
-                  === noDefns (subBV 1 (FV (fresh_var Empty) ? toProof (isValue (FV (fresh_var Empty)))) (Bc True))
-                  === noDefns (Bc True)
-                  === True *** QED -}
+lem_wf_intype_eqv _ = () 
 
 {-@ lem_wf_ty'_eqv :: y:Int -> { pf:_ | noDefnsInRefns (Cons y (inType Eqv) Empty) 
                                               (unbindT (firstBV Eqv) y (ty' Eqv))

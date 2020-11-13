@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -22,9 +23,9 @@ import SystemFWellFormedness
 import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 
-{-@ reflect foo23 @-}
-foo23 x = Just x
-foo23 :: a -> Maybe a
+{-@ reflect foo24 @-}
+foo24 x = Just x
+foo24 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying System F Calculus
@@ -145,8 +146,6 @@ lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTAnn env_ e' t_ liqt p_env_
       where
         p_g'g_e'_t = lem_subst_ftyp g g' x v_x t_x p_vx_tx e' t p_env_e'_t
 -}
-lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTEqv _ _e a1 k t1 p_e_a1t1 a2 t2 a)
-  = undefined -- assume
 
 {-@ lem_subst_tv_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> { a:Vname | (not (in_envF a g)) && not (in_envF a g') } -> t_a:Type -> k_a:Kind
@@ -179,6 +178,4 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTAppT env_ e' a' k' t' p
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTLet env_ e_z t_z p_env_ez_tz z e' t_ y_ p_yenv_e'_t)
   = undefined -- assume
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTAnn env_ e' t_ liqt p_env_e'_t)
-  = undefined -- assume
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTEqv env_ _e a1 k1 t1 p_e_a1t1 a2 t2 a')
   = undefined -- assume

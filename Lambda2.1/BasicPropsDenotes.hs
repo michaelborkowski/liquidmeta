@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -24,9 +25,9 @@ import SystemFLemmasSubstitution
 import Typing
 import BasicPropsCSubst
 
-{-@ reflect foo27 @-}
-foo27 x = Just x 
-foo27 :: a -> Maybe a 
+{-@ reflect foo29 @-}
+foo29 x = Just x 
+foo29 :: a -> Maybe a 
 
 {-@ lem_change_var_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (fv v) }
       -> ProofOf(Denotes (ctsubst th t) v) -> { x:Vname | (v_in_csubst x th) } 
@@ -132,7 +133,7 @@ lem_remove_tvar_denote_env g a  k_a Empty           p_g'g_wf  th den_env_th = un
 lem_remove_tvar_denote_env g a  k_a (Cons {})       p_g'g_wf  th den_env_th = undefined {- 2 -}
 lem_remove_tvar_denote_env g a  k_a (ConsT {})      p_g'g_wf  th den_env_th = undefined {- 2 -}
 
-
+-- this is NOT TRUE anymore:
 {-@ lem_csubst_hasbtype' :: g:Env -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env g) e (erase t))
         -> th:CSub -> ProofOf(DenotesEnv g th) -> ProofOf(HasFType FEmpty (csubst th e) (erase t)) @-} 
 lem_csubst_hasbtype' :: Env -> Expr -> Type -> HasFType -> CSub -> DenotesEnv -> HasFType

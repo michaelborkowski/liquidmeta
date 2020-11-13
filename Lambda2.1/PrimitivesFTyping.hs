@@ -11,15 +11,16 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 import BasicPropsSubstitution
 
-{-@ reflect foo06 @-}
-foo06 :: a -> Maybe a
-foo06 x = Just x
+{-@ reflect foo08 @-}
+foo08 :: a -> Maybe a
+foo08 x = Just x
 
 -----------------------------------------------------------------------------
 -- | (System F) TYPES of DELTA (of Applications of Primitives)
@@ -73,8 +74,6 @@ lemma_function_values e t t' (FTAbs {})   = ()
 lemma_tfunction_values :: Expr -> Vname -> Kind -> FType -> HasFType -> Proof
 lemma_tfunction_values v a k t (FTPrm  {})   = ()     
 lemma_tfunction_values v a k t (FTAbsT {})   = ()    
-lemma_tfunction_values v a k t (FTEqv _ _ a1 _ t1 p_v_a1t1 _ _ _) 
-  = lemma_tfunction_values v a1 k t1 p_v_a1t1
 
 {-@ lem_delta_and_ftyp :: v:Value -> t_x:FType -> t':FType
         -> ProofOf(HasFType FEmpty (Prim And) (FTFunc t_x t')) -> ProofOf(HasFType FEmpty v t_x)
@@ -221,6 +220,3 @@ lem_deltaT_ftyp c a k s p_c_aks t p_emp_t = case p_c_aks of
                          === (FTFunc (FTBasic TInt) 
                                (FTFunc (FTBasic TInt) (FTBasic TBool))) )
       _               -> impossible ("by lemma" ? lem_base_types (erase t) p_emp_t)
-  (FTEqv FEmpty _ a1 _k s1 p_c_a1s1 _ _ a') -> lem_deltaT_ftyp c a1 k s1 p_c_a1s1 t p_emp_t 
-                                                   ? lem_ftsubFV_unbindFT a1 a' (erase t) s1
-                                                   ? lem_ftsubFV_unbindFT a  a' (erase t) s

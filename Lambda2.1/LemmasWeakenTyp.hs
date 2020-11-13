@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -31,9 +32,9 @@ import LemmasTyping
 import LemmasSubtyping
 import LemmasChangeVarTyp
 
-{-@ reflect foo38 @-}
-foo38 x = Just x
-foo38 :: a -> Maybe a
+{-@ reflect foo46 @-}
+foo46 x = Just x
+foo46 :: a -> Maybe a
 
 -----------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
@@ -347,4 +348,3 @@ lem_weaken_tv_subtype g g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
 -}
 lem_weaken_tv_subtype g g' p_env_wf t1 k1 p_env_t1 t2 k2 p_env_tw (SPoly {}) a k_a
     = undefined
- 

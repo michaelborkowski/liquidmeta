@@ -16,9 +16,9 @@ import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-{-@ reflect foo14 @-}
-foo14 :: a -> Maybe a
-foo14 x = Just x
+{-@ reflect foo16 @-}
+foo16 :: a -> Maybe a
+foo16 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES
@@ -40,4 +40,3 @@ lem_wf_ty'_eqn n y = ()
                                           && isWellFormed Empty (ty (Eqn n)) Star } @-}
 lem_wf_ty_eqn :: Int -> Proof
 lem_wf_ty_eqn n = () ? lem_wf_intype_eqn n ? lem_wf_ty'_eqn n (firstBV (Eqn n))
-

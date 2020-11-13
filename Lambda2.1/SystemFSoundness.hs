@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -23,9 +24,9 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 
-{-@ reflect foo24 @-}
-foo24 x = Just x
-foo24 :: a -> Maybe a
+{-@ reflect foo25 @-}
+foo25 x = Just x
+foo25 :: a -> Maybe a
 
 -----------------------------------------------------------------------------
 ----- | SOUNDNESS of the SYSTEM F LAMBDA CALCULUS
@@ -74,10 +75,6 @@ lemma_progress _e _t (FTAnn FEmpty e1 t liqt p_e1_t)
       = case (lemma_progress e1 t p_e1_t) of
           Left ()               -> Right (e1, EAnnV e1 liqt)
           Right (e1', p_e1_e1') -> Right (Annot e1' liqt, EAnn e1 e1' p_e1_e1' liqt)
-lemma_progress _e _t (FTEqv FEmpty e a1 k t1 p_e_a1t1 a2 t2 a)
-      = case (lemma_progress e (FTPoly a1 k t1) p_e_a1t1) of
-          Left ()               -> Left ()
-          Right (e', p_e_e')    -> Right (e', p_e_e')
 
 {-@ lemma_preservation :: e:Expr -> t:FType -> ProofOf(HasFType FEmpty e t) -> e':Expr
         -> ProofOf(Step e e') -> Either { pf:_ | false } { pf:_ | propOf pf == HasFType FEmpty e' t} @-}
@@ -130,7 +127,7 @@ lemma_preservation e t (FTAppT FEmpty (Prim c) a k s p_e1_as rt p_emp_er_rt) e' 
 lemma_preservation e t (FTAppT FEmpty (LambdaT a1 k1 e2) a k s p_e1_as rt p_emp_er_rt) e' st_e_e'
   = Right p_e2rt_srt ? lem_sem_det e e' st_e_e' (subBTV a1 rt e2) (EAppTAbs a1 k1 e2 rt)
       where
-        (a', p_e2_s) = lem_invert_ftabst FEmpty a1 k1 e2 a k s p_e1_as WFFEmpty
+        (FTAbsT _ _ _ _ _ a' p_e2_s) = p_e1_as
         p_wf_a'k     = WFFBindT FEmpty WFFEmpty a' k
         p_e2rt_srt   = lem_subst_tv_ftyp FEmpty FEmpty a' rt k p_emp_er_rt
                                         p_wf_a'k (unbind_tv a1 a' e2) (unbindFT a a' s) p_e2_s
@@ -148,17 +145,12 @@ lemma_preservation e t p_e_t@(FTLet FEmpty e_x t_x p_ex_tx x e1 _t y p_e1_t) e' 
   = case (lemma_progress e_x t_x p_ex_tx) of 
       Left ()                 -> Right p_e1ex_t
                                      ? lem_sem_det e e' st_e_e' (subBV x e_x e1) (ELetV x e_x e1)
---                                     ? lem_free_bound_in_env Empty t p_emp_t y
         where
-          {- @ p_e1ex_t :: ProofOf(HasType Empty (subBV x e_x e1) t) @-} -- (tsubBV x e_x t)) @-}
           p_tx_star            = lem_ftyping_wfft FEmpty e_x t_x p_ex_tx WFFEmpty
           p_e1ex_t             = lem_subst_ftyp FEmpty FEmpty y e_x t_x p_ex_tx 
                                            (WFFBind FEmpty WFFEmpty y t_x Star p_tx_star)
                                            (unbind x y e1) t p_e1_t
                                            ? lem_subFV_unbind x y e_x e1 
-                                     -- ? lem_tfreeBV_empty Empty t p_emp_t WFEEmpty
-                                     -- ? lem_tsubBV_inval x e_x t
-                                     -- ? toProof ( t === tsubBV x e_x t ) 
       Right (e_x', st_ex_ex') -> Right (FTLet FEmpty e_x' t_x p_ex'_tx x e1 t y p_e1_t)
         where
           Right p_ex'_tx       = lemma_preservation e_x t_x p_ex_tx e_x' st_ex_ex'
@@ -171,11 +163,6 @@ lemma_preservation e t (FTAnn FEmpty e1 t_ liqt p_e1_t) e' st_e_e'
                                   ? lem_sem_det e e' st_e_e' (Annot e1' liqt) (EAnn e1 e1' st_e1_e1' liqt)
           where
             Right p_e1'_t = lemma_preservation e1 t p_e1_t e1' st_e1_e1'
-lemma_preservation e t (FTEqv FEmpty _e a1 k t1 p_e_a1t1 a2 t2 a) e' st_e_e'
-  = case (lemma_preservation e (FTPoly a1 k t1) p_e_a1t1 e' st_e_e') of
-      Left ()         -> Left ()
-      Right p_e'_a1t1 -> Right (FTEqv FEmpty e' a1 k t1 p_e'_a1t1 a2 t2 
-                                 (a ? lem_fv_bound_in_fenv FEmpty e' (FTPoly a1 k t1) p_e'_a1t1 a))
 
 -- Lemma. The underlying bare type system is sound. This is the textbook
 --          soundness proof for the STLC.

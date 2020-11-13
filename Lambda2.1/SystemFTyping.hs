@@ -11,11 +11,12 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import SystemFWellFormedness
 
-{-@ reflect foo4 @-}
-foo4 :: a -> Maybe a
-foo4 x = Just x
+{-@ reflect foo05 @-}
+foo05 :: a -> Maybe a
+foo05 x = Just x
 
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : the Bare-Typing Relation
@@ -40,8 +41,6 @@ data HasFType where
     FTLet  :: FEnv -> Expr -> FType -> HasFType -> Vname -> Expr
                    -> FType -> Vname -> HasFType -> HasFType
     FTAnn  :: FEnv -> Expr -> FType -> Type -> HasFType -> HasFType
-    FTEqv  :: FEnv -> Expr -> Vname -> Kind -> FType -> HasFType 
-                   -> Vname -> FType -> Vname -> HasFType
 
 {-@ data HasFType where
         FTBC   :: g:FEnv -> b:Bool -> ProofOf(HasFType g (Bc b) (FTBasic TBool))
@@ -80,13 +79,7 @@ data HasFType where
                 -> ProofOf(HasFType g (Let x e_x e) b')
      |  FTAnn  :: g:FEnv -> e:Expr -> b:FType 
                 -> { t1:Type | (erase t1 == b) && Set_sub (Set_cup (free t1) (freeTV t1)) (bindsF g) }
-                -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b)  
-     |  FTEqv  :: g:FEnv -> e:Expr -> a1:Vname -> k:Kind -> t1:FType 
-                -> ProofOf(HasFType g e (FTPoly a1 k t1)) -> a2:Vname -> t2:FType
-                -> { a:Vname | not (in_envF a g) && not (Set_mem a (fv e)) && not (Set_mem a (ftv e))
-                            && not (Set_mem a (ffreeTV t1)) && not (Set_mem a (ffreeTV t2))
-                            && unbindFT a1 a t1 == unbindFT a2 a t2 } 
-                -> ProofOf(HasFType g e (FTPoly a2 k t2)) @-} 
+                -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b) @-} 
   
 {-@ measure ftypSize @-}
 {-@ ftypSize :: HasFType -> { v:Int | v >= 0 } @-}
@@ -103,7 +96,6 @@ ftypSize (FTAbsT _ _ _ _ _ _ p_e_b)          = (ftypSize p_e_b)  + 1
 ftypSize (FTAppT _ _ _ _ _ p_e_at' _ _)      = (ftypSize p_e_at') + 1
 ftypSize (FTLet _ _ _ p_ex_b _ _ _ _ p_e_b') = (ftypSize p_ex_b)  + (ftypSize p_e_b') + 1
 ftypSize (FTAnn _ _ _ _ p_e_b)               = (ftypSize p_e_b)   + 1
-ftypSize (FTEqv _ _ _ _ _ p_e_at1 _ _ _)     = (ftypSize p_e_at1) + 1
 
 {-@ reflect isFTVar @-}
 isFTVar :: HasFType -> Bool
@@ -283,8 +275,7 @@ ty' Eql      = TFunc 2 (TRefn (BTV 1) 2 (Bc True)) (TRefn TBool 3 (refn_pred Eql
 -- The only expressions fow which we are trying to automate the production of
 --    are the refinements found in the types of the built in primitives, in ty(c)
 --    These consist of constants, primitives, variables, function application, and
---    simplepolymorphic type application. We also won't support typing judgments that
---    involve rule FTEqv in any way 
+--    simplepolymorphic type application. 
 
 {-@ reflect isSimpleBase @-}
 isSimpleBase :: Type -> Bool
@@ -306,7 +297,7 @@ noDefnsBaseAppT (Let _ _ _)     = False
 noDefnsBaseAppT (Annot e t)     = noDefnsBaseAppT e
 noDefnsBaseAppT Crash           = True
 
-{-@ reflect checkType @-} -- no FTEqv allowed (not change of bound type var)
+{-@ reflect checkType @-} 
 {-@ checkType :: FEnv -> { e:Expr | noDefnsBaseAppT e } -> t:FType -> Bool / [esize e] @-}
 checkType :: FEnv -> Expr -> FType -> Bool
 checkType g (Bc b) t         = ( t == FTBasic TBool )

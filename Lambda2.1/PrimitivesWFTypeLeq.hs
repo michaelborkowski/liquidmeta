@@ -16,15 +16,16 @@ import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-{-@ reflect foo11 @-}
-foo11 :: a -> Maybe a
-foo11 x = Just x
+{-@ reflect foo13 @-}
+foo13 :: a -> Maybe a
+foo13 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES
 -----------------------------------------------------------------------------
 
-{-@ lem_wf_intype_leq :: () -> { pf:_ | noDefnsInRefns Empty (inType Leq) && isWellFormed Empty (inType Leq) Base } @-}
+{-@ lem_wf_intype_leq :: () -> { pf:_ | noDefnsInRefns Empty (inType Leq) 
+                                          && isWellFormed Empty (inType Leq) Base } @-}
 lem_wf_intype_leq :: () -> Proof
 lem_wf_intype_leq _ = ()
 
@@ -38,4 +39,3 @@ lem_wf_ty'_leq y = ()
 {-@ lem_wf_ty_leq :: () -> { pf:_ | noDefnsInRefns Empty (ty Leq) && isWellFormed Empty (ty Leq) Star } @-}
 lem_wf_ty_leq :: () -> Proof
 lem_wf_ty_leq _ = () ? lem_wf_intype_leq () ? lem_wf_ty'_leq (firstBV Leq)
-

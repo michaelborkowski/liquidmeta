@@ -4,7 +4,7 @@
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
 
-module DenotationsSoundnessSub where
+module DenotationsSoundness where
 
 import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
@@ -53,7 +53,7 @@ lem_denote_sound_sub_sbase :: Env -> Type -> Kind -> Type -> Kind -> Subtype -> 
                             -> CSub -> DenotesEnv -> Expr -> Denotes -> Denotes 
 lem_denote_sound_sub_sbase g t1 k1 t2 k2 (SBase _g x1 b p1 x2 p2 y pf_ent_p2) p_g_wf p_g_t1 p_g_t2
                     -- t1 = b{x1:p1}, t2 = b{x2:p2}  -- Pf(Entails g' p2[y/x2])
-                       th den_g_th val_ den_t1_v  = undefined {- CHECKED
+                       th den_g_th val_ den_t1_v  
   = case den_t1_v of
       (DRefn _b _ _ also_val pf_v_b pf_th_p1v_tt) -> case (pf_ent_p2) of   -- EvalsTo th(p1[v/x1]) tt
         (EntPred y_g _p2 ev_thp2_tt)     -- forall th' in [[x1,g]]. EvalsTo th'(p2[x1/x2]) tt 
@@ -69,7 +69,6 @@ lem_denote_sound_sub_sbase g t1 k1 t2 k2 (SBase _g x1 b p1 x2 p2 y pf_ent_p2) p_
                   pf_th'_p2v_tt = ev_thp2_tt th' den_g'_th' 
                                     `withProof` lem_csubst_and_unbind x2 y val (FTBasic b) pf_v_b' th p2
       (_) -> impossible ("by lemma" ? lem_ctsubst_refn th b x1 p1) 
--}
 
 {-@ lem_denote_sound_sub_sfunc :: g:Env -> t1:Type -> k1:Kind -> t2:Type -> k2:Kind 
                 -> { p_t1_t2:_ | propOf p_t1_t2 == Subtype g t1 t2 && isSFunc p_t1_t2}
@@ -80,7 +79,7 @@ lem_denote_sound_sub_sbase g t1 k1 t2 k2 (SBase _g x1 b p1 x2 p2 y pf_ent_p2) p_
 lem_denote_sound_sub_sfunc :: Env -> Type -> Kind -> Type -> Kind -> Subtype -> WFEnv -> WFType -> WFType
                             -> CSub -> DenotesEnv -> Expr -> Denotes -> Denotes 
 lem_denote_sound_sub_sfunc g t1 k1 t2 k2 p_t1_t2@(SFunc _g x1 s1 x2 s2 p_g_s2_s1 t1' t2' y p_g'_t1_t2) 
-                           p_g_wf p_g_t1 p_g_t2 th den_g_th _v den_tht1_v = undefined {- CHECKED
+                           p_g_wf p_g_t1 p_g_t2 th den_g_th _v den_tht1_v 
   = case den_tht1_v of       -- p_t1_t2 :: Subtype (Cons y s2 g) t1'[y/x1] t2'[y/x2]
       (DFunc _x1 ths1 tht1' val s_x s eqv_sxs_ertht1 pf_v_sxs _pf_den_tht1'_vv')
         -> DFunc x2 (ctsubst th s2) (ctsubst th t2') val s_x s eqv_sxs_tht2 pf_v_sxs
@@ -132,7 +131,6 @@ lem_denote_sound_sub_sfunc g t1 k1 t2 k2 p_t1_t2@(SFunc _g x1 s1 x2 s2 p_g_s2_s1
                                       `withProof` lem_ctsubst_func th x1 s1 t1'
                                       `withProof` lem_ctsubst_and_unbindT x2 y v' s0 pf_v'_s0 th t2'
       (_) -> impossible ("by lemma" ? lem_ctsubst_func th x1 s1 t1')
--}
 
 {-@ lem_denote_sound_sub_switn :: g:Env -> t1:Type -> k1:Kind -> t2:Type -> k2:Kind 
                 -> { p_t1_t2:_ | propOf p_t1_t2 == Subtype g t1 t2 && isSWitn p_t1_t2}
@@ -298,7 +296,6 @@ lem_denote_sound_sub g t1 k1 t2 k2
 lem_denote_sound_typ_tvar1 :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
                             -> DenotesEnv -> ValueDenoted
 lem_denote_sound_typ_tvar1 g e t (TVar1 g' x t' k' p_g'_t') (WFEBind _ wf_g' _ _ _ _p_g'_t') th den_g_th 
-  = undefined {- CHECKED 
   = case den_g_th of              -- e == FV x, t == self t x 
       (DExt _g' th' den_g'_th' _x _t' w den_th't'_w)  -- w = th(x)
         -> ValDen (csubst th e) (ctsubst th t) w ev_the_v' den_tht_thx
@@ -313,7 +310,6 @@ lem_denote_sound_typ_tvar1 g e t (TVar1 g' x t' k' p_g'_t') (WFEBind _ wf_g' _ _
                                                 === ctsubst th' (tsubFV x w t') 
                                                 === ctsubst th' t' )
                                         ? lem_ctsubst_self th t' x k'
--}
 
 {-@ lem_denote_sound_typ_tvar2 :: g:Env -> e:Expr -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTVar2 p_e_t } 
@@ -322,7 +318,6 @@ lem_denote_sound_typ_tvar1 g e t (TVar1 g' x t' k' p_g'_t') (WFEBind _ wf_g' _ _
 lem_denote_sound_typ_tvar2 :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
                             -> DenotesEnv -> ValueDenoted
 lem_denote_sound_typ_tvar2 g e t (TVar2 g' x _t p_x_t y t_y) pf_g_wf th den_g_th
-  = undefined {- CHECKED 
   = case den_g_th of 
       (DExt _g' th' den_g'_th' _y _ v_y den_tht_thy) 
         -> ValDen (csubst th e) (ctsubst th t) thx ev_the_v' den_tht_thx
@@ -336,7 +331,6 @@ lem_denote_sound_typ_tvar2 g e t (TVar2 g' x _t p_x_t y t_y) pf_g_wf th den_g_th
               den_tht_thx = pf2 ? lem_free_bound_in_env g' t Star p_g'_t y
                                 ? lem_binds_env_th g' th' den_g'_th' 
                                 ? lem_tsubFV_notin y v_y t
--}
 
 {-@ lem_denote_sound_typ_tvar3 :: g:Env -> e:Expr -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTVar3 p_e_t } 
@@ -345,7 +339,6 @@ lem_denote_sound_typ_tvar2 g e t (TVar2 g' x _t p_x_t y t_y) pf_g_wf th den_g_th
 lem_denote_sound_typ_tvar3 :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
                             -> DenotesEnv -> ValueDenoted
 lem_denote_sound_typ_tvar3 g e t (TVar3 g' x _t p_x_t a k_a) pf_g_wf th den_g_th
-  = undefined {- CHECKED
   = case den_g_th of 
       (DExtT _g' th' den_g'_th' _a _ka t_a p_emp_ta) 
         -> ValDen (csubst th e) (ctsubst th t) thx ev_the_v' den_tht_thx
@@ -359,7 +352,6 @@ lem_denote_sound_typ_tvar3 g e t (TVar3 g' x _t p_x_t a k_a) pf_g_wf th den_g_th
                den_tht_thx = pf2 ? lem_free_bound_in_env g' t Star p_g'_t a
                                  ? lem_binds_env_th g' th' den_g'_th'
                                  ? lem_tsubFTV_notin a t_a t
--}
 
 {-@ lem_denote_sound_typ_tabs :: g:Env -> e:Expr -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAbs p_e_t } 
@@ -454,7 +446,7 @@ lem_denote_sound_typ_tabst g e t (TAbsT {}) p_g_wf th den_g_th = undefined
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
 lem_denote_sound_typ_tappt :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
                             -> DenotesEnv -> ValueDenoted
-lem_denote_sound_typ_tappt g e t (TAppT _ e' a k s p_e_as t' p_g_t') p_g_wf th den_g_th 
+lem_denote_sound_typ_tappt g e t (TAppT _ e' a k s p_e_as t' p_g_t') p_g_wf th den_g_th = undefined {-
   = ValDen (csubst th e) (ctsubst th t) v'' ev_the_v'' den_tht_v''
       where
         (ValDen _ _ v' ev_the'_v' den_thas_v') = lem_denote_sound_typ g e' (TPoly a k s)
@@ -462,6 +454,8 @@ lem_denote_sound_typ_tappt g e t (TAppT _ e' a k s p_e_as t' p_g_t') p_g_wf th d
                                                      ? lem_ctsubst_poly th a k s   
 
         ev_the_v'tht' = lemma_appt_many (csubst th e) v' 
+-}
+
 {-@ lem_denote_sound_typ_tlet :: g:Env -> e:Expr -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTLet p_e_t } 
                 -> ProofOf(WFEnv g) -> th:CSub -> ProofOf(DenotesEnv g th)  
@@ -524,22 +518,20 @@ lem_denote_sound_typ_tann g e t (TAnn _g e' _t p_e'_t) p_g_wf th den_g_th
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 1] @-}
 lem_denote_sound_typ :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
                             -> DenotesEnv -> ValueDenoted
-lem_denote_sound_typ g e t p_e_t@(TBC _g b) p_g_wf th den_g_th  = undefined {- CHECKED
+lem_denote_sound_typ g e t p_e_t@(TBC _g b) p_g_wf th den_g_th 
   = ValDen (csubst th e) (ctsubst th t) value ev_the_v' den_bl_b 
         where
           {-@ value :: { z:Value | Set_emp (freeBV z) && z == Bc b } @-}
           value     = e
           ev_the_v' = Refl e `withProof` lem_csubst_bc th b
           den_bl_b  = lem_den_tybc g th den_g_th b
--}
-lem_denote_sound_typ g e t p_e_t@(TIC _g n) p_g_wf th den_g_th  = undefined {- CHECKED
+lem_denote_sound_typ g e t p_e_t@(TIC _g n) p_g_wf th den_g_th  
   = ValDen (csubst th e) (ctsubst th t) value ev_the_v' den_int_n
       where
         {-@ value :: { z:Value | Set_emp (freeBV z) && z = Ic n } @-}
         value     = e
         ev_the_v' = Refl e `withProof` lem_csubst_ic th n
         den_int_n = lem_den_tyic g th den_g_th n 
--}
 lem_denote_sound_typ g e t p_e_t@(TVar1 g' x t' _ _) p_g_wf@(WFEBind _ wf_g' _ _ _ p_g'_t') th den_g_th 
   = lem_denote_sound_typ_tvar1 g e t p_e_t p_g_wf th den_g_th
 lem_denote_sound_typ g e t p_e_t@(TVar2 g' x _t p_x_t y t_y) 
@@ -548,14 +540,13 @@ lem_denote_sound_typ g e t p_e_t@(TVar2 g' x _t p_x_t y t_y)
 lem_denote_sound_typ g e t p_e_t@(TVar3 g' x _t p_x_t a k_a) 
                      p_g_wf@(WFEBindT _ wf_g' _ _) th den_g_th
   = lem_denote_sound_typ_tvar3 g e t p_e_t p_g_wf th den_g_th
-lem_denote_sound_typ g e t p_e_t@(TPrm _g c) p_g_wf th den_g_th = undefined {- CHECKED
+lem_denote_sound_typ g e t p_e_t@(TPrm _g c) p_g_wf th den_g_th 
   = ValDen (csubst th e) (ctsubst th t) value ev_the_v' den_tyc_c
       where
         {-@ value :: { z:Value | Set_emp (fv z) && z == Prim c} @-}
         value     = e 
         ev_the_v' = Refl e `withProof` lem_csubst_prim th c
         den_tyc_c = lem_den_ty g th den_g_th c
--}
 lem_denote_sound_typ g e t p_e_t@(TAbs _g x t_x k_x p_g_tx e' t' y p_yg_e'_t') p_g_wf th den_g_th
   = lem_denote_sound_typ_tabs g e t p_e_t p_g_wf th den_g_th
 lem_denote_sound_typ g e t p_e_t@(TApp _g e' x t_x t' p_e_txt' e_x p_ex_tx) p_g_wf th den_g_th
@@ -568,10 +559,9 @@ lem_denote_sound_typ g e t p_e_t@(TLet _g e_x t_x p_ex_tx x e' _t k p_g_t y p_yg
   = lem_denote_sound_typ_tlet g e t p_e_t p_g_wf th den_g_th
 lem_denote_sound_typ g e t p_e_t@(TAnn _g e' _t p_e'_t) p_g_wf th den_g_th
   = lem_denote_sound_typ_tann g e t p_e_t p_g_wf th den_g_th
-lem_denote_sound_typ g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf th den_g_th = undefined {- CHECKED
+lem_denote_sound_typ g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf th den_g_th 
   = ValDen (csubst th e) (ctsubst th t) v ev_the_v den_tht_v
     where
       p_g_s     = lem_typing_wf g e s p_e_s p_g_wf
       (ValDen _ _ v ev_the_v den_ths_v) = lem_denote_sound_typ g e s p_e_s p_g_wf th den_g_th
       den_tht_v = lem_denote_sound_sub g s Star t k p_s_t p_g_wf p_g_s p_g_t th den_g_th v den_ths_v 
--}

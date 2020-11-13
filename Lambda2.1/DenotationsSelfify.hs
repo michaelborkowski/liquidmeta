@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -25,9 +26,9 @@ import BasicPropsCSubst
 import BasicPropsDenotes
 import PrimitivesSemantics -- this module has moved "up" in the order
 
-{-@ reflect foo40 @-}
-foo40 x = Just x
-foo40 :: a -> Maybe a
+{-@ reflect foo50 @-}
+foo50 x = Just x
+foo50 :: a -> Maybe a
 
 {-@ lem_equals_evals :: e:Expr -> v:Value -> ProofOf(EvalsTo e v) -> b:Basic 
         -> ProofOf(HasFType FEmpty v (FTBasic b))
@@ -71,8 +72,8 @@ lem_denotations_selfify (TRefn b z p)      Base {-p_emp_t-} e v ev_e_v den_t_v =
                            True ev_rhs_tt
 lem_denotations_selfify (TFunc z t_z t')   k    {-p_emp_t-} e v ev_e_v den_t_v = den_t_v
 lem_denotations_selfify (TExists z t_z t') Base {-p_emp_t-} e v ev_e_v den_t_v = case den_t_v of
-  (DExis _z _tz _t' _v p_v_ert' v_z den_tz_vz den_t'vz_v) 
-    -> DExis z t_z (self t' e Base) v p_v_ert' v_z den_tz_vz den_selft'vz_v
+  (DExis _z _tz _t' _v s eqv_ert'_s p_v_s v_z den_tz_vz den_t'vz_v) 
+    -> DExis z t_z (self t' e Base) v s eqv_ert'_s p_v_s v_z den_tz_vz den_selft'vz_v
          where 
            den_selft'vz_v = lem_denotations_selfify (tsubBV z v_z t') Base {-p_emp_t'vz -}
                                                     e v ev_e_v den_t'vz_v

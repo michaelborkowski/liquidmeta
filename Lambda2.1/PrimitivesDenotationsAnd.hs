@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -26,13 +27,13 @@ import BasicPropsCSubst
 import BasicPropsDenotes
 import PrimitivesSemantics
 
-{-@ reflect foo43 @-}
-foo43 x = Just x
-foo43 :: a -> Maybe a
+{-@ reflect foo51 @-}
+foo51 x = Just x
+foo51 :: a -> Maybe a
  
 {-@ lem_den_and :: ProofOf(Denotes (ty And) (Prim And)) @-}
 lem_den_and :: Denotes
-lem_den_and = DFunc 1 (TRefn TBool 1 (Bc True)) t'
+lem_den_and = undefined {-DFunc 1 (TRefn TBool 1 (Bc True)) t'
                     (Prim And) (FTPrm FEmpty And) val_den_func
   where
     val_den_func :: Expr -> Denotes -> ValueDenoted
@@ -85,3 +86,4 @@ lem_den_and = DFunc 1 (TRefn TBool 1 (Bc True)) t'
                         (Bc False) (FTBC FEmpty False) ev_prt'''f_ff
     {-@ ev_prt'''f_ff :: ProofOf(EvalsTo (App (App (Prim Eqv) (Bc False)) (App (App (Prim And) (Bc False)) (Bc False))) (Bc True)) @-}
     ev_prt'''f_ff = reduce_and_tt False False
+-}

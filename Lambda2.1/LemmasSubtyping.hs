@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -29,9 +30,9 @@ import LemmasWeakenWF
 import LemmasWellFormedness
 import LemmasTyping
 
-{-@ reflect foo36 @-}
-foo36 x = Just x
-foo36 :: a -> Maybe a
+{-@ reflect foo43 @-}
+foo43 x = Just x
+foo43 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
@@ -110,4 +111,3 @@ lem_change_bv_sub_func g x t_x k_x t k x' t' y p_g_tx p_yg_t p_g_wf
       where
         p_yg_t_t' = lem_sub_refl (Cons y t_x g) (unbindT x y t) k p_yg_t p_yg_wf
         p_yg_wf   = WFEBind g p_g_wf y t_x k_x p_g_tx
-

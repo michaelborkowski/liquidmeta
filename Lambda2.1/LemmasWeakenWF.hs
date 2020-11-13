@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -26,9 +27,9 @@ import BasicPropsDenotes
 import Entailments
 import LemmasChangeVarWF
 
-{-@ reflect foo32 @-}
-foo32 x = Just x
-foo32 :: a -> Maybe a
+{-@ reflect foo38 @-}
+foo38 x = Just x
+foo38 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   

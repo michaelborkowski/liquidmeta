@@ -13,6 +13,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -29,9 +30,9 @@ import Entailments
 import LemmasChangeVarWF
 import LemmasChangeVarWFEnv
 
-{-@ reflect foo31 @-}
-foo31 x = Just x
-foo31 :: a -> Maybe a
+{-@ reflect foo37 @-}
+foo37 x = Just x
+foo37 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas  
@@ -75,4 +76,3 @@ lem_change_var_ent g x t_x g' p_env_wf p (EntPred _env _p evals_func) y
       -> ProofOf(Entails (concatE (ConsT a' k_a g) (echgFTV a a' g')) (chgFTV a a' p)) @-}
 lem_change_tvar_ent :: Env -> Vname -> Kind -> Env -> WFEnv -> Pred -> Entails -> Vname -> Entails
 lem_change_tvar_ent = undefined {- 1 -} 
-

@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -23,9 +24,9 @@ import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
 
-{-@ reflect foo27 @-}   
-foo27 x = Just x 
-foo27 :: a -> Maybe a 
+{-@ reflect foo28 @-}   
+foo28 x = Just x 
+foo28 :: a -> Maybe a 
 
 -- | Closing Substitution Properties
 

@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -32,9 +33,9 @@ import LemmasSubtyping
 import LemmasChangeVarTyp
 import LemmasWeakenTyp
 
-{-@ reflect foo47 @-}
-foo47 x = Just x
-foo47 :: a -> Maybe a
+{-@ reflect foo48 @-}
+foo48 x = Just x
+foo48 :: a -> Maybe a
 
 -- -- -- -- -- -- -- -- -- -- -- ---
 -- Part of the Substitution Lemma --

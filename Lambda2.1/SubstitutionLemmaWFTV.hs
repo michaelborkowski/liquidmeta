@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -33,9 +34,9 @@ import LemmasChangeVarTyp
 import LemmasWeakenTyp
 import SubstitutionLemmaWF
 
-{-@ reflect foo48 @-}
-foo48 x = Just x
-foo48 :: a -> Maybe a
+{-@ reflect foo49 @-}
+foo49 x = Just x
+foo49 :: a -> Maybe a
 
 -- -- -- -- -- -- -- -- -- -- -- ---
 -- Part of the Substitution Lemma --
@@ -53,16 +54,18 @@ lem_subst_tv_wf_wfrefn g g' a t_a k_a p_g_ta p_env_wf t k{-Base-} (WFRefn env z 
   = case b of                                                -- t = TRefn b z p
       (FTV a'_) | (a == a'_) -> case k_a of                    -- t = TRefn (FTV a) z p
         Base -> lem_push_wf (concatE g (esubFTV a t_a g')) t_a Base p_gg'ta_ta
-                            z (subFTV a t_a p ? lem_same_bindersE_subFTV t_a a t_a p) y pf_pta_bl 
+                            z (subFTV a t_a p ? lem_same_bindersE_subFTV t_a a 
+                                                  (t_a ? lem_same_binders_refl t_a t) 
+                                      p) y pf_pta_bl 
           where
             y          = y_ ? lem_in_env_esubFTV g' a t_a y_
                             ? lem_in_env_concat g  g' y_
                             ? lem_in_env_concat (ConsT a k_a g) g' y_
                             ? lem_free_bound_in_env g t_a k_a p_g_ta y_
             p_ag_wf    = lem_truncate_wfenv (ConsT a k_a g) g' p_env_wf
-            (WFEBindT _ p_g_wf _ _) = p_ag_wf
+            (WFEBindT _ p_g_wf _ _) = p_ag_wf                                                       
             p_ag_ta    = lem_weaken_tv_wf g Empty p_g_wf t_a k_a p_g_ta a k_a
-            p_env_ta   = lem_weaken_many_wf (ConsT a k_a g) g' p_ag_wf t_a k_a p_ag_ta
+            p_env_ta   = lem_weaken_many_wf (ConsT a k_a g) g' p_env_wf t_a k_a p_ag_ta
             p_gg'ta_ta = lem_subst_tv_wf g g' a t_a k_a p_g_ta p_env_wf t_a Base p_env_ta
                             ? lem_free_bound_in_env g t_a k_a p_g_ta a
                             ? lem_tsubFTV_notin a t_a t_a
@@ -91,7 +94,7 @@ lem_subst_tv_wf_wfrefn g g' a t_a k_a p_g_ta p_env_wf t k{-Base-} (WFRefn env z 
                                 ? lem_in_env_concat g g' a'_
                                 ? lem_in_env_concat (ConsT a k_a g) g' a'_
                                 ? lem_in_env_concat g (esubFTV a t_a g') a'_
-            p_gg'_b       = simpleWFVar (concatE g (esubFTV a t_a g')) a' Base
+            p_gg'_b       = simpleWFVar (concatE g (esubFTV a t_a g')) a' Base -- how do we know a' is in?
 --          p_gg'_b       = WFBase (concatE g (esubFTV a t_a g')) b
             p_ag_wf       = lem_truncate_wfenv (ConsT a k_a g) g' p_env_wf
             (WFEBindT _ p_g_wf _ _) = p_ag_wf
@@ -233,8 +236,8 @@ lem_subst_tv_wf_wffunc g g' a t_a k_a p_g_ta p_env_wf t k (WFFunc _env z t_z k_z
 
 {-@ lem_subst_tv_wf_wfexis :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
           -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type
-          -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
-          -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') ) -> { t:Type | same_binders t_a t } -> k:Kind
+          -> k_a:Kind -> ProofOf(WFType g t_a k_a) -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') ) 
+          -> { t:Type | same_binders t_a t || isTrivial t } -> k:Kind
           -> { p_env_t:WFType | propOf p_env_t == WFType (concatE (ConsT a k_a g) g') t k && isWFExis p_env_t }
           -> ProofOf(WFType (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) k) / [wftypSize p_env_t, 0] @-}
 lem_subst_tv_wf_wfexis :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv 
@@ -261,8 +264,8 @@ lem_subst_tv_wf_wfexis g g' a t_a k_a p_g_ta p_env_wf t k (WFExis _env z t_z k_z
 
 {-@ lem_subst_tv_wf_wfpoly :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
           -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type
-          -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
-          -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') ) -> { t:Type | same_binders t_a t } -> k:Kind
+          -> k_a:Kind -> ProofOf(WFType g t_a k_a) -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') ) 
+          -> { t:Type | same_binders t_a t || isTrivial t } -> k:Kind
           -> { p_env_t:WFType | propOf p_env_t == WFType (concatE (ConsT a k_a g) g') t k && isWFPoly p_env_t }
           -> ProofOf(WFType (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) k) / [wftypSize p_env_t, 0] @-}
 lem_subst_tv_wf_wfpoly :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv 
@@ -285,8 +288,8 @@ lem_subst_tv_wf_wfpoly g g' a t_a k_a p_g_ta p_env_wf t k (WFPoly _env a1 k_a1 t
 
 {-@ lem_subst_tv_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
           -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type
-          -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
-          -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') ) -> { t:Type | same_binders t_a t } -> k:Kind
+          -> k_a:Kind -> ProofOf(WFType g t_a k_a) -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') ) 
+          -> { t:Type | same_binders t_a t || isTrivial t } -> k:Kind
           -> { p_env_t:WFType | propOf p_env_t == WFType (concatE (ConsT a k_a g) g') t k }
           -> ProofOf(WFType (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) k) / [wftypSize p_env_t, 1] @-}
 lem_subst_tv_wf :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv 

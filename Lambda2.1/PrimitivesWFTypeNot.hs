@@ -16,9 +16,9 @@ import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-{-@ reflect foo09 @-}
-foo09 :: a -> Maybe a
-foo09 x = Just x
+{-@ reflect foo11 @-}
+foo11 :: a -> Maybe a
+foo11 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES
@@ -38,4 +38,3 @@ lem_wf_ty'_not y = ()
 {-@ lem_wf_ty_not :: () -> { pf:_ | noDefnsInRefns Empty (ty Not) && isWellFormed Empty (ty Not) Star } @-}
 lem_wf_ty_not :: () -> Proof
 lem_wf_ty_not _ = () ? lem_wf_intype_not () ? lem_wf_ty'_not (firstBV Not)
-

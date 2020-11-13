@@ -11,14 +11,15 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 import BasicPropsSubstitution
 
-{-@ reflect foo19 @-}
-foo19 x = Just x 
-foo19 :: a -> Maybe a 
+{-@ reflect foo20 @-}
+foo20 x = Just x 
+foo20 :: a -> Maybe a 
 
 ----------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of ENVIRONMENTS / BARE-TYPED ENVIRONMENTS
@@ -232,7 +233,6 @@ lem_erase_echgFTV a a' (Cons  y t g)   = () ? lem_erase_echgFTV a a' g
                                             ? lem_erase_tchgFTV a a' t
 lem_erase_echgFTV a a' (ConsT a1 k1 g) = () ? lem_erase_echgFTV a a' g
 
---{-@ esubFTV :: a:Vname -> t_a:Type -> { g:Env | same_binders_env t_a g }
 {-@ reflect esubFTV @-}
 {-@ esubFTV :: a:Vname -> t_a:Type -> g:Env 
       -> { g':Env | binds g == binds g' && vbinds g == vbinds g' && tvbinds g == tvbinds g' } @-}
@@ -330,8 +330,6 @@ lem_fv_bound_in_fenv g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t') x = {-c
                       ? lem_fv_bound_in_fenv (FCons y' t_y g) (unbind y y' e') t' p_e'_t' x
 lem_fv_bound_in_fenv g e t (FTAnn _g e' _t ann_t p_e'_t) x 
   = () ? lem_fv_bound_in_fenv g e' t p_e'_t x
-lem_fv_bound_in_fenv g e t (FTEqv _g _e a1 k t1 p_e_a1t1 _ _ _) x
-  = () ? lem_fv_bound_in_fenv g e (FTPoly a1 k t1) p_e_a1t1 x
 
 {-@ lem_fv_subset_bindsF :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
                 -> { pf:_ | Set_sub (Set_cup (fv e) (ftv e)) (bindsF g) } @-}
@@ -357,8 +355,6 @@ lem_fv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')
          ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t' 
 lem_fv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t) 
     = () ? lem_fv_subset_bindsF g e' t p_e'_t 
-lem_fv_subset_bindsF g e t (FTEqv _g _e a1 k t1 p_e_a1t1 _ _ _)
-    = () ? lem_fv_subset_bindsF g e (FTPoly a1 k t1) p_e_a1t1 
 
 -- lem_ftv_subset_bindsF was deleted: its predicate folded into the above
 

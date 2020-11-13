@@ -11,14 +11,15 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-{-@ reflect foo16 @-}
-foo16 :: a -> Maybe a
-foo16 x = Just x
+{-@ reflect foo18 @-}
+foo18 :: a -> Maybe a
+foo18 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES

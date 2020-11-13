@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -28,9 +29,9 @@ import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 
-{-@ reflect foo28 @-}   
-foo28 x = Just x 
-foo28 :: a -> Maybe a 
+{-@ reflect foo31 @-}   
+foo31 x = Just x 
+foo31 :: a -> Maybe a 
 
 -------------------------------------------------------------
 -- | Lemma. Selfified Types are subtypes of the Original Type
@@ -86,7 +87,7 @@ get_evals_from_drefn b x p v (DRefn _ _ _ _ _ ev_pv_tt) = ev_pv_tt
         -> ProofOf(Entails (Cons y (TRefn b x (App (App (Prim And) p) q)) g) (unbind x y p)) @-}
 lem_entails_elimination :: Env -> Basic -> Vname -> Pred -> Pred -> Vname -> HasFType -> HasFType -> Entails
 lem_entails_elimination g b x p q y pf_p_bl pf_q_bl 
-{- = undefined { - 1 -}  
+ = undefined {- 1 - }  
  = EntPred (Cons y t1 g) (unbind x y p) ev_func
   where
     {-@ ev_func :: th:CSub -> ProofOf(DenotesEnv (Cons y t1 g) th) 
@@ -120,7 +121,7 @@ lem_entails_elimination g b x p q y pf_p_bl pf_q_bl
                              === S.union (fv (App (Prim And) p)) (fv q)
                              === S.union (fv p) (fv q) ) -}
                  --  ? lem_freeBV_emptyB (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool) pf_p_bl
-
+-}
 
 {-@ lem_self_refn_sub :: g:Env -> b:Basic -> z:Vname -> p:Pred -> ProofOf(WFEnv g)
         -> ProofOf(WFType g (TRefn b z p) Base) -> { x:Vname | not (in_env x g) } -> k:Kind
@@ -251,8 +252,8 @@ lem_entails_and_commutes g b x p q y pf_p_bl pf_q_bl = EntPred (Cons y t1 g) (un
           {-@ p_th'y_b :: ProofOf(HasFType FEmpty th'y (erase t1)) @-}
           ev_thp'_tt = get_evals_from_drefn b x (csubst th' pandq) th'y (den_th't1_th'y
                          ? lem_ctsubst_refn th' b x pandq) -- (unbind x y pandq)
-          p_th'y_b = get_ftyp_from_den (ctsubst th' t1) th'y den_th't1_th'y
-                         ? lem_erase_ctsubst th' t1
+          p_th'y_b = undefined {-get_ftyp_from_den (ctsubst th' t1) th'y den_th't1_th'y
+                         ? lem_erase_ctsubst th' t1 -}
       (DExtT {}) -> undefined
     t1    = TRefn b x (App (App (Prim And) p) q)
     pandq = App (App (Prim And) p) q
@@ -286,8 +287,8 @@ lem_entails_trans g b x1 p x2 q x3 r y (EntPred gp _unq ev_thq_func) ent_gp_r = 
       ev_thr_func' th den_gp_th = case den_gp_th of
         (DExt _g th' den_g_th' _y _bxp v den_thbxp_v) -> ev_thr_func th den_gq_th
           where
-            p_v_b       = get_ftyp_from_den (ctsubst th' (TRefn b x1 p)) v den_thbxp_v 
-                                                   ? lem_ctsubst_refn th' b x1 p
+            p_v_b       = undefined {- get_ftyp_from_den (ctsubst th' (TRefn b x1 p)) v den_thbxp_v 
+                                                   ? lem_ctsubst_refn th' b x1 p -}
             ev_thqv_tt  = ev_thq_func th den_gp_th ? lem_csubst_subBV x2 v (FTBasic b) p_v_b th' q
                                                    ? lem_subFV_unbind x2 y v q
             den_thbxq_v = DRefn b x2 (csubst th' q) v p_v_b ev_thqv_tt ? lem_ctsubst_refn th' b x2 q
@@ -300,7 +301,7 @@ lem_entails_trans g b x1 p x2 q x3 r y (EntPred gp _unq ev_thq_func) ent_gp_r = 
                        unbind x y p == unbind x' y p' }
         -> ProofOf(Entails (Cons y (TRefn b x p) g) (unbind x' y p')) @-}
 lem_entails_change_bv :: Env -> Basic -> Vname -> Pred -> Vname -> Pred -> Vname -> Entails
-{-lem_entails_change_bv = undefined { - -}
+lem_entails_change_bv = undefined {- - }
 lem_entails_change_bv g b x p x' p' y = EntPred (Cons y (TRefn b x p) g) 
                                              (unbind x' y p') ev_func
   where
@@ -317,7 +318,7 @@ lem_entails_change_bv g b x p x' p' y = EntPred (Cons y (TRefn b x p) g)
           ev_th'p'v_tt = ev_th'pv_tt ? lem_csubst_subBV x v (FTBasic b) p_v_b th' p
                                      ? lem_subFV_unbind x y v p
       (DExtT {}) -> undefined
-{- -}
+{ - -}
 
 {-@ lem_self_tt_sub_eql :: g:Env -> b:Basic -> z:Vname -> z':Vname -> { x:Vname | not (in_env x g) } 
         -> ProofOf(Subtype (Cons x (TRefn b z (Bc True)) g) 

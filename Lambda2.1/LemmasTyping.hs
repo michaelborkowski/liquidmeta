@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -29,9 +30,9 @@ import LemmasChangeVarWF
 import LemmasWeakenWF
 import LemmasWellFormedness
 
-{-@ reflect foo35 @-}
-foo35 x = Just x
-foo35 :: a -> Maybe a
+{-@ reflect foo42 @-}
+foo42 x = Just x
+foo42 :: a -> Maybe a
 
 {-@ lem_tsubFV_tybc :: x:Vname -> v_x:Value -> b:Bool
         -> { pf:_ | tsubFV x v_x (tybc b) == tybc b } @-}

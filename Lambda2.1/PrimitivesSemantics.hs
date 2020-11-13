@@ -11,6 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -26,9 +27,9 @@ import Typing
 import BasicPropsCSubst
 import BasicPropsDenotes
 
-{-@ reflect foo42 @-}
-foo42 x = Just x
-foo42 :: a -> Maybe a
+{-@ reflect foo33 @-}
+foo33 x = Just x
+foo33 :: a -> Maybe a
 
 -----------------------------------------------------------------------
 -- | BUILT-IN PRIMITIVES : Big-Step-style SEMANTICS 
@@ -284,11 +285,11 @@ reduce_eqn_tt n m = reduce_eq_tt n m
 lem_den_bools :: Expr -> Type -> Denotes -> Proof
 lem_den_bools v t den_t_v = lem_bool_values v p_v_bl
   where
-    p_v_bl = get_ftyp_from_den t v den_t_v
+    p_v_bl = undefined -- get_ftyp_from_den t v den_t_v
 
 {-@ lem_den_ints :: v:Value -> { t:Type | erase t == FTBasic TInt } 
         -> ProofOf(Denotes t v) -> { pf:_ | isInt v } @-}
 lem_den_ints :: Expr -> Type -> Denotes -> Proof
 lem_den_ints v t den_t_v = lem_int_values v p_v_int
   where
-    p_v_int = get_ftyp_from_den t v den_t_v
+    p_v_int = undefined -- get_ftyp_from_den t v den_t_v

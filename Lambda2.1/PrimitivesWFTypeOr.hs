@@ -16,9 +16,9 @@ import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 
-{-@ reflect foo08 @-}
-foo08 :: a -> Maybe a
-foo08 x = Just x
+{-@ reflect foo10 @-}
+foo10 :: a -> Maybe a
+foo10 x = Just x
 
 -----------------------------------------------------------------------------
 -- | Properties of BUILT-IN PRIMITIVES
@@ -38,4 +38,3 @@ lem_wf_ty'_or y = ()
 {-@ lem_wf_ty_or :: () -> { pf:_ | noDefnsInRefns Empty (ty Or) && isWellFormed Empty (ty Or) Star } @-}
 lem_wf_ty_or :: () -> Proof
 lem_wf_ty_or _ = () ? lem_wf_intype_or () ? lem_wf_ty'_or (firstBV Or)
-
