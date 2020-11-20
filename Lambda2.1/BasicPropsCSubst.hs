@@ -124,6 +124,21 @@ lem_csubst_app (CEmpty)        e e' = ()
 lem_csubst_app (CCons y v th)  e e' = () ? lem_csubst_app th (subFV y v e) (subFV y v e')
 lem_csubst_app (CConsT a t th) e e' = () ? lem_csubst_app th (subFTV a t e) (subFTV a t e')
 
+{-@ lem_csubst_lambdaT :: th:CSub -> a:Vname -> k:Kind
+        -> e:Expr -> { pf:_ | csubst th (LambdaT a k e) == LambdaT a k (csubst th e) } @-}
+lem_csubst_lambdaT :: CSub -> Vname -> Kind -> Expr -> Proof
+lem_csubst_lambdaT (CEmpty)         a k e = ()
+lem_csubst_lambdaT (CCons y v th)   a k e = () ? lem_csubst_lambdaT th a k (subFV y v e)
+lem_csubst_lambdaT (CConsT a1 t th) a k e = () ? lem_csubst_lambdaT th a k (subFTV a1 t e)
+
+{-@ lem_csubst_appT :: th:CSub -> e:Expr -> t:Type
+        -> { pf:_ | csubst th (AppT e t) == AppT (csubst th e) (ctsubst (toBareCS th) t) } @-}
+lem_csubst_appT :: CSub -> Expr -> Type -> Proof
+lem_csubst_appT (CEmpty)          e t = ()
+lem_csubst_appT (CCons y v th)    e t = () ? lem_csubst_appT th (subFV y v e) (tsubFV y v t)
+lem_csubst_appT (CConsT a t_a th) e t 
+  = () ? lem_csubst_appT th (subFTV a t_a e) (tsubFTV a (toBare t_a) t)
+
 {-@ lem_csubst_let :: th:CSub -> x:Vname -> e_x:Expr -> e:Expr 
         -> { pf:_ | csubst th (Let x e_x e) == Let x (csubst th e_x) (csubst th e) } @-}
 lem_csubst_let :: CSub -> Vname -> Expr -> Expr -> Proof
@@ -138,18 +153,37 @@ lem_csubst_annot (CEmpty)       e t    = ()
 lem_csubst_annot (CCons y v th) e t    = () ? lem_csubst_annot th (subFV y v e) (tsubFV y v t)
 lem_csubst_annot (CConsT a t_a th) e t = () ? lem_csubst_annot th (subFTV a t_a e) (tsubFTV a t_a t)
 
-{-@ lem_ctsubst_refn :: th:CSub -> b:Basic -> x:Vname -> p:Expr
+{-@ lem_ctsubst_refn :: th:CSub -> { b:Basic | b == TBool || b == TInt } -> x:Vname -> p:Expr
                -> { pf:_ | ctsubst th (TRefn b x p) == TRefn b x (csubst th p) } @-}
 lem_ctsubst_refn :: CSub -> Basic -> Vname -> Expr -> Proof
 lem_ctsubst_refn (CEmpty)       b x p    = ()
 lem_ctsubst_refn (CCons y v th) b x p    = () ? lem_ctsubst_refn th b x (subFV y v p)
- {-toProof ( ctsubst (CCons y v th) (TRefn b x p)
-                                              === ctsubst th (tsubFV y v (TRefn b x p))
-                                              === ctsubst th (TRefn b x (subFV y v p))
-                                                ? lem_ctsubst_refn th b x (subFV y v p)
-                                              === TRefn b x (csubst th (subFV y v p)) 
-                                              === TRefn b x (csubst (CCons y v th) p) )-}
-lem_ctsubst_refn (CConsT a t_a th) b x p = undefined -- fix () ? lem_ctsubst_refn th b x (subFTV a t_a p)
+lem_ctsubst_refn (CConsT a t_a th) b x p = () ? lem_ctsubst_refn th b x (subFTV a t_a p)
+
+-- this may require changing strengthen definition!
+{-@ lem_ctsubst_push :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
+        -> { t_a:Type | Set_emp (free t_a) && Set_emp (freeTV t_a) } -> p:Expr
+        -> { pf:_ | ctsubst th (push p t_a) == push (csubst th p) t_a } @-}
+lem_ctsubst_push :: Env -> CSub -> DenotesEnv -> Type -> Expr -> Proof
+lem_ctsubst_push g th den_g_th t_a p = case den_g_th of
+    (DEmp)                                              -> ()
+    (DExt  g' th' den_g'_th' x  t_x  v_x  den_th'tx_vx) -> undefined {-
+         -> () ? lem_ctsubst_push g' th' den_g'_th' t_a (subFV x v_x p) -}
+    (DExtT g' th' den_g'_th' a' k_a' t_a' p_emp_ta') -> undefined {-
+         -> () ? lem_ctsubst_push g' th' den_g'_th' t_a (subFTV a' t_a' p) -}
+
+{-@ lem_ctsubst_refn_tv :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
+        -> { a:Vname | tv_bound_in a Base g } -> x:Vname -> p:Expr 
+        -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == push (csubst th p) (csubst_tv th a) } @-}
+lem_ctsubst_refn_tv :: Env -> CSub -> DenotesEnv -> Vname -> Vname -> Expr -> Proof
+lem_ctsubst_refn_tv g th den_g_th a x p = case den_g_th of
+    (DExt  g' th' den_g'_th' y  t_y  v_y  den_th'ty_vy) 
+                    -> () ? lem_ctsubst_refn_tv g' th' den_g'_th' a x (subFV y v_y p)
+    (DExtT g' th' den_g'_th' a' k_a' t_a' p_emp_ta')
+        | a == a'   -> () ? lem_ctsubst_push    g' th' den_g'_th' 
+                                (t_a' ? lem_free_subset_binds Empty t_a' k_a' p_emp_ta')
+                                (subFTV a' t_a' p)
+        | otherwise -> () ? lem_ctsubst_refn_tv g' th' den_g'_th' a x (subFTV a' t_a' p)
 
 {-@ lem_ctsubst_func :: th:CSub -> x:Vname -> t_x:Type -> t:Type
         -> { pf:_ | ctsubst th (TFunc x t_x t) == TFunc x (ctsubst th t_x) (ctsubst th t) } @-}  
@@ -178,7 +212,7 @@ lem_ctsubst_poly (CCons  y  v   th) a k t
 lem_ctsubst_poly (CConsT a' t'  th) a k t 
     = () ? lem_ctsubst_poly th a k (tsubFTV a' t' t)
 
-
+{- POSSIBLY UNUSED
 {-@ lem_ctsubst_self_refn :: th:CSub -> b:Basic -> z:Vname -> p:Pred -> x:Vname 
         -> { pf:_ | ctsubst th (self (TRefn b z p) (FV x) Base) == 
 		        TRefn b z (App (App (Prim And) (csubst th p)) 
@@ -204,7 +238,7 @@ lem_ctsubst_self_refn th b z p x  = undefined {-
                     ? lem_csubst_prim th (equals b) -- break this out?
                     ? lem_csubst_bv th z
 {-                  === TRefn b z (App (App (Prim And) (csubst th p))
-                                     (App (App (Prim (equals b)) (BV z)) (csubst th (FV x)))) ) -}
+                                     (App (App (Prim (equals b)) (BV z)) (csubst th (FV x)))) ) -} -}
 -}
 
 {-@ lem_ctsubst_self :: th:CSub -> t:Type -> x:Vname -> k:Kind 
@@ -212,6 +246,7 @@ lem_ctsubst_self_refn th b z p x  = undefined {-
 lem_ctsubst_self :: CSub -> Type -> Vname -> Kind -> Proof
 lem_ctsubst_self th t x k = undefined
 
+{- DELETE THESE AFTER LEMMAS 8-9 IF STILL UNUSED
 {-@ lem_ctsubst_self_refn_notin :: th:CSub -> b:Basic -> z:Vname -> p:Pred -> { x:Vname | not (in_csubst x th) }
       -> k:Kind -> { pf:_ | ctsubst th (self (TRefn b z p) (FV x) k) == self (ctsubst th (TRefn b z p)) (FV x) k} @-}
 lem_ctsubst_self_refn_notin :: CSub -> Basic -> Vname -> Pred -> Vname -> Kind -> Proof
@@ -241,37 +276,38 @@ lem_ctsubst_self_notin th (TExists z t_z t') x k = () ? lem_ctsubst_exis th z t_
                                                       ? lem_ctsubst_exis th z t_z t'
 --     ctsubst th (self (TExists z t_z t') x) === ctsubst th (TExists z t_z (self t' x))
 lem_ctsubst_self_notin th (TPoly a' k' t')   x k = () ? lem_ctsubst_poly th a' k' t' 
-
+-}
 
 -- TODO: this. TODO: lem_ctsubst_fv
+--
   --- Various properties of csubst/ctsubst and free/bound variables
 
 {-@ lem_csubst_binds :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
-        -> { pf:_ | binds g == bindsC th } @-}
+        -> { pf:_ | binds g == bindsC th && vbinds g == vbindsC th && tvbinds g == tvbindsC th} @-}
 lem_csubst_binds :: Env -> CSub -> DenotesEnv -> Proof
-lem_csubst_binds g th DEmp                                            = ()
-lem_csubst_binds g th (DExt g' th' den_g'_th' x t_x v_x den_th'tx_vx) 
+lem_csubst_binds g th DEmp                                             = ()
+lem_csubst_binds g th (DExt  g' th' den_g'_th' x t_x v_x den_th'tx_vx) 
     = () ? lem_csubst_binds g' th' den_g'_th'
-lem_csubst_binds g th (DExtT {})
-    = undefined
+lem_csubst_binds g th (DExtT g' th' den_g'_th' a k_a t_a p_emp_ta)
+    = () ? lem_csubst_binds g' th' den_g'_th'
 
-{-@ lem_csubst_nofv :: th:CSub -> { e:Expr | Set_emp (fv e) }
+{-@ lem_csubst_nofv :: th:CSub -> { e:Expr | Set_emp (fv e) && Set_emp (ftv e) }
         -> { pf:_ | csubst th e == e } @-}
 lem_csubst_nofv :: CSub -> Expr -> Proof
-lem_csubst_nofv (CEmpty)       e = ()
-lem_csubst_nofv (CCons x v th) e = () ? lem_csubst_nofv th e
-                                      ? toProof ( subFV x v e === e )
-lem_csubst_nofv (CConsT a t_a th) e
-  = undefined
+lem_csubst_nofv (CEmpty)       e    = ()
+lem_csubst_nofv (CCons x v th) e    = () ? lem_csubst_nofv th e
+                                         ? lem_subFV_notin x v e
+lem_csubst_nofv (CConsT a t_a th) e = () ? lem_csubst_nofv th e
+                                         ? lem_subFTV_notin a t_a e 
 
-{-@ lem_ctsubst_nofree :: th:CSub -> { t:Type | Set_emp (free t) }
+{-@ lem_ctsubst_nofree :: th:CSub -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) }
         -> { pf:_ | ctsubst th t == t } @-}
 lem_ctsubst_nofree :: CSub -> Type -> Proof
-lem_ctsubst_nofree (CEmpty)       t = ()
-lem_ctsubst_nofree (CCons x v th) t = () ? lem_ctsubst_nofree th t
-                                         ? toProof ( tsubFV x v t === t )
-lem_ctsubst_nofree (CConsT a t_a th) t
-  = undefined
+lem_ctsubst_nofree (CEmpty)          t = ()
+lem_ctsubst_nofree (CCons x v th)    t = () ? lem_ctsubst_nofree th t
+                                            ? lem_tsubFV_notin x v t 
+lem_ctsubst_nofree (CConsT a t_a th) t = () ? lem_ctsubst_nofree th t
+                                            ? lem_tsubFTV_notin a t_a t 
 
 {-{-@ lem_csubst_freeBV :: th:CSub -> e:Expr
         -> { pf:_ | freeBV (csubst th e) == freeBV e } @-}
@@ -279,22 +315,23 @@ lem_csubst_freeBV :: CSub -> Expr -> Proof
 lem_csubst_freeBV (CEmpty)       e = ()
 lem_csubst_freeBV (CCons x v th) e = () ? lem_csubst_freeBV th (subFV x v e)
                          ? toProof ( freeBV (subFV x v e) === freeBV e )
-
-{-@ lem_ctsubst_tfreeBV :: th:CSub -> t:Type
-        -> { pf:_ | tfreeBV (ctsubst th t) == tfreeBV t } @-}
-lem_ctsubst_tfreeBV :: CSub -> Type -> Proof
-lem_ctsubst_tfreeBV (CEmpty)       t = ()
-lem_ctsubst_tfreeBV (CCons x v th) t = () ? lem_ctsubst_tfreeBV th (tsubFV x v t)
-                         ? toProof ( tfreeBV (tsubFV x v t) === tfreeBV t )-}
+-}
+{-@ lem_ctsubst_nofreeBV :: th:CSub -> { t:Type | Set_emp (tfreeBV t) }
+        -> { pf:_ | Set_emp (tfreeBV (ctsubst th t)) } @-}
+lem_ctsubst_nofreeBV :: CSub -> Type -> Proof
+lem_ctsubst_nofreeBV (CEmpty)          t = ()
+lem_ctsubst_nofreeBV (CCons x v th)    t = () ? lem_ctsubst_nofreeBV th (tsubFV x v t
+                                                    ? lem_tsubFV_tfreeBV  x v   t)
+lem_ctsubst_nofreeBV (CConsT a t_a th) t = () ? lem_ctsubst_nofreeBV th (tsubFTV a t_a t
+                                                    ? lem_tsubFTV_tfreeBV a t_a t)
 
 -- was        -> { pf:_ | isValue (csubst th v) && Set_emp (freeBV (csubst th v)) } @-}
 {-@ lem_csubst_value :: th:CSub -> v:Value  
         -> { pf:_ | isValue (csubst th v) } @-}
 lem_csubst_value :: CSub -> Expr -> Proof
-lem_csubst_value (CEmpty)         v = ()
-lem_csubst_value (CCons y v_y th) v = () ? lem_csubst_value th (subFV y v_y v)
-lem_csubst_value (CConsT a t_a th) v
-  = undefined
+lem_csubst_value (CEmpty)          v = ()
+lem_csubst_value (CCons y v_y th)  v = () ? lem_csubst_value th (subFV y v_y v)
+lem_csubst_value (CConsT a t_a th) v = () ? lem_csubst_value th (subFTV a t_a v)
 
 {-@ lem_ctsubst_head_not_free :: x:Vname 
         -> { v_x:Value | Set_emp (fv v_x) && Set_emp (ftv v_x) &&
@@ -320,6 +357,20 @@ lem_csubst_subBV x v bt pf_v_b (CCons y v_y th) p
          ? lem_csubst_subBV x v bt pf_v_b th (subFV y v_y p)
 lem_csubst_subBV x v bt pf_v_b (CConsT a t_a th) p
     = undefined
+
+{-@ lem_csubst_subBTV :: a:Vname -> t_a:Type -> k:Kind 
+           -> ProofOf(WFType Empty t_a k) -> th:CSub -> p:Expr
+           -> { pf:_ | csubst th (subBTV a t_a p) == subBTV a t_a (csubst th p) } @-}
+lem_csubst_subBTV :: Vname -> Type -> Kind -> WFType -> CSub -> Expr -> Proof
+lem_csubst_subBTV a t_a k p_emp_ta (CEmpty)          p = ()
+lem_csubst_subBTV a t_a k p_emp_ta (CCons y v_y th)  p 
+  = () ? lem_commute_subFV_subBTV1 a t_a 
+             (y ? lem_free_bound_in_env Empty t_a k p_emp_ta y) v_y p
+       ? lem_csubst_subBTV a t_a k p_emp_ta th (subFV y v_y p)
+lem_csubst_subBTV a t_a k p_emp_ta (CConsT a1 t1 th) p
+  = () ? lem_commute_subFTV_subBTV1 a t_a 
+             (a1 ? lem_free_bound_in_env Empty t_a k p_emp_ta a1) t1 p
+       ? lem_csubst_subBTV a t_a k p_emp_ta th (subFTV a1 t1 p)
 
 {-@ lem_ctsubst_tsubBV :: x:Vname -> v:Value -> bt:FType
            -> ProofOf(HasFType FEmpty v bt) -> th:CSub -> t:Type
@@ -358,6 +409,16 @@ lem_csubst_and_unbind x y v b pf_v_b th p = () {-toProof (
      ? lem_csubst_subBV x v b pf_v_b th p
 --   === subBV x v (csubst th p) )
 
+{-@ lem_csubst_and_unbind_tv :: a:Vname -> a':Vname -> t_a:Type -> k:Kind -> ProofOf(WFType Empty t_a k)
+        -> { th:CSub | not (Set_mem a' (bindsC th)) } -> { p:Expr | not (Set_mem a' (ftv p)) }
+        -> { pf:_ | csubst (CConsT a' t_a th) (unbind_tv a a' p) == subBTV a t_a (csubst th p) } @-}
+lem_csubst_and_unbind_tv :: Vname -> Vname -> Type -> Kind -> WFType -> CSub -> Expr -> Proof
+lem_csubst_and_unbind_tv a a' t_a k pf_emp_ta th p 
+  = () ? lem_free_subset_binds Empty t_a k pf_emp_ta  
+       ? lem_tfreeBV_empty     Empty t_a k pf_emp_ta 
+       ? lem_subFTV_unbind_tv  a a' t_a p
+       ? lem_csubst_subBTV     a t_a k pf_emp_ta th p
+
 {-@ lem_ctsubst_and_unbindT :: x:Vname -> y:Vname
            -> v:Value -> bt:FType -> ProofOf(HasFType FEmpty v bt)
            -> { th:CSub | not (Set_mem y (bindsC th)) } -> { t:Type | not (Set_mem y (free t)) }
@@ -380,7 +441,7 @@ lem_ctsubst_and_unbind_tvT :: Vname -> Vname -> Type -> Kind -> WFType
            -> CSub -> Type -> Proof
 lem_ctsubst_and_unbind_tvT a1 a t_a k p_emp_ta th t 
   = () ? lem_free_subset_binds  Empty t_a k p_emp_ta
-       ? lem_tfreeBV_empty      Empty t_a k p_emp_ta WFEEmpty
+       ? lem_tfreeBV_empty      Empty t_a k p_emp_ta 
        ? lem_tsubFTV_unbind_tvT a1 a t_a t   
        ? lem_ctsubst_tsubBTV    a1 t_a k p_emp_ta th t
 
@@ -576,3 +637,24 @@ lem_remove_ctsubst (CCons z v_z th) x t = case ( x == z ) of
                 {-   === ctsubst (CCons z v_z th) t )-}
 lem_remove_ctsubst (CConsT a t_a th) x t
     = undefined
+
+  -- Closing Substitutions and Same Binders
+{-@ lem_same_binders_cs :: x:Vname -> v_x:Value -> th:CSub
+        -> { t:Type | same_binders_cs (CCons x v_x th) t }
+        -> { pf:_   | same_binders_cs th (tsubFV x v_x t) } @-}
+lem_same_binders_cs :: Vname -> Expr -> CSub -> Type -> Proof
+lem_same_binders_cs x v_x th t = undefined {- 2 -}
+
+{- @ reflect lem_same_binders_cs_tv @-}
+{-@ lem_same_binders_cs_tv :: a:Vname -> t_a:Type -> th:CSub
+        -> { t:Type | same_binders_cs (CConsT a t_a th) t }
+        -> { pf:_   | same_binders_cs th (tsubFTV a t_a t) } @-}
+lem_same_binders_cs_tv :: Vname -> Type -> CSub -> Type -> Proof
+lem_same_binders_cs_tv a t_a th t = undefined {- 2 -}
+
+
+{-@ lem_same_binders_csE_tann :: th:CSub -> e:Expr -> { t:Type | same_binders_csE th (Annot e t) }
+        -> { pf:_   | same_binders_csE th e && same_binders_cs th t } @-}
+lem_same_binders_csE_tann :: CSub -> Expr -> Type -> Proof
+lem_same_binders_csE_tann th e t = undefined 
+

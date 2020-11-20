@@ -22,6 +22,7 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -36,10 +37,11 @@ foo41 :: a -> Maybe a
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------
 
-{-@ lem_selfify_wf :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k ) 
-        -> { x:Vname | not (in_env x g) } -> ProofOf(WFType (Cons x t g) (self t (FV x) k) k) @-}
-lem_selfify_wf :: Env -> Type -> Kind -> WFType -> Vname -> WFType
-lem_selfify_wf g t@(TRefn b z p) k p_g_t x = case p_g_t of
+{-@ lem_selfify_wf :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> e:Expr
+        -> ProofOf(HasFType (erase_env g) e (erase t))
+        -> ProofOf(WFType g (self t e k) k) @-}
+lem_selfify_wf :: Env -> Type -> Kind -> WFType -> Expr -> HasFType -> WFType
+lem_selfify_wf g t@(TRefn b z p) k p_g_t e p_e_t = case p_g_t of
   (WFBase _g b)                       -> case b of
     TBool -> undefined
     TInt  -> undefined 
@@ -94,8 +96,8 @@ lem_selfify_wf g t@(TRefn b z p) k p_g_t x = case p_g_t of
   (WFVar2 {}) -> undefined
   (WFVar3 {}) -> undefined
   (WFKind {}) -> undefined
-lem_selfify_wf g t@(TExists z t_z t') k p_g_t x = undefined
-lem_selfify_wf g t                    k p_g_t x = undefined -- lem_weaken_wf g Empty t k p_g_t x t 
+lem_selfify_wf g t@(TExists z t_z t') k p_g_t e p_e_t = undefined
+lem_selfify_wf g t                    k p_g_t e p_e_t = p_g_t
 
 {-
 {-@ lem_push_wf :: g:Env -> g':Env -> t_a:Type -> k_a:Kind -> ProofOf(WFType g t_a k_a) -> x:Vname -> p:Pred

@@ -110,8 +110,8 @@ data Step where
                    -> ProofOf( Step (App (Lambda x e) v) (subBV x v e)) 
       | EPrimT :: c:Prim -> t:Type -> ProofOf( Step (AppT (Prim c) t) (deltaT c t) ) 
       | EAppT :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
-                   -> t:BareType -> ProofOf( Step (AppT e t) (AppT e' t)) 
-      | EAppTAbs :: a:Vname -> k:Kind -> e:Expr -> { t:BareType | same_bindersE t e }
+                   -> t:Type -> ProofOf( Step (AppT e t) (AppT e' t)) 
+      | EAppTAbs :: a:Vname -> k:Kind -> e:Expr -> t:Type 
                    -> ProofOf( Step (AppT (LambdaT a k e) t) (subBTV a t e)) 
       | ELet  :: e_x:Expr -> e_x':Expr -> ProofOf( Step e_x e_x' )
                    -> x:Vname -> e:Expr -> ProofOf( Step (Let x e_x e) (Let x e_x' e)) 
@@ -120,7 +120,9 @@ data Step where
       | EAnn  :: e:Expr -> e':Expr -> ProofOf(Step e e')
                    -> t:Type -> ProofOf(Step (Annot e t) (Annot e' t)) 
       | EAnnV :: v:Value -> t:Type -> ProofOf(Step (Annot v t) v) @-} -- @-}
-
+-- trying this without the "same binders":
+--                   -> t:BareType -> ProofOf( Step (AppT e t) (AppT e' t)) 
+--      | EAppTAbs :: a:Vname -> k:Kind -> e:Expr -> { t:BareType | same_bindersE t e }
 
 data EvalsToP where
     EvalsTo :: Expr -> Expr -> EvalsToP
@@ -192,6 +194,16 @@ lemma_app_both_many e v ev_e_v e' v' ev_e'_v' = ev_ee'_vv'
     ev_ee'_vv' = lemma_evals_trans (App e e') (App v e') (App v v') 
                                    ev_ee'_ve' ev_ve'_vv'
 
+{-@ lemma_appT_many :: e:Expr -> e':Expr -> t:Type -> ProofOf(EvalsTo e e')
+        -> ProofOf(EvalsTo (AppT e t) (AppT e' t)) @-}
+lemma_appT_many :: Expr -> Expr -> Type -> EvalsTo -> EvalsTo
+lemma_appT_many e e' t (Refl _e) = Refl (AppT e t)
+lemma_appT_many e e' t (AddStep  _e e1 s_ee1 _e' p_e1e') = ev_et_e't
+  where
+   ev_et_e't  = AddStep (AppT e t) (AppT e1 t) s_et_e1t (AppT e' t) ev_e1t_e't
+   s_et_e1t   = EAppT e e1 s_ee1 t
+   ev_e1t_e't = lemma_appT_many e1 e' t p_e1e'
+
 {-@ lemma_let_many :: x:Vname -> e_x:Expr -> e_x':Expr -> e:Expr 
         -> ProofOf(EvalsTo e_x e_x') -> ProofOf(EvalsTo (Let x e_x e) (Let x e_x' e)) @-}
 lemma_let_many :: Vname -> Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
@@ -239,6 +251,32 @@ lemma_evals_app_value e e' v (AddStep _ee' eee st_ee'_eee _v ev_eee_v)
           ev_e'_v2                             = AddStep e' e2 st_e'_e2 v2 ev_e2_v2
       (EAppAbs x e'' w)           -> AppRed e e (Refl e) e' e' (Refl e')
 
+
+----- | Predicate Strengthening and Evaluations
+
+{-@ lem_unstrengthen_evals :: p:Pred -> r:Pred -> ProofOf(EvalsTo (strengthen p r) (Bc True))
+        -> ProofOf(EvalsTo r (Bc True)) @-}
+lem_unstrengthen_evals :: Expr -> Expr -> EvalsTo -> EvalsTo
+lem_unstrengthen_evals p         (Bc True) ev_pr_tt = Refl (Bc True)
+lem_unstrengthen_evals (Bc True) r         ev_pr_tt = ev_pr_tt
+lem_unstrengthen_evals p         r         ev_pr_tt = undefined
+  where
+    (AppRed _ _ _ _r val ev_r_val) = lemma_evals_app_value (App (Prim And) p) r (Bc True) ev_pr_tt
+
+{-@ lem_strengthen_evals :: p:Pred -> ProofOf(EvalsTo p (Bc True)) -> r:Pred 
+        -> ProofOf(EvalsTo r (Bc True)) -> ProofOf(EvalsTo (strengthen p r) (Bc True)) @-}
+lem_strengthen_evals :: Pred -> EvalsTo -> Pred -> EvalsTo -> EvalsTo
+lem_strengthen_evals p         ev_p_tt (Bc True) ev_r_tt = ev_p_tt 
+lem_strengthen_evals (Bc True) ev_p_tt r         ev_r_tt = ev_r_tt
+lem_strengthen_evals p         ev_p_tt r         ev_r_tt = ev_andpr_tt
+  where
+    ev_andp_andtt = lemma_app_many2 (Prim And) p (Bc True) ev_p_tt
+    ev_andp_id    = lemma_add_step_after (App (Prim And) p) (App (Prim And) (Bc True))
+                                         ev_andp_andtt (Lambda 1 (BV 1)) (EPrim And (Bc True))
+    ev_andpr_idtt = lemma_app_both_many (App (Prim And) p) (Lambda 1 (BV 1)) ev_andp_id
+                                        r (Bc True) ev_r_tt
+    ev_andpr_tt   = lemma_add_step_after (App (App (Prim And) p) r) (App (Lambda 1 (BV 1)) (Bc True))
+                                         ev_andpr_idtt (Bc True) (EAppAbs 1 (BV 1) (Bc True))
 
 --------------------------------------------------------------------------
 ----- | Basic LEMMAS of the OPERATIONAL SEMANTICS (Small Step)

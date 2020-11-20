@@ -22,6 +22,7 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -56,14 +57,15 @@ lem_sub_refl g t k (WFRefn _g x b p_g_b p y pf_p_bl) p_g_wf-- t = b{x:p}
           {-@ eval_thp_func :: th':CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x p) g) th') 
                                           -> ProofOf(EvalsTo (csubst th' (unbind x y p)) (Bc True)) @-}
           eval_thp_func :: CSub -> DenotesEnv -> EvalsTo
-          eval_thp_func th' den_yg_th' = case den_yg_th' of 
+          eval_thp_func th' den_yg_th' = undefined {- "type variables!"  case den_yg_th' of 
             (DEmp)                                 -> impossible "Cons y t g != Empty"
             (DExt g th den_g_th _y _t v den_tht_v) -> case den_tht_v of 
               (DRefn _b _x _thp _v pf_v_b ev_thpv_tt) -> ev_thpv_tt 
                 ? lem_subFV_unbind x y v p
-                ? lem_ctsubst_refn th b x p
+                -- ? lem_ctsubst_refn th b x p
                 ? lem_csubst_subBV x v (FTBasic b) pf_v_b th p
-              (_)                                     -> impossible ("by lemma" ? lem_ctsubst_refn th b x p)
+              (_)                                     -> impossible "" -- ("by lemma" ? lem_ctsubst_refn th b x p)
+          -}
 lem_sub_refl g t k (WFVar1 {}) p_g_wf
     = undefined
 lem_sub_refl g t k (WFVar2 {}) p_g_wf
@@ -101,7 +103,8 @@ lem_sub_refl g t k (WFKind _g _t p_g_t_base) p_g_wf
 {-@ lem_change_bv_sub_func :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind 
                                     -> t:Type -> k:Kind -> x':Vname -> t':Type
         -> { y:Vname | not (in_env y g) && not (Set_mem y (free t)) && not (Set_mem y (free t')) 
-                                        && unbindT x y t == unbindT x' y t' }
+                                      && not (Set_mem y (freeTV t)) && not (Set_mem y (freeTV t'))
+                                      && unbindT x y t == unbindT x' y t' }
         -> ProofOf(WFType g t_x k_x ) -> ProofOf(WFType (Cons y t_x g) (unbindT x y t) k) 
         -> ProofOf(WFEnv g) -> ProofOf(Subtype g (TFunc x t_x t) (TFunc x' t_x t')) @-}
 lem_change_bv_sub_func :: Env -> Vname -> Type -> Kind -> Type -> Kind -> Vname -> Type -> Vname 
@@ -111,3 +114,4 @@ lem_change_bv_sub_func g x t_x k_x t k x' t' y p_g_tx p_yg_t p_g_wf
       where
         p_yg_t_t' = lem_sub_refl (Cons y t_x g) (unbindT x y t) k p_yg_t p_yg_wf
         p_yg_wf   = WFEBind g p_g_wf y t_x k_x p_g_tx
+

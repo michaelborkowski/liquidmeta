@@ -24,9 +24,9 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
-import Typing
 import Entailments
 import PrimitivesSemantics
 import PrimitivesDenotationsEqv
@@ -40,8 +40,8 @@ foo57 :: a -> Maybe a
 
 {-@ lem_den_eql :: () -> ProofOf(Denotes (ty Eql) (Prim Eql)) @-}
 lem_den_eql :: () -> Denotes
-lem_den_eql () = undefined {- DPoly 1 Base t'{-(TFunc (firstBV Eql) (inType Eql) (ty' Eql))-} (Prim Eql)
-                    (FTPrm FEmpty Eql) val_den_func - }
+lem_den_eql () = simpleDPoly 1 Base t'{-(TFunc (firstBV Eql) (inType Eql) (ty' Eql))-} (Prim Eql)
+                    (FTPrm FEmpty Eql) val_den_func 
   where
     {-@ val_den_func :: t_a:Type -> ProofOf(WFType Empty t_a Base)
                             -> ProofOf(ValueDenoted (AppT (Prim Eql) t_a) (tsubBTV 1 t_a t')) @-}
@@ -56,4 +56,3 @@ lem_den_eql () = undefined {- DPoly 1 Base t'{-(TFunc (firstBV Eql) (inType Eql)
       _               -> impossible ("by lemma" ? lem_base_types (erase t_a)
                                              (lem_erase_wftype Empty t_a Base pf_emp_ta))
     t' = (TFunc (firstBV Eql) (inType Eql) (ty' Eql))
--}

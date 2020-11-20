@@ -23,11 +23,40 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 
 {-@ reflect foo29 @-}
 foo29 x = Just x 
 foo29 :: a -> Maybe a 
+
+  -- smart constructors 
+
+{-@ simpleDFunc :: x:Vname -> t_x:Type -> t:Type -> v:Value  
+                  -> ProofOf(HasFType FEmpty v (erase (TFunc x t_x t)))
+                  -> ( v_x:Value -> ProofOf(Denotes t_x v_x)
+                                 -> ProofOf(ValueDenoted (App v v_x) (tsubBV x v_x t)) ) 
+                  -> ProofOf(Denotes (TFunc x t_x t) v) @-}
+simpleDFunc :: Vname -> Type -> Type -> Expr -> HasFType 
+                     -> ( Expr -> Denotes -> ValueDenoted ) -> Denotes
+simpleDFunc x t_x t v p_v_er_txt val_den_func
+  = DFunc x t_x t v (erase t_x) (erase t) eqv_txt_txt p_v_er_txt val_den_func
+      where
+        eqv_txt_txt = lem_alpha_refl FEmpty (erase (TFunc x t_x t))
+
+{-@ simpleDPoly :: a:Vname -> k:Kind -> t:Type -> v:Value 
+                  -> ProofOf(HasFType FEmpty v (FTPoly a k (erase t)))
+                  -> ( t_a:Type -> ProofOf(WFType Empty t_a k) 
+                                -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a t)) )
+                  -> ProofOf(Denotes (TPoly a k t) v) @-} 
+simpleDPoly :: Vname -> Kind -> Type -> Expr -> HasFType
+                     -> (Type -> WFType -> ValueDenoted) -> Denotes
+simpleDPoly a k t v p_v_at val_den_func
+  = DPoly a k t v a (erase t) eqv_at_at p_v_at val_den_func
+      where
+        eqv_at_at = lem_alpha_refl FEmpty (erase (TPoly a k t))
+
+  -- formal properties
 
 {-@ lem_change_var_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (fv v) }
       -> ProofOf(Denotes (ctsubst th t) v) -> { x:Vname | (v_in_csubst x th) } 
@@ -130,8 +159,16 @@ lem_remove_var_denote_env g x_ t_x (ConsT a k_a g') p_zg'g_wf th den_env_th
 lem_remove_tvar_denote_env :: Env -> Vname -> Kind -> Env -> WFEnv -> CSub 
                                  -> DenotesEnv -> DenotesEnv
 lem_remove_tvar_denote_env g a  k_a Empty           p_g'g_wf  th den_env_th = undefined {- 1 -}
-lem_remove_tvar_denote_env g a  k_a (Cons {})       p_g'g_wf  th den_env_th = undefined {- 2 -}
+lem_remove_tvar_denote_env g a  k_a (Cons {})       p_g'g_wf  th den_env_th = undefined {- 1 -}
 lem_remove_tvar_denote_env g a  k_a (ConsT {})      p_g'g_wf  th den_env_th = undefined {- 2 -}
+
+{-@ lem_csubst_hasftype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t) 
+        -> ProofOf(WFEnv g) -> th:CSub -> ProofOf(DenotesEnv g th) 
+        -> ProofOf(EqvFTyping FEmpty (csubst th e) (erase (ctsubst th t))) @-}
+lem_csubst_hasftype :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub -> DenotesEnv -> EqvFTyping
+lem_csubst_hasftype Empty            e t p_e_t th den_g_th = undefined {- 1 -}
+lem_csubst_hasftype (Cons x t_x g')  e t p_e_t th den_g_th = undefined {- 1 -}
+lem_csubst_hasftype (ConsT a k_a g') e t p_e_t th den_g_th = undefined {- 1 -}
 
 -- this is NOT TRUE anymore:
 {-@ lem_csubst_hasbtype' :: g:Env -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env g) e (erase t))
@@ -140,7 +177,7 @@ lem_csubst_hasbtype' :: Env -> Expr -> Type -> HasFType -> CSub -> DenotesEnv ->
 lem_csubst_hasbtype' Empty           e t p_e_t th den_g_th = case den_g_th of 
   (DEmp)                                           -> p_e_t ? lem_binds_env_th Empty th den_g_th
 lem_csubst_hasbtype' (Cons x t_x g') e t p_e_t th den_g_th 
-  = undefined {- 2 -} {-case den_g_th of
+  = undefined {- 1 -} {-case den_g_th of
   (DExt g' th' den_g'_th' _x _tx v_x den_th'tx_vx) -> p_the_t
     where
       p_emp_vx_tx = get_ftyp_from_den (ctsubst th' t_x) v_x den_th'tx_vx
@@ -151,4 +188,4 @@ lem_csubst_hasbtype' (Cons x t_x g') e t p_e_t th den_g_th
                                    e (erase t) p_e_t ? lem_erase_tsubFV x v_x t
       p_the_t     = lem_csubst_hasbtype' g' (subFV x v_x e) (tsubFV x v_x t) p_evx_t th' den_g'_th' -}
 lem_csubst_hasbtype' (ConsT a k_a g') e t p_e_t th den_g_th 
-  = undefined {- 2 -}
+  = undefined {- 1 -}

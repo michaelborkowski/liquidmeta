@@ -123,11 +123,29 @@ lem_entails_elimination g b x p q y pf_p_bl pf_q_bl
                  --  ? lem_freeBV_emptyB (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool) pf_p_bl
 -}
 
+{-@ lem_entails_redundancy :: g:Env -> b:Basic -> x:Vname -> p:Pred 
+        -> { q:Pred | Set_sub (freeBV q) (Set_sng x) }
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (fv q)) } 
+        -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool))
+        -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind x y q) (FTBasic TBool))
+        -> ProofOf(Entails (Cons y (TRefn b x (App (App (Prim And) p) q)) g) 
+                           (unbind x y (App (App (Prim And)  (App (App (Prim And) p) q)) q))) @-}
+lem_entails_redundancy :: Env -> Basic -> Vname -> Pred -> Pred -> Vname -> HasFType -> HasFType -> Entails
+lem_entails_redundancy g b x p q y pf_p_bl pf_q_bl 
+ = undefined {- 1 -}  
+
+-- do I need this?    -> ProofOf(HasType g e (TRefn b z p))
 {-@ lem_self_refn_sub :: g:Env -> b:Basic -> z:Vname -> p:Pred -> ProofOf(WFEnv g)
-        -> ProofOf(WFType g (TRefn b z p) Base) -> { x:Vname | not (in_env x g) } -> k:Kind
-        -> ProofOf(Subtype (Cons x (TRefn b z p) g) (self (TRefn b z p) (FV x) k) (TRefn b z p)) @-}          
-lem_self_refn_sub :: Env -> Basic -> Vname -> Pred -> WFEnv -> WFType -> Vname -> Kind -> Subtype
-lem_self_refn_sub = undefined {- TODO: need to account for new definition of equals and self
+        -> ProofOf(WFType g (TRefn b z p) Base) -> e:Expr 
+        -> ProofOf(Subtype g (self (TRefn b z p) e Base) (TRefn b z p)) @-}          
+lem_self_refn_sub :: Env -> Basic -> Vname -> Pred -> WFEnv -> WFType -> Expr -> Subtype
+lem_self_refn_sub = undefined {- TODO -}
+
+{-@ lem_self_refn_sub' :: g:Env -> b:Basic -> z:Vname -> p:Pred -> ProofOf(WFEnv g)
+        -> ProofOf(WFType g (TRefn b z p) Base) -> { x:Vname | not (in_env x g) } 
+        -> ProofOf(Subtype (Cons x (TRefn b z p) g) (self (TRefn b z p) (FV x) Base) (TRefn b z p)) @-}          
+lem_self_refn_sub' :: Env -> Basic -> Vname -> Pred -> WFEnv -> WFType -> Vname -> Subtype
+lem_self_refn_sub' = undefined {- TODO: need to account for new definition of equals and self
 lem_self_refn_sub g b z p p_g_wf p_g_t x 
   = SBase (Cons x t g) z b p' z p w ent_p'_p
       where
@@ -214,8 +232,8 @@ lem_implies_and_commutes g th den_g_th p q pf_p_bl pf_q_bl ev_thpq_tt
               pf_thq_bl  = lem_csubst_hasbtype' g q (TRefn TBool 1 (Bc True)) pf_q_bl th den_g_th
               pf_v'_bl   = lemma_soundness thq v' ev_thq_v' (FTBasic TBool) pf_thq_bl
 {- -}
-
-{-@ lem_entails_and_commutes :: g:Env -> b:Basic -> x:Vname -> p:Pred 
+                                 -- is this needed? can i change it back to b incl. FTV?
+{-@ lem_entails_and_commutes :: g:Env -> { b:Basic | b == TBool || b == TInt } -> x:Vname -> p:Pred 
         -> { q:Pred | Set_sub (freeBV q) (Set_sng x) }
         -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (fv q)) } 
         -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool))
@@ -362,3 +380,22 @@ lem_self_tt_sub_eql g b z z' x = SBase (Cons x t g) z b ttq z' eqx' w ent_ttq_eq
                          (FV x) (FTVar2 (erase_env (Cons x t g)) x (FTBasic b)
                                         (FTVar1 (erase_env g) x (FTBasic b)) w (FTBasic b)) 
 { - -}
+--        -> e:Expr -> t_e:Type -> ProofOf(HasType g e t_e)
+{-@ lem_self_entails_self :: g:Env -> b:Basic -> x1:Vname -> p1:Pred -> x2:Vname -> p2:Pred 
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p2)) }  
+        -> ProofOf(Entails (Cons y (TRefn b x1 p1) g) (unbind x2 y p2)) 
+        -> { e:Expr | Set_emp (freeBV e) } 
+        -> ProofOf(Entails (Cons y (TRefn b x1 (selfify p1 b x1 e)) g) (unbind x2 y (selfify p2 b x2 e))) @-}
+lem_self_entails_self :: Env -> Basic -> Vname -> Pred -> Vname -> Pred -> Vname -> Entails
+                             -> Expr -> Entails
+lem_self_entails_self g b x1 p1 x2 p2 y ent_yg_p2 e {-t_e p_e_te-} = undefined
+{- = EntPred g' (unbind x2 y (selfify p2 b x2 e)) reduce_thselfp2_tt             
+       where
+         (EntPred _ _ reduce_thp2_tt) = ent_yg_p2
+         g'            = Cons y (TRefn b x1 (selfify p1 b x1 e)) g  
+         {-@ reduce_thselfp2_tt :: th':CSub -> ProofOf(DenotesEnv g' th')
+                 -> ProofOf(EvalsTo (csubst th' (unbind x2 y (selfify p2 b x2 e)) (Bc True) @-}
+         reduce_thselfp2_tt th' den_g'_th' = ......
+           where
+             (DExt _g th0 den_g_th0 _y self_s v_s
+             den_yg_th' = DExt g th0 den_g_th0 y (TRefn b x1 p1) v_s    -}

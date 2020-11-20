@@ -69,7 +69,8 @@ data HasFType where
                   -> ProofOf(HasFType g (LambdaT a k e) (FTPoly a k b))
      |  FTAppT :: g:FEnv -> e:Expr -> a:Vname -> k:Kind -> t':FType
                 -> ProofOf(HasFType g e (FTPoly a k t')) 
-                -> { rt:BareType | Set_sub (Set_cup (free rt) (freeTV rt)) (bindsF g) && same_bindersE rt e }
+                -> { rt:Type | Set_sub (Set_cup (free rt) (freeTV rt)) (bindsF g) &&
+                               Set_emp (tfreeBV rt) && Set_emp (tfreeBTV rt) && same_bindersE rt e }
                 -> ProofOf(WFFT g (erase rt) k)
                 -> ProofOf(HasFType g (AppT e rt) (ftsubBV a (erase rt) t'))
      |  FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
@@ -78,9 +79,10 @@ data HasFType where
                 -> ProofOf(HasFType (FCons y b g) (unbind x y e) b')
                 -> ProofOf(HasFType g (Let x e_x e) b')
      |  FTAnn  :: g:FEnv -> e:Expr -> b:FType 
-                -> { t1:Type | (erase t1 == b) && Set_sub (Set_cup (free t1) (freeTV t1)) (bindsF g) }
+                -> { t1:Type | (erase t1 == b) && Set_sub (Set_cup (free t1) (freeTV t1)) (bindsF g) 
+                                               && Set_emp (tfreeBV t1) && Set_emp (tfreeBTV t1) }
                 -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b) @-} 
-  
+-- 11/2020: removed BareType from the rt in FTAppT  
 {-@ measure ftypSize @-}
 {-@ ftypSize :: HasFType -> { v:Int | v >= 0 } @-}
 ftypSize :: HasFType -> Int
@@ -312,12 +314,14 @@ checkType g (AppT e t2) t    = case ( synthType g e ) of
     (Just (FTPoly a Base t1))  -> ( t == ftsubBV a (erase t2) t1 ) &&
                                   ( isWFFT g (erase t2) Base ) &&
                                   ( S.isSubsetOf (free t2) (bindsF g) ) &&
-                                  ( S.isSubsetOf (freeTV t2) (bindsF g) ) &&
+                                  ( S.isSubsetOf (freeTV t2) (bindsF g) ) && 
+                                  ( S.null (tfreeBV  t2) ) &&
                                   ( S.null (tfreeBTV t2) ) && same_bindersE t2 e
     _                          -> False 
 checkType g (Annot e liqt) t   = ( checkType g e t ) && ( t == erase liqt ) &&
                                  ( S.isSubsetOf (free liqt) (bindsF g) ) &&
-                                 ( S.isSubsetOf (freeTV liqt) (bindsF g) ) 
+                                 ( S.isSubsetOf (freeTV liqt) (bindsF g) ) &&
+                                 ( S.null (tfreeBV liqt) && S.null (tfreeBTV liqt) )  
 checkType g Crash t            = False -- Crash is untypable
 
 {-@ reflect synthType @-}
@@ -336,13 +340,14 @@ synthType g (App e e')      = case ( synthType g e' ) of
 synthType g (AppT e t2)     = case ( synthType g e ) of
     (Just (FTPoly a Base t1)) -> (case ( isWFFT g (erase t2) Base && S.isSubsetOf (free t2) (bindsF g) &&
                                          S.isSubsetOf (freeTV t2) (bindsF g) && (same_bindersE t2 e) &&
-                                         S.null (tfreeBTV t2) && isSimpleBase t2 ) of 
+                                         S.null (tfreeBV t2) && S.null (tfreeBTV t2) && isSimpleBase t2 ) of 
 	True                       -> Just (ftsubBV a (erase t2) t1)
         False                      -> Nothing)
     _                         -> Nothing 
 synthType g (Annot e liqt)  = case ( checkType g e (erase liqt) && -- S.null (tfreeBV liqt) &&
                                 S.isSubsetOf (free liqt) (bindsF g) &&
-                                S.isSubsetOf (freeTV liqt) (bindsF g) ) && S.null (tfreeBV liqt) of
+                                S.isSubsetOf (freeTV liqt) (bindsF g) ) && 
+                                S.null (tfreeBV liqt) && S.null (tfreeBTV liqt) of
     True  -> Just (erase liqt)
     False -> Nothing
 synthType g Crash           = Nothing

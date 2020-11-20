@@ -22,6 +22,7 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -61,7 +62,7 @@ lem_weaken_typ g g' p_env_wf e t p_y_t@(TVar1 gg y t_y k_y p_gg_ty) x_ t_x -- en
         (Cons _y _ty g'') -> TVar1 (concatE (Cons x_ t_x g) g'') y t_y k_y p_gxg_ty
           where
             (WFEBind _gg p_gg_wf _y _ty _ky _) = p_env_wf
-            p_gxg_ty = lem_weaken_wf g g'' p_gg_wf t_y k_y p_gg_ty x_ t_x
+            p_gxg_ty = lem_weaken_wf' g g'' p_gg_wf t_y k_y p_gg_ty x_ t_x
 -- (g; g' == _g, z:t_z) |- y : t_y
 lem_weaken_typ g g' p_env_wf e t p_y_ty@(TVar2 gg y t_y p_gg_y_ty z t_z) x_ t_x
     = undefined {- = case g' of
@@ -87,7 +88,7 @@ lem_weaken_typ g g' p_env_wf e t p_e_t@(TAbs env y t_y k_y p_gg'_ty e' t' y' p_y
     = TAbs (concatE (Cons x t_x g) g') y t_y k_y p_gxg'_ty e' t' y'' p_y''x_e'_t'
         where
             p_env_t      = lem_typing_wf env e t p_e_t p_env_wf
-            p_gxg'_ty    = lem_weaken_wf g g' p_env_wf t_y k_y p_gg'_ty x t_x -- p_g_tx
+            p_gxg'_ty    = lem_weaken_wf' g g' p_env_wf t_y k_y p_gg'_ty x t_x -- p_g_tx
             p_e_er_t     = lem_typing_hasftype env e t p_e_t p_env_wf
             y''_         = fresh_var (concatE (Cons x t_x g) g')
             y''          = y''_ ? lem_in_env_concat g g' y''_
@@ -118,7 +119,7 @@ lem_weaken_typ g g' p_env_wf e t
         where
           p_env_t         = lem_typing_wf env e t p_e_t p_env_wf
           p_env_ty        = lem_typing_wf env e_y t_y p_env_ey_ty p_env_wf
-          p_env'_t'       = lem_weaken_wf g g' p_env_wf t' k' p_env_t' x t_x
+          p_env'_t'       = lem_weaken_wf' g g' p_env_wf t' k' p_env_t' x t_x
           p_e_er_t        = lem_typing_hasftype env e t p_e_t p_env_wf
           y''_            = fresh_var (concatE (Cons x t_x g) g') 
           y''             = y''_ ? lem_in_env_concat g g' y''_
@@ -144,7 +145,7 @@ lem_weaken_typ g g' p_env_wf e t (TSub env _e s p_env_e_s _t k p_env_t p_env_s_t
         where
           p_env_s    = lem_typing_wf      env e s p_env_e_s p_env_wf
           p_env'_e_s = lem_weaken_typ     g g' p_env_wf e s p_env_e_s x t_x
-          p_env'_t   = lem_weaken_wf      g g' p_env_wf t k p_env_t x t_x 
+          p_env'_t   = lem_weaken_wf'     g g' p_env_wf t k p_env_t x t_x 
           p_env'_s_t = lem_weaken_subtype g g' p_env_wf s Star p_env_s t k p_env_t 
                                           p_env_s_t x t_x
 
@@ -182,7 +183,7 @@ lem_weaken_tv_typ g g' p_env_wf e t (TSub env _e s p_e_s _t k p_env_t p_s_t) a k
       where
         p_env_s    = lem_typing_wf         env e s p_e_s p_env_wf
         p_env'_e_s = lem_weaken_tv_typ     g g' p_env_wf e s p_e_s a k_a
-        p_env'_t   = lem_weaken_tv_wf      g g' p_env_wf t k p_env_t a k_a
+        p_env'_t   = lem_weaken_tv_wf'     g g' p_env_wf t k p_env_t a k_a
         p_env'_s_t = lem_weaken_tv_subtype g g' p_env_wf s Star p_env_s t k p_env_t p_s_t a k_a
 
 {-@ lem_weaken_many_typ :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }

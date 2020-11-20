@@ -23,6 +23,7 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -114,7 +115,7 @@ lem_typing_wf g e t (TVar3 g' x _t p_g'_x_t a k_a) p_wf_g
                                               (lem_typing_wf g' e t p_g'_x_t p_g')
                                               a k_a -- p_g'_s-}
 lem_typing_wf g e t (TPrm _g c) p_wf_g 
-    = lem_weaken_many_wf Empty g (p_wf_g ? lem_empty_concatE g) (ty c) Star (lem_wf_ty c) 
+    = lem_weaken_many_wf' Empty g (p_wf_g ? lem_empty_concatE g) (ty c) Star (lem_wf_ty c) 
 lem_typing_wf g e t (TAbs _g x t_x k_x p_tx_wf e' t' y p_e'_t') p_wf_g
     = WFFunc g x t_x k_x p_tx_wf t' Star y (lem_typing_wf (Cons y t_x g) (unbind x y e') 
                                                (unbindT x y t') p_e'_t'
@@ -330,7 +331,7 @@ lem_freeBV_empty g e t (TLet _g e_x t_x p_ex_tx x e' _t k p_g_t y p_yg_e'_t) p_g
         p_yg_wf = WFEBind g p_g_wf y t_x Star p_g_tx
 lem_freeBV_empty g e t (TAnn _g e' _ p_e'_t) p_g_wf = case e of
   (Annot _ _) -> () ? lem_freeBV_empty  g e' t p_e'_t p_g_wf
-                    ? lem_tfreeBV_empty g t Star p_g_t p_g_wf
+                    ? lem_tfreeBV_empty g t Star p_g_t 
       where
         p_g_t = lem_typing_wf g e' t p_e'_t p_g_wf 
 lem_freeBV_empty g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf

@@ -23,6 +23,7 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import PrimitivesSemantics
@@ -33,7 +34,7 @@ foo51 :: a -> Maybe a
  
 {-@ lem_den_and :: ProofOf(Denotes (ty And) (Prim And)) @-}
 lem_den_and :: Denotes
-lem_den_and = undefined {-DFunc 1 (TRefn TBool 1 (Bc True)) t'
+lem_den_and = simpleDFunc 1 (TRefn TBool 1 (Bc True)) t'
                     (Prim And) (FTPrm FEmpty And) val_den_func
   where
     val_den_func :: Expr -> Denotes -> ValueDenoted
@@ -45,7 +46,7 @@ lem_den_and = undefined {-DFunc 1 (TRefn TBool 1 (Bc True)) t'
       _     -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool 1 (Bc True)) den_tx_vx)
     t' = TFunc 2 (TRefn TBool 2 (Bc True)) (TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) (App (App (Prim And) (BV 1)) (BV 2)) ))
     t't = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) (App (App (Prim And) (Bc True)) (BV 2)) )
-    den_t't_id = DFunc 2 (TRefn TBool 2 (Bc True)) t't (Lambda 1 (BV 1)) 
+    den_t't_id = simpleDFunc 2 (TRefn TBool 2 (Bc True)) t't (Lambda 1 (BV 1)) 
                        (FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) (BV 1) 
                               (FTBasic TBool) 1 (FTVar1 FEmpty 1 (FTBasic TBool))) val_den_func2
     val_den_func2 :: Expr -> Denotes -> ValueDenoted
@@ -66,7 +67,7 @@ lem_den_and = undefined {-DFunc 1 (TRefn TBool 1 (Bc True)) t'
     {-@ ev_prt''f_ff :: ProofOf(EvalsTo (App (App (Prim Eqv) (Bc False)) (App (App (Prim And) (Bc True)) (Bc False))) (Bc True)) @-}
     ev_prt''f_ff = reduce_and_tt True False
     t'f = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) (App (App (Prim And) (Bc False)) (BV 2)) )
-    den_t'f_lamff = DFunc 2 (TRefn TBool 2 (Bc True)) t'f (Lambda 1 (Bc False))
+    den_t'f_lamff = simpleDFunc 2 (TRefn TBool 2 (Bc True)) t'f (Lambda 1 (Bc False))
                           (FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) (Bc False) 
                                  (FTBasic TBool) 1 (FTBC (FCons 1 (FTBasic TBool) FEmpty) False)) val_den_func3
     val_den_func3 :: Expr -> Denotes -> ValueDenoted
@@ -86,4 +87,3 @@ lem_den_and = undefined {-DFunc 1 (TRefn TBool 1 (Bc True)) t'
                         (Bc False) (FTBC FEmpty False) ev_prt'''f_ff
     {-@ ev_prt'''f_ff :: ProofOf(EvalsTo (App (App (Prim Eqv) (Bc False)) (App (App (Prim And) (Bc False)) (Bc False))) (Bc True)) @-}
     ev_prt'''f_ff = reduce_and_tt False False
--}

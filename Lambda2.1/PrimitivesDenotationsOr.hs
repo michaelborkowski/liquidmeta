@@ -24,6 +24,7 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import Entailments
 import BasicPropsCSubst
 import BasicPropsDenotes
@@ -35,7 +36,7 @@ foo52 :: a -> Maybe a
 
 {-@ lem_den_or :: ProofOf(Denotes (ty Or) (Prim Or)) @-}
 lem_den_or :: Denotes
-lem_den_or = undefined {- DFunc 1 (TRefn TBool 1 (Bc True)) t' (Prim Or) (FTPrm FEmpty Or) val_den_func
+lem_den_or = simpleDFunc 1 (TRefn TBool 1 (Bc True)) t' (Prim Or) (FTPrm FEmpty Or) val_den_func
   where
     val_den_func :: Expr -> Denotes -> ValueDenoted
     val_den_func v_x den_tx_vx = case v_x of 
@@ -50,7 +51,7 @@ lem_den_or = undefined {- DFunc 1 (TRefn TBool 1 (Bc True)) t' (Prim Or) (FTPrm 
                                                                (App (App (Prim Or) (BV 1)) (BV 2)) ))
 
     t't = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) (App (App (Prim Or) (Bc True)) (BV 2)) )
-    den_t't_lamtt = DFunc 2 (TRefn TBool 2 (Bc True)) t't (Lambda 1 (Bc True))
+    den_t't_lamtt = simpleDFunc 2 (TRefn TBool 2 (Bc True)) t't (Lambda 1 (Bc True))
                           (FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) (Bc True)
                                  (FTBasic TBool) 1 (FTBC (FCons 1 (FTBasic TBool) FEmpty) True))
                           val_den_func3
@@ -75,7 +76,7 @@ lem_den_or = undefined {- DFunc 1 (TRefn TBool 1 (Bc True)) t' (Prim Or) (FTPrm 
     or_ev_prt'''f_tt = reduce_or_tt True False
 
     t'f = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) (App (App (Prim Or) (Bc False)) (BV 2)) )
-    den_t'f_id = DFunc 2 (TRefn TBool 2 (Bc True)) t'f (Lambda 1 (BV 1)) 
+    den_t'f_id = simpleDFunc 2 (TRefn TBool 2 (Bc True)) t'f (Lambda 1 (BV 1)) 
                        (FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) (BV 1) 
                               (FTBasic TBool) 1 (FTVar1 FEmpty 1 (FTBasic TBool)))
                        val_den_func2
@@ -98,11 +99,10 @@ lem_den_or = undefined {- DFunc 1 (TRefn TBool 1 (Bc True)) t' (Prim Or) (FTPrm 
                         (Bc False) (FTBC FEmpty False) or_ev_prt''f_ff
     {-@ or_ev_prt''f_ff :: ProofOf(EvalsTo (App (App (Prim Eqv) (Bc False)) (App (App (Prim Or) (Bc False)) (Bc False))) (Bc True)) @-}
     or_ev_prt''f_ff = reduce_or_tt False False
--}
 
 {-@ lem_den_not :: ProofOf(Denotes (ty Not) (Prim Not)) @-}
 lem_den_not :: Denotes
-lem_den_not = undefined {- DFunc 2 (TRefn TBool 2 (Bc True)) t'
+lem_den_not = simpleDFunc 2 (TRefn TBool 2 (Bc True)) t'
                     (Prim Not) (FTPrm FEmpty Not) val_den_func
   where
     val_den_func :: Expr -> Denotes -> ValueDenoted
@@ -123,4 +123,3 @@ lem_den_not = undefined {- DFunc 2 (TRefn TBool 2 (Bc True)) t'
                         (Bc True) (FTBC FEmpty True) ev_prt'f 
     {-@ ev_prt'f :: ProofOf(EvalsTo (App (App (Prim Eqv) (Bc True)) (App (Prim Not) (Bc False)) ) (Bc True)) @-}
     ev_prt'f = reduce_not_tt False
--}

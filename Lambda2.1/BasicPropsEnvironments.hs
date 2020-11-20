@@ -282,7 +282,6 @@ lem_in_fenv_fesub (FConsT a1 k  g) a t_a y = () ? lem_in_fenv_fesub g a t_a y
 
 {-@ lem_wfvar_tv_in_env :: g:Env -> a:Vname -> k:Kind -> ProofOf(WFType g (TRefn (FTV a) 1 (Bc True)) k)
         -> { pf:_ | tv_in_env a g } @-}
-{-        -> { pf:_ | tv_in_env a g && tv_bound_in a k g } @-}
 lem_wfvar_tv_in_env :: Env -> Vname -> Kind -> WFType -> Proof
 lem_wfvar_tv_in_env env a k (WFRefn g x b p_g_a_base p y p_p_bl)
   = lem_wfvar_tv_in_env g a k p_g_a_base
@@ -294,6 +293,32 @@ lem_wfvar_tv_in_env env a k (WFVar3 g _a _k p_g_a a1 k_a1)
 lem_wfvar_tv_in_env env a k (WFKind g _a p_g_a_base)
   = lem_wfvar_tv_in_env g a Base p_g_a_base
 
+{-@ lem_wf_refn_tv_in_env :: g:Env -> a:Vname -> x:Vname -> p:Pred -> k:Kind
+        -> ProofOf(WFType g (TRefn (FTV a) x p) k) -> { pf:_ | tv_in_env a g } @-}
+lem_wf_refn_tv_in_env :: Env -> Vname -> Vname -> Pred -> Kind -> WFType -> Proof
+lem_wf_refn_tv_in_env g a x p k' (WFRefn _g _x b p_g_a_base _p y p_p_bl)
+  = lem_wf_refn_tv_in_env g a 1 (Bc True) Base p_g_a_base
+lem_wf_refn_tv_in_env g a x p k' (WFVar1 _g _a _k) = ()
+lem_wf_refn_tv_in_env g a x p k' (WFVar2 g' a_ k_ p_g_a  y t_y)
+  = lem_wf_refn_tv_in_env g' a 1 (Bc True) k' p_g_a 
+lem_wf_refn_tv_in_env g a x p k' (WFVar3 g' a_ k_ p_g_a  a1 k_a1)
+  = lem_wf_refn_tv_in_env g' a 1 (Bc True) k' p_g_a
+lem_wf_refn_tv_in_env g a x p k' (WFKind _g _a p_g_a_base)
+  =  lem_wf_refn_tv_in_env g a x p Base p_g_a_base
+
+{-@ lem_wf_refn_tv_star :: g:Env -> { a:Vname | tv_bound_in a Star g } -> x:Vname -> p:Pred
+        -> k:Kind -> ProofOf(WFType g (TRefn (FTV a) x p) k)
+        -> { pf:_ | x == 1 && p == Bc True && k == Star } @-}
+lem_wf_refn_tv_star :: Env -> Vname -> Vname -> Expr -> Kind -> WFType -> Proof
+lem_wf_refn_tv_star g a x p k (WFRefn _g _x b p_g_a_base _p y p_p_bl)
+  = impossible ("by lemma" ? lem_wf_refn_tv_star g a 1 (Bc True) Base p_g_a_base)
+lem_wf_refn_tv_star g a x p k (WFVar1 _g _a _k) = ()
+lem_wf_refn_tv_star g a x p k (WFVar2 g' a_ k_ p_g_a  y t_y)
+  = lem_wf_refn_tv_star g' a 1 (Bc True) k p_g_a
+lem_wf_refn_tv_star g a x p k (WFVar3 g' a_ k_ p_g_a  a1 k_a1)
+  = lem_wf_refn_tv_star g' a 1 (Bc True) k p_g_a
+lem_wf_refn_tv_star g a x p k (WFKind _g _a p_g_a_base)
+  = impossible ("by lemma" ? lem_wf_refn_tv_star g a x p Base p_g_a_base)
 
 -----------------------------------------------------------------------------------------
 ----- | Properties of JUDGEMENTS : the Bare-Typing Relation and Well-Formedness of Types
@@ -481,3 +506,14 @@ lem_ffreeTV_subset_bindsF g t k (WFFTPoly _g a' k' t' k_t' a'' p_a''g_t'_kt') = 
                                      k_t' p_a''g_t'_kt' 
 lem_ffreeTV_subset_bindsF g t k (WFFTKind _g _t p_t_B) 
     = () ? lem_ffreeTV_subset_bindsF g t Base p_t_B 
+
+{-@ lem_truncate_wffe :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
+        -> ProofOf(WFFE (concatF g g')) -> ProofOf(WFFE g) @-}
+lem_truncate_wffe :: FEnv -> FEnv -> WFFE -> WFFE
+lem_truncate_wffe g FEmpty          p_g_wf    = p_g_wf          
+lem_truncate_wffe g (FCons x v g')  p_xg'g_wf = lem_truncate_wffe g g' p_g'g_wf
+  where
+    (WFFBind  _ p_g'g_wf _ _ _ _) = p_xg'g_wf 
+lem_truncate_wffe g (FConsT a k g') p_ag'g_wf = lem_truncate_wffe g g' p_g'g_wf
+  where
+    (WFFBindT _ p_g'g_wf _ _) = p_ag'g_wf

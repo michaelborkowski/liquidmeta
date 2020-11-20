@@ -364,3 +364,24 @@ lem_subst_tv_wfft g g' a t_a k_a p_g_ta p_env_wf t k (WFFTPoly _env a' k' t' k_t
                          (p_yenv_t' ? lem_erase_concat (Cons x t_x g) g')
                          ? lem_commute_tsubFV_tsubBV1 z (FV y) x v_x t'-}
 lem_subst_tv_wfft g g' a t_a k_a pf_g_ta p_env_wf t k (WFFTKind _env _t pf_env_t_base) = undefined --assume
+
+{-@ lem_subst_tv_wffe :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
+        -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> t_a:FType -> k_a:Kind
+        -> ProofOf(WFFT g t_a k_a) -> ProofOf(WFFE (concatF (FConsT a k_a g) g'))
+        -> ProofOf(WFFE (concatF g (fesubFV a t_a g'))) / [fenvsize g'] @-}
+lem_subst_tv_wffe :: FEnv -> FEnv -> Vname -> FType -> Kind -> WFFT -> WFFE -> WFFE
+lem_subst_tv_wffe g FEmpty              a t_a k_a pf_g_ta p_env_wf  = case p_env_wf of
+    (WFFBind  _g p_g_wf _ _ _ _) -> p_g_wf
+    (WFFBindT _g p_g_wf _ _)    -> p_g_wf
+lem_subst_tv_wffe g (FCons x t_x g')    a t_a k_a pf_g_ta p_env_wf  = case p_env_wf of
+    (WFFBind  env' p_env'_wf _x _tx k_x p_env'_tx)
+         -> WFFBind env'' p_env''_wf x (ftsubFV a t_a t_x) k_x p_env''_txta
+        where
+          env''        = concatF g (fesubFV a t_a g')
+          p_env''_wf   = lem_subst_tv_wffe g g' a t_a k_a pf_g_ta p_env'_wf
+          p_env''_txta = lem_subst_tv_wfft g g' a t_a k_a pf_g_ta p_env'_wf t_x k_x p_env'_tx
+lem_subst_tv_wffe g (FConsT a1 k_a1 g') a t_a k_a pf_g_ta p_env_wf  = case p_env_wf of
+    (WFFBindT env' p_env'_wf _a1 _ka1) -> WFFBindT env'' p_env''_wf a1 k_a1
+        where
+          env''        = concatF g (fesubFV a t_a g')
+          p_env''_wf   = lem_subst_tv_wffe g g' a t_a k_a pf_g_ta p_env'_wf

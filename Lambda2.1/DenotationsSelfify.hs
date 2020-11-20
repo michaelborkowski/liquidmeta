@@ -22,9 +22,13 @@ import BasicPropsEnvironments
 import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import PrimitivesSemantics -- this module has moved "up" in the order
+import LemmasWeakenWF
+import SubstitutionLemmaWF
+import SubstitutionLemmaWFTV
 
 {-@ reflect foo50 @-}
 foo50 x = Just x
@@ -80,3 +84,53 @@ lem_denotations_selfify (TExists z t_z t') Base {-p_emp_t-} e v ev_e_v den_t_v =
                ? lem_tsubBV_self z v_z t' e Base
 lem_denotations_selfify (TPoly a k_a t')   k    {-p_emp_t-} e v ev_e_v den_t_v = den_t_v
 lem_denotations_selfify t                  Star {-p_emp_t-} e v ev_e_v den_t_v = den_t_v
+
+
+--- used in Lemma 8
+{-@ lem_denote_ctsubst_refn_var :: g:Env -> a:Vname -> x:Vname -> p:Pred -> th:CSub
+        -> ProofOf(DenotesEnv g th) -> v:Value -> ProofOf(Denotes (ctsubst th (TRefn (FTV a) x p)) v)
+        -> (Denotes,EvalsTo)<{\pf ev -> propOf pf == Denotes (csubst_tv th a) v && 
+                                        propOf ev == EvalsTo (subBV x v (csubst th p)) (Bc True) }> @-} 
+lem_denote_ctsubst_refn_var :: Env -> Vname -> Vname -> Pred -> CSub -> DenotesEnv -> Expr
+                                   -> Denotes -> (Denotes, EvalsTo)
+lem_denote_ctsubst_refn_var g a x p th den_g_th v den_thap_v = undefined
+
+{-@ lem_denote_ctsubst_refn_var' :: g:Env -> a:Vname -> x:Vname -> p:Pred -> th:CSub
+        -> ProofOf(DenotesEnv g th) -> v:Value -> ProofOf(Denotes (csubst_tv th a) v)
+        -> ProofOf(EvalsTo (subBV x v (csubst th p)) (Bc True))
+        -> ProofOf(Denotes (ctsubst th (TRefn (FTV a) x p)) v) @-}
+lem_denote_ctsubst_refn_var' :: Env -> Vname -> Vname -> Pred -> CSub -> DenotesEnv -> Expr
+                                    -> Denotes -> EvalsTo -> Denotes
+lem_denote_ctsubst_refn_var' g a x p th den_g_th v den_tha_v ev_thpv_tt = undefined
+
+
+{-@ lem_ctsubst_wf :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> ProofOf (WFEnv g) 
+        -> { th:CSub | same_binders_cs th t } -> ProofOf(DenotesEnv g th)  
+        -> ProofOf(WFType Empty (ctsubst th t) k) @-}
+lem_ctsubst_wf :: Env -> Type -> Kind -> WFType -> WFEnv -> CSub -> DenotesEnv -> WFType
+lem_ctsubst_wf Empty            t k p_g_t p_g_wf th den_g_th = case den_g_th of
+  (DEmp)                                           -> p_g_t ? lem_binds_env_th Empty th den_g_th
+lem_ctsubst_wf (Cons x t_x g')  t k p_g_t p_g_wf th den_g_th = case den_g_th of
+  (DExt  g' th' den_g'_th' _x _tx v_x den_th'tx_vx) -> p_emp_tht
+    where
+      (s_x, p_emp_sx) = get_ftyp_from_den (ctsubst th' t_x) v_x den_th'tx_vx -- ? lem_erase_ctsubst th' t_x
+      p_g'_sx        = lem_weaken_many_ftyp FEmpty (erase_env g') 
+                           (p_er_g'_wf ? lem_empty_concatF (erase_env g'))
+                           v_x s_x p_emp_sx -- (erase (ctsubst th' t_x)) p_emp_vx_th'tx 
+      (WFEBind _ p_g'_wf _ _ k_x p_g'_tx) = p_g_wf
+      p_er_g'_wf     = lem_erase_env_wfenv g' p_g'_wf
+      p_g'_th'tx     = lem_ctsubst_wf g' t_x k_x p_g'_tx p_g'_wf th' den_g'_th'
+--      p_x'g'_wf      = WFEBind g' p_g'_wf x (ctsubst th' t_x) k_x p_g'_th'tx
+      p_g'_tvx       = undefined {- fix this line
+                       lem_subst_wf g' Empty x v_x (unerase s_x) p_g'_sx p_g'_wf t k p_g_t
+                       -}
+      p_emp_tht      = lem_ctsubst_wf g' (tsubFV x v_x t) k p_g'_tvx p_g'_wf 
+                                      (th' ? lem_same_binders_cs x v_x th' t) den_g'_th'
+lem_ctsubst_wf (ConsT a k_a g') t k p_g_t p_g_wf th den_g_th = case den_g_th of
+  (DExtT g' th' den_g'_th' _a _ka t_a p_emp_ta) -> p_emp_tht
+    where
+      p_g'_ta        = lem_weaken_many_wf' Empty g' (p_g'_wf ? lem_empty_concatE g') t_a k_a p_emp_ta
+      (WFEBindT _ p_g'_wf _ _) = p_g_wf
+      p_g'_tta       = lem_subst_tv_wf' g' Empty a t_a k_a p_g'_ta p_g_wf t k p_g_t
+      p_emp_tht      = lem_ctsubst_wf g' (tsubFTV a t_a t) k p_g'_tta p_g'_wf 
+                                      (th' ? lem_same_binders_cs_tv a t_a th' t) den_g'_th'

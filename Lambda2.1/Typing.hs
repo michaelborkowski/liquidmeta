@@ -201,7 +201,7 @@ data HasType where
                   -> ProofOf(WFType  (ConsT a' k g) (unbind_tvT a a' t) k_t)
                   -> ProofOf(HasType g (LambdaT a k e) (TPoly a k t))
      |  TAppT :: g:Env -> e:Expr -> a:Vname -> k:Kind -> s:Type -> ProofOf(HasType g e (TPoly a k s)) 
-                  -> { t:Type | same_binders s t && same_bindersE t e } -> ProofOf(WFType g t k)
+                  -> { t:Type | same_binders t s && same_bindersE t e } -> ProofOf(WFType g t k)
                   -> ProofOf(HasType g (AppT e t) (tsubBTV a t s))
      |  TLet  :: g:Env -> e_x:Expr -> t_x:Type -> ProofOf(HasType g e_x t_x)
                   -> x:Vname -> e:Expr -> t:Type -> k:Kind -> ProofOf(WFType g t k)
@@ -493,12 +493,6 @@ same_binders_csE CEmpty          e = True
 same_binders_csE (CCons  x v th) e = same_binders_csE th (subFV x v e)
 same_binders_csE (CConsT a t th) e = if same_bindersE t e then same_binders_csE th (subFTV a t e)  else False
 --same_binders_csE (CConsT a t th) e = same_bindersE t e && same_binders_csE th (subFTV a t e)
-{-
-{-@ reflect lem_same_binders_csE @-}
-{-@ lem_same_binders_csE :: a:Vname -> t:Type -> th:CSub 
-        -> { e:Expr | same_binders_csE (CConsT a t th) e } -> { pf:_ | same_binders_csE th (subFTV a t e) } @-}
-lem_same_binders_csE :: Vname -> Type -> CSub -> Expr -> Proof
-lem_same_binders_csE a  -}
 
 --{-@ csubst :: th:CSub -> { e:Expr | same_binders_csE th e } -> Expr @-}
 {-@ reflect csubst @-}
@@ -516,6 +510,21 @@ ctsubst :: CSub -> Type -> Type
 ctsubst CEmpty           t = t
 ctsubst (CCons  x v  th) t = ctsubst th (tsubFV x v t)
 ctsubst (CConsT a t' th) t = ctsubst th (tsubFTV a t' t)
+
+{-@ reflect csubst_tv @-}
+{-@ csubst_tv :: th:CSub -> { a:Vname | tv_in_csubst a th } -> Type @-}
+csubst_tv :: CSub -> Vname -> Type
+csubst_tv (CCons  x  v  th) a             = csubst_tv th a
+csubst_tv (CConsT a' t' th) a | a' == a   = t'
+                              | otherwise = csubst_tv th a
+
+{-@ reflect toBareCS @-}
+{-@ toBareCS :: th:CSub -> { th':CSub | bindsC th'   == bindsC th && vbindsC th'  == vbindsC th &&
+                                        tvbindsC th' == tvbindsC th } @-}
+toBareCS :: CSub -> CSub
+toBareCS CEmpty           = CEmpty
+toBareCS (CCons  x v  th) = CCons  x v           (toBareCS th) 
+toBareCS (CConsT a t' th) = CConsT a (toBare t') (toBareCS th)
 
 {-@ reflect concatCS @-}
 {-@ concatCS :: th:CSub -> { th':CSub | Set_emp (Set_cap (bindsC th) (bindsC th')) }
@@ -625,6 +634,7 @@ data Denotes where
                                 -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a t)) )
                   -> ProofOf(Denotes (TPoly a k t) v) @-} -- @-}
 -- was:           -> ( { t_a:Type | same_binders t_a t } -> ProofOf(WFType Empty t_a k) 
+
 
 {-@ get_ftyp_from_den :: t:Type -> v:Value -> ProofOf(Denotes t v)
               -> (FType,HasFType)<{\s pf -> propOf pf == HasFType FEmpty v s }> @-}

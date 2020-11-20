@@ -714,6 +714,14 @@ tv_bound_in a k (Cons x t g)    | (a == x)              = False
 tv_bound_in a k (ConsT a' k' g) | (a == a')             = (k == k')
                                 | otherwise             = tv_bound_in a k g
 
+{-@ reflect kind_for_tv @-}
+{-@ kind_for_tv :: a:Vname -> { g:Env | Set_mem a (tvbinds g) } 
+                           -> { k:Kind | tv_bound_in a k g } @-}
+kind_for_tv :: Vname -> Env -> Kind
+kind_for_tv a (Cons  x  t  g)             = kind_for_tv a g
+kind_for_tv a (ConsT a' k' g) | (a == a') = k'
+                              | otherwise = kind_for_tv a g
+
 {-@ reflect binds @-}
 binds :: Env -> S.Set Vname
 binds Empty         = S.empty
@@ -766,6 +774,12 @@ erase (TRefn b v r)     = FTBasic b
 erase (TFunc x t_x t)   = FTFunc (erase t_x) (erase t)
 erase (TExists x t_x t) = (erase t)
 erase (TPoly a  k  t)   = FTPoly a k (erase t)
+
+{-@ unerase :: ft:FType -> { t:Type | erase t == ft } @-}
+unerase :: FType -> Type
+unerase (FTBasic b)      = TRefn b 1 (Bc True)
+unerase (FTFunc t_x   t) = TFunc   1 (unerase t_x) (unerase t)
+unerase (FTPoly a  k  t) = TPoly a k (unerase t)
 
 -- there are no term vars in a Bare Type, only type ones
 {-@ reflect ffreeTV @-} 

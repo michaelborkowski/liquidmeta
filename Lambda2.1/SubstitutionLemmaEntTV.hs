@@ -42,7 +42,6 @@ import DenotationsSoundnessTyp
 foo62 x = Just x
 foo62 :: a -> Maybe a
 
-{- CHECKED 
 {-@ lem_subst_tv_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type
         -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
@@ -64,7 +63,6 @@ lem_subst_tv_wfenv g (ConsT a1 k1 g') a t_a k_a p_g_ta p_env_wf = case p_env_wf 
     where
       env''      = concatE g (esubFTV a t_a g')
       p_env''_wf = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env'_wf
--}
 
 data TVAugmentedCSubP where
     TVAugmentedCSub :: Env -> Env -> Vname -> Type -> Kind -> CSub -> TVAugmentedCSubP
