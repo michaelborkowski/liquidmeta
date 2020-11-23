@@ -1107,6 +1107,16 @@ lem_ftsubFV_notin a t_a (FTFunc t_w t')  = () ? lem_ftsubFV_notin a t_a t_w
                                               ? lem_ftsubFV_notin a t_a t'
 lem_ftsubFV_notin a t_a (FTPoly a' k t') = () ? lem_ftsubFV_notin a t_a t'
 
+{-@ lem_ftsubBV_notin :: a:Vname -> t_a:FType -> { t:FType | not (Set_mem a (ffreeBV t)) } 
+                               -> { pf:_ | ftsubBV a t_a t == t } / [ftsize t] @-}
+lem_ftsubBV_notin :: Vname -> FType -> FType -> Proof
+lem_ftsubBV_notin a t_a (FTBasic b)      = () 
+lem_ftsubBV_notin a t_a (FTFunc t_w t')  = () ? lem_ftsubBV_notin a t_a t_w
+                                              ? lem_ftsubBV_notin a t_a t'
+lem_ftsubBV_notin a t_a (FTPoly a' k t') 
+  | a == a'   = ()
+  | otherwise = () ? lem_ftsubBV_notin a t_a t'
+
 {-@ lem_ftsubFV_unbindFT :: a:Vname -> a':Vname -> t_a:FType 
         -> { t:FType | not (Set_mem a' (ffreeTV t)) }
         -> { pf:_ | ftsubBV a t_a t == ftsubFV a' t_a (unbindFT a a' t) } / [ftsize t] @-}
@@ -1118,15 +1128,24 @@ lem_ftsubFV_unbindFT a a' t_a (FTPoly a1 k t')
   | a == a1    = () ? lem_ftsubFV_notin      a' t_a t'
   | otherwise  = () ? lem_ftsubFV_unbindFT a a' t_a t'
 
-{-@ lem_commute_ftsubFV_unbindFT :: a0:Vname -> a1:Vname -> a:Vname 
-        -> { a':Vname | a' != a0 } -> t:FType
-        -> {pf:_ | ftsubFV a0 (FTBasic (FTV a1)) (unbindFT a a' t) 
-                   == unbindFT a a' (ftsubFV a0 (FTBasic (FTV a1)) t)} / [ftsize t] @-}
-lem_commute_ftsubFV_unbindFT :: Vname -> Vname -> Vname -> Vname -> FType -> Proof
-lem_commute_ftsubFV_unbindFT a0 a1 a a' (FTBasic b) = ()
-lem_commute_ftsubFV_unbindFT a0 a1 a a' (FTFunc t1 t2)
-  = () ? lem_commute_ftsubFV_unbindFT a0 a1 a a' t1
-       ? lem_commute_ftsubFV_unbindFT a0 a1 a a' t2
-lem_commute_ftsubFV_unbindFT a0 a1 a a' (FTPoly aa k t)
+{-@ lem_commute_ftsubFV_unbindFT :: a0:Vname -> t_a0:FType 
+      -> { a:Vname | not (Set_mem a (ffreeBV t_a0)) } -> { a':Vname | a' != a0 } -> t:FType
+      -> {pf:_ | ftsubFV a0 t_a0 (unbindFT a a' t) == unbindFT a a' (ftsubFV a0 t_a0 t)} / [ftsize t] @-}
+lem_commute_ftsubFV_unbindFT :: Vname -> FType -> Vname -> Vname -> FType -> Proof
+lem_commute_ftsubFV_unbindFT a0 t_a0 a a' (FTBasic b)    = case b of
+  (FTV aa) | a0 == aa  -> () ? toProof ( ftsubFV a0 t_a0 (unbindFT a a' (FTBasic (FTV aa)))
+                                     === ftsubFV a0 t_a0 (FTBasic (FTV aa))
+                                     === t_a0
+                                       ? lem_ftsubBV_notin a (FTBasic (FTV a')) t_a0
+                                     === unbindFT a a' t_a0
+                                     === unbindFT a a' (ftsubFV a0 t_a0 (FTBasic (FTV aa))) )
+           | otherwise -> ()
+  (BTV aa)  -> ()
+  _         -> ()
+lem_commute_ftsubFV_unbindFT a0 t_a0 a a' (FTFunc t1 t2)
+  = () ? lem_commute_ftsubFV_unbindFT a0 t_a0 a a' t1
+       ? lem_commute_ftsubFV_unbindFT a0 t_a0 a a' t2
+lem_commute_ftsubFV_unbindFT a0 t_a0 a a' (FTPoly aa k t)
   | a == aa   = ()
-  | otherwise = () ? lem_commute_ftsubFV_unbindFT a0 a1 a a' t
+  | otherwise = () ? lem_commute_ftsubFV_unbindFT a0 t_a0 a a' t
+

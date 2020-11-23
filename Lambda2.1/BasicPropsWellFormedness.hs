@@ -56,6 +56,26 @@ lem_kind_for_tv g Empty            a k_a = ()
 lem_kind_for_tv g (Cons  x t_x g') a k_a = () ? lem_kind_for_tv g g' a k_a
 lem_kind_for_tv g (ConsT a' k' g') a k_a = () ? lem_kind_for_tv g g' a k_a
 
+{-@ lem_wf_ftv_kindF :: g:FEnv -> a:Vname -> k:Kind -> ProofOf(WFFT g (FTBasic (FTV a)) k)
+       -> { pf:_ | k == Star || kind_for_tvF a g == Base } @-}
+lem_wf_ftv_kindF :: FEnv -> Vname -> Kind -> WFFT -> Proof
+lem_wf_ftv_kindF g a k p_g_a = case k of 
+  Base -> case p_g_a of
+    (WFFTBasic _ _)             -> ()
+    (WFFTFV1 {})                -> ()
+    (WFFTFV2 g' _ _ p_g'_a _ _) -> lem_wf_ftv_kindF g' a k p_g'_a
+    (WFFTFV3 g' _ _ p_g'_a _ _) -> lem_wf_ftv_kindF g' a k p_g'_a
+  Star -> ()
+
+{-@ lem_kind_for_tvF :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) } 
+        -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> k_a:Kind
+        -> { pf:_ | kind_for_tvF a (concatF (FConsT a k_a g) g') == k_a } @-} 
+lem_kind_for_tvF :: FEnv -> FEnv -> Vname -> Kind -> Proof
+lem_kind_for_tvF g FEmpty            a k_a = ()
+lem_kind_for_tvF g (FCons  x t_x g') a k_a = () ? lem_kind_for_tvF g g' a k_a
+lem_kind_for_tvF g (FConsT a' k' g') a k_a = () ? lem_kind_for_tvF g g' a k_a
+
+
 -- These lemmas allow us to directly invert the Well Formedness Judgments of certain types 
 --     by allowing us to bypass the possibility of WFKind
 {-@ lem_wffunc_for_wf_tfunc :: g:Env -> x:Vname -> t_x:Type -> t:Type -> k:Kind 
@@ -255,6 +275,13 @@ lem_tfreeBTV_unbind_tvT_empty :: Vname -> Vname -> Type -> Proof
 lem_tfreeBTV_unbind_tvT_empty a a' t = toProof ( S.empty === tfreeBTV (unbind_tvT a a' t)
                                       === S.difference (tfreeBTV t) (S.singleton a) )
 
+{-@ lem_ffreeBV_unbindFT_empty :: a:Vname -> a':Vname 
+        -> { t:FType | Set_emp (ffreeBV (unbindFT a a' t)) }
+        -> { pf:_ | Set_emp (ffreeBV t) || ffreeBV t == Set_sng a } @-}
+lem_ffreeBV_unbindFT_empty :: Vname -> Vname -> FType -> Proof
+lem_ffreeBV_unbindFT_empty a a' t = toProof ( S.empty === ffreeBV (unbindFT a a' t)
+                                      === S.difference (ffreeBV t) (S.singleton a) )
+
 {-@ lem_freeBV_emptyB :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
                               -> { pf:_ | Set_emp (freeBV e) && Set_emp (freeBTV e) } @-}
 lem_freeBV_emptyB :: FEnv -> Expr ->  FType -> HasFType -> Proof 
@@ -307,18 +334,34 @@ lem_tfreeBV_empty g t k p_g_t@(WFVar2 _ a _k _ _ _) = case t of
   (TRefn (FTV _) _ (Bc True)) -> ()
 lem_tfreeBV_empty g t k p_g_t@(WFVar3 _ a _k _ _ _) = case t of
   (TRefn (FTV _) _ (Bc True)) -> ()
-lem_tfreeBV_empty g t k (WFFunc _g x t_x k_x p_g_tx t' k' y p_yg_t') {-p_g_wf-} = case t of
+lem_tfreeBV_empty g t k (WFFunc _g x t_x k_x p_g_tx t' k' y p_yg_t')  = case t of
   (TFunc _ _ _) -> () 
-        ? lem_tfreeBV_empty g t_x k_x p_g_tx {-p_g_wf-} 
+        ? lem_tfreeBV_empty g t_x k_x p_g_tx  
         ? lem_tfreeBV_unbindT_empty x y (t' ? lem_tfreeBV_empty (Cons y t_x g) (unbindT x y t') k'
-                                                                p_yg_t' {-p_yg_wf-})
-lem_tfreeBV_empty g t k (WFExis _g x t_x k_x p_g_tx t' k' y p_yg_t') {-p_g_wf-} = case t of
+                                                                p_yg_t' )
+lem_tfreeBV_empty g t k (WFExis _g x t_x k_x p_g_tx t' k' y p_yg_t')  = case t of
   (TExists _ _ _) -> () 
-        ? lem_tfreeBV_empty g t_x k_x p_g_tx {-p_g_wf-}
+        ? lem_tfreeBV_empty g t_x k_x p_g_tx 
         ? lem_tfreeBV_unbindT_empty x y (t' ? lem_tfreeBV_empty (Cons y t_x g) (unbindT x y t') k'
-                                                                p_yg_t' {-p_yg_wf-})
+                                                                p_yg_t' )
 lem_tfreeBV_empty g t k (WFPoly _g a k_a t' k_t' a' p_a'g_t') = case t of 
   (TPoly _ _ _) -> () ? lem_tfreeBTV_unbind_tvT_empty a a' (t' ? lem_tfreeBV_empty (ConsT a' k_a g) 
                                                                  (unbind_tvT a a' t') k_t' p_a'g_t')
-lem_tfreeBV_empty g t k (WFKind _g _t p_g_t_base) {-p_g_wf -}
-  = () ? lem_tfreeBV_empty g t Base p_g_t_base {-p_g_wf -}
+lem_tfreeBV_empty g t k (WFKind _g _t p_g_t_base) 
+  = () ? lem_tfreeBV_empty g t Base p_g_t_base 
+
+{-@ lem_ffreeBV_empty :: g:FEnv -> t:FType -> k:Kind -> { p_g_t:WFFT | propOf p_g_t == WFFT g t k }
+        -> { pf:Proof | Set_emp (ffreeBV t) } / [wfftypSize p_g_t] @-}
+lem_ffreeBV_empty :: FEnv -> FType -> Kind -> WFFT -> Proof
+lem_ffreeBV_empty g t k (WFFTBasic _g b) = () 
+lem_ffreeBV_empty g t k p_g_t@(WFFTFV1 _ a _k) = ()
+lem_ffreeBV_empty g t k p_g_t@(WFFTFV2 _ a _k _ _ _) = ()
+lem_ffreeBV_empty g t k p_g_t@(WFFTFV3 _ a _k _ _ _) = ()
+lem_ffreeBV_empty g t k (WFFTFunc _g t_x k_x p_g_tx t' k' p_g_t') 
+  = ()  ? lem_ffreeBV_empty g t_x k_x p_g_tx 
+        ? lem_ffreeBV_empty g t'  k'  p_g_t' 
+lem_ffreeBV_empty g t k (WFFTPoly _g a k_a t' k_t' a' p_a'g_t') 
+  = ()  ? lem_ffreeBV_unbindFT_empty a a' (t' ? lem_ffreeBV_empty (FConsT a' k_a g) 
+                                                                 (unbindFT a a' t') k_t' p_a'g_t')
+lem_ffreeBV_empty g t k (WFFTKind _g _t p_g_t_base) 
+  = () ? lem_ffreeBV_empty g t Base p_g_t_base 

@@ -104,8 +104,9 @@ lem_denote_ctsubst_refn_var' :: Env -> Vname -> Vname -> Pred -> CSub -> Denotes
 lem_denote_ctsubst_refn_var' g a x p th den_g_th v den_tha_v ev_thpv_tt = undefined
 
 
+-- should be?     -> { th:CSub | same_binders_cs th t } -> ProofOf(DenotesEnv g th)  
 {-@ lem_ctsubst_wf :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> ProofOf (WFEnv g) 
-        -> { th:CSub | same_binders_cs th t } -> ProofOf(DenotesEnv g th)  
+        -> th:CSub -> ProofOf(DenotesEnv g th)  
         -> ProofOf(WFType Empty (ctsubst th t) k) @-}
 lem_ctsubst_wf :: Env -> Type -> Kind -> WFType -> WFEnv -> CSub -> DenotesEnv -> WFType
 lem_ctsubst_wf Empty            t k p_g_t p_g_wf th den_g_th = case den_g_th of
@@ -131,6 +132,6 @@ lem_ctsubst_wf (ConsT a k_a g') t k p_g_t p_g_wf th den_g_th = case den_g_th of
     where
       p_g'_ta        = lem_weaken_many_wf' Empty g' (p_g'_wf ? lem_empty_concatE g') t_a k_a p_emp_ta
       (WFEBindT _ p_g'_wf _ _) = p_g_wf
-      p_g'_tta       = lem_subst_tv_wf' g' Empty a t_a k_a p_g'_ta p_g_wf t k p_g_t
+      p_g'_tta       = undefined -- lem_subst_tv_wf' g' Empty a t_a k_a p_g'_ta p_g_wf t k p_g_t
       p_emp_tht      = lem_ctsubst_wf g' (tsubFTV a t_a t) k p_g'_tta p_g'_wf 
                                       (th' ? lem_same_binders_cs_tv a t_a th' t) den_g'_th'

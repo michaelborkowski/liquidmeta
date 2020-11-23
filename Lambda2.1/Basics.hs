@@ -791,6 +791,15 @@ ffreeTV (FTBasic b)      = case b of
 ffreeTV (FTFunc t_x t)   = S.union (ffreeTV t_x) (ffreeTV t) 
 ffreeTV (FTPoly a k t)   = ffreeTV t
 
+{-@ reflect ffreeBV @-} 
+{-@ ffreeBV :: t:FType -> S.Set Vname / [ftsize t] @-}
+ffreeBV :: FType -> S.Set Vname
+ffreeBV (FTBasic b)      = case b of
+  (BTV a)                    -> S.singleton a
+  _                          -> S.empty
+ffreeBV (FTFunc t_x t)   = S.union (ffreeBV t_x) (ffreeBV t) 
+ffreeBV (FTPoly a k t)   = S.difference (ffreeBV t) (S.singleton a)
+
 -- System F substituion is simpler because there are no refinements to worry about, so we can just
 --   do a single substitution instead of both a variable replacement t[a'/a] and a refinment-streng.
 --   substitution t[a:=t_a]
@@ -799,6 +808,8 @@ ffreeTV (FTPoly a k t)   = ffreeTV t
          -> { t':FType | ( Set_mem a (ffreeTV t) || t == t' ) && 
                         ( Set_sub (ffreeTV t) (Set_cup (Set_sng a) (ffreeTV t'))) &&
                 ( Set_sub (ffreeTV t') (Set_cup (ffreeTV t_a) (Set_dif (ffreeTV t) (Set_sng a))) ) &&
+                Set_sub (ffreeBV t') (Set_cup (ffreeBV t) (ffreeBV t_a)) &&
+                Set_sub (ffreeBV t) (ffreeBV t') &&
                 ( (not (Set_mem a (ffreeTV t_a))) => not (Set_mem a (ffreeTV t')) ) } / [ftsize t] @-}
 ftsubFV :: Vname -> FType -> FType -> FType
 ftsubFV a t_a (FTBasic b)           = case b of 
@@ -809,9 +820,11 @@ ftsubFV a t_a (FTPoly a' k t)       = FTPoly a' k (ftsubFV a t_a t)
 
 {-@ reflect ftsubBV @-} 
 {-@ ftsubBV :: a:Vname -> t_a:FType -> t:FType  
-                    -> { t':FType | Set_sub (ffreeTV t) (ffreeTV t') &&
-                                    Set_sub (ffreeTV t') (Set_cup (ffreeTV t_a) (ffreeTV t)) &&
-                                    ( ftsize t_a != 1 || ftsize t == ftsize t' ) } / [ftsize t] @-}
+        -> { t':FType | Set_sub (ffreeTV t) (ffreeTV t') &&
+                        Set_sub (ffreeTV t') (Set_cup (ffreeTV t_a) (ffreeTV t)) &&
+                        Set_sub (ffreeBV t') (Set_cup (Set_dif (ffreeBV t) (Set_sng a)) (ffreeBV t_a)) && 
+                        Set_sub (Set_dif (ffreeBV t) (Set_sng a)) (ffreeBV t') &&
+                        ( ftsize t_a != 1 || ftsize t == ftsize t' ) } / [ftsize t] @-}
 ftsubBV :: Vname -> FType -> FType -> FType
 ftsubBV a t_a (FTBasic   b)         = case b of 
   (BTV a') | a == a'                    -> t_a
@@ -825,6 +838,7 @@ ftsubBV a t_a (FTPoly a' k  t)
 {-@ unbindFT :: a:Vname -> a':Vname -> t:FType 
                        -> { t':FType | Set_sub (ffreeTV t) (ffreeTV t') &&
                                        Set_sub (ffreeTV t') (Set_cup (Set_sng a') (ffreeTV t)) &&
+                                       ffreeBV t' == Set_dif (ffreeBV t) (Set_sng a) &&
                                        ftsize t == ftsize t' } / [ftsize t] @-} 
 unbindFT :: Vname -> Vname -> FType -> FType
 unbindFT a a' t = ftsubBV a (FTBasic (FTV a')) t
@@ -838,8 +852,12 @@ data FEnv = FEmpty                       -- type FEnv = [(Vname, FType) or Vname
   deriving (Show) 
 {-@ data FEnv where
         FEmpty :: FEnv
-      | FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } -> FEnv
-      | FConsT :: a:Vname -> k:Kind  -> { g:FEnv | not (in_envF a g) } -> FEnv @-}
+      | FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } 
+                          -> { g':FEnv | Set_cup (vbindsF g') (tvbindsF g') == bindsF g' &&
+                                         Set_emp (Set_cap (vbindsF g') (tvbindsF g')) }
+      | FConsT :: a:Vname -> k:Kind  -> { g:FEnv | not (in_envF a g) } 
+                          -> { g':FEnv | Set_cup (vbindsF g') (tvbindsF g') == bindsF g' &&
+                                         Set_emp (Set_cap (vbindsF g') (tvbindsF g')) } @-}
 
 {-@ measure fenvsize @-}
 {-@ fenvsize :: FEnv -> { n:Int | n >= 0 } @-}
@@ -915,6 +933,14 @@ tv_bound_inF a k (FCons x t g)    | (a == x)              = False
 tv_bound_inF a k (FConsT a' k' g) | (a == a')             = (k == k')
                                   | otherwise             = tv_bound_inF a k g
 
+{-@ reflect kind_for_tvF @-}
+{-@ kind_for_tvF :: a:Vname -> { g:FEnv | Set_mem a (tvbindsF g) } 
+                            -> { k:Kind | tv_bound_inF a k g } @-}
+kind_for_tvF :: Vname -> FEnv -> Kind
+kind_for_tvF a (FCons  x  t  g)             = kind_for_tvF a g
+kind_for_tvF a (FConsT a' k' g) | (a == a') = k'
+                                | otherwise = kind_for_tvF a g
+
 {-@ lem_lookup_boundinF :: x:Vname -> t:FType -> { g:FEnv | lookupF x g == Just t }
         -> { pf:_ | bound_inF x t g } @-}
 lem_lookup_boundinF :: Vname -> FType -> FEnv -> Proof
@@ -944,6 +970,18 @@ bindsF :: FEnv -> S.Set Vname
 bindsF FEmpty         = S.empty
 bindsF (FCons  x t g) = S.union (S.singleton x) (bindsF g)
 bindsF (FConsT a k g) = S.union (S.singleton a) (bindsF g)
+
+{-@ reflect vbindsF @-}
+vbindsF :: FEnv -> S.Set Vname
+vbindsF FEmpty         = S.empty
+vbindsF (FCons x t g)  = S.union (S.singleton x) (vbindsF g)
+vbindsF (FConsT a k g) = vbindsF g
+
+{-@ reflect tvbindsF @-}
+tvbindsF :: FEnv -> S.Set Vname
+tvbindsF FEmpty         = S.empty
+tvbindsF (FCons x t g)  = tvbindsF g
+tvbindsF (FConsT a k g) = S.union (S.singleton a) (tvbindsF g)
 
 {-@ reflect erase_env @-}
 {-@ erase_env :: g:Env -> { g':FEnv | binds g == bindsF g' } @-}

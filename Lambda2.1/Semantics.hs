@@ -251,33 +251,6 @@ lemma_evals_app_value e e' v (AddStep _ee' eee st_ee'_eee _v ev_eee_v)
           ev_e'_v2                             = AddStep e' e2 st_e'_e2 v2 ev_e2_v2
       (EAppAbs x e'' w)           -> AppRed e e (Refl e) e' e' (Refl e')
 
-
------ | Predicate Strengthening and Evaluations
-
-{-@ lem_unstrengthen_evals :: p:Pred -> r:Pred -> ProofOf(EvalsTo (strengthen p r) (Bc True))
-        -> ProofOf(EvalsTo r (Bc True)) @-}
-lem_unstrengthen_evals :: Expr -> Expr -> EvalsTo -> EvalsTo
-lem_unstrengthen_evals p         (Bc True) ev_pr_tt = Refl (Bc True)
-lem_unstrengthen_evals (Bc True) r         ev_pr_tt = ev_pr_tt
-lem_unstrengthen_evals p         r         ev_pr_tt = undefined
-  where
-    (AppRed _ _ _ _r val ev_r_val) = lemma_evals_app_value (App (Prim And) p) r (Bc True) ev_pr_tt
-
-{-@ lem_strengthen_evals :: p:Pred -> ProofOf(EvalsTo p (Bc True)) -> r:Pred 
-        -> ProofOf(EvalsTo r (Bc True)) -> ProofOf(EvalsTo (strengthen p r) (Bc True)) @-}
-lem_strengthen_evals :: Pred -> EvalsTo -> Pred -> EvalsTo -> EvalsTo
-lem_strengthen_evals p         ev_p_tt (Bc True) ev_r_tt = ev_p_tt 
-lem_strengthen_evals (Bc True) ev_p_tt r         ev_r_tt = ev_r_tt
-lem_strengthen_evals p         ev_p_tt r         ev_r_tt = ev_andpr_tt
-  where
-    ev_andp_andtt = lemma_app_many2 (Prim And) p (Bc True) ev_p_tt
-    ev_andp_id    = lemma_add_step_after (App (Prim And) p) (App (Prim And) (Bc True))
-                                         ev_andp_andtt (Lambda 1 (BV 1)) (EPrim And (Bc True))
-    ev_andpr_idtt = lemma_app_both_many (App (Prim And) p) (Lambda 1 (BV 1)) ev_andp_id
-                                        r (Bc True) ev_r_tt
-    ev_andpr_tt   = lemma_add_step_after (App (App (Prim And) p) r) (App (Lambda 1 (BV 1)) (Bc True))
-                                         ev_andpr_idtt (Bc True) (EAppAbs 1 (BV 1) (Bc True))
-
 --------------------------------------------------------------------------
 ----- | Basic LEMMAS of the OPERATIONAL SEMANTICS (Small Step)
 --------------------------------------------------------------------------
