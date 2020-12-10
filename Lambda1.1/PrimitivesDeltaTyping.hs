@@ -69,7 +69,7 @@ lem_prim_compat_in_tapp c v t p_cv_t
                                                                p_c_sxs' WFEEmpty
       p_v_er_sx                          = lem_typing_hasftype Empty v s_x p_v_sx WFEEmpty
 
-{-@ lem_delta_ty'c :: c:Prim  -> v:Value -> ProofOf(HasType Empty v (inType c))
+{-@ assume lem_delta_ty'c :: c:Prim  -> v:Value -> ProofOf(HasType Empty v (inType c))
         -> ProofOf(HasType Empty (delta c v) (tsubBV (firstBV c) v (ty' c))) @-}
 lem_delta_ty'c :: Prim -> Expr -> HasType -> HasType
 lem_delta_ty'c c v p_v_tx = undefined -- this part we assume
