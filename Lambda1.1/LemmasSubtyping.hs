@@ -36,27 +36,37 @@ foo43 :: a -> Maybe a
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------
 
-{-@ lem_self_is_subtype :: g:Env -> t:Type -> ProofOf(WFType g t) 
-        -> { e:Expr | Set_emp ( freeBV e ) && Set_sub (fv e) (binds g) }
+--        -> { e:Expr | Set_emp ( freeBV e ) && Set_sub (fv e) (binds g) }
+{-@ lem_self_is_subtype :: g:Env -> t:Type -> { p_g_t:WFType | propOf p_g_t == WFType g t }
+        -> e:Expr -> ProofOf(HasFType (erase_env g) e (erase t))
         -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self t e) t) / [tsize t, 1] @-}
-lem_self_is_subtype :: Env -> Type -> WFType -> Expr -> WFEnv -> Subtype 
-lem_self_is_subtype g (TRefn b x p)        p_g_t e p_g_wf 
-  = lem_self_refn_sub g b x p p_g_wf p_g_t e 
-lem_self_is_subtype g t@(TFunc x t_x t')   p_g_t e p_g_wf 
+lem_self_is_subtype :: Env -> Type -> WFType -> Expr -> HasFType -> WFEnv -> Subtype 
+lem_self_is_subtype g t p_g_t@(WFRefn _ x b p _ _) e  p_e_t p_g_wf 
+  = lem_self_refn_sub g b x p p_g_wf p_g_t e p_e_t      
+lem_self_is_subtype g t p_g_t@(WFFunc {}) e  p_e_t p_g_wf 
   = lem_sub_refl g t p_g_t p_g_wf 
-lem_self_is_subtype g t@(TExists x t_x t') p_g_t e p_g_wf 
+lem_self_is_subtype g t p_g_t@(WFExis _ x t_x p_g_tx t' y p_yg_t') e_ p_e_t p_g_wf 
   = SBind g x t_x (self t' e) (TExists x t_x t' ? lem_free_bound_in_env g t p_g_t y
                                                 ? lem_tfreeBV_empty g t p_g_t {-p_g_wf-})
           y p_self_exis
       where
-        (WFExis _ _ _tx p_g_tx _t' y p_yg_t') = p_g_t
+        e           = e_ ? lem_freeBV_emptyB    (erase_env g) e_ (erase t) p_e_t
+                         ? lem_fv_subset_bindsF (erase_env g) e_ (erase t) p_e_t
+--        {-@ y :: { y:Vname | not (in_env y g) && not (in_envF y (erase_env g)) } @-}
+--        (WFExis _ _ _tx p_g_tx _t' y p_yg_t') = p_g_t
         p_yg_wf     = WFEBind g p_g_wf y t_x p_g_tx
         p_yg_tx     = lem_weaken_wf g Empty t_x p_g_tx y t_x
         -- y:t_x, g |- (self t_x y) <: tx
-        p_selftx_tx = lem_self_is_subtype (Cons y t_x g) t_x p_yg_tx (FV y) p_yg_wf
+        p_y_er_tx   = FTVar1 (erase_env g) y (erase t_x)
+        p_selftx_tx = lem_self_is_subtype (Cons y t_x g) (t_x ? toProof (tsize t_x < tsize (TExists x t_x t')))
+                                          p_yg_tx (FV y) p_y_er_tx p_yg_wf
+--                          ? toProof ( tsize t_x < tsize ( TExists x t_x t' ) )
         -- y:t_x, g |- (unbindT x y (self t' e)) <: unbindT x y t'
+        p_yg_e_t    = lem_weaken_ftyp (erase_env g) FEmpty e (erase t) p_e_t y (erase t_x)
+                          ? lem_erase_tsubBV x (FV y) t'
         p_selft'_t' = lem_self_is_subtype (Cons y t_x g) (unbindT x y t') p_yg_t' 
-                                          e p_yg_wf ? lem_tsubBV_self x (FV y) t' e
+                                          e p_yg_e_t p_yg_wf ? lem_tsubBV_self x (FV y) t' e
+                                                             ? toProof ( t === TExists x t_x t' )
         p_y_tx      = TSub (Cons y t_x g) (FV y) (self t_x (FV y)) 
                            (TVar1 g y t_x p_g_tx) t_x p_yg_tx p_selftx_tx
         p_self_exis = SWitn (Cons y t_x g) (FV y) t_x p_y_tx (unbindT x y (self t' e)) 
@@ -92,7 +102,8 @@ lem_sub_refl g t@(TExists x t_x t') p_g_t p_g_wf
         where
           (WFExis _g x t_x p_g_tx t' y p_yg_t') = p_g_t
           p_y_self_tx  = TVar1 g y t_x p_g_tx
-          p_selftx_tx  = lem_self_is_subtype (Cons y t_x g) t_x p_yg_tx (FV y) p_yg_wf
+          p_y_er_tx    = FTVar1 (erase_env g) y (erase t_x) 
+          p_selftx_tx  = lem_self_is_subtype (Cons y t_x g) t_x p_yg_tx (FV y) p_y_er_tx p_yg_wf
           {-@ p_y_tx :: ProofOf(HasType (Cons y t_x g) (FV y) t_x) @-}
           p_y_tx       = TSub (Cons y t_x g) (FV y) (self t_x (FV y)) p_y_self_tx 
                               t_x p_yg_tx p_selftx_tx

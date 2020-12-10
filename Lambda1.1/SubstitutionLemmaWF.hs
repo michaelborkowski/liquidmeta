@@ -139,3 +139,23 @@ lem_subst_wf' g g' x v_x t_x p_vx_tx p_env_wf t p_env_t
         p_xg_wf     = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
         (WFEBind _ p_g_wf _ _ _) = p_xg_wf
         p_vx_er_tx = lem_typing_hasftype g v_x t_x p_vx_tx p_g_wf
+
+-------------------------------------------------------------
+------- | METATHEORY Development: Some technical Lemmas
+-------------------------------------------------------------
+
+{-@ lem_witness_sub :: g:Env -> v_x:Value -> t_x:Type -> ProofOf(HasType g v_x t_x)
+        -> ProofOf(WFEnv g) -> x:Vname -> t':Type 
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (free t')) }
+        -> ProofOf(WFType (Cons y t_x g) (unbindT x y t'))
+        -> ProofOf(Subtype g (tsubBV x v_x t') (TExists x t_x t')) @-}
+lem_witness_sub :: Env -> Expr -> Type -> HasType -> WFEnv -> Vname -> Type
+                       -> Vname -> WFType -> Subtype
+lem_witness_sub g v_x t_x p_vx_tx p_g_wf x t' y p_yg_t'
+  = SWitn g v_x t_x p_vx_tx (tsubBV x v_x t') x t' p_t'vx_t'vx
+      where
+        p_g_tx      = lem_typing_wf g v_x t_x p_vx_tx p_g_wf
+        p_yg_wf     = WFEBind g p_g_wf y t_x p_g_tx
+        p_g_t'vx    = lem_subst_wf' g Empty y v_x t_x p_vx_tx p_yg_wf (unbindT x y t') p_yg_t'
+                                    ? lem_tsubFV_unbindT x y v_x t'
+        p_t'vx_t'vx = lem_sub_refl g (tsubBV x v_x t') p_g_t'vx p_g_wf

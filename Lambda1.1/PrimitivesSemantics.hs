@@ -24,9 +24,9 @@ import Typing
 import BasicPropsCSubst
 import BasicPropsDenotes
 
-{-@ reflect foo33 @-}
-foo33 x = Just x
-foo33 :: a -> Maybe a
+{-@ reflect foo30 @-}
+foo30 x = Just x
+foo30 :: a -> Maybe a
 
 -----------------------------------------------------------------------
 -- | BUILT-IN PRIMITIVES : Big-Step-style SEMANTICS 

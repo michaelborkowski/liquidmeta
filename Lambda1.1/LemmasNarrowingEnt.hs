@@ -61,12 +61,14 @@ lem_narrow_wfenv g (Cons z t_z g') x s_x t_x p_sx_tx p_g_sx p_env_wf = case p_en
 -- -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) 
 {-@ lem_narrow_ent :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
-            -> t_x:Type -> ProofOf(Subtype g s_x t_x) 
+            -> t_x:Type -> ProofOf(Subtype g s_x t_x) -> ProofOf(WFType g s_x)
+            -> ProofOf(WFEnv (concatE (Cons x t_x g) g')) 
             -> { p:Pred | Set_sub (fv p) (binds (concatE (Cons x t_x g) g')) }
             -> ProofOf(Entails (concatE (Cons x t_x g) g') p) 
             -> ProofOf(Entails (concatE (Cons x s_x g) g') p) @-}
-lem_narrow_ent :: Env -> Env -> Vname -> Type -> Type -> Subtype -> Pred -> Entails -> Entails
-lem_narrow_ent g g' x s_x t_x p_sx_tx {-p_env_wf-} p (EntPred env _p evals_func)
+lem_narrow_ent :: Env -> Env -> Vname -> Type -> Type -> Subtype -> WFType -> WFEnv
+                      -> Pred -> Entails -> Entails
+lem_narrow_ent g g' x s_x t_x p_sx_tx p_g_sx p_env_wf p (EntPred env _p evals_func)
   = EntPred env' p evals_func'
       where
         {-@ evals_func' :: th':CSub -> ProofOf(DenotesEnv env' th')
@@ -74,18 +76,35 @@ lem_narrow_ent g g' x s_x t_x p_sx_tx {-p_env_wf-} p (EntPred env _p evals_func)
         evals_func' :: CSub -> DenotesEnv -> EvalsTo  
         evals_func' th' den_env'_th' = evals_func th' den_env_th' 
           where
-            den_env_th' = undefined {-
-            (InsertInCS _ _ _ _ _ _ th den_env_th eq_func _) 
-                = lem_add_var_csubst g g' x v_x t_x p_vx_tx p_env_wf th' den_env'_th' -}
+            den_env_th' = lem_widen_denotes g g' x s_x t_x p_sx_tx p_g_tx p_env'_wf 
+                                            th' den_env'_th'
         env'         = concatE (Cons x s_x g) g'
-{-
+        p_env'_wf    = lem_narrow_wfenv   g g' x s_x t_x p_sx_tx p_g_sx p_env_wf
+        p_xg_wf      = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+        (WFEBind _g _ _x _tx p_g_tx) = p_xg_wf 
+
 {-@ lem_widen_denotes :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
-            -> t_x:Type -> ProofOf(Subtype g s_x t_x) -> th:CSub
-            -> ProofOf(DenotesEnv (concatE (Cons x t_x g) g') th) 
-            -> ProofOf(DenotesEnv (concatE (Cons x s_x g) g') th) @-}
-lem_widen_denotes :: Env -> Env -> Vname -> Type -> Type -> Subtype 
+            -> t_x:Type -> ProofOf(Subtype g s_x t_x) -> ProofOf(WFType g t_x)
+            -> ProofOf(WFEnv (concatE (Cons x s_x g) g')) -> th:CSub
+            -> ProofOf(DenotesEnv (concatE (Cons x s_x g) g') th) 
+            -> ProofOf(DenotesEnv (concatE (Cons x t_x g) g') th) @-}
+lem_widen_denotes :: Env -> Env -> Vname -> Type -> Type -> Subtype -> WFType -> WFEnv
                          -> CSub -> DenotesEnv -> DenotesEnv
-lem_widen_denotes g Empty           x s_x t_x p_sx_tx th den_env_th = undefined
-lem_widen_denotes g (Cons z t_z g') x s_x t_x p_sx_tx th den_env_th = undefined
--}
+lem_widen_denotes g Empty           x s_x t_x p_sx_tx p_g_tx p_env_wf th den_env_th 
+  = case den_env_th of
+    (DExt _g th0 den_g_th0 _x _sx v_x den_th0sx_vx) 
+      -> DExt g th0 den_g_th0 x t_x v_x den_th0tx_vx
+           where
+             (WFEBind _g p_g_wf _ _ p_g_sx) = p_env_wf
+             den_th0tx_vx = lem_denote_sound_sub g s_x t_x p_sx_tx p_g_wf p_g_sx p_g_tx
+                                               th0 den_g_th0 v_x den_th0sx_vx
+lem_widen_denotes g (Cons z t_z g') x s_x t_x p_sx_tx p_g_tx p_env_wf th den_env_th
+  = case den_env_th of
+    (DExt env0 th0 den_env0_th0 _z _tz v_z den_th0tz_vz)
+      -> DExt env0' th0 den_env0'_th0 z t_z v_z den_th0tz_vz
+           where
+             env0'         = concatE (Cons x t_x g) g'
+             (WFEBind _env0 p_env0_wf _ _ _) = p_env_wf 
+             den_env0'_th0 = lem_widen_denotes g g' x s_x t_x p_sx_tx p_g_tx p_env0_wf 
+                                               th0 den_env0_th0

@@ -264,7 +264,12 @@ lem_tsubBV_notin x v_x (TExists z t_z t)
 {-@ lem_tsubFV_tfreeBV :: x:Vname -> { v:Value | Set_emp (freeBV v) }
         -> { t:Type | Set_emp (tfreeBV t) } -> { pf:_ | Set_emp (tfreeBV (tsubFV x v t)) } @-}
 lem_tsubFV_tfreeBV :: Vname -> Expr -> Type -> Proof
-lem_tsubFV_tfreeBV x v t = undefined
+lem_tsubFV_tfreeBV x v t@(TRefn b w p)     
+  = () ? toProof ( S.isSubsetOf (tfreeBV (tsubFV x v t)) (S.union (tfreeBV t) (freeBV v)) )
+lem_tsubFV_tfreeBV x v t@(TFunc w t_w t')
+  = () ? toProof ( S.isSubsetOf (tfreeBV (tsubFV x v t)) (S.union (tfreeBV t) (freeBV v)) )
+lem_tsubFV_tfreeBV x v t@(TExists w t_w t') 
+  = () ? toProof ( S.isSubsetOf (tfreeBV (tsubFV x v t)) (S.union (tfreeBV t) (freeBV v)) )
 
 {-@ lem_tsubFV_unbindT :: x:Vname -> y:Vname -> v:Value 
         -> { t:Type | not (Set_mem y (free t)) }

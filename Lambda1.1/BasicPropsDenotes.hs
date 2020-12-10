@@ -96,14 +96,6 @@ lem_remove_var_denote_env g x_ t_x (Cons z t_z g') p_zg'g_wf th den_env_th =  ca
         den_env''_th'' = lem_remove_var_denote_env g x t_x g' p_g'g_wf th' den_env'_th'
         den_th''tz_vz  = lem_remove_var_denote th' t_z v_z den_th'tz_vz x
 
-{-
-{-@ lem_csubst_hasftype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t) 
-        -> ProofOf(WFEnv g) -> th:CSub -> ProofOf(DenotesEnv g th) 
-        -> ProofOf(EqvFTyping FEmpty (csubst th e) (erase (ctsubst th t))) @-}
-lem_csubst_hasftype :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub -> DenotesEnv -> EqvFTyping
-lem_csubst_hasftype Empty            e t p_e_t th den_g_th = undefined {- 1 -}
-lem_csubst_hasftype (Cons x t_x g')  e t p_e_t th den_g_th = undefined {- 1 -}
--}
 {-@ lem_csubst_hasftype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env g) e (erase t))
         -> th:CSub -> ProofOf(DenotesEnv g th) -> ProofOf(HasFType FEmpty (csubst th e) (erase t)) @-} 
 lem_csubst_hasftype :: Env -> Expr -> Type -> HasFType -> CSub -> DenotesEnv -> HasFType
