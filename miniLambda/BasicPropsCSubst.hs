@@ -384,16 +384,6 @@ lem_csubst_subFV th x v_x (App e e')    = () ? lem_csubst_app th (subFV x v_x e)
                                              ? lem_csubst_subFV th x v_x e'
                                              ? lem_csubst_app th (subFV x (csubst th v_x ? lem_csubst_value th v_x) e)
                                                                  (subFV x (csubst th v_x ? lem_csubst_value th v_x) e')
-lem_csubst_subFV th x v_x (Let z e_z e) = () ? lem_csubst_let th z (subFV x v_x e_z) (subFV x v_x e)
-                                             ? lem_csubst_subFV th x v_x e_z
-                                             ? lem_csubst_subFV th x v_x e 
-                                             ? lem_csubst_let th z (subFV x (csubst th v_x ? lem_csubst_value th v_x) e_z)
-                                                                   (subFV x (csubst th v_x ? lem_csubst_value th v_x) e)
-lem_csubst_subFV th x v_x (Annot e t)   = () ? lem_csubst_annot th (subFV x v_x e) (tsubFV x v_x t) 
-                                             ? lem_csubst_subFV   th x v_x e
-                                             ? lem_ctsubst_tsubFV th x v_x t
-                                             ? lem_csubst_annot th (subFV x  (csubst th v_x ? lem_csubst_value th v_x) e)
-                                                                   (tsubFV x (csubst th v_x ? lem_csubst_value th v_x) t)
 
 {-@ lem_ctsubst_tsubFV :: th:CSub -> { x:Vname | not (in_csubst x th) } 
         -> { v_x:Value | Set_sub (fv v_x) (bindsC th) } -> t:Type
