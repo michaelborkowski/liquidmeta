@@ -72,7 +72,7 @@ time liquid --normal --oldple LemmasExactness.hs
 
 time liquid --normal --oldple SubstitutionLemmaEnt.hs
 time liquid --normal --oldple SubstitutionLemmaEntTV.hs
-time liquid --normal --oldple SubstitutionLemmaType.hs
+time liquid --normal --oldple SubstitutionLemmaTyp.hs
 ###
 time liquid --normal --oldple LemmasNarrowingEnt.hs
 
