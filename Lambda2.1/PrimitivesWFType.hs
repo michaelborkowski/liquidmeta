@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -39,9 +38,9 @@ foo19 x = Just x
 -- Lemma. Well-Formedness of Constant Types
 {-@ lem_wf_tybc :: g:Env -> b:Bool -> ProofOf(WFType g (tybc b) Base) @-}
 lem_wf_tybc :: Env -> Bool -> WFType
-lem_wf_tybc g b = WFRefn g 1 TBool (WFBase g TBool) pred y pf_pr_bool
+lem_wf_tybc g b = WFRefn g 0 TBool (Bc True) (WFBase g TBool (Bc True)) pred y pf_pr_bool
   where
-     pred       = (App (App (Prim Eqv) (BV 1)) (Bc b)) 
+     pred       = (App (App (Prim Eqv) (BV 0)) (Bc b)) 
      y          = (fresh_var g)
      g'         = (FCons y (FTBasic TBool) (erase_env g))
      pf_eqv_v   = FTApp g' (Prim Eqv) (FTBasic TBool) (FTFunc (FTBasic TBool) (FTBasic TBool)) 
@@ -52,9 +51,9 @@ lem_wf_tybc g b = WFRefn g 1 TBool (WFBase g TBool) pred y pf_pr_bool
 
 {-@ lem_wf_tyic :: g:Env -> n:Int -> ProofOf(WFType g (tyic n) Base) @-}
 lem_wf_tyic :: Env -> Int -> WFType
-lem_wf_tyic g n = WFRefn g 1 TInt (WFBase g TInt) pred y pf_pr_bool
+lem_wf_tyic g n = WFRefn g 0 TInt (Bc True) (WFBase g TInt (Bc True)) pred y pf_pr_bool
   where
-    pred        = (App (App (Prim Eq) (BV 1)) (Ic n))
+    pred        = (App (App (Prim Eq) (BV 0)) (Ic n))
     y           = fresh_var g
     g'          = (FCons y (FTBasic TInt) (erase_env g))
     pf_eq_v     = FTApp g' (Prim Eq) (FTBasic TInt) (FTFunc (FTBasic TInt) (FTBasic TBool)) 
@@ -62,7 +61,7 @@ lem_wf_tyic g n = WFRefn g 1 TInt (WFBase g TInt) pred y pf_pr_bool
     pf_pr_bool  = FTApp g' (App (Prim Eq) (FV y)) (FTBasic TInt) (FTBasic TBool) 
                            pf_eq_v (Ic n) (FTIC g' n)
 
-{-@ lem_wf_intype :: { c:Prim | not (isEql c) } -> ProofOf(WFType Empty (inType c) Base) @-}
+{-@ lem_wf_intype :: { c:Prim | not (isEql c) && not (c == Conj)} -> ProofOf(WFType Empty (inType c) Base) @-}
 lem_wf_intype :: Prim -> WFType
 lem_wf_intype And      = makeWFType Empty (inType And)      Base ? lem_wf_intype_and ()
 lem_wf_intype Or       = makeWFType Empty (inType Or)       Base ? lem_wf_intype_or ()
@@ -75,7 +74,7 @@ lem_wf_intype (Eqn n)  = makeWFType Empty (inType (Eqn n))  Base ? lem_wf_intype
 {-lem_wf_intype (Eql a)  = makeWFType Empty (inType (Eql a))  Base ? lem_wf_intype_eql  a
                                                                  ? lem_wf_intype_eql' a-}
 
-{-@ lem_wf_ty' :: { c:Prim | not (isEql c) } -> y:Int 
+{-@ lem_wf_ty' :: { c:Prim | not (isEql c) && not (c == Conj) } -> y:Int 
         -> ProofOf(WFType (Cons y (inType c) Empty) (unbindT (firstBV c) y (ty' c)) Star) @-}
 lem_wf_ty' :: Prim -> Int -> WFType
 lem_wf_ty' And      y = makeWFType (Cons y (inType And) Empty) (unbindT (firstBV And) y (ty' And)) 
@@ -99,6 +98,7 @@ lem_wf_ty' (Eqn n) y  = makeWFType (Cons y (inType (Eqn n)) Empty)
 
 {-@ lem_wf_ty :: c:Prim -> ProofOf(WFType Empty (ty c) Star) @-}
 lem_wf_ty :: Prim -> WFType
+lem_wf_ty Conj     = makeWFType Empty (ty Conj) Star     ? lem_wf_ty_conj ()
 lem_wf_ty And      = makeWFType Empty (ty And) Star      ? lem_wf_ty_and ()
 lem_wf_ty Or       = makeWFType Empty (ty Or) Star       ? lem_wf_ty_or ()
 lem_wf_ty Not      = makeWFType Empty (ty Not) Star      ? lem_wf_ty_not ()

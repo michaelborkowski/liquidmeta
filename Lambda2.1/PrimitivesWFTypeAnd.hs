@@ -38,3 +38,7 @@ lem_wf_ty'_and y = ()
 {-@ lem_wf_ty_and :: () -> { pf:_ | noDefnsInRefns Empty (ty And) && isWellFormed Empty (ty And) Star } @-}
 lem_wf_ty_and :: () -> Proof
 lem_wf_ty_and _ = () ? lem_wf_intype_and () ? lem_wf_ty'_and (firstBV And)
+
+{-@ lem_wf_ty_conj :: () -> { pf:_ | noDefnsInRefns Empty (ty Conj) && isWellFormed Empty (ty Conj) Star } @-}
+lem_wf_ty_conj :: () -> Proof
+lem_wf_ty_conj _ = () ? lem_wf_intype_and () ? lem_wf_ty'_and (firstBV And)

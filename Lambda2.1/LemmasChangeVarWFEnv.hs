@@ -24,6 +24,7 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -51,7 +52,7 @@ lem_change_var_wfenv g x t_x (Cons z t_z g') p_env_wf y = case p_env_wf of
       where
         env''      = concatE (Cons y t_x g) (esubFV x (FV y) g')
         p_env''_wf = lem_change_var_wfenv g x t_x g' p_env'_wf y
-        p_env''_tz = lem_change_var_wf    g x t_x g' p_env'_wf t_z k_z p_env'_tz y
+        p_env''_tz = lem_change_var_wf'   g x t_x g' p_env'_wf t_z k_z p_env'_tz y
 lem_change_var_wfenv g x t_x (ConsT a k_a g') p_env_wf y = undefined
 
 {-@ lem_change_tvar_wfenv :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind

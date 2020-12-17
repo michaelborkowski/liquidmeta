@@ -132,12 +132,11 @@ lem_csubst_lambdaT (CCons y v th)   a k e = () ? lem_csubst_lambdaT th a k (subF
 lem_csubst_lambdaT (CConsT a1 t th) a k e = () ? lem_csubst_lambdaT th a k (subFTV a1 t e)
 
 {-@ lem_csubst_appT :: th:CSub -> e:Expr -> t:Type
-        -> { pf:_ | csubst th (AppT e t) == AppT (csubst th e) (ctsubst (toBareCS th) t) } @-}
+        -> { pf:_ | csubst th (AppT e t) == AppT (csubst th e) (ctsubst th t) } @-}
 lem_csubst_appT :: CSub -> Expr -> Type -> Proof
 lem_csubst_appT (CEmpty)          e t = ()
-lem_csubst_appT (CCons y v th)    e t = () ? lem_csubst_appT th (subFV y v e) (tsubFV y v t)
-lem_csubst_appT (CConsT a t_a th) e t 
-  = () ? lem_csubst_appT th (subFTV a t_a e) (tsubFTV a (toBare t_a) t)
+lem_csubst_appT (CCons y v th)    e t = () ? lem_csubst_appT th (subFV y v e)    (tsubFV y v t)
+lem_csubst_appT (CConsT a t_a th) e t = () ? lem_csubst_appT th (subFTV a t_a e) (tsubFTV a t_a t)
 
 {-@ lem_csubst_let :: th:CSub -> x:Vname -> e_x:Expr -> e:Expr 
         -> { pf:_ | csubst th (Let x e_x e) == Let x (csubst th e_x) (csubst th e) } @-}
@@ -384,16 +383,25 @@ lem_ctsubst_tsubBV x v bt pf_v_b (CCons y v_y th) t
 lem_ctsubst_tsubBV x v bt pf_v_b (CConsT a t_a th) t 
     = undefined
 
-{-@ lem_ctsubst_tsubBTV :: a1:Vname -> t_a:Type -> k:Kind 
+{-@ lem_ctsubst_tsubBTV :: g:Env -> a1:Vname -> t_a:Type -> k:Kind 
+        -> ProofOf(WFType g t_a k) -> th:CSub -> ProofOf(DenotesEnv g th) -> t:Type 
+        -> { pf:_ | ctsubst th (tsubBTV a1 t_a t) == tsubBTV a1 (ctsubst th t_a) (ctsubst th t) } @-}
+lem_ctsubst_tsubBTV :: Env -> Vname -> Type -> Kind -> WFType -> CSub -> DenotesEnv -> Type -> Proof
+lem_ctsubst_tsubBTV g a1 t_a k p_g_ta (CEmpty)            den_g_th t = ()
+lem_ctsubst_tsubBTV g a1 t_a k p_g_ta (CCons y v_y th)    den_g_th t = undefined
+lem_ctsubst_tsubBTV g a1 t_a k p_g_ta (CConsT a' t_a' th) den_g_th t 
+    = undefined
+
+{-@ lem_ctsubst_tsubBTV' :: a1:Vname -> t_a:Type -> k:Kind 
         -> ProofOf(WFType Empty t_a k) -> th:CSub -> t:Type 
         -> { pf:_ | ctsubst th (tsubBTV a1 t_a t) == tsubBTV a1 t_a (ctsubst th t) } @-}
-lem_ctsubst_tsubBTV :: Vname -> Type -> Kind -> WFType -> CSub -> Type -> Proof
-lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CEmpty)            t = ()
-lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CCons y v_y th)    t = undefined
+lem_ctsubst_tsubBTV' :: Vname -> Type -> Kind -> WFType -> CSub -> Type -> Proof
+lem_ctsubst_tsubBTV' a1 t_a k p_emp_ta (CEmpty)            t = ()
+lem_ctsubst_tsubBTV' a1 t_a k p_emp_ta (CCons y v_y th)    t = undefined
 {-    = () ? lem_commute_tsubFV_tsubBV1 x v 
                    (y `withProof` lem_fv_bound_in_fenv FEmpty v bt pf_v_b y) v_y t
          ? lem_ctsubst_tsubBV x v bt pf_v_b th (tsubFV y v_y t)-}
-lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CConsT a' t_a' th) t 
+lem_ctsubst_tsubBTV' a1 t_a k p_emp_ta (CConsT a' t_a' th) t 
     = undefined
 
 {-@ lem_csubst_and_unbind :: x:Vname -> y:Vname 
@@ -443,7 +451,7 @@ lem_ctsubst_and_unbind_tvT a1 a t_a k p_emp_ta th t
   = () ? lem_free_subset_binds  Empty t_a k p_emp_ta
        ? lem_tfreeBV_empty      Empty t_a k p_emp_ta 
        ? lem_tsubFTV_unbind_tvT a1 a t_a t   
-       ? lem_ctsubst_tsubBTV    a1 t_a k p_emp_ta th t
+       ? lem_ctsubst_tsubBTV'   a1 t_a k p_emp_ta th t
 
 {-@ lem_commute_csubst_subBV :: th:CSub -> x:Vname -> v:Value -> e:Expr
            -> { pf:_ | csubst th (subBV x v e) == subBV x (csubst th v) (csubst th e) } @-} 
@@ -535,9 +543,8 @@ lem_ctsubst_tsubFV  (CCons y v_y th)  x v_x t
 lem_ctsubst_tsubFV  (CConsT a t_a th) x v_x t 
     = undefined
    
+
   --- Closing Substitutions and Technical Operations
-
-
 
         -- -> { e:Expr | Set_sub (fv e) (bindsC th ) && ( x == y || not (Set_mem y (fv e))) }
 {-@ lem_change_var_in_csubst :: th:CSub -> { x:Vname | v_in_csubst x th }
@@ -561,15 +568,25 @@ lem_change_var_in_csubst (CCons z v_z th) x y e = case (x == z) of
 {-                   === csubst th (subFV z v_z e)
                    === csubst (CCons z v_z th) e )-}
 lem_change_var_in_csubst (CConsT a t_a th) x y e
-    = undefined
+    = () {- toProof ( csubst (change_varCS (CConsT a t_a th) x y) (subFV x (FV y) e)
+                   === csubst (CConsT a t_a (change_varCS th x y)) (subFV x (FV y) e)
+                   === csubst (change_varCS th x y) (subFTV a t_a (subFV x (FV y) e)) -}
+         ? lem_commute_subFTV_subFV a t_a x (FV y) e
+         ? lem_tsubFV_notin x (FV y) t_a
+         ? lem_change_var_in_csubst th x y (subFTV a t_a e)
 
 {-@ lem_change_tvar_in_csubst :: th:CSub -> { a:Vname | tv_in_csubst a th }
         -> { a':Vname | a == a' || not (in_csubst a' th) }
         -> { e:Expr   | a == a' || not (Set_mem a' (ftv e)) }
         -> { pf:Proof | csubst th e == csubst (change_tvarCS th a a') (chgFTV a a' e) } @-}
 lem_change_tvar_in_csubst :: CSub -> Vname -> Vname -> Expr -> Proof
-lem_change_tvar_in_csubst (CCons z v_z th) a a' e = undefined
-lem_change_tvar_in_csubst (CConsT a1 t_a th) a a' e = undefined
+lem_change_tvar_in_csubst (CCons   z v_z th) a a' e 
+  = () ? lem_commute_chgFTV_subFV  z v_z a a' e
+       ? lem_chgFTV_notin a a' v_z
+       ? lem_change_tvar_in_csubst    th a a' (subFV z v_z e)
+lem_change_tvar_in_csubst (CConsT a1 t_a th) a a' e = case ( a == a1 ) of 
+  (True)  -> () ? lem_subFTV_chgFTV a a' t_a e
+  (False) -> undefined
 
         -- -> { t:Type | Set_sub (free t) (bindsC th ) && ( x == y || not (Set_mem y (free t))) }
 {-@ lem_change_var_in_ctsubst :: th:CSub -> { x:Vname | v_in_csubst x th }
@@ -595,15 +612,15 @@ lem_change_tvar_in_ctsubst (CCons z v_z th) a a' t = undefined {-case (x == z) o
                 ? lem_change_var_in_ctsubst th x y (tsubFV z v_z t)-}
 lem_change_tvar_in_ctsubst (CConsT a1 t_a th) a a' t = undefined
 
-{-@ lem_change_var_back :: th:CSub -> { x:Vname | in_csubst x th }
+{-@ lem_change_var_back :: th:CSub -> { x:Vname | v_in_csubst x th }
         -> { y:Vname | (y == x || not (in_csubst y th)) } 
         -> { pf:Proof | change_varCS (change_varCS th x y) y x == th } @-}
 lem_change_var_back :: CSub -> Vname -> Vname -> Proof
-lem_change_var_back CEmpty           x y              = ()
-lem_change_var_back (CCons z v_z th) x y | ( x == z ) = ()
-                                         | otherwise  = () ? lem_change_var_back th x y
-lem_change_var_back (CConsT a t_a th) x y
-    = undefined
+lem_change_var_back CEmpty           x y               = ()
+lem_change_var_back (CCons z v_z th) x y  | ( x == z ) = ()
+                                          | otherwise  = () ? lem_change_var_back th x y
+lem_change_var_back (CConsT a t_a th) x y {-| ( x == a ) = ()
+                                          | otherwise  -} = () ? lem_change_var_back th x y
 
 --        -> { e:Expr | Set_sub (fv e) (bindsC th) && not (Set_mem x (fv e)) }
 {-@ lem_remove_csubst :: th:CSub -> { x:Vname | in_csubst x th}

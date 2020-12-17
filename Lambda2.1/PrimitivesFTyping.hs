@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -75,9 +74,22 @@ lemma_tfunction_values :: Expr -> Vname -> Kind -> FType -> HasFType -> Proof
 lemma_tfunction_values v a k t (FTPrm  {})   = ()     
 lemma_tfunction_values v a k t (FTAbsT {})   = ()    
 
+{-@ lem_delta_conj_ftyp :: v:Value -> t_x:FType -> t':FType
+        -> ProofOf(HasFType FEmpty (Prim Conj) (FTFunc t_x t')) -> ProofOf(HasFType FEmpty v t_x)
+        -> { pf:_ | propOf pf == HasFType FEmpty (delta Conj v) t' } @-}
+lem_delta_conj_ftyp :: Expr -> FType -> FType -> HasFType -> HasFType -> HasFType
+lem_delta_conj_ftyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
+  (FTPrm FEmpty Conj) -> case v of
+          (Bc True)  -> FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) 
+                              (BV 1) (FTBasic TBool) 1 (FTVar1 FEmpty 1 (FTBasic TBool) ) 
+          (Bc False) -> FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) 
+                              (Bc False) (FTBasic TBool) 
+                              1 (FTBC (FCons 1 (FTBasic TBool) FEmpty) False)  
+          _          -> impossible ("by lemma" ? lem_bool_values v p_v_tx) 
+
 {-@ lem_delta_and_ftyp :: v:Value -> t_x:FType -> t':FType
         -> ProofOf(HasFType FEmpty (Prim And) (FTFunc t_x t')) -> ProofOf(HasFType FEmpty v t_x)
-        -> { pf:_ | propOf pf == HasFType FEmpty (delta And v) t' } @-} -- &&
+        -> { pf:_ | propOf pf == HasFType FEmpty (delta And v) t' } @-}
 lem_delta_and_ftyp :: Expr -> FType -> FType -> HasFType -> HasFType -> HasFType
 lem_delta_and_ftyp v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
   (FTPrm FEmpty And) -> case v of
@@ -176,6 +188,7 @@ lem_prim_ftyp_ftfunc c t_x t' (FTPrm _ _c) = ()
         -> ProofOf(HasFType FEmpty (Prim c) (FTFunc t_x t')) -> ProofOf(HasFType FEmpty v t_x)
         -> { pf:_ | propOf pf == HasFType FEmpty (delta c v) t' } @-} -- && not ((delta c v) == Crash) 
 lem_delta_ftyp :: Prim -> Expr -> FType -> FType -> HasFType -> HasFType -> HasFType
+lem_delta_ftyp Conj     v t_x t' p_c_txt' p_v_tx = lem_delta_conj_ftyp   v t_x t' p_c_txt' p_v_tx
 lem_delta_ftyp And      v t_x t' p_c_txt' p_v_tx = lem_delta_and_ftyp    v t_x t' p_c_txt' p_v_tx
 lem_delta_ftyp Or       v t_x t' p_c_txt' p_v_tx = lem_delta_or_ftyp     v t_x t' p_c_txt' p_v_tx
 lem_delta_ftyp Not      v t_x t' p_c_txt' p_v_tx = lem_delta_not_ftyp    v t_x t' p_c_txt' p_v_tx

@@ -416,14 +416,16 @@ data CSub = CEmpty
                           -> { th':CSub | bindsC th'   == Set_cup (Set_sng x)  (bindsC th) && 
                                           vbindsC th'  == Set_cup (Set_sng x) (vbindsC th) &&
                                           tvbindsC th' == tvbindsC th &&
-                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' } 
+                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' &&
+                                          Set_emp (Set_cap (vbindsC th') (tvbindsC th')) } 
       | CConsT :: a:Vname -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) &&
                                         Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
                           -> { th:CSub | not (in_csubst a th) }
                           -> { th':CSub | bindsC th'   == Set_cup (Set_sng a)   (bindsC th) && 
                                           vbindsC th'  == vbindsC th &&
                                           tvbindsC th' == Set_cup (Set_sng a) (tvbindsC th) &&
-                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' } @-}
+                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' &&
+                                          Set_emp (Set_cap (vbindsC th') (tvbindsC th')) } @-}
 
 {-@ reflect bindsC @-}
 bindsC :: CSub -> S.Set Vname
@@ -518,14 +520,6 @@ csubst_tv (CCons  x  v  th) a             = csubst_tv th a
 csubst_tv (CConsT a' t' th) a | a' == a   = t'
                               | otherwise = csubst_tv th a
 
-{-@ reflect toBareCS @-}
-{-@ toBareCS :: th:CSub -> { th':CSub | bindsC th'   == bindsC th && vbindsC th'  == vbindsC th &&
-                                        tvbindsC th' == tvbindsC th } @-}
-toBareCS :: CSub -> CSub
-toBareCS CEmpty           = CEmpty
-toBareCS (CCons  x v  th) = CCons  x v           (toBareCS th) 
-toBareCS (CConsT a t' th) = CConsT a (toBare t') (toBareCS th)
-
 {-@ reflect concatCS @-}
 {-@ concatCS :: th:CSub -> { th':CSub | Set_emp (Set_cap (bindsC th) (bindsC th')) }
                           -> { thC:CSub | bindsC thC == Set_cup (bindsC th) (bindsC th') } @-}
@@ -545,8 +539,8 @@ change_varCS :: CSub -> Vname -> Vname -> CSub
 change_varCS CEmpty            x y = CEmpty
 change_varCS (CCons  z v_z th) x y | ( x == z ) = CCons  y v_z th
                                    | otherwise  = CCons  z v_z (change_varCS th x y)
-change_varCS (CConsT a t_a th) x y | ( x == a ) = CConsT y t_a th {- impossible -}
-                                   | otherwise  = CConsT a t_a (change_varCS th x y)
+change_varCS (CConsT a t_a th) x y {-| ( x == a ) = CConsT y t_a th {- impossible -}
+                                   | otherwise-}  = CConsT a t_a (change_varCS th x y)
 
 {-@ reflect change_tvarCS @-}
 {-@ change_tvarCS :: th:CSub ->  { a:Vname | tv_in_csubst a th } 
@@ -556,8 +550,8 @@ change_varCS (CConsT a t_a th) x y | ( x == a ) = CConsT y t_a th {- impossible 
                         tvbindsC th' == Set_cup (Set_sng a') (Set_dif (tvbindsC th) (Set_sng a)) } @-} 
 change_tvarCS :: CSub -> Vname -> Vname -> CSub
 change_tvarCS CEmpty             a a' = CEmpty
-change_tvarCS (CCons  z  v_z th) a a' | ( a == z )  = CCons  a' v_z th {- impossible -}
-                                      | otherwise   = CCons  z  v_z (change_tvarCS th a a')
+change_tvarCS (CCons  z  v_z th) a a' {-| ( a == z )  = CCons  a' v_z th {- impossible -}
+                                      | otherwise-}   = CCons  z  v_z (change_tvarCS th a a')
 change_tvarCS (CConsT a1 t_a th) a a' | ( a == a1 ) = CConsT a' t_a th
                                       | otherwise   = CConsT a1 t_a (change_tvarCS th a a')
 

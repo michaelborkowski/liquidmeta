@@ -22,6 +22,7 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -30,8 +31,6 @@ import LemmasWeakenWF
 import LemmasWellFormedness
 import LemmasTyping
 import LemmasSubtyping
-import LemmasChangeVarTyp
-import LemmasWeakenTyp
 
 {-@ reflect foo48 @-}
 foo48 x = Just x

@@ -21,6 +21,7 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -35,7 +36,6 @@ import SubstitutionLemmaWF
 import DenotationsSelfify
 import DenotationsSoundnessSub
 import PrimitivesSemantics
-import DenotationsSoundnessTyp
 
 {-@ reflect foo61 @-}
 foo61 x = Just x
@@ -56,7 +56,7 @@ lem_subst_wfenv g (Cons z t_z g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
       where
         env''        = concatE g (esubFV x v_x g')
         p_env''_wf   = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
-        p_env''_tzvx = lem_subst_wf g g' x v_x t_x p_vx_tx p_env'_wf t_z k_z p_env'_tz
+        p_env''_tzvx = lem_subst_wf' g g' x v_x t_x p_vx_tx p_env'_wf t_z k_z p_env'_tz
 lem_subst_wfenv g (ConsT a k_a g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
   (WFEBindT env' p_env'_wf _a _ka)           -> WFEBindT env'' p_env''_wf a k_a
     where
@@ -127,8 +127,9 @@ lem_add_var_csubst g (Cons z t_z g') x v_x_ t_x p_vx_tx p_zenv_wf zth' den_zenv'
                zth          = CCons z v_z (th ? lem_binds_env_th env th den_env_th) 
                den_zenv_zth = DExt env th den_env_th z t_z v_z den_thtz_vz
                den_thtz_vz  = den_th'tzvx_vz ? eq_func2 t_z
-
                (WFEBind _ p_env_wf _ _ _ _) = p_zenv_wf
+               p_xg_wf = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+               (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf 
                env          = concatE (Cons x t_x g) g'
                {-@ eq_func1 :: p:Pred -> { pf:Proof | csubst th p == csubst th' (subFV x v_x_ p) } @-}
                {-@ eq_func2 :: t:Type -> { pf:Proof | ctsubst th t == ctsubst th' (tsubFV x v_x_ t) } @-}
@@ -146,7 +147,7 @@ lem_add_var_csubst g (Cons z t_z g') x v_x_ t_x p_vx_tx p_zenv_wf zth' den_zenv'
                                             === csubst th' (subFV z v_z (subFV x v_x_ p))
                                             === csubst th' (subFV z (subFV x v_x_ v_z) (subFV x v_x_ p)) 
                                               ? lem_commute_subFV  z v_z x -- v_x_ p
-                                                       (v_x_ ? lem_fv_bound_in_env g v_x_ t_x p_vx_tx z) p
+                                                       (v_x_ ? lem_fv_bound_in_env g v_x_ t_x p_vx_tx p_g_wf z) p
                                             === csubst th' (subFV x v_x_ (subFV z v_z p)) 
                                               ? eq_func1 (subFV z v_z p)
                                             === csubst th (subFV z v_z p) ) 
@@ -159,7 +160,7 @@ lem_add_var_csubst g (Cons z t_z g') x v_x_ t_x p_vx_tx p_zenv_wf zth' den_zenv'
                                             === ctsubst th' (tsubFV z v_z (tsubFV x v_x_ t))
                                             === ctsubst th' (tsubFV z (subFV x v_x_ v_z) (tsubFV x v_x_ t)) 
                                               ? lem_commute_tsubFV  z v_z x -- v_x_ p
-                                                       (v_x_ ? lem_fv_bound_in_env g v_x_ t_x p_vx_tx z) t
+                                                       (v_x_ ? lem_fv_bound_in_env g v_x_ t_x p_vx_tx p_g_wf z) t
                                             === ctsubst th' (tsubFV x v_x_ (tsubFV z v_z t)) 
                                               ? eq_func2 (tsubFV z v_z t)
                                             === ctsubst th (tsubFV z v_z t) )  
@@ -171,6 +172,8 @@ lem_add_var_csubst g (ConsT a k_a g') x v_x_ t_x p_vx_tx p_aenv_wf zth' den_aenv
                ath          = CConsT a t_a (th ? lem_binds_env_th env th den_env_th) 
                den_aenv_ath = DExtT env th den_env_th a k_a t_a p_emp_ta --den_thtz_vz
                (WFEBindT _ p_env_wf _ _) = p_aenv_wf
+               p_xg_wf = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+               (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf 
                env          = concatE (Cons x t_x g) g'
                {-@ eq_func1 :: p:Pred -> { pf:Proof | csubst th p == csubst th' (subFV x v_x_ p) } @-}
                {-@ eq_func2 :: t:Type -> { pf:Proof | ctsubst th t == ctsubst th' (tsubFV x v_x_ t) } @-}
@@ -188,7 +191,7 @@ lem_add_var_csubst g (ConsT a k_a g') x v_x_ t_x p_vx_tx p_aenv_wf zth' den_aenv
                                             === csubst th' (subFTV a t_a (subFV x v_x_ p))
                                             === csubst th' (subFTV a (tsubFV x v_x_ t_a) (subFV x v_x_ p)) 
                                               ? lem_commute_subFTV_subFV  a t_a x
-                                                       (v_x_ ? lem_fv_bound_in_env g v_x_ t_x p_vx_tx a) p
+                                                       (v_x_ ? lem_fv_bound_in_env g v_x_ t_x p_vx_tx p_g_wf a) p
                                             === csubst th' (subFV x v_x_ (subFTV a t_a p)) 
                                               ? eq_func1  (subFTV a t_a p)
                                             === csubst th (subFTV a t_a p) ) 
@@ -201,7 +204,7 @@ lem_add_var_csubst g (ConsT a k_a g') x v_x_ t_x p_vx_tx p_aenv_wf zth' den_aenv
                                             === ctsubst th' (tsubFTV a t_a (tsubFV x v_x_ t))
                                             === ctsubst th' (tsubFTV a (tsubFV x v_x_ t_a) (tsubFV x v_x_ t)) 
                                               ? lem_commute_tsubFTV_tsubFV  a t_a x 
-                                                       (v_x_ ? lem_fv_bound_in_env g v_x_ t_x p_vx_tx a) t
+                                                       (v_x_ ? lem_fv_bound_in_env g v_x_ t_x p_vx_tx p_g_wf a) t
                                             === ctsubst th' (tsubFV x v_x_ (tsubFTV a t_a t)) 
                                               ? eq_func2 (tsubFTV a t_a t)
                                             === ctsubst th (tsubFTV a t_a t) ) 

@@ -40,8 +40,8 @@ import PrimitivesSemantics
 import PrimitivesDenotations
 
 {-@ reflect foo52 @-}
-foo52 x = Just x           --     2  --  --   9 
-foo52 :: a -> Maybe a      {- --  2   1   5   9   =   17 -} 
+foo52 x = Just x           
+foo52 :: a -> Maybe a    
 
 -- do I need this?    -> ProofOf(HasType g e t)
 {-@ lem_self_is_subtype :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
@@ -163,6 +163,7 @@ lem_self_idempotent_lower g t k p_g_t e_ p_e_t p_g_wf = undefined {- CHECKED
         -> k:Kind -> { e:Expr | Set_emp (freeBV e) && Set_sub (fv e) (binds g) } 
         -> ProofOf(Subtype g (self s e k) (self t e k)) @-}
 lem_exact_subtype :: Env -> Type -> Type -> Subtype -> Kind -> Expr -> Subtype
+lem_exact_subtype = undefined {- recheck TODO
 lem_exact_subtype g s t p_s_t@(SBase _ x1 b p1 x2 p2 y ent_yg_p2) Base e --t_e p_e_te 
   = SBase g x1 b (selfify p1 b x1 e) x2 (selfify p2 b x2 e) y ent_yg_selfp2
       where
@@ -173,32 +174,41 @@ lem_exact_subtype g s t p_s_t@(SFunc {}) k e {-t_e p_e_te-} = p_s_t
 lem_exact_subtype g s t p_s_t@(SWitn _ v_x t_x p_vx_tx _s x t' p_s_t'vx) Base e {-t_e p_e_te-}
   = SWitn g v_x t_x p_vx_tx (self s e Base) x (self t' e Base) p_self_s_t'vx
       where 
---        e             = e_ ? lem_freeBV_empty g e_ t_e p_e_te p_g_wf 
         p_self_s_t'vx = lem_exact_subtype g s (tsubBV x v_x t') p_s_t'vx Base e {-t_e p_e_te-}
                                           ? lem_tsubBV_self x v_x t' e Base
 lem_exact_subtype g s t p_s_t@(SBind _ x s_x s' _t y p_s'_t) Base e {-t_e p_e_te-}
   = SBind g x s_x (self s' e Base) (self t e Base) y p_self_s'_t
       where
---        e           = e_ ? lem_freeBV_empty g e_ t_e p_e_te p_g_wf 
         p_self_s'_t = lem_exact_subtype (Cons y s_x g) (unbindT x y s') t p_s'_t Base e {-t_e p_e_te-}
                                         ? lem_tsubBV_self x (FV y) s' e Base
 lem_exact_subtype g s t p_s_t@(SPoly {}) k e {-t_e p_e_te-} = p_s_t
 lem_exact_subtype g s t p_s_t Star e {-t_e p_e_te-} = p_s_t ? toProof (self s e Star === s)
                                                             ? toProof (self t e Star === t)
+-}
 
 {-@ lem_exact_type :: g:Env -> v:Value -> t:Type -> ProofOf(HasType g v t) -> k:Kind
         -> ProofOf(HasType g v (self t v k)) @-}
 lem_exact_type :: Env -> Expr -> Type -> HasType -> Kind -> HasType
-lem_exact_type g e t (TBC {})   = undefined
-lem_exact_type g e t (TIC {})   = undefined
-lem_exact_type g e t (TVar1 {}) = undefined
-lem_exact_type g e t (TVar2 {}) = undefined
-lem_exact_type g e t (TVar3 {}) = undefined
-lem_exact_type g e t (TPrm {})  = undefined
-lem_exact_type g e t (TAbs {})  = undefined
-lem_exact_type g e t (TApp {})  = impossible "not a value"
-lem_exact_type g e t (TAbsT {}) = undefined
-lem_exact_type g e t (TAppT {}) = impossible "not a value"
-lem_exact_type g e t (TLet {})  = impossible "not a value"
-lem_exact_type g e t (TAnn {})  = impossible "not a value"
-lem_exact_type g e t (TSub {})  = undefined
+lem_exact_type g e t (TBC {})   Base   = undefined -- assume this for constants
+lem_exact_type g e t (TIC {})   Base   = undefined -- assume this for constants
+lem_exact_type g e t (TVar1 _env z t' k' p_env_t)   Base = undefined
+lem_exact_type g e t (TVar2 env_ z _t p_z_t w_ t_w) Base = undefined
+lem_exact_type g e t (TVar3 env_ z _t p_z_t a_ k_a) Base = undefined
+lem_exact_type g e t (TPrm {})  Base   = undefined -- assume this for primitives
+lem_exact_type g e t p_e_t@(TAbs env_ z t_z k_z p_env_tz e' t' y_ p_yenv_e'_t') Base 
+  = case t of
+      (TFunc {}) -> p_e_t 
+lem_exact_type g e t (TApp {})  Base  = impossible "not a value"
+lem_exact_type g e t p_e_t@(TAbsT _env a k e' t' k_t' a' p_a'env_e'_t' p_a'env_t') Base 
+  = case t of
+      (TPoly {}) -> p_e_t
+lem_exact_type g e t (TAppT {}) Base = impossible "not a value"
+lem_exact_type g e t (TLet {})  Base = impossible "not a value"
+lem_exact_type g e t (TAnn {})  Base = impossible "not a value"
+lem_exact_type g e t p_e_t@(TSub _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base
+  = TSub g e (self s e Base) p_e_selfs (self t e Base) k p_g_selft p_selfs_selft
+     where
+       p_e_selfs     = lem_exact_type    g e s p_g_e_s Base
+       p_g_selft     = lem_selfify_wf'   g t k p_g_t e p_e_t
+       p_selfs_selft = lem_exact_subtype g s t p_g_s_t Base e
+lem_exact_type g e t p_e_t Star = p_e_t

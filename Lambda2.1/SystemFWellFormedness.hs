@@ -12,9 +12,9 @@ import qualified Data.Set as S
 
 import Basics
 
-{-@ reflect foo04 @-}
-foo04 :: a -> Maybe a
-foo04 x = Just x
+{-@ reflect foo03 @-}
+foo03 :: a -> Maybe a
+foo03 x = Just x
 
 --- Because the underyling System F types have type variables, we need a concept
 ---   of well-formedness that works for the System F types and the System F
@@ -67,6 +67,11 @@ wfftypSize (WFFTFV3 _ _ _ p_g_a _ _)              = (wfftypSize p_g_a)  + 1
 wfftypSize (WFFTFunc g t1 _ p_g_t1 t2 k2 p_g_t2)  = (wfftypSize p_g_t1) + (wfftypSize p_g_t2) + 1
 wfftypSize (WFFTPoly _ _ _ _ _ _ p_a'g_t)         = (wfftypSize p_a'g_t) + 1
 wfftypSize (WFFTKind _ _ p_g_t)                   = (wfftypSize p_g_t)  + 1
+
+{-@ reflect isWFFTFunc @-}
+isWFFTFunc :: WFFT -> Bool
+isWFFTFunc (WFFTFunc {}) = True
+isWFFTFunc _             = False
 
 {-@ simpleWFFTFV :: g:FEnv -> { a:Vname | in_envF a g } -> { k:Kind | tv_bound_inF a k g }
                 -> ProofOf(WFFT g (FTBasic (FTV a)) k) @-}

@@ -14,9 +14,9 @@ import Basics
 import SystemFWellFormedness
 import SystemFTyping
 
-{-@ reflect foo06 @-}
-foo06 :: a -> Maybe a
-foo06 x = Just x
+{-@ reflect foo05 @-}
+foo05 :: a -> Maybe a
+foo05 x = Just x
 
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : WELL-FORMEDNESS of TYPES and ENVIRONMENTS
@@ -28,30 +28,34 @@ data WFTypeP where
     WFType :: Env -> Type -> Kind -> WFTypeP
 
 data WFType where 
-    WFBase :: Env -> Basic -> WFType
-    WFRefn :: Env -> Vname -> Basic -> WFType -> Pred -> Vname -> HasFType -> WFType
-    WFVar1 :: Env -> Vname -> Kind -> WFType
-    WFVar2 :: Env -> Vname -> Kind -> WFType -> Vname -> Type -> WFType
-    WFVar3 :: Env -> Vname -> Kind -> WFType -> Vname -> Kind -> WFType
+    WFBase :: Env -> Basic -> Pred -> WFType
+    WFRefn :: Env -> Vname -> Basic -> Pred -> WFType -> Pred -> Vname -> HasFType -> WFType
+    WFVar1 :: Env -> Vname -> Pred -> Kind -> WFType
+    WFVar2 :: Env -> Vname -> Pred -> Kind -> WFType -> Vname -> Type -> WFType
+    WFVar3 :: Env -> Vname -> Pred -> Kind -> WFType -> Vname -> Kind -> WFType
     WFFunc :: Env -> Vname -> Type -> Kind -> WFType -> Type -> Kind -> Vname -> WFType -> WFType
     WFExis :: Env -> Vname -> Type -> Kind -> WFType -> Type -> Kind -> Vname -> WFType -> WFType
     WFPoly :: Env -> Vname -> Kind -> Type -> Kind -> Vname -> WFType -> WFType
     WFKind :: Env -> Type -> WFType -> WFType
 
 {-@ data WFType where
-        WFBase :: g:Env -> { b:Basic | b == TBool || b == TInt } -> ProofOf(WFType g (TRefn b 1 (Bc True)) Base)
-     |  WFRefn :: g:Env -> x:Vname -> b:Basic -> ProofOf(WFType g (TRefn b 1 (Bc True)) Base) -> p:Pred 
+        WFBase :: g:Env -> { b:Basic | b == TBool || b == TInt } -> { tt:Pred | isTrivial tt }
+                        -> ProofOf(WFType g (TRefn b 0 tt) Base)
+     |  WFRefn :: g:Env -> x:RVname -> b:Basic -> { tt:Pred | isTrivial tt }
+          -> ProofOf(WFType g (TRefn b 0 tt) Base) -> p:Pred 
           -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
           -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool)) 
           -> ProofOf(WFType g (TRefn b x p) Base)
-     |  WFVar1 :: g:Env -> { a:Vname | not (in_env a g) } -> k:Kind 
-          -> ProofOf(WFType (ConsT a k g) (TRefn (FTV a) 1 (Bc True)) k)
-     |  WFVar2 :: g:Env -> { a:Vname | in_env a g } -> k:Kind -> ProofOf(WFType g (TRefn (FTV a) 1 (Bc True)) k)
+     |  WFVar1 :: g:Env -> { a:Vname | not (in_env a g) } -> { tt:Pred | isTrivial tt } -> k:Kind 
+          -> ProofOf(WFType (ConsT a k g) (TRefn (FTV a) 0 tt) k)
+     |  WFVar2 :: g:Env -> { a:Vname | in_env a g } -> { tt:Pred | isTrivial tt } -> k:Kind 
+          -> ProofOf(WFType g (TRefn (FTV a) 0 tt) k) 
           -> { y:Vname | y != a && not (in_env y g) } -> t:Type 
-          -> ProofOf(WFType (Cons y t g)    (TRefn (FTV a) 1 (Bc True)) k)
-     |  WFVar3 :: g:Env -> { a:Vname | in_env a g } -> k:Kind -> ProofOf(WFType g (TRefn (FTV a) 1 (Bc True)) k)
+          -> ProofOf(WFType (Cons y t g)  (TRefn (FTV a) 0 tt) k)
+     |  WFVar3 :: g:Env -> { a:Vname | in_env a g } -> { tt:Pred | isTrivial tt } -> k:Kind 
+          -> ProofOf(WFType g (TRefn (FTV a) 0 tt) k) 
           -> { a':Vname | a' != a && not (in_env a' g) } -> k':Kind 
-          -> ProofOf(WFType (ConsT a' k' g) (TRefn (FTV a) 1 (Bc True)) k)
+          -> ProofOf(WFType (ConsT a' k' g) (TRefn (FTV a) 0 tt) k)
      |  WFFunc :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind
           -> ProofOf(WFType g t_x k_x) -> t:Type -> k:Kind
           -> { y:Vname | not (in_env y g) && not (Set_mem y (free t)) && not (Set_mem y (freeTV t)) }
@@ -65,16 +69,14 @@ data WFType where
           -> ProofOf(WFType (ConsT a' k g) (unbind_tvT a a' t) k_t) -> ProofOf(WFType g (TPoly a k t) Star) 
      |  WFKind :: g:Env -> t:Type -> ProofOf(WFType g t Base) -> ProofOf(WFType g t Star) @-}
 
-  -- TODO: what happened to k_t in WFPoly? why Star?
-
 {-@ measure wftypSize @-}
 {-@ wftypSize :: WFType -> { v:Int | v > 0 } @-}
 wftypSize :: WFType -> Int
-wftypSize (WFBase _ _)                            = 1
-wftypSize (WFRefn g x b p_g_b p y p_yg_p_bl)      = (wftypSize p_g_b)  + 1
-wftypSize (WFVar1 _ _ _)                          = 1
-wftypSize (WFVar2 _ _ _ p_g_a _ _)                = (wftypSize p_g_a)  + 1
-wftypSize (WFVar3 _ _ _ p_g_a _ _)                = (wftypSize p_g_a)  + 1
+wftypSize (WFBase _ _ _)                          = 1
+wftypSize (WFRefn g x b _ p_g_b p y p_yg_p_bl)    = (wftypSize p_g_b)  + 1
+wftypSize (WFVar1 _ _ _ _)                        = 1
+wftypSize (WFVar2 _ _ _ _ p_g_a _ _)              = (wftypSize p_g_a)  + 1
+wftypSize (WFVar3 _ _ _ _ p_g_a _ _)              = (wftypSize p_g_a)  + 1
 wftypSize (WFFunc g x t_x _ p_g_tx _ t y p_yg_t)  = (wftypSize p_g_tx) + (wftypSize p_yg_t) + 1
 wftypSize (WFExis g x t_x _ p_g_tx _ t y p_yg_t)  = (wftypSize p_g_tx) + (wftypSize p_yg_t) + 1
 wftypSize (WFPoly _ _ _ _ _ _ p_a'g_t)            = (wftypSize p_a'g_t) + 1
@@ -97,6 +99,21 @@ isWFVar (WFVar2 {}) = True
 isWFVar (WFVar3 {}) = True
 isWFVar _           = False
 
+{-@ reflect isWFVar1 @-}
+isWFVar1 :: WFType -> Bool
+isWFVar1 (WFVar1 {}) = True
+isWFVar1 _           = False
+
+{-@ reflect isWFVar2 @-}
+isWFVar2 :: WFType -> Bool
+isWFVar2 (WFVar2 {}) = True
+isWFVar2 _           = False
+
+{-@ reflect isWFVar3 @-}
+isWFVar3 :: WFType -> Bool
+isWFVar3 (WFVar3 {}) = True
+isWFVar3 _           = False
+
 {-@ reflect isWFFunc @-}
 isWFFunc :: WFType -> Bool
 isWFFunc (WFFunc {}) = True
@@ -117,15 +134,15 @@ isWFKind :: WFType -> Bool
 isWFKind (WFKind {}) = True
 isWFKind _           = False
 
-{-@ simpleWFVar :: g:Env -> { a:Vname | in_env a g } -> { k:Kind | tv_bound_in a k g }
-                -> ProofOf(WFType g (TRefn (FTV a) 1 (Bc True)) k) @-}
-simpleWFVar :: Env -> Vname -> Kind -> WFType
-simpleWFVar g a k  = case g of
+{-@ simpleWFVar :: g:Env -> { a:Vname | in_env a g } -> { tt:Pred | isTrivial tt }
+        -> { k:Kind | tv_bound_in a k g } -> ProofOf(WFType g (TRefn (FTV a) 0 tt) k) @-}
+simpleWFVar :: Env -> Vname -> Pred -> Kind -> WFType
+simpleWFVar g a tt k  = case g of
   (Cons y s g')    -> case ( a == y ) of   -- g = Empty is impossible
-        (False)    -> WFVar2 g' a k (simpleWFVar g' a k) y s
+        (False)    -> WFVar2 g' a tt k (simpleWFVar g' a tt k) y s
   (ConsT a' k' g') -> case ( a == a' ) of
-        (True)     -> WFVar1 g' a k      
-        (False)    -> WFVar3 g' a k (simpleWFVar g' a k) a' k'
+        (True)     -> WFVar1 g' a tt k      
+        (False)    -> WFVar3 g' a tt k (simpleWFVar g' a tt k) a' k'
 
   --- Well-formedness of Environments
 
@@ -171,7 +188,7 @@ isWellFormed g (TRefn b x p) k  = case b of
     TInt     -> checkType (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool)
     (BTV a)  -> False
     (FTV a) | tv_bound_in a Base g -> checkType (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool)
-            | tv_bound_in a Star g -> k == Star && x == 1 && p == Bc True
+            | tv_bound_in a Star g -> k == Star && x == 0 && isTrivial p
             | otherwise            -> False  
   where
     y = fresh_var g
@@ -187,26 +204,27 @@ isWellFormed g (TPoly a  k'  t) k  = k == Star && isWellFormed (ConsT a' k' g) (
     a' = fresh_var g
 
 
-{-@ makeWFType :: g:Env -> { t:Type | noDefnsInRefns g t && Set_sub (free t) (binds g) && Set_sub (freeTV t) (binds g)}
-                        -> { k:Kind | isWellFormed g t k } -> ProofOf(WFType g t k) / [tsize t, ksize k] @-}
+{-@ makeWFType :: g:Env 
+        -> { t:Type | noDefnsInRefns g t && Set_sub (free t) (binds g) && Set_sub (freeTV t) (binds g)}
+        -> { k:Kind | isWellFormed g t k } -> ProofOf(WFType g t k) / [tsize t, ksize k] @-}
 makeWFType :: Env -> Type -> Kind -> WFType
-makeWFType g (TRefn b x p) Base   = WFRefn g x b pf_g_b
+makeWFType g (TRefn b x p) Base   = WFRefn g x b (Bc True) pf_g_b
                                           p y (makeHasFType (FCons y (FTBasic b) (erase_env g))
                                           (unbind x y p) (FTBasic TBool))
   where
     y      = fresh_var g
     pf_g_b = case b of 
-      TBool   -> WFBase g TBool
-      TInt    -> WFBase g TInt
-      (FTV a) | tv_bound_in a Base g            -> simpleWFVar g a Base
+      TBool   -> WFBase g TBool (Bc True)
+      TInt    -> WFBase g TInt  (Bc True)
+      (FTV a) | tv_bound_in a Base g            -> simpleWFVar g a (Bc True) Base
 makeWFType g (TRefn b x p) Star   = case b of
   TBool                          -> WFKind g (TRefn b x p) (makeWFType g (TRefn b x p) Base)
   TInt                           -> WFKind g (TRefn b x p) (makeWFType g (TRefn b x p) Base)
   (FTV a) | tv_bound_in a Base g -> WFKind g (TRefn b x p) 
-                                        (WFRefn g x b (simpleWFVar g a Base) 
+                                        (WFRefn g x b (Bc True) (simpleWFVar g a (Bc True) Base) 
                                              p y (makeHasFType (FCons y (FTBasic b) (erase_env g))
                                              (unbind x y p) (FTBasic TBool)))
-          | tv_bound_in a Star g -> simpleWFVar g a Star
+          | tv_bound_in a Star g -> simpleWFVar g a p Star
     where
       y      = fresh_var g
 makeWFType g (TFunc x t_x t) Star = WFFunc g x t_x Star (makeWFType g t_x Star) t Star y

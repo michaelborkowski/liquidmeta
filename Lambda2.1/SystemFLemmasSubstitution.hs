@@ -44,11 +44,14 @@ foo24 :: a -> Maybe a
 lem_subst_ftyp_ftvar :: FEnv -> FEnv -> Vname -> Expr -> FType -> HasFType -> WFFE
         -> Expr -> FType -> HasFType -> HasFType
 lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar1 _env z _t)
+ = undefined {- CHECKED
   = case g' of
       (FEmpty)         -> p_vx_tx   
       (FCons _z _ g'') -> FTVar1 (concatF g g'') (z ? lem_in_env_concatF (FCons x t_x g) g'' z
                                                     ? lem_in_env_concatF g g'' z) t
+-}
 lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar2 _env z _t p_z_t w t_w)
+ = undefined {- CHECKED
   = case g' of
       (FEmpty)           -> case ( x == z ) of
         (True)  -> impossible "it is"
@@ -68,7 +71,9 @@ lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar2 _env z _t p_z_t
           where
             (WFFBind _gg'' p_gg''_wf _ _ _ _) = p_env_wf
             p_z_tvx = lem_subst_ftyp g g'' x v_x t_x p_vx_tx p_gg''_wf e t p_z_t
+-}
 lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar3 _env z _t p_z_t a_ k_a)
+ = undefined {- CHECKED
   = case g' of             -- g'' = Empty so x = w and p_z_t :: HasFType(g (FV z) t)
       (FEmpty)            -> impossible "a != x" 
       (FConsT _ _ka g'')  -> case (x == z) of
@@ -90,6 +95,7 @@ lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t (FTVar3 _env z _t p_z_t
                    ? lem_in_env_concatF (FCons x t_x g) g'' a_
                    ? lem_fv_bound_in_fenv g v_x t_x p_vx_tx a_
             p_z_tvx = lem_subst_ftyp g g'' x v_x t_x p_vx_tx p_gg''_wf e t p_z_t
+-}
 
 {-@ lem_subst_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> { x:Vname | (not (in_envF x g)) && not (in_envF x g') } -> v_x:Value
@@ -108,44 +114,63 @@ lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(FTVar2 _env z _t p_z_t
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(FTVar3 _env z _t p_z_t a k)
   = lem_subst_ftyp_ftvar g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTPrm _env c) = FTPrm (concatF g g') c
-lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTAbs env_ z t_z e' t' _ _ y_ p_yenv_e'_t')
-  = undefined -- assume
-{-  = FTAbs (concatF g g') z t_z (subFV x v_x e') t' y p_yg'g_e'vx_t'
+lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTAbs env_ z t_z k_z p_env_tz e' t' y_ p_yenv_e'_t')
+ = undefined {- CHECKED
+  = FTAbs (concatF g g') z t_z k_z p_g'g_tz (subFV x v_x e') t' y p_yg'g_e'vx_t'
       where
+        p_g'g_tz       = lem_strengthen_wfft g x t_x g' t_z k_z p_env_tz 
         y              = y_ ? lem_in_env_concatF g g' y_
                             ? lem_in_env_concatF (FCons x t_x g) g' y_
                             ? lem_fv_bound_in_fenv g v_x t_x p_vx_tx y_
-        p_yg'g_e'vx_t' = lem_subst_ftyp g (FCons y t_z g') x v_x t_x p_vx_tx (unbind z y e')
-                                        t' p_yenv_e'_t' ? lem_commute_subFV_subBV1 z (FV y) x v_x e'-}
+        p_yenv_wf      = WFFBind (concatF (FCons x t_x g) g') p_env_wf y t_z k_z p_env_tz
+        p_yg'g_e'vx_t' = lem_subst_ftyp g (FCons y t_z g') x v_x t_x p_vx_tx p_yenv_wf
+                                        (unbind z y e') t' p_yenv_e'_t' 
+                                        ? lem_commute_subFV_subBV1 z (FV y) x 
+                                            (v_x ? lem_freeBV_emptyB g v_x t_x p_vx_tx) e'
+-}
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTApp env_ e' t_z t' p_env_e'_tzt' e_z p_env_ez_tz)
-  = undefined -- assume
-{-  = FTApp (concatF g g') (subFV x v_x e') t_z t' p_g'g_e'vx_tzt' (subFV x v_x e_z) p_g'g_ezvx_tz
+ = undefined {- CHECKED
+  = FTApp (concatF g g') (subFV x v_x e') t_z t' p_g'g_e'vx_tzt' (subFV x v_x e_z) p_g'g_ezvx_tz
       where
-        p_g'g_e'vx_tzt' = lem_subst_ftyp g g' x v_x t_x p_vx_tx e' (FTFunc t_z t') p_env_e'_tzt'
-        p_g'g_ezvx_tz   = lem_subst_ftyp g g' x v_x t_x p_vx_tx e_z t_z p_env_ez_tz-}
+        p_g'g_e'vx_tzt' = lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e' (FTFunc t_z t') p_env_e'_tzt'
+        p_g'g_ezvx_tz   = lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e_z t_z p_env_ez_tz
+-}
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTAbsT env_ a k e' t' a' p_a'env_e'_t')
   = undefined -- assume
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTAppT env_ e' a k t' p_env_e'_at' liqt p_env_er_liqt)
   = undefined -- assume
 lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTLet env_ e_z t_z p_env_ez_tz z e' t_ y_ p_yenv_e'_t)
-  = undefined -- assume
-{-  = FTLet (concatF g g') (subFV x v_x e_z) t_z p_g'g_ezvx_tz z (subFV x v_x e') t y p_yg'g_e'vx_t
+ = undefined {- CHECKED
+  = FTLet (concatF g g') (subFV x v_x e_z) t_z p_g'g_ezvx_tz z (subFV x v_x e') t y p_yg'g_e'vx_t
       where
         y              = y_ ? lem_in_env_concatF g g' y_
                             ? lem_in_env_concatF (FCons x t_x g) g' y_
                             ? lem_fv_bound_in_fenv g v_x t_x p_vx_tx y_
-        p_g'g_ezvx_tz  = lem_subst_ftyp g g' x v_x t_x p_vx_tx e_z t_z p_env_ez_tz
-        p_yg'g_e'vx_t  = lem_subst_ftyp g (FCons y t_z g') x v_x t_x p_vx_tx (unbind z y e')
-                                        t p_yenv_e'_t ? lem_commute_subFV_subBV1 z (FV y) x v_x e'-}
-lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTAnn env_ e' t_ liqt p_env_e'_t)
-  = undefined -- assume
-{-  = FTAnn (concatF g g') (subFV x v_x e') t 
-          (tsubFV x (v_x ? lem_fv_subset_bindsF g v_x t_x p_vx_tx )
-                  liqt ? lem_erase_tsubFV x v_x liqt
-                       ? lem_binds_cons_concatF g g' x t_x ) p_g'g_e'_t
-      where
-        p_g'g_e'_t = lem_subst_ftyp g g' x v_x t_x p_vx_tx e' t p_env_e'_t
+        p_env_tz       = lem_ftyping_wfft env_ e_z t_z p_env_ez_tz p_env_wf
+        p_yenv_wf      = WFFBind (concatF (FCons x t_x g) g') p_env_wf y t_z Star p_env_tz
+        p_g'g_ezvx_tz  = lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e_z t_z p_env_ez_tz
+        p_yg'g_e'vx_t  = lem_subst_ftyp g (FCons y t_z g') x v_x t_x p_vx_tx p_yenv_wf
+                                        (unbind z y e') t p_yenv_e'_t 
+                                        ? lem_commute_subFV_subBV1 z (FV y) x 
+                                            (v_x ? lem_freeBV_emptyB g v_x t_x p_vx_tx) e'
 -}
+lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTAnn env_ e' t_ liqt p_env_e'_t)
+  = FTAnn (concatF g g') (subFV x v_x e') t liqt' p_g'g_e'_t
+                         ? lem_binds_cons_concatF g g' x t_x 
+      where
+        liqt'      = tsubFV x (v_x ? lem_fv_subset_bindsF g v_x t_x p_vx_tx
+                                   ? lem_freeBV_emptyB g v_x t_x p_vx_tx) (liqt
+                         ? lem_erase_tsubFV x v_x liqt
+                         ? lem_binds_cons_concatF g g' x t_x 
+         ? toProof ( S.isSubsetOf (free liqt)   (vbindsF g)  && S.isSubsetOf (vbindsF g)  (bindsF g) )
+         ? toProof ( S.isSubsetOf (freeTV liqt) (tvbindsF g) && S.isSubsetOf (tvbindsF g) (bindsF g) ) )
+--                       ? toProof ( vbindsF (concatF g g')  == S.union (vbindsF g)  (vbindsF g'))
+--                       ? toProof ( tvbindsF (concatF g g') == S.union (tvbindsF g) (tvbindsF g')) )
+--                         ? toProof ( tfreeBV liqt' === S.empty )
+--                         ? toProof ( tfreeBTV liqt' === S.empty )
+        --)
+        p_g'g_e'_t = lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e' t p_env_e'_t
+
 
 {-@ lem_subst_tv_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> { a:Vname | (not (in_envF a g)) && not (in_envF a g') } -> t_a:Type -> k_a:Kind
@@ -166,7 +191,8 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTVar2 _env z _t p_z_t w 
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTVar3 _env z _t p_z_t a' k')
   = undefined -- assume
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTPrm _env c) 
-  = undefined -- assume
+  = undefined
+--  = FTPrm (concatF g (fesubFV a (erase t_a) g')) c ? lem_in_fenv_fesub g' a (erase t_a) a
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTAbs env_ z t_z e' t' _ _ y_ p_yenv_e'_t')
   = undefined -- assume
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTApp env_ e' t_z t' p_env_e'_tzt' e_z p_env_ez_tz)

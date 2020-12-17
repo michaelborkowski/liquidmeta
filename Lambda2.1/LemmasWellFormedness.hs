@@ -37,6 +37,11 @@ foo41 :: a -> Maybe a
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------
 
+{-@ lem_selfify_wf' :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> e:Expr
+        -> ProofOf(HasType g e t) -> ProofOf(WFType g (self t e k) k) @-}
+lem_selfify_wf' :: Env -> Type -> Kind -> WFType -> Expr -> HasType -> WFType
+lem_selfify_wf' g t@(TRefn b z p) k p_g_t e p_e_t = undefined -- prefer this one
+
 {-@ lem_selfify_wf :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> e:Expr
         -> ProofOf(HasFType (erase_env g) e (erase t))
         -> ProofOf(WFType g (self t e k) k) @-}

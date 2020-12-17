@@ -11,11 +11,12 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
+import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
---import PrimitivesWFType
+import PrimitivesWFType
 import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
@@ -72,16 +73,17 @@ lem_ftyping_wfft g e t (FTPrm _g c) p_wf_g
           pf_emp_tyc = lem_erase_wftype Empty (ty c) Star (lem_wf_ty c)
 --          pf_tyc_wf = lem_weaken_many_wf Empty g p_wf_g (ty c) Star (lem_wf_ty c) ? lem_empty_concatE g
 lem_ftyping_wfft g e t (FTAbs _g x t_x k_x pf_g_tx e' t' y pf_e'_t') pf_wf_g
-    = WFFTFunc g t_x k_x pf_g_tx t' Star pf_g_t'
+    = undefined
+{-    = WFFTFunc g t_x Star pf_g_tx t' Star pf_g_t'
         where
           pf_wf_yg = WFFBind g pf_wf_g y t_x k_x pf_g_tx  
           pf_yg_t' = lem_ftyping_wfft (FCons y t_x g) (unbind x y e') t' pf_e'_t' pf_wf_yg
-          pf_g_t'  = lem_strengthen_wfft g y t_x FEmpty t' Star pf_yg_t'
+          pf_g_t'  = lem_strengthen_wfft g y t_x FEmpty t' Star pf_yg_t'-}
 lem_ftyping_wfft g e t (FTApp _g e1 t_x t' p_e1_txt' e2 p_e2_tx) p_wf_g
-    = if ( k' == Star ) then p_g_t' else WFFTKind g t' p_g_t'
-        where
-          p_g_txt' = lem_ftyping_wfft g e1 (FTFunc t_x t') p_e1_txt' p_wf_g
-          (WFFTFunc _ _ _ p_g_tx _ k' p_g_t') = lem_wfftfunc_for_wf_ftfunc g t_x t' Star p_g_txt'
+    = undefined
+{-    = case (lem_ftyping_wfft g e1 (FTFunc t_x t') p_e1_txt' p_wf_g) of
+        (WFFTFunc _ _ _ p_g_tx _ _ p_g_t') -> p_g_t'
+        (_)                                -> impossible "needs lemma" -- is WFFTKind possible?-}
 lem_ftyping_wfft g e t (FTAbsT _g a k e' t' a' pf_a'g_e'_t') pf_wf_g
     = WFFTPoly g a k t' Star a' pf_a'g_t'
         where
@@ -271,6 +273,51 @@ lem_change_var_ftyp g x t_x g' e t p_e_t@(FTAbsT _g a k e' t' a' p_a'_e'_t') y
                            ? lem_ftsubFV_unbindFT a a' (FTFV a'')  t'
 -}
 
+--        -> e:Expr -> { t:FType | Set_sub (ffreeTV t) (bindsF (concatF (FConsT a k g) g')) }
+{-@ lem_change_tvar_ftyp :: g:FEnv -> { a:Vname | not (in_envF a g) } -> k:Kind 
+        -> { g':FEnv | not (in_envF a g') && Set_emp (Set_cap (bindsF g) (bindsF g')) }
+        -> ProofOf(WFFE (concatF (FConsT a k g) g')) -> e:Expr -> t:FType 
+        -> { p_e_t:HasFType | propOf p_e_t == HasFType (concatF (FConsT a k g) g') e t }
+        -> { a':Vname | not (in_envF a' g) && not (in_envF a' g') }
+        -> { pf:HasFType | propOf pf == (HasFType (concatF (FConsT a' k g) 
+                                                     (fesubFV a (FTBasic (FTV a')) g')) 
+                                           (chgFTV a a' e) (ftsubFV a (FTBasic (FTV a')) t)) && 
+                             ftypSize pf == ftypSize p_e_t } / [ftypSize p_e_t] @-}
+lem_change_tvar_ftyp :: FEnv -> Vname -> Kind -> FEnv -> WFFE -> Expr -> FType 
+                -> HasFType ->  Vname -> HasFType
+{- -}
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTBC _ b) a'
+    = FTBC (concatF (FConsT a' k g) (fesubFV a (FTBasic (FTV a')) g')) b
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTIC _ n) a'
+    = FTIC (concatF (FConsT a' k g) (fesubFV a (FTBasic (FTV a')) g')) n 
+lem_change_tvar_ftyp g a k g' pf_wf_env e t p_z_t@(FTVar1 _ z _t) a'
+    = undefined -- assume
+{-    = case g' of 
+        (FEmpty)           -> impossible ""
+        (FCons  _z _ g'')  -> FTVar1 (concatF (FConsT a' k g) (fesubFV a (FTBasic (FTV a')) g'')) z 
+                                     (ftsubFV a (FTBasic (FTV a')) t)
+        (FConsT a k g'')   -> impossible ""
+{ - -}
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTVar2 _ z _t p_z_t w t_w) a'
+    = undefined -- assume
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTVar3 _ z _t p_z_t a1 k1) a'
+    = undefined -- assume
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTPrm _ c) y
+    = undefined -- assume
+{- -}
+lem_change_tvar_ftyp g a k g' pf_wf_env e t p_e_t@(FTAbs gg z b e' b' _ _ z' p_z'_e'_b') a'
+    = undefined -- assume
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTApp _ e1 t1 t2 p_e1_t1t2 e2 p_e2_t1) a'
+    = undefined -- assume
+lem_change_tvar_ftyp g a k g' pf_wf_env e t p_e_t@(FTAbsT _g a1 k1 e' t' a1' p_a1'_e'_t') a'
+    = undefined -- assume
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTAppT _ e' a1 k1 t' p_e'_a1t' rt _) a'
+    = undefined -- assume
+lem_change_tvar_ftyp g a k g' pf_wf_env e t p_e_t@(FTLet gg e_z t_z p_ez_tz z e' t' z' p_z'_e'_t') a'
+    = undefined -- assume
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTAnn _ e' _t t' p_e'_t) a'
+    = undefined -- assume
+   
 {-@ lem_weaken_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> ProofOf(WFFE (concatF g g')) -> e:Expr -> t:FType 
         -> { p_e_t:HasFType | propOf p_e_t == HasFType (concatF g g') e t }
@@ -368,3 +415,44 @@ lem_weaken_ftyp g g' pf_wf_env e t (FTAnn _ e' _t liqt p_e'_t)  x t_x
                                            ? toProof ( tvbindsF (concatF g g') == S.union (tvbindsF g) (tvbindsF g')))
             (lem_weaken_ftyp g g' pf_wf_env e' t p_e'_t x t_x)
 -}
+
+{-@ lem_weaken_tv_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
+        -> ProofOf(WFFE (concatF g g')) -> e:Expr -> t:FType 
+        -> { p_e_t:HasFType | propOf p_e_t == HasFType (concatF g g') e t }
+        -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> k:Kind
+        -> { pf:HasFType | propOf pf == (HasFType (concatF (FConsT a k g) g') e t) }
+           / [ftypSize p_e_t] @-}
+lem_weaken_tv_ftyp :: FEnv -> FEnv -> WFFE -> Expr -> FType 
+                -> HasFType -> Vname -> Kind -> HasFType
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTBC _env b) a k 
+    = FTBC  (concatF (FConsT a k g) g') b
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTIC _env n) a k 
+    = FTIC  (concatF (FConsT a k g) g') n
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTVar1 _env x t_x) a k  = undefined -- assume
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTVar2 {}) a k  = undefined -- assume
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTVar3 {}) a k  = undefined -- assume
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTPrm _env c) a k 
+    = FTPrm (concatF (FConsT a k g) g') c
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAbs {}) a k  = undefined -- assume
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTApp {}) a k  = undefined -- assume
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAbsT {}) a k  = undefined -- assume
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAppT {}) a k  = undefined -- assume
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTLet {}) a k  = undefined -- assume
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAnn _ e' _t liqt p_e'_t) a k 
+    = undefined -- assume
+
+{-@ lem_weaken_many_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
+        -> ProofOf(WFFE (concatF g g')) -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
+        -> ProofOf(HasFType (concatF g g') e t) @-}
+lem_weaken_many_ftyp :: FEnv -> FEnv -> WFFE -> Expr -> FType -> HasFType -> HasFType
+lem_weaken_many_ftyp g FEmpty           p_g_wf    e t p_g_e_t = p_g_e_t
+lem_weaken_many_ftyp g (FCons x t_x g') p_xenv_wf e t p_g_e_t
+  = lem_weaken_ftyp (concatF g g') FEmpty p_env_wf e t p_g'g_e_t x t_x
+      where
+        (WFFBind _ p_env_wf _ _ _ _) = p_xenv_wf
+        p_g'g_e_t = lem_weaken_many_ftyp g g' p_env_wf e t p_g_e_t
+lem_weaken_many_ftyp g (FConsT a k g') p_xenv_wf e t p_g_e_t
+  = lem_weaken_tv_ftyp (concatF g g') FEmpty p_env_wf e t p_g'g_e_t a k
+      where
+        (WFFBindT _ p_env_wf _ _) = p_xenv_wf
+        p_g'g_e_t = lem_weaken_many_ftyp g g' p_env_wf e t p_g_e_t

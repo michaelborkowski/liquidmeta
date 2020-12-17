@@ -24,6 +24,7 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
+import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -36,22 +37,19 @@ foo34 :: a -> Maybe a
 ----- | METATHEORY Development: Some technical Lemmas  
 ------------------------------------------------------------------------------
 
-{-@ lem_change_var_wf :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+{-@ lem_change_var_wf_wfrefn :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
       -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) } 
-      -> ProofOf(WFEnv (concatE (Cons x t_x g) g')) -> t:Type
-      -> k:Kind -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k }
+      -> ProofOf(WFFE (concatF (FCons x (erase t_x) (erase_env g)) (erase_env g'))) -> t:Type -> k:Kind 
+      -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k && isWFRefn p_t_wf }
       -> { y:Vname | not (in_env y g) && not (in_env y g') }
       -> { pf:WFType | propOf pf == (WFType (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
              (tsubFV x (FV y) t) k) && (wftypSize pf == wftypSize p_t_wf) } / [wftypSize p_t_wf ] @-}
-lem_change_var_wf :: Env -> Vname -> Type -> Env -> WFEnv 
+lem_change_var_wf_wfrefn :: Env -> Vname -> Type -> Env -> WFFE 
                          -> Type -> Kind -> WFType -> Vname -> WFType
-lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFBase gg b) y
-    = WFBase (concatE (Cons y t_x g) (esubFV x (FV y) g')) b
-lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFRefn gg z b pf_gg_b p z' p_z'_p_b) y_ 
+lem_change_var_wf_wfrefn g x t_x g' p_env_wf t k p_t_wf@(WFRefn gg z b pf_gg_b p z' p_z'_p_b) y_ 
     = WFRefn (concatE (Cons y t_x g) (esubFV x (FV y) g')) z b pf_env'_b (subFV x (FV y) p) z''
              (lem_change_var_ftyp (erase_env g) x (erase t_x) 
-                  (FCons z'' (FTBasic b) (erase_env g')) 
-                  (lem_erase_env_wfenv (Cons z'' (TRefn b 1 (Bc True)) gg) pf_z''env_wf)
+                  (FCons z'' (FTBasic b) (erase_env g')) pf_z''env_wf
                   (unbind z z'' p) (FTBasic TBool) 
                   (p_z''_p_b {-`withProof` lem_subFV_unbind z z' (FV z'')
                        (p `withProof` lem_free_bound_in_env (concatE (Cons x t_x g) g') 
@@ -64,19 +62,59 @@ lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFRefn gg z b pf_gg_b p z' p_z
             z''           = z''_ ? lem_erase_concat (Cons x t_x g) g'
                                  ? lem_erase_concat g g'
                                  ? lem_free_bound_in_env (concatE (Cons x t_x g) g') t k p_t_wf z''_
-            pf_z'env_wf   = WFEBind gg p_env_wf z'  (TRefn b 1 (Bc True)) Base pf_gg_b
-            pf_z''env_wf  = WFEBind gg p_env_wf z'' (TRefn b 1 (Bc True)) Base pf_gg_b
+            p_gg_er_b     = lem_erase_wftype g (TRefn b 1 (Bc True)) Base pf_gg_b
+            pf_z'env_wf   = WFFBind (erase_env gg) p_env_wf z'  (FTBasic b) Base p_gg_er_b
+            pf_z''env_wf  = WFFBind (erase_env gg) p_env_wf z'' (FTBasic b) Base p_gg_er_b
             p_z''_p_b     = lem_change_var_ftyp (erase_env (concatE (Cons x t_x g) g')) 
-                                z' (FTBasic b) FEmpty 
-                                (lem_erase_env_wfenv (Cons z' (TRefn b 1 (Bc True)) gg) pf_z'env_wf)
+                                z' (FTBasic b) FEmpty pf_z'env_wf
                                 (unbind z z' p) (FTBasic TBool) p_z'_p_b z''
                                 ? lem_subFV_unbind z z' (FV z'') 
                                       (p ? lem_free_bound_in_env (concatE (Cons x t_x g) g') t k p_t_wf z')
             pf_env'_b     = lem_change_var_wf g x t_x g' p_env_wf (TRefn b 1 (Bc True)) Base pf_gg_b y
-lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFVar1 {}) y = undefined
-lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFVar2 {}) y = undefined
-lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFVar3 {}) y = undefined
-lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFFunc gg z t_z k_z p_tz_wf t' k' z' p_z'_t'_wf) y
+
+{-@ lem_change_var_wf_wfvar1 :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+      -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) } 
+      -> ProofOf(WFFE (concatF (FCons x (erase t_x) (erase_env g)) (erase_env g'))) -> t:Type -> k:Kind
+      -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k && isWFVar1 p_t_wf}
+      -> { y:Vname | not (in_env y g) && not (in_env y g') }
+      -> { pf:WFType | propOf pf == (WFType (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
+             (tsubFV x (FV y) t) k) && (wftypSize pf == wftypSize p_t_wf) } / [wftypSize p_t_wf ] @-}
+lem_change_var_wf_wfvar1 :: Env -> Vname -> Type -> Env -> WFFE 
+                         -> Type -> Kind -> WFType -> Vname -> WFType
+lem_change_var_wf_wfvar1 g x t_x g' p_env_wf t k p_t_wf@(WFVar1 {}) y = undefined
+
+{-@ lem_change_var_wf_wfvar2 :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+      -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) } 
+      -> ProofOf(WFFE (concatF (FCons x (erase t_x) (erase_env g)) (erase_env g'))) -> t:Type -> k:Kind
+      -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k && isWFVar2 p_t_wf}
+      -> { y:Vname | not (in_env y g) && not (in_env y g') }
+      -> { pf:WFType | propOf pf == (WFType (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
+             (tsubFV x (FV y) t) k) && (wftypSize pf == wftypSize p_t_wf) } / [wftypSize p_t_wf ] @-}
+lem_change_var_wf_wfvar2 :: Env -> Vname -> Type -> Env -> WFFE 
+                         -> Type -> Kind -> WFType -> Vname -> WFType
+lem_change_var_wf_wfvar2 g x t_x g' p_env_wf t k p_t_wf@(WFVar2 {}) y = undefined
+
+{-@ lem_change_var_wf_wfvar3 :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+      -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) } 
+      -> ProofOf(WFFE (concatF (FCons x (erase t_x) (erase_env g)) (erase_env g'))) -> t:Type -> k:Kind
+      -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k && isWFVar3 p_t_wf}
+      -> { y:Vname | not (in_env y g) && not (in_env y g') }
+      -> { pf:WFType | propOf pf == (WFType (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
+             (tsubFV x (FV y) t) k) && (wftypSize pf == wftypSize p_t_wf) } / [wftypSize p_t_wf ] @-}
+lem_change_var_wf_wfvar3 :: Env -> Vname -> Type -> Env -> WFFE 
+                         -> Type -> Kind -> WFType -> Vname -> WFType
+lem_change_var_wf_wfvar3 g x t_x g' p_env_wf t k p_t_wf@(WFVar3 {}) y = undefined
+
+{-@ lem_change_var_wf_wffunc :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+      -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) } 
+      -> ProofOf(WFFE (concatF (FCons x (erase t_x) (erase_env g)) (erase_env g'))) -> t:Type -> k:Kind
+      -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k && isWFFunc p_t_wf}
+      -> { y:Vname | not (in_env y g) && not (in_env y g') }
+      -> { pf:WFType | propOf pf == (WFType (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
+             (tsubFV x (FV y) t) k) && (wftypSize pf == wftypSize p_t_wf) } / [wftypSize p_t_wf ] @-}
+lem_change_var_wf_wffunc :: Env -> Vname -> Type -> Env -> WFFE 
+                         -> Type -> Kind -> WFType -> Vname -> WFType
+lem_change_var_wf_wffunc g x t_x g' p_env_wf t k p_t_wf@(WFFunc gg z t_z k_z p_tz_wf t' k' z' p_z'_t'_wf) y
     = undefined {-
     = WFFunc (concatE (Cons y t_x g) (esubFV x (FV y) g')) z (tsubFV x (FV y) t_z) k_z
              (lem_change_var_wf g x t_x g' t_z p_tz_wf y) (tsubFV x (FV y) t') k'
@@ -94,7 +132,17 @@ lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFFunc gg z t_z k_z p_tz_wf t'
                                     (z'' `withProof` lem_in_env_concat g g' z''
                                          `withProof` lem_in_env_concat (Cons x t_x g) g' z'')
 -}
-lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFExis gg z t_z k_z p_tz_wf t' k' z' p_z'_t'_wf) y
+
+{-@ lem_change_var_wf_wfexis :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+      -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) } 
+      -> ProofOf(WFFE (concatF (FCons x (erase t_x) (erase_env g)) (erase_env g'))) -> t:Type -> k:Kind
+      -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k && isWFExis p_t_wf}
+      -> { y:Vname | not (in_env y g) && not (in_env y g') }
+      -> { pf:WFType | propOf pf == (WFType (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
+             (tsubFV x (FV y) t) k) && (wftypSize pf == wftypSize p_t_wf) } / [wftypSize p_t_wf ] @-}
+lem_change_var_wf_wfexis :: Env -> Vname -> Type -> Env -> WFFE 
+                         -> Type -> Kind -> WFType -> Vname -> WFType
+lem_change_var_wf_wfexis g x t_x g' p_env_wf t k p_t_wf@(WFExis gg z t_z k_z p_tz_wf t' k' z' p_z'_t'_wf) y
     = undefined {-
     = WFExis (concatE (Cons y t_x g) (esubFV x (FV y) g')) z (tsubFV x (FV y) t_z) k_z
              (lem_change_var_wf g x t_x g' t_z p_tz_wf y) (tsubFV x (FV y) t') k'
@@ -114,11 +162,63 @@ lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFExis gg z t_z k_z p_tz_wf t'
 {-                                    (z'' `withProof` lem_in_env_concat g g' z''
                                          `withProof` lem_in_env_concat (Cons x t_x g) g' z'')-}
 -}
-lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFPoly gg a1 k1 t1 k_t1 a1' p_a1'_t1) y
+
+{-@ lem_change_var_wf_wfpoly :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+      -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) } 
+      -> ProofOf(WFFE (concatF (FCons x (erase t_x) (erase_env g)) (erase_env g'))) -> t:Type -> k:Kind
+      -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k && isWFPoly p_t_wf}
+      -> { y:Vname | not (in_env y g) && not (in_env y g') }
+      -> { pf:WFType | propOf pf == (WFType (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
+             (tsubFV x (FV y) t) k) && (wftypSize pf == wftypSize p_t_wf) } / [wftypSize p_t_wf ] @-}
+lem_change_var_wf_wfpoly :: Env -> Vname -> Type -> Env -> WFFE 
+                         -> Type -> Kind -> WFType -> Vname -> WFType
+lem_change_var_wf_wfpoly g x t_x g' p_env_wf t k p_t_wf@(WFPoly gg a1 k1 t1 k_t1 a1' p_a1'_t1) y
     = undefined
+
+{-@ lem_change_var_wf :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+      -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) } 
+      -> ProofOf(WFFE (concatF (FCons x (erase t_x) (erase_env g)) (erase_env g'))) -> t:Type -> k:Kind
+      -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k }
+      -> { y:Vname | not (in_env y g) && not (in_env y g') }
+      -> { pf:WFType | propOf pf == (WFType (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
+             (tsubFV x (FV y) t) k) && (wftypSize pf == wftypSize p_t_wf) } / [wftypSize p_t_wf ] @-}
+lem_change_var_wf :: Env -> Vname -> Type -> Env -> WFFE 
+                         -> Type -> Kind -> WFType -> Vname -> WFType
+lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFBase gg b) y
+    = WFBase (concatE (Cons y t_x g) (esubFV x (FV y) g')) b
+lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFRefn gg z b pf_gg_b p z' p_z'_p_b) y
+    = lem_change_var_wf_wfrefn g x t_x g' p_env_wf t k p_t_wf y 
+lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFVar1 {}) y 
+    = lem_change_var_wf_wfvar1 g x t_x g' p_env_wf t k p_t_wf y
+lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFVar2 {}) y 
+    = lem_change_var_wf_wfvar2 g x t_x g' p_env_wf t k p_t_wf y
+lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFVar3 {}) y 
+    = lem_change_var_wf_wfvar3 g x t_x g' p_env_wf t k p_t_wf y
+lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFFunc gg z t_z k_z p_tz_wf t' k' z' p_z'_t'_wf) y
+    = lem_change_var_wf_wffunc g x t_x g' p_env_wf t k p_t_wf y
+lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFExis gg z t_z k_z p_tz_wf t' k' z' p_z'_t'_wf) y
+    = lem_change_var_wf_wfexis g x t_x g' p_env_wf t k p_t_wf y
+lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFPoly gg a1 k1 t1 k_t1 a1' p_a1'_t1) y
+    = lem_change_var_wf_wfpoly g x t_x g' p_env_wf t k p_t_wf y
 lem_change_var_wf g x t_x g' p_env_wf t k p_t_wf@(WFKind gg _t pf_gg_t_b) y
     = undefined
 
+{-@ lem_change_var_wf' :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
+      -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) } 
+      -> ProofOf(WFEnv (concatE (Cons x t_x g) g')) -> t:Type
+      -> k:Kind -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE (Cons x t_x g) g') t k }
+      -> { y:Vname | not (in_env y g) && not (in_env y g') }
+      -> { pf:WFType | propOf pf == (WFType (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
+             (tsubFV x (FV y) t) k) && (wftypSize pf == wftypSize p_t_wf) } / [wftypSize p_t_wf ] @-}
+lem_change_var_wf' :: Env -> Vname -> Type -> Env -> WFEnv 
+                         -> Type -> Kind -> WFType -> Vname -> WFType
+lem_change_var_wf' g x t_x g' p_env_wf t k p_t_wf y
+  = lem_change_var_wf g x t_x g' p_er_env_wf t k p_t_wf y
+      where
+        p_er_env_wf = lem_erase_env_wfenv (concatE (Cons x t_x g) g') p_env_wf
+                                          ? lem_erase_concat (Cons x t_x g) g'
+
+-- ---> move to another file -->
 {-@ lem_change_tvar_wf :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
       -> { g':Env | not (in_env a g') && Set_emp (Set_cap (binds g) (binds g')) } 
       -> ProofOf(WFEnv (concatE (ConsT a k_a g) g')) -> t:Type
