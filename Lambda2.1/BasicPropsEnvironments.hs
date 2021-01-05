@@ -78,12 +78,11 @@ lem_erase_unbind_tvT a a' (TFunc   z t_z t) = () ? lem_erase_unbind_tvT a a' t_z
 lem_erase_unbind_tvT a a' (TExists z t_z t) = () ? lem_erase_unbind_tvT a a' t
 lem_erase_unbind_tvT a a' (TPoly   a1 k1 t) = () ? lem_erase_unbind_tvT a a' t
 
-{-@ lem_erase_push :: p:Pred -> t:Type -> { pf:_ | erase (push p t) == erase t } @-}
+{-@ lem_erase_push :: p:Pred -> t:UserType -> { pf:_ | erase (push p t) == erase t } @-}
 lem_erase_push :: Pred -> Type -> Proof
 lem_erase_push p (TRefn   b x   r) = ()
-lem_erase_push p (TFunc   y t_y t) = () ? lem_erase_push p t_y ? lem_erase_push p t
-lem_erase_push p (TExists y t_y t) = () ? lem_erase_push p t_y ? lem_erase_push p t
-lem_erase_push p (TPoly   a k_a t) = () ? lem_erase_push p t
+lem_erase_push p (TFunc   y t_y t) = () -- ? lem_erase_push p t_y ? lem_erase_push p t
+lem_erase_push p (TPoly   a k_a t) = () -- ? lem_erase_push p t
 
 {-@ lem_erase_tchgFTV :: a:Vname -> a1:Vname -> t:Type
         -> { pf:_ | erase (tchgFTV a a1 t) == ftsubFV a (FTBasic (FTV a1)) (erase t) } @-}
@@ -96,7 +95,7 @@ lem_erase_tchgFTV a a1 (TFunc   z t_z t) = () ? lem_erase_tchgFTV a a1 t_z
 lem_erase_tchgFTV a a1 (TExists z t_z t) = () ? lem_erase_tchgFTV a a1 t
 lem_erase_tchgFTV a a1 (TPoly   a' k' t) = () ? lem_erase_tchgFTV a a1 t
 
-{-@ lem_erase_tsubFTV :: a:Vname -> t_a:Type -> t:Type
+{-@ lem_erase_tsubFTV :: a:Vname -> t_a:UserType -> t:Type
         -> { pf:_ | erase (tsubFTV a t_a t) == ftsubFV a (erase t_a) (erase t) } @-}
 lem_erase_tsubFTV :: Vname -> Type -> Type -> Proof
 lem_erase_tsubFTV a t_a (TRefn   b   z p) = case b of
@@ -107,7 +106,7 @@ lem_erase_tsubFTV a t_a (TFunc   z t_z t) = () ? lem_erase_tsubFTV a t_a t_z
 lem_erase_tsubFTV a t_a (TExists z t_z t) = () ? lem_erase_tsubFTV a t_a t
 lem_erase_tsubFTV a t_a (TPoly   a' k' t) = () ? lem_erase_tsubFTV a t_a t
 
-{-@ lem_erase_tsubBTV :: a:Vname -> t_a:Type -> t:Type
+{-@ lem_erase_tsubBTV :: a:Vname -> t_a:UserType -> t:Type
         -> { pf:_ | erase (tsubBTV a t_a t) == ftsubBV a (erase t_a) (erase t) } @-}
 lem_erase_tsubBTV :: Vname -> Type -> Type -> Proof
 lem_erase_tsubBTV a t_a (TRefn   b   z p) = case b of
@@ -144,7 +143,9 @@ lem_empty_concatF (FCons  x t g) = () ? lem_empty_concatF g
 lem_empty_concatF (FConsT a k g) = () ? lem_empty_concatF g
 
 {-@ lem_binds_cons_concatF :: g:FEnv -> g':FEnv -> x:Vname -> t_x:FType
-      -> { pf:_ | Set_sub (bindsF (concatF g g')) (bindsF (concatF (FCons x t_x g) g')) && 
+      -> { pf:_ | Set_sub (bindsF (concatF g g'))   (bindsF (concatF (FCons x t_x g) g')) && 
+                  Set_sub (vbindsF (concatF g g'))  (vbindsF (concatF (FCons x t_x g) g')) && 
+                  Set_sub (tvbindsF (concatF g g')) (tvbindsF (concatF (FCons x t_x g) g')) && 
              bindsF (concatF (FCons x t_x g) g') == Set_cup (Set_cup (bindsF g) (Set_sng x)) (bindsF g') &&
              Set_sub (vbindsF (concatF g g')) (vbindsF (concatF (FCons x t_x g) g')) && 
              vbindsF (concatF (FCons x t_x g) g') == Set_cup (Set_cup (vbindsF g) (Set_sng x)) (vbindsF g') &&
@@ -153,6 +154,19 @@ lem_binds_cons_concatF :: FEnv -> FEnv -> Vname -> FType -> Proof
 lem_binds_cons_concatF g FEmpty          x t = ()
 lem_binds_cons_concatF g (FCons  y s g') x t = () ? lem_binds_cons_concatF g g' x t
 lem_binds_cons_concatF g (FConsT a k g') x t = () ? lem_binds_cons_concatF g g' x t
+
+{-@ lem_binds_consT_concatF :: g:FEnv -> g':FEnv -> a:Vname -> k:Kind
+      -> { pf:_ | Set_sub (bindsF (concatF g g'))   (bindsF (concatF (FConsT a k g) g')) && 
+                  Set_sub (vbindsF (concatF g g'))  (vbindsF (concatF (FConsT a k g) g')) && 
+                  Set_sub (tvbindsF (concatF g g')) (tvbindsF (concatF (FConsT a k g) g')) && 
+             bindsF (concatF (FConsT a k g) g') == Set_cup (Set_cup (bindsF g) (Set_sng a)) (bindsF g') &&
+             vbindsF (concatF (FConsT a k g) g') == Set_cup (vbindsF g) (vbindsF g') &&
+             Set_sub (tvbindsF (concatF g g')) (tvbindsF (concatF (FConsT a k g) g')) && 
+             tvbindsF (concatF (FConsT a k g) g') == Set_cup (Set_cup (tvbindsF g) (Set_sng a)) (tvbindsF g') } @-}
+lem_binds_consT_concatF :: FEnv -> FEnv -> Vname -> Kind -> Proof
+lem_binds_consT_concatF g FEmpty            a k = ()
+lem_binds_consT_concatF g (FCons  y  s  g') a k = () ? lem_binds_consT_concatF g g' a k
+lem_binds_consT_concatF g (FConsT a' k' g') a k = () ? lem_binds_consT_concatF g g' a k
 
 {-@ lem_erase_concat :: g:Env -> g':Env 
            -> { pf:_ |  erase_env (concatE g g') == concatF (erase_env g) (erase_env g') } @-}
@@ -238,21 +252,21 @@ lem_erase_echgFTV a a' (Cons  y t g)   = () ? lem_erase_echgFTV a a' g
 lem_erase_echgFTV a a' (ConsT a1 k1 g) = () ? lem_erase_echgFTV a a' g
 
 {-@ reflect esubFTV @-}
-{-@ esubFTV :: a:Vname -> t_a:Type -> g:Env 
+{-@ esubFTV :: a:Vname -> t_a:UserType -> g:Env 
       -> { g':Env | binds g == binds g' && vbinds g == vbinds g' && tvbinds g == tvbinds g' } @-}
 esubFTV :: Vname -> Type -> Env -> Env
 esubFTV a t_a Empty           = Empty
 esubFTV a t_a (Cons  z t_z g) = Cons z (tsubFTV a t_a t_z) (esubFTV a t_a g)
 esubFTV a t_a (ConsT a' k' g) = ConsT a' k'                (esubFTV a t_a g)
 
-{-@ lem_in_env_esubFTV :: g:Env -> a:Vname -> t_a:Type -> y:Vname
+{-@ lem_in_env_esubFTV :: g:Env -> a:Vname -> t_a:UserType -> y:Vname
         -> { pf:_ | in_env y (esubFTV a t_a g) <=> in_env y g } @-}
 lem_in_env_esubFTV :: Env -> Vname -> Type -> Vname -> Proof
 lem_in_env_esubFTV Empty           a t_a y = ()
 lem_in_env_esubFTV (Cons  z t_z g) a t_a y = () ? lem_in_env_esubFTV g a t_a y
 lem_in_env_esubFTV (ConsT a' k' g) a t_a y = () ? lem_in_env_esubFTV g a t_a y
 
-{-@ lem_erase_esubFTV :: a:Vname -> t_a:Type -> g:Env
+{-@ lem_erase_esubFTV :: a:Vname -> t_a:UserType -> g:Env
         -> { pf:_ | erase_env (esubFTV a t_a g) == fesubFV a (erase t_a) (erase_env g) } @-}
 lem_erase_esubFTV :: Vname -> Type -> Env -> Proof
 lem_erase_esubFTV a t_a (Empty)        = ()
@@ -267,7 +281,7 @@ lem_erase_esubFTV a t_a (ConsT a' k g) = () ? lem_erase_esubFTV a t_a g
 
 {-@ reflect fesubFV @-}
 {-@ fesubFV :: a:Vname -> t_a:FType -> g:FEnv 
-       -> { g':FEnv | Set_sub (bindsF g) (bindsF g') && Set_sub (bindsF g') (bindsF g) } @-}
+      -> { g':FEnv | bindsF g == bindsF g' && vbindsF g == vbindsF g' && tvbindsF g == tvbindsF g' } @-}
 fesubFV :: Vname -> FType -> FEnv -> FEnv
 fesubFV a t_a  FEmpty          = FEmpty
 fesubFV a t_a (FCons  z t_z g) = FCons z (ftsubFV a t_a t_z) (fesubFV a t_a g)
@@ -284,8 +298,17 @@ lem_in_fenv_fesub (FConsT a1 k  g) a t_a y = () ? lem_in_fenv_fesub g a t_a y
 -- Term vs Type Variables Bound in Environments --
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
+{-@ lem_ftvar_v_in_env :: g:FEnv -> x:Vname -> t:FType -> ProofOf(HasFType g (FV x) t)
+        -> { pf:_ | S.member x (vbindsF g) } @-}
+lem_ftvar_v_in_env :: FEnv -> Vname -> FType -> HasFType -> Proof
+lem_ftvar_v_in_env g x t (FTVar1 _  _x _t) = ()
+lem_ftvar_v_in_env g x t (FTVar2 g' _x _t p_g'_x_t y t_y)
+  = lem_ftvar_v_in_env g' x t p_g'_x_t
+lem_ftvar_v_in_env g x t (FTVar3 g' _x _t p_g'_x_t a k_a)
+  = lem_ftvar_v_in_env g' x t p_g'_x_t
+
 {-@ lem_wfvar_tv_in_env :: g:Env -> a:Vname -> { tt:Pred | isTrivial tt } -> k:Kind 
-        -> ProofOf(WFType g (TRefn (FTV a) 0 tt) k) -> { pf:_ | tv_in_env a g } @-}
+        -> ProofOf(WFType g (TRefn (FTV a) Z tt) k) -> { pf:_ | tv_in_env a g } @-}
 lem_wfvar_tv_in_env :: Env -> Vname -> Pred -> Kind -> WFType -> Proof
 lem_wfvar_tv_in_env env a _ k (WFRefn g x b tt p_g_a_base p y p_p_bl)
   = lem_wfvar_tv_in_env g a tt k p_g_a_base
@@ -297,30 +320,30 @@ lem_wfvar_tv_in_env env a _ k (WFVar3 g _a tt _k p_g_a a1 k_a1)
 lem_wfvar_tv_in_env env a tt k (WFKind g _a p_g_a_base)
   = lem_wfvar_tv_in_env g a tt Base p_g_a_base
 
-{-@ lem_wf_refn_tv_in_env :: g:Env -> a:Vname -> x:Vname -> p:Pred -> k:Kind
+{-@ lem_wf_refn_tv_in_env :: g:Env -> a:Vname -> x:RVname -> p:Pred -> k:Kind
         -> ProofOf(WFType g (TRefn (FTV a) x p) k) -> { pf:_ | tv_in_env a g } @-}
-lem_wf_refn_tv_in_env :: Env -> Vname -> Vname -> Pred -> Kind -> WFType -> Proof
+lem_wf_refn_tv_in_env :: Env -> Vname -> RVname -> Pred -> Kind -> WFType -> Proof
 lem_wf_refn_tv_in_env g a x p k' (WFRefn _g _x b tt p_g_a_base _p y p_p_bl)
-  = lem_wf_refn_tv_in_env g a 0 tt Base p_g_a_base
+  = lem_wf_refn_tv_in_env g a Z tt Base p_g_a_base
 lem_wf_refn_tv_in_env g a x p k' (WFVar1 _g _a _ _k) = ()
 lem_wf_refn_tv_in_env g a x p k' (WFVar2 g' a_ tt k_ p_g_a  y t_y)
-  = lem_wf_refn_tv_in_env g' a 0 tt k' p_g_a 
+  = lem_wf_refn_tv_in_env g' a Z tt k' p_g_a 
 lem_wf_refn_tv_in_env g a x p k' (WFVar3 g' a_ tt k_ p_g_a  a1 k_a1)
-  = lem_wf_refn_tv_in_env g' a 0 tt k' p_g_a
+  = lem_wf_refn_tv_in_env g' a Z tt k' p_g_a
 lem_wf_refn_tv_in_env g a x p k' (WFKind _g _a p_g_a_base)
   =  lem_wf_refn_tv_in_env g a x p Base p_g_a_base
 
-{-@ lem_wf_refn_tv_star :: g:Env -> { a:Vname | tv_bound_in a Star g } -> x:Vname -> p:Pred
+{-@ lem_wf_refn_tv_star :: g:Env -> { a:Vname | tv_bound_in a Star g } -> x:RVname -> p:Pred
         -> k:Kind -> ProofOf(WFType g (TRefn (FTV a) x p) k)
-        -> { pf:_ | x == 0 && isTrivial p && k == Star } @-}
-lem_wf_refn_tv_star :: Env -> Vname -> Vname -> Expr -> Kind -> WFType -> Proof
+        -> { pf:_ | x == Z && isTrivial p && k == Star } @-}
+lem_wf_refn_tv_star :: Env -> Vname -> RVname -> Expr -> Kind -> WFType -> Proof
 lem_wf_refn_tv_star g a x p k (WFRefn _g _x b tt p_g_a_base _p y p_p_bl)
-  = impossible ("by lemma" ? lem_wf_refn_tv_star g a 0 tt Base p_g_a_base)
+  = impossible ("by lemma" ? lem_wf_refn_tv_star g a Z tt Base p_g_a_base)
 lem_wf_refn_tv_star g a x p k (WFVar1 _g _a _ _k) = ()
 lem_wf_refn_tv_star g a x p k (WFVar2 g' a_ tt k_ p_g_a  y t_y)
-  = lem_wf_refn_tv_star g' a 0 tt  k p_g_a
+  = lem_wf_refn_tv_star g' a Z tt  k p_g_a
 lem_wf_refn_tv_star g a x p k (WFVar3 g' a_ tt k_ p_g_a  a1 k_a1)
-  = lem_wf_refn_tv_star g' a 0 tt  k p_g_a
+  = lem_wf_refn_tv_star g' a Z tt  k p_g_a
 lem_wf_refn_tv_star g a x p k (WFKind _g _a p_g_a_base)
   = impossible ("by lemma" ? lem_wf_refn_tv_star g a x p Base p_g_a_base)
 
@@ -402,14 +425,14 @@ lem_fv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t)
                 -> { x:Vname | not (in_env x g) }
                 -> { pf:_ | not (Set_mem x (free t)) && not (Set_mem x (freeTV t)) } @-}
 lem_free_bound_in_env :: Env -> Type -> Kind -> WFType -> Vname -> Proof
-lem_free_bound_in_env g t k (WFBase _ b _) x = case t of
-  (TRefn _ _ _) -> () ? toProof ( ftv (Bc True) === S.empty )
+lem_free_bound_in_env g t k (WFBase _ b tt) x = case t of
+  (TRefn _ _ _) -> () ? lem_trivial_nofv tt
 lem_free_bound_in_env g t k (WFRefn _g z b tt p_g_b p z' p_z'_p_bl) x = case t of
   (TRefn _ _ _) -> case ( x == z' ) of
-        (True)  -> () ? lem_free_bound_in_env g (TRefn b 0 tt) Base p_g_b x
+        (True)  -> () ? lem_free_bound_in_env g (TRefn b Z tt) Base p_g_b x
         (False) -> () ? lem_fv_bound_in_fenv (FCons z' (FTBasic b) (erase_env g)) 
-                                             (unbind z z' p) (FTBasic TBool) p_z'_p_bl x
-                      ? lem_free_bound_in_env g (TRefn b 0 tt) Base p_g_b x
+                                             (unbind 0 z' p) (FTBasic TBool) p_z'_p_bl x
+                      ? lem_free_bound_in_env g (TRefn b Z tt) Base p_g_b x
 lem_free_bound_in_env g t k (WFVar1 g' a tt _k) x = case t of
   (TRefn b _ _) -> case b of
     (FTV _) ->  () ? lem_trivial_nofv tt
@@ -436,20 +459,20 @@ lem_free_bound_in_env g t k (WFKind _g _t p_t_B) x = () ? lem_free_bound_in_env 
 {-@ lem_free_subset_binds :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
                   -> { pf:_ | Set_sub (Set_cup (free t) (freeTV t)) (binds g) } @-}
 lem_free_subset_binds :: Env -> Type -> Kind -> WFType -> Proof 
-lem_free_subset_binds g t k (WFBase _ b _) = case t of
+lem_free_subset_binds g t k (WFBase _ b tt) = case t of
   (TRefn _ _ _) -> case b of
-    TBool -> ()
-    TInt  -> ()
+    TBool -> () ? lem_trivial_nofv tt
+    TInt  -> () ? lem_trivial_nofv tt
 lem_free_subset_binds g t k (WFRefn _g z b tt p_g_b p z' p_z'_p_bl) = case t of 
   (TRefn _ _ _) -> case b of
-    TBool    -> () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+    TBool    -> () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind 0 z' p) 
                                 (FTBasic TBool) p_z'_p_bl
-    TInt     -> () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+    TInt     -> () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind 0 z' p) 
                                 (FTBasic TBool) p_z'_p_bl
-    (FTV a)  -> () ? lem_free_subset_binds g (TRefn (FTV a) 0 tt) Base p_g_b 
-                   ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+    (FTV a)  -> () ? lem_free_subset_binds g (TRefn (FTV a) Z tt) Base p_g_b 
+                   ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind 0 z' p) 
                                 (FTBasic TBool) p_z'_p_bl
-    (BTV a)  -> () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind z z' p) 
+    (BTV a)  -> () ? lem_fv_subset_bindsF (FCons z' (FTBasic b) (erase_env g)) (unbind 0 z' p) 
                                 (FTBasic TBool) p_z'_p_bl
 lem_free_subset_binds g t k (WFVar1 g' a tt _k) = case t of 
   (TRefn b _ _) -> case b of
@@ -503,7 +526,7 @@ lem_ffreeTV_bound_in_fenv g t k (WFFTKind _g _t p_t_B) a
     = () ? lem_ffreeTV_bound_in_fenv g t Base p_t_B a
 
 {-@ lem_ffreeTV_subset_bindsF :: g:FEnv -> t:FType -> k:Kind -> ProofOf(WFFT g t k) 
-                  -> { pf:_ | Set_sub (ffreeTV t) (bindsF g) } @-}
+                  -> { pf:_ | Set_sub (ffreeTV t) (tvbindsF g) && Set_sub (ffreeTV t) (bindsF g) } @-}
 lem_ffreeTV_subset_bindsF :: FEnv -> FType -> Kind -> WFFT -> Proof 
 lem_ffreeTV_subset_bindsF g t k (WFFTBasic _g b)  = case t of
   (FTBasic _) -> ()

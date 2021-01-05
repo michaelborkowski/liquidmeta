@@ -13,18 +13,19 @@
   - file: BasicPropsEnvironments.hs -- DONE
   - file: BasicPropsWellFormedness.hs -- DONE
   - file: BasicPropsDenotes.hs -- some TODO
-  - file: Entailments.hs -- some cases to fill in
+  - file: Implications.hs -- split this off and update from Lambda1.1
+          Entailments.hs -- some cases to fill in
 
 ### System F Lemmas (not covered in pen and paper)
   - System F Lemma 1 (Primitives)  -- DONE
   - file: PrimitvesFTyping.hs -- DONE
 
-  - System F Lemma 4 (change of vars, weakening) -- many cases todo
-  - file: SystemFLemmasWellFormed.hs -- many cases TODO
-  - file: SystemFLemmasFTyping.hs -- many cases TODO
+  - System F Lemma 4 (change of vars, weakening) -- ~~many cases todo~~ DONE
+  - ~~file: SystemFLemmasWellFormed.hs -- many cases TODO~~ DONE
+  - ~~file: SystemFLemmasFTyping.hs -- many cases TODO~~ DONE
 
-  - System F Lemma 13 (Substitution) -- many cases to do
-  - file: SystemFSubstitution.hs -- many cases TODO
+  - ~~System F Lemma 13 (Substitution) -- many cases to do~~ DONE
+  - ~~file: SystemFSubstitution.hs -- many cases TODO~~ DONE
 
   - System F Thm 17-18 (Progress & Preservation)	DONE
   - file: SystemFSoundness.hs			DONE

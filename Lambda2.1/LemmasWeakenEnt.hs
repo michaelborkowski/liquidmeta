@@ -56,7 +56,7 @@ lem_weaken_ent g g' p_env_wf p (EntPred env_ _p evals_func) x t_x
 {-@ lem_weaken_tv_ent :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
         -> ProofOf(WFEnv (concatE g g')) -> { p:Pred | Set_sub (fv p) (binds (concatE g g')) }
         -> { ent_g_p:Entails | propOf ent_g_p == Entails (concatE g g') p } 
-        -> { a:Vname | not (in_env a g) && not (in_env a g') && not (Set_mem a (fv p)) } -> k_a:Kind
+        -> { a:Vname | not (in_env a g) && not (in_env a g') && not (Set_mem a (ftv p)) } -> k_a:Kind
         -> ProofOf(Entails (concatE (ConsT a k_a g) g') p) @-}
 lem_weaken_tv_ent :: Env -> Env -> WFEnv -> Pred -> Entails -> Vname -> Kind -> Entails
 lem_weaken_tv_ent g g' p_env_wf p (EntPred env_ _p evals_func) a k_a

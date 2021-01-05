@@ -38,7 +38,7 @@ foo19 x = Just x
 -- Lemma. Well-Formedness of Constant Types
 {-@ lem_wf_tybc :: g:Env -> b:Bool -> ProofOf(WFType g (tybc b) Base) @-}
 lem_wf_tybc :: Env -> Bool -> WFType
-lem_wf_tybc g b = WFRefn g 0 TBool (Bc True) (WFBase g TBool (Bc True)) pred y pf_pr_bool
+lem_wf_tybc g b = WFRefn g Z TBool (Bc True) (WFBase g TBool (Bc True)) pred y pf_pr_bool
   where
      pred       = (App (App (Prim Eqv) (BV 0)) (Bc b)) 
      y          = (fresh_var g)
@@ -51,7 +51,7 @@ lem_wf_tybc g b = WFRefn g 0 TBool (Bc True) (WFBase g TBool (Bc True)) pred y p
 
 {-@ lem_wf_tyic :: g:Env -> n:Int -> ProofOf(WFType g (tyic n) Base) @-}
 lem_wf_tyic :: Env -> Int -> WFType
-lem_wf_tyic g n = WFRefn g 0 TInt (Bc True) (WFBase g TInt (Bc True)) pred y pf_pr_bool
+lem_wf_tyic g n = WFRefn g Z TInt (Bc True) (WFBase g TInt (Bc True)) pred y pf_pr_bool
   where
     pred        = (App (App (Prim Eq) (BV 0)) (Ic n))
     y           = fresh_var g

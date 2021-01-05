@@ -21,12 +21,12 @@ import BasicPropsEnvironments
 foo21 :: a -> Maybe a
 foo21 x = Just x
 
-{-@ lem_btv_not_wf :: g:Env -> a:Vname -> x:Vname -> p:Pred -> k:Kind
+{-@ lem_btv_not_wf :: g:Env -> a:Vname -> x:RVname -> p:Pred -> k:Kind
                         -> ProofOf(WFType g (TRefn (BTV a) x p) k) -> { pf:_ | false } @-}
-lem_btv_not_wf :: Env -> Vname -> Vname -> Pred -> Kind -> WFType -> Proof
+lem_btv_not_wf :: Env -> Vname -> RVname -> Pred -> Kind -> WFType -> Proof
 lem_btv_not_wf g a x p k (WFBase {}) = ()
 lem_btv_not_wf g a x p k (WFRefn _ _ _ tt pf_g_b _ _ _) 
-  = () ? lem_btv_not_wf g a 0 tt Base pf_g_b
+  = () ? lem_btv_not_wf g a Z tt Base pf_g_b
 lem_btv_not_wf g a x p k (WFVar1 {}) = ()
 lem_btv_not_wf g a x p k (WFVar2 {}) = ()
 lem_btv_not_wf g a x p k (WFVar3 {}) = ()
@@ -37,7 +37,7 @@ lem_btv_not_wf g a x p k (WFKind _ _ pf_g_t_base)
   = () ? lem_btv_not_wf g a x p Base pf_g_t_base
 
 {-@ lem_wf_ftv_kind :: g:Env -> a:Vname -> { tt:Pred | isTrivial tt } -> k:Kind 
-       -> ProofOf(WFType g (TRefn (FTV a) 0 tt) k)
+       -> ProofOf(WFType g (TRefn (FTV a) Z tt) k)
        -> { pf:_ | k == Star || kind_for_tv a g == Base } @-}
 lem_wf_ftv_kind :: Env -> Vname -> Pred -> Kind -> WFType -> Proof
 lem_wf_ftv_kind g a tt k p_g_a = case k of 
@@ -75,12 +75,12 @@ lem_kind_for_tvF g FEmpty            a k_a = ()
 lem_kind_for_tvF g (FCons  x t_x g') a k_a = () ? lem_kind_for_tvF g g' a k_a
 lem_kind_for_tvF g (FConsT a' k' g') a k_a = () ? lem_kind_for_tvF g g' a k_a
 
-{-@ lem_ftyp_for_wf_trefn :: g:Env -> b:Basic -> x:Vname -> p:Pred -> k:Kind
+{-@ lem_ftyp_for_wf_trefn :: g:Env -> b:Basic -> x:RVname -> p:Pred -> k:Kind
         -> { p_g_t : WFType | propOf p_g_t  == WFType g (TRefn b x p) k }
         -> (Vname,HasFType)<{\y pf_p_bl -> not (in_env y g) && not (Set_mem y (fv p)) && 
                                                                not (Set_mem y (ftv p)) &&
-              propOf pf_p_bl == HasFType (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool)}> @-}
-lem_ftyp_for_wf_trefn :: Env -> Basic -> Vname -> Expr -> Kind -> WFType -> (Vname,HasFType)
+              propOf pf_p_bl == HasFType (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p) (FTBasic TBool)}> @-}
+lem_ftyp_for_wf_trefn :: Env -> Basic -> RVname -> Expr -> Kind -> WFType -> (Vname,HasFType)
 lem_ftyp_for_wf_trefn g b x p k p_g_t@(WFBase _g _b tt) = (y, pf_yg_p_bl)
       where
         y          = fresh_var g
@@ -88,7 +88,7 @@ lem_ftyp_for_wf_trefn g b x p k p_g_t@(WFBase _g _b tt) = (y, pf_yg_p_bl)
         pf_yg_p_bl = makeHasFType g' (tt ? lem_trivial_nodefns  tt
                                          ? lem_trivial_check g' tt) (FTBasic TBool)
                                   ? lem_trivial_nofv tt
-                                  ? lem_subBV_notin x (FV y) (tt ? lem_trivial_nobv tt)
+                                  ? lem_subBV_notin 0 (FV y) (tt ? lem_trivial_nobv tt)
 lem_ftyp_for_wf_trefn g b x p k p_g_t@(WFRefn _ _ _ _ _ _p y pf_yg_p_bl)    
       = (y, pf_yg_p_bl)
 lem_ftyp_for_wf_trefn g b x p k p_g_t@(WFVar1 g' a tt _k) = (y, pf_yg_p_bl)
@@ -99,7 +99,7 @@ lem_ftyp_for_wf_trefn g b x p k p_g_t@(WFVar1 g' a tt _k) = (y, pf_yg_p_bl)
         pf_yg_p_bl = makeHasFType g' (tt ? lem_trivial_nodefns  tt
                                          ? lem_trivial_check g' tt) (FTBasic TBool)
                                   ? lem_trivial_nofv tt
-                                  ? lem_subBV_notin x (FV y) (tt ? lem_trivial_nobv tt)
+                                  ? lem_subBV_notin 0 (FV y) (tt ? lem_trivial_nobv tt)
 lem_ftyp_for_wf_trefn g b x p k p_g_t@(WFVar2 _ _ tt _ p_g_a _ _) = (y, pf_yg_p_bl)
       where
         y          = fresh_var g
@@ -107,7 +107,7 @@ lem_ftyp_for_wf_trefn g b x p k p_g_t@(WFVar2 _ _ tt _ p_g_a _ _) = (y, pf_yg_p_
         pf_yg_p_bl = makeHasFType g' (tt ? lem_trivial_nodefns  tt
                                          ? lem_trivial_check g' tt) (FTBasic TBool)
                                   ? lem_trivial_nofv tt
-                                  ? lem_subBV_notin x (FV y) (tt ? lem_trivial_nobv tt)
+                                  ? lem_subBV_notin 0 (FV y) (tt ? lem_trivial_nobv tt)
 lem_ftyp_for_wf_trefn g b x p k p_g_t@(WFVar3 _ _ tt _ p_g_a _ _) = (y, pf_yg_p_bl)
       where
         y          = fresh_var g
@@ -115,7 +115,7 @@ lem_ftyp_for_wf_trefn g b x p k p_g_t@(WFVar3 _ _ tt _ p_g_a _ _) = (y, pf_yg_p_
         pf_yg_p_bl = makeHasFType g' (tt ? lem_trivial_nodefns  tt
                                          ? lem_trivial_check g' tt) (FTBasic TBool)
                                   ? lem_trivial_nofv tt
-                                  ? lem_subBV_notin x (FV y) (tt ? lem_trivial_nobv tt)
+                                  ? lem_subBV_notin 0 (FV y) (tt ? lem_trivial_nobv tt)
 lem_ftyp_for_wf_trefn g b x p k (WFKind _g _t p_g_t_base) 
       = lem_ftyp_for_wf_trefn g b x p Base p_g_t_base
 
@@ -203,6 +203,25 @@ lem_wf_ftfunc_star g t_x t (WFFTFunc {}) = ()
 lem_wf_ftfunc_star g t_x t (WFFTPoly {}) = ()
 lem_wf_ftfunc_star g t_x t (WFFTKind _g txt p_g_txt_base) = ()
 
+{-@ lem_wfftpoly_for_wf_ftpoly :: g:FEnv -> a:Vname -> k:Kind -> t:FType 
+        -> { p_g_at : WFFT | propOf p_g_at  == WFFT g (FTPoly a k t) Star }
+        -> { p_g_at': WFFT | propOf p_g_at' == WFFT g (FTPoly a k t) Star && isWFFTPoly p_g_at' } @-}
+lem_wfftpoly_for_wf_ftpoly :: FEnv -> Vname -> Kind -> FType -> WFFT -> WFFT
+lem_wfftpoly_for_wf_ftpoly g a k t p_g_at@(WFFTPoly {})           = p_g_at
+lem_wfftpoly_for_wf_ftpoly g a k t (WFFTKind _g _at p_g_at_base) 
+  = impossible ("by lemma" ? lem_wf_ftpoly_star g a k t p_g_at_base)
+
+{-@ lem_wf_ftpoly_star :: g:FEnv -> a:Vname -> k:Kind -> t:FType
+        -> ProofOf(WFFT g (FTPoly a k t) Base) -> { pf:_ | false } @-}
+lem_wf_ftpoly_star :: FEnv -> Vname -> Kind -> FType -> WFFT -> Proof
+lem_wf_ftpoly_star g a k t (WFFTBasic {}) = ()
+lem_wf_ftpoly_star g a k t (WFFTFV1 {}) = ()
+lem_wf_ftpoly_star g a k t (WFFTFV2 {}) = ()
+lem_wf_ftpoly_star g a k t (WFFTFV3 {}) = ()
+lem_wf_ftpoly_star g a k t (WFFTFunc {}) = ()
+lem_wf_ftpoly_star g a k t (WFFTPoly {}) = ()
+lem_wf_ftpoly_star g a k t (WFFTKind {}) = ()
+
 ------------------------------------------------------------------------------------------
 -- | LEMMAS relating REFINEMENT ERASURE and WELL FORMEDNESS notions
 ------------------------------------------------------------------------------------------
@@ -267,16 +286,16 @@ lem_erase_wftype :: Env -> Type -> Kind -> WFType -> WFFT
 lem_erase_wftype _ _ _ (WFBase g b _)                = WFFTBasic (erase_env g) b
 lem_erase_wftype _ t k pf_g_t@(WFRefn g x b tt pf_g_b p y pf_yg_p)  
   = case b of
-      (FTV a)  -> lem_erase_wftype g (TRefn (FTV a) 0 tt) Base pf_g_b
+      (FTV a)  -> lem_erase_wftype g (TRefn (FTV a) Z tt) Base pf_g_b
       (BTV a)  -> impossible ("by lemma" ? lem_btv_not_wf g a x p k pf_g_t)
       TBool    -> WFFTBasic (erase_env g) TBool
       TInt     -> WFFTBasic (erase_env g) TInt
 lem_erase_wftype _ t _ (WFVar1 g a _ k)              = WFFTFV1 (erase_env g) a k
 lem_erase_wftype _ t _ (WFVar2 g a tt k pf_g_a y t_y)
-  = WFFTFV2 (erase_env g) a k (lem_erase_wftype g (TRefn (FTV a) 0 tt) k pf_g_a) 
+  = WFFTFV2 (erase_env g) a k (lem_erase_wftype g (TRefn (FTV a) Z tt) k pf_g_a) 
             y (erase t_y)
 lem_erase_wftype _ t _ (WFVar3 g a tt k pf_g_a a' k')
-  = WFFTFV3 (erase_env g) a k (lem_erase_wftype g (TRefn (FTV a) 0 tt) k pf_g_a) a' k'
+  = WFFTFV3 (erase_env g) a k (lem_erase_wftype g (TRefn (FTV a) Z tt) k pf_g_a) a' k'
 lem_erase_wftype _ _ _ (WFFunc g x t_x k_x pf_g_tx t k y pf_yg_t)
   = WFFTFunc (erase_env g) (erase t_x) k_x (lem_erase_wftype g t_x k_x pf_g_tx)
                            (erase t) k pf_erase_g_t
@@ -387,11 +406,11 @@ lem_tfreeBV_empty g t k (WFBase _g b _) {-p_g_wf-} = case t of
 lem_tfreeBV_empty g t k p_g_t@(WFRefn _g x b tt p_g_b p y p_yg_p_bl) {-p_g_wf-} = case t of
   (TRefn _ _ _) -> case b of 
     (BTV a) -> impossible ("by lemma" ? lem_btv_not_wf g a x p k p_g_t)
-    _       -> () ? lem_freeBV_unbind_empty x y (p ? pf_unbinds_empty)
+    _       -> () ? lem_freeBV_unbind_empty 0 y (p ? pf_unbinds_empty)
       where
-        {-@ pf_unbinds_empty :: { pf:_ | Set_emp (freeBV (unbind x y p)) 
-                                      && Set_emp (freeBTV (unbind x y p)) } @-}
-        pf_unbinds_empty = lem_freeBV_emptyB (FCons y (FTBasic b) (erase_env g)) (unbind x y p) 
+        {-@ pf_unbinds_empty :: { pf:_ | Set_emp (freeBV (unbind 0 y p)) 
+                                      && Set_emp (freeBTV (unbind 0 y p)) } @-}
+        pf_unbinds_empty = lem_freeBV_emptyB (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p) 
                                              (FTBasic TBool) p_yg_p_bl
 lem_tfreeBV_empty g t k p_g_t@(WFVar1 _ a _ _k) = case t of 
   (TRefn (FTV _) _ tt) -> () ? lem_trivial_nobv tt

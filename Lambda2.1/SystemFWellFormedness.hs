@@ -73,6 +73,11 @@ isWFFTFunc :: WFFT -> Bool
 isWFFTFunc (WFFTFunc {}) = True
 isWFFTFunc _             = False
 
+{-@ reflect isWFFTPoly @-}
+isWFFTPoly :: WFFT -> Bool
+isWFFTPoly (WFFTPoly {}) = True
+isWFFTPoly _             = False
+
 {-@ simpleWFFTFV :: g:FEnv -> { a:Vname | in_envF a g } -> { k:Kind | tv_bound_inF a k g }
                 -> ProofOf(WFFT g (FTBasic (FTV a)) k) @-}
 simpleWFFTFV :: FEnv -> Vname -> Kind -> WFFT

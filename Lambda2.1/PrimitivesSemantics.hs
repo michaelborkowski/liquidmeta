@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -28,9 +27,9 @@ import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 
-{-@ reflect foo33 @-}
-foo33 x = Just x
-foo33 :: a -> Maybe a
+{-@ reflect foo30 @-}
+foo30 x = Just x
+foo30 :: a -> Maybe a
 
 -----------------------------------------------------------------------
 -- | BUILT-IN PRIMITIVES : Big-Step-style SEMANTICS 
@@ -60,7 +59,7 @@ intLeq n m = n <= m
 intEq :: Int -> Int -> Bool
 intEq n m = n == m
 
-{-@ lemma_reduce_to_delta :: c:Prim -> p:Expr -> v:Value -> ProofOf(EvalsTo p v)
+{-@ lemma_reduce_to_delta :: c:Prim -> p:Pred -> { v:PredValue | isCompat c v } -> ProofOf(EvalsTo p v)
                           -> ProofOf(EvalsTo (App (Prim c) p) (delta c v)) @-}
 lemma_reduce_to_delta :: Prim -> Expr -> Expr -> EvalsTo -> EvalsTo
 lemma_reduce_to_delta c p v ev_p_v = ev_appcp
@@ -69,6 +68,20 @@ lemma_reduce_to_delta c p v ev_p_v = ev_appcp
     st_appcp_2 = EPrim c v
     ev_appcp   = lemma_add_step_after (App (Prim c) p) (App (Prim c) v) ev_appcp_1 (delta c v) st_appcp_2
   
+{-@ lemma_conj_semantics :: p:Expr -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
+                         -> q:Expr -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
+                         -> ProofOf(EvalsTo (App (App (Prim Conj) p) q) (Bc (blAnd b b'))) @-}
+lemma_conj_semantics :: Expr -> Bool -> EvalsTo -> Expr -> Bool -> EvalsTo -> EvalsTo
+lemma_conj_semantics p b ev_p_b q b' ev_q_b' = ev_andpq
+  where
+    ev_andp    = lemma_reduce_to_delta Conj p (Bc b) ev_p_b
+    ev_andpq_1 = lemma_app_both_many (App (Prim Conj) p) (delta Conj (Bc b)) ev_andp q (Bc b') ev_q_b'
+    {-@ st_andpq_2 :: ProofOf(Step (App (delta Conj (Bc b)) (Bc b')) (Bc (blAnd b b'))) @-}
+    st_andpq_2 = if b then ( EAppAbs 1 (BV 1)     (Bc b') )
+                      else ( EAppAbs 1 (Bc False) (Bc b') )
+    ev_andpq   = lemma_add_step_after (App (App (Prim Conj) p) q) (App (delta Conj (Bc b)) (Bc b'))
+                                      ev_andpq_1 (Bc (b && b')) st_andpq_2
+
 {-@ lemma_and_semantics :: p:Expr -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
                         -> q:Expr -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
                         -> ProofOf(EvalsTo (App (App (Prim And) p) q) (Bc (blAnd b b'))) @-}
@@ -176,7 +189,7 @@ lemma_semantics_refn_and b b' b'' = reduce_eqv
                                      (App (App (Prim And) (Bc b)) (Bc b')) (blAnd b b') reduce_and
 
 {-@ reduce_and_tt :: b:Bool -> b':Bool -> { pf:_ | propOf pf == 
-      EvalsTo (subBV 3 (Bc (blAnd b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred And)))) (Bc True) } @-}
+      EvalsTo (subBV 0 (Bc (blAnd b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred And)))) (Bc True) } @-}
 reduce_and_tt :: Bool -> Bool -> EvalsTo
 reduce_and_tt b b' = lemma_semantics_refn_and b b' (b && b') -- (Bc b) b (Refl (Bc b)) (Bc b') b' (Refl (Bc b'))
                                              -- (Bc (blAnd b b')) (b && b') (Refl (Bc (b && b'))) 
@@ -192,7 +205,7 @@ lemma_semantics_refn_or b b' b'' = reduce_eqv
                                      (App (App (Prim Or) (Bc b)) (Bc b')) (blOr b b') reduce_or
 
 {-@ reduce_or_tt :: b:Bool -> b':Bool -> { pf:_ | propOf pf == 
-      EvalsTo (subBV 3 (Bc (blOr b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred Or)))) (Bc True) } @-}
+      EvalsTo (subBV 0 (Bc (blOr b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred Or)))) (Bc True) } @-}
 reduce_or_tt :: Bool -> Bool -> EvalsTo
 reduce_or_tt b b' = lemma_semantics_refn_or b b' (b || b')
 
@@ -206,7 +219,7 @@ lemma_semantics_refn_not b b' = reduce_eqv
     reduce_eqv = lemma_eqv_semantics (Bc b') b' (Refl (Bc b')) (App (Prim Not) (Bc b)) (blNot b) reduce_not
 
 {-@ reduce_not_tt :: b:Bool -> { pf:_ | propOf pf ==
-      EvalsTo (subBV 3 (Bc (blNot b)) (subBV 2 (Bc b) (refn_pred Not))) (Bc True) } @-}
+      EvalsTo (subBV 0 (Bc (blNot b)) (subBV 2 (Bc b) (refn_pred Not))) (Bc True) } @-}
 reduce_not_tt :: Bool -> EvalsTo
 reduce_not_tt b = lemma_semantics_refn_not b (blNot b)
 
@@ -232,7 +245,7 @@ lemma_semantics_refn_eqv b b' b'' = reduce_eqv
                            (blIff b b') reduce_or
 
 {-@ reduce_eqv_tt :: b:Bool -> b':Bool -> { pf:_ | propOf pf ==
-      EvalsTo (subBV 3 (Bc (blIff b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred Eqv)))) (Bc True) } @-}
+      EvalsTo (subBV 0 (Bc (blIff b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred Eqv)))) (Bc True) } @-}
 reduce_eqv_tt :: Bool -> Bool -> EvalsTo
 reduce_eqv_tt b b' = lemma_semantics_refn_eqv b b' (blIff b b')
 
@@ -247,12 +260,12 @@ lemma_semantics_refn_leq n m b'' = reduce_eqv
                                      (App (App (Prim Leq) (Ic n)) (Ic m)) (intLeq n m) reduce_leq
   
 {-@ reduce_leq_tt :: n:Int -> m:Int -> { pf:_ | propOf pf == 
-      EvalsTo (subBV 3 (Bc (intLeq n m)) (subBV 2 (Ic m) (subBV 1 (Ic n) (refn_pred Leq)))) (Bc True) } @-}
+      EvalsTo (subBV 0 (Bc (intLeq n m)) (subBV 2 (Ic m) (subBV 1 (Ic n) (refn_pred Leq)))) (Bc True) } @-}
 reduce_leq_tt :: Int -> Int -> EvalsTo
 reduce_leq_tt n m = lemma_semantics_refn_leq n m (intLeq n m)
 
 {-@ reduce_leqn_tt :: n:Int -> m:Int -> { pf:_ | propOf pf ==
-      EvalsTo (subBV 3 (Bc (intLeq n m)) (subBV 2 (Ic m) (refn_pred (Leqn n)))) (Bc True) } @-}
+      EvalsTo (subBV 0 (Bc (intLeq n m)) (subBV 2 (Ic m) (refn_pred (Leqn n)))) (Bc True) } @-}
 reduce_leqn_tt :: Int -> Int -> EvalsTo
 reduce_leqn_tt n m = reduce_leq_tt n m
 
@@ -267,12 +280,12 @@ lemma_semantics_refn_eq n m b'' = reduce_eqv
                                      (App (App (Prim Eq) (Ic n)) (Ic m)) (intEq n m) reduce_eq
   
 {-@ reduce_eq_tt :: n:Int -> m:Int -> { pf:_ | propOf pf == 
-      EvalsTo (subBV 3 (Bc (intEq n m)) (subBV 2 (Ic m) (subBV 1 (Ic n) (refn_pred Eq)))) (Bc True) } @-}
+      EvalsTo (subBV 0 (Bc (intEq n m)) (subBV 2 (Ic m) (subBV 1 (Ic n) (refn_pred Eq)))) (Bc True) } @-}
 reduce_eq_tt :: Int -> Int -> EvalsTo
 reduce_eq_tt n m = lemma_semantics_refn_eq n m (intEq n m)
 
 {-@ reduce_eqn_tt :: n:Int -> m:Int -> { pf:_ | propOf pf ==
-      EvalsTo (subBV 3 (Bc (intEq n m)) (subBV 2 (Ic m) (refn_pred (Eqn n)))) (Bc True) } @-}
+      EvalsTo (subBV 0 (Bc (intEq n m)) (subBV 2 (Ic m) (refn_pred (Eqn n)))) (Bc True) } @-}
 reduce_eqn_tt :: Int -> Int -> EvalsTo
 reduce_eqn_tt n m = reduce_eq_tt n m
 
@@ -284,13 +297,15 @@ reduce_eqn_tt n m = reduce_eq_tt n m
 {-@ lem_den_bools :: v:Value -> { t:Type | erase t == FTBasic TBool } 
         -> ProofOf(Denotes t v) -> { pf:_ | v == Bc True || v == Bc False } @-}
 lem_den_bools :: Expr -> Type -> Denotes -> Proof
-lem_den_bools v t den_t_v = lem_bool_values v p_v_bl
+lem_den_bools v t den_t_v = case ae_s_bool of 
+    (AEBasic _ _ ) -> lem_bool_values v p_v_s
   where
-    p_v_bl = undefined -- get_ftyp_from_den t v den_t_v
+    (AEWitness _ _ _ s ae_s_bool p_v_s) = get_aewitness_from_den t v den_t_v
 
 {-@ lem_den_ints :: v:Value -> { t:Type | erase t == FTBasic TInt } 
         -> ProofOf(Denotes t v) -> { pf:_ | isInt v } @-}
 lem_den_ints :: Expr -> Type -> Denotes -> Proof
-lem_den_ints v t den_t_v = lem_int_values v p_v_int
+lem_den_ints v t den_t_v = case ae_s_int of 
+    (AEBasic _ _) -> lem_int_values v p_v_s
   where
-    p_v_int = undefined -- get_ftyp_from_den t v den_t_v
+    (AEWitness _ _ _ s ae_s_int p_v_s) = get_aewitness_from_den t v den_t_v

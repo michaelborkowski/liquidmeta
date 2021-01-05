@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -229,6 +228,14 @@ lem_typing_hasftype g e t (TAnn _g e' _ p_e'_t) p_g_wf
 lem_typing_hasftype g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf
     = undefined -- need lemma re: normalization
 --    = lem_typing_hasftype g e s p_e_s p_g_wf ? lem_erase_subtype g s t p_s_t -- p_g_wf
+
+{-@ lem_csubst_hasftype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t) 
+        -> ProofOf(WFEnv g) -> th:CSub -> ProofOf(DenotesEnv g th) 
+        -> ProofOf(EqvFTyping FEmpty (csubst th e) (erase (ctsubst th t))) @-}
+lem_csubst_hasftype :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub -> DenotesEnv -> EqvFTyping
+lem_csubst_hasftype Empty            e t p_e_t th den_g_th = undefined {- 1 -}
+lem_csubst_hasftype (Cons x t_x g')  e t p_e_t th den_g_th = undefined {- 1 -}
+lem_csubst_hasftype (ConsT a k_a g') e t p_e_t th den_g_th = undefined {- 1 -}
 
 
 -- Lemma. All free variables in a typed expression are bound in the environment

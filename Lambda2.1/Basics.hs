@@ -57,32 +57,36 @@ esize (AppT e t)        = (esize e)   + (tsize t) + 1
 esize (Let x e_x e)     = (esize e_x) + (esize e) + 1
 esize (Annot e t)       = (esize e)   + (tsize t) + 1
 
-{-@ type Value = { v:Expr | isValue v } @-}
-{-@ type PredValue = { v:Expr | isPredValue v } @-}
+{-@ type Term = { e:Expr | isTerm e } @-}
 
-{-@ reflect isValue @-} -- meaning: is a syntactic value in normal expressions
+{-@ reflect isTerm @-} -- a legal program term is an expression that does not contain Conj
+isTerm :: Expr -> Bool --     (outside of refinements of course)
+isTerm (Bc _)           = True
+isTerm (Ic _)           = True
+isTerm (Prim c)         = not ( c == Conj )
+isTerm (BV _)           = True
+isTerm (FV _)           = True
+isTerm (Lambda _ e)     = isTerm e
+isTerm (App e e')       = isTerm e && isTerm e'
+isTerm (LambdaT _ _ e)  = isTerm e  
+isTerm (AppT e t)       = isTerm e
+isTerm (Let _ e_x e)    = isTerm e_x && isTerm e 
+isTerm (Annot e t)      = isTerm e
+
+{-@ type Value = { v:Term | isValue v } @-}
+{-@ type PredValue = { v:Pred | isValue v } @-}
+
+{-@ reflect isValue @-} -- meaning: is a syntactic value in normal expression
 isValue :: Expr -> Bool
 isValue (Bc _)          = True
 isValue (Ic _)          = True
-isValue (Prim c)        = not ( c == Conj )
+isValue (Prim c)        = True
 isValue (FV _)          = True 
 isValue (BV _)          = True -- Lambda 2.1: changed mind: now bound variables a legal value 
                                -- even though we want all values to be
 isValue (Lambda x e)    = True --     well-formed as expressions
 isValue (LambdaT a k e) = True
 isValue _               = False
-
-{-@ reflect isPredValue @-} -- meaning: is a syntactic value in refinement predicates
-isPredValue :: Expr -> Bool
-isPredValue (Bc _)          = True
-isPredValue (Ic _)          = True
-isPredValue (Prim c)        = True
-isPredValue (FV _)          = True 
-isPredValue (BV _)          = True -- Lambda 2.1: changed mind: now bound variables a legal value 
-                                   -- even though we want all values to be
-isPredValue (Lambda x e)    = True --     well-formed as expressions
-isPredValue (LambdaT a k e) = True
-isPredValue _               = False
 
 {-@ measure freeBV @-}
 {-@ freeBV :: e:Expr -> S.Set Vname / [esize e] @-}
@@ -161,7 +165,7 @@ ftv (Annot e t)     = S.union (ftv e) (freeTV t) -- fv e
                       ( Set_sub (freeBV e') (Set_cup (freeBV e) (freeBV v)) ) &&
                       ( Set_sub (freeBTV e) (freeBTV e') ) &&
                       ( Set_sub (freeBTV e') (Set_cup (freeBTV e) (freeBTV v)) ) &&
-                      ( e == Bc True => e' == Bc True ) &&
+                      ( e == Bc True => e' == Bc True ) && ( isTerm e => isTerm e' ) &&
                       ( (isValue v && isValue e) => isValue e' ) } / [esize e] @-}
 subFV :: Vname -> Expr -> Expr -> Expr
 subFV x v_x (Bc b)                    = Bc b
@@ -181,15 +185,18 @@ subFV x v_x (Annot e t)               = Annot (subFV x v_x e) (tsubFV x v_x t)
  -}
 --  removed for now:                           Set_sub (freeBV e)  (freeBV e') &&
 --                      ( noDefns e => noDefns e' ) } / [esize e] @-}
+--                      -- try without:
+--                      ( Set_sub (ftv e) (Set_cup (Set_sng a) (ftv e')) ) &&
+--                        Set_sub (fv e) (fv e') &&
 {-@ reflect subFTV @-} -- substitute a type for a type variable in a term 
-{-@ subFTV :: a:Vname -> t:Type -> e:Expr 
+{-@ subFTV :: a:Vname -> t:UserType -> e:Expr 
                       -> { e':Expr | (Set_mem a (ftv e) || e == e') &&
-                      ( Set_sub (ftv e) (Set_cup (Set_sng a) (ftv e')) ) &&
                       ( Set_sub (ftv e') (Set_cup (freeTV t) (Set_dif (ftv e) (Set_sng a)))) &&
-                        Set_sub (fv e) (fv e') &&
                         Set_sub (fv e') (Set_cup (fv e) (free t)) &&
-                        Set_sub (freeBV e') (Set_cup (tfreeBV t) (freeBV e)) &&
-                      ( isValue e => isValue e' ) && ( e == Bc True => e' == Bc True )} / [esize e] @-}
+                        Set_sub (freeBV e')  (Set_cup (tfreeBV t) (freeBV e)) &&
+                        Set_sub (freeBTV e') (Set_cup (tfreeBTV t) (freeBTV e)) &&
+                      ( isValue e => isValue e' ) && ( isTerm e => isTerm e' ) &&
+                      ( e == Bc True => e' == Bc True )} / [esize e] @-}
 subFTV :: Vname -> Type -> Expr -> Expr
 subFTV a t_a (Bc b)                    = Bc b
 subFTV a t_a (Ic n)                    = Ic n
@@ -213,6 +220,7 @@ subFTV a t_a (Annot e t)               = Annot (subFTV a t_a e) (tsubFTV a t_a t
                                  Set_sub (ftv e') (Set_cup (Set_sng a') (Set_dif (ftv e) (Set_sng a))) &&
                                  ( a != a'  => not (Set_mem a (ftv e'))) &&
                                  ( e == Bc True => e' == Bc True ) &&
+                                 freeBV e == freeBV e' && freeBTV e == freeBTV e' &&
                                  fv e == fv e' && (isValue e => isValue e') } / [esize e] @-}
 chgFTV :: Vname -> Vname -> Expr -> Expr
 chgFTV a a' (Bc b)                = Bc b
@@ -238,7 +246,7 @@ chgFTV a a' (Annot e t)               = Annot (chgFTV a a' e) (tchgFTV a a' t)
                                     Set_sub (Set_dif (freeBV e) (Set_sng x)) (freeBV e') &&
                                     Set_sub (freeBTV e') (Set_cup (freeBTV e) (freeBTV v)) &&
                                     Set_sub (freeBTV e) (freeBTV e') &&
-                                    ( e == Bc True => e' == Bc True ) &&
+                                    ( e == Bc True => e' == Bc True ) && ( isTerm e => isTerm e' ) &&
                                     ( esize v != 1  || esize e == esize e' ) } / [esize e] @-}
 subBV :: Vname -> Expr -> Expr -> Expr
 subBV x v_x (Bc b)                    = Bc b
@@ -263,13 +271,15 @@ subBV x v_x (Annot e t)               = Annot (subBV x v_x e) (tsubBV x v_x t)
                                     Set_sub (Set_dif (freeBTV e) (Set_sng a)) (freeBTV e') &&
 -}
 --     ( isTrivial t =>  esize e == esize e' )        ( noDefns e => noDefns e' ) } / [esize e] @-}
+--     try without:
+--                                    Set_sub (fv e) (fv e') &&
+--                                    Set_sub (ftv e) (ftv e') &&
 {-@ reflect subBTV @-} -- substitute in a type for a BOUND TYPE var
-{-@ subBTV :: a:Vname -> t:Type -> e:Expr
+{-@ subBTV :: a:Vname -> t:UserType -> e:Expr
                      -> { e':Expr | ( Set_mem a (freeBTV e) || e == e' ) &&
-                                    Set_sub (fv e) (fv e') &&
                                     Set_sub (fv e') (Set_cup (fv e) (free t)) &&
-                                    Set_sub (ftv e) (ftv e') &&
                                     Set_sub (ftv e') (Set_cup (ftv e) (freeTV t)) &&
+                                    ( isTerm e => isTerm e' ) &&
                                     ( e == Bc True => e' == Bc True ) } / [esize e] @-}
 subBTV :: Vname -> Type -> Expr -> Expr
 subBTV a t_a (Bc b)                       = Bc b
@@ -371,6 +381,11 @@ data Basic = TBool         -- Bool
            | FTV     Vname   -- a                    -- NEW!
   deriving (Eq, Show)
 
+{-@ reflect isBTV @-}
+isBTV :: Basic -> Bool
+isBTV (BTV _) = True
+isBTV _       = False
+
 data Kind = Base         -- B, base kind
           | Star         -- *, star kind
   deriving (Eq, Show)
@@ -381,19 +396,30 @@ ksize :: Kind -> Int
 ksize Base = 0
 ksize Star = 1
 
-{-@ type RVname =  { v:Int | v == 0 } @-} 
-type RVname = Int
+{- @ type RVname =  { v:Int | v = 0 } @-} 
+-- this stands in for the above b/c LH isn't inferring all refn binders are equal
+data RVname = Z deriving (Eq, Show)
 
 {-@ data Type [tsize] where 
         TRefn   :: Basic -> RVname -> Pred -> Type  
       | TFunc   :: Vname -> Type  -> Type -> Type 
       | TExists :: Vname -> Type  -> Type -> Type 
       | TPoly   :: Vname -> Kind  -> Type -> Type @-} -- @-}
-data Type = TRefn   Basic Vname Pred     -- b{x0 : p}
+data Type = TRefn   Basic RVname Pred     -- b{x0 : p}
           | TFunc   Vname Type Type      -- x:t_x -> t
           | TExists Vname Type Type      -- \exists x:t_x. t
           | TPoly   Vname Kind Type      -- \forall a:k. t
   deriving (Eq, Show)
+
+  -- This will also avoid issues of capture in type variable substitution and refinement strengthening
+{-@ type UserType = { t:Type | noExists t } @-}
+
+{-@ reflect noExists @-}
+noExists :: Type -> Bool          -- any types that appear in a well-typed refinement p will also necc.
+noExists (TRefn b x p)     = True --   be UserTypes as well.
+noExists (TFunc x t_x t)   = noExists t_x && noExists t
+noExists (TExists x t_x t) = False
+noExists (TPoly a k   t)   = noExists t
 
   -- ONLY types with Base Kind may have non-trivial refinements. Star kinded type variables 
   --     may only have the refinement { x : Bc True }.
@@ -414,6 +440,11 @@ tsize (TRefn b v r)         = (esize r) + 1
 tsize (TFunc x t_x t)       = (tsize t_x) + (tsize t) + 1
 tsize (TExists x t_x t)     = (tsize t_x) + (tsize t) + 1
 tsize (TPoly a k   t)       = (tsize t)   + 1
+
+{-@ reflect isTRefn @-}
+isTRefn :: Type -> Bool
+isTRefn (TRefn {}) = True
+isTRefn _          = False
 
 {-@ reflect isTFunc @-}
 isTFunc :: Type -> Bool
@@ -446,7 +477,7 @@ freeTV (TPoly a k   t)    = freeTV t
 {-@ measure tfreeBV @-}
 {-@ tfreeBV :: t:Type -> S.Set Vname / [tsize t] @-}
 tfreeBV :: Type -> S.Set Vname
-tfreeBV (TRefn b x r)     = S.difference (freeBV r) (S.singleton x)
+tfreeBV (TRefn b x r)     = S.difference (freeBV r) (S.singleton 0)
 tfreeBV (TFunc x t_x t)   = S.union (tfreeBV t_x) (S.difference (tfreeBV t) (S.singleton x))
 tfreeBV (TExists x t_x t) = S.union (tfreeBV t_x) (S.difference (tfreeBV t) (S.singleton x))
 tfreeBV (TPoly a  k  t)   = (tfreeBV t)
@@ -467,22 +498,25 @@ tfreeBTV (TPoly a  k  t)   = S.difference (tfreeBTV t) (S.singleton a)
 --             \exists Int{y:q}. a'{z:r `And` p}
 -- Assumption: x is the same as the binder of any refinement types
 -- NO LONGER TRUE:     ( p != Bc True || t' == t) && ( isTrivial t => tsize t' == esize p + 1 ) } @-}
+--   removed 12/21               Set_sub (Set_cup (free t) (fv p)) (free t') &&
+--   removed 12/21               Set_sub (Set_cup (freeTV t) (ftv p)) (freeTV t') &&
+--   try without these:
+--                               Set_sub (free t) (free t') &&
+--                               Set_sub (freeTV t) (freeTV t') &&
+--                               Set_sub (tfreeBV t) (tfreeBV t') &&
+--                               Set_sub (tfreeBTV t)  (tfreeBTV t') &&
 {-@ reflect push @-}
-{-@ push ::  p:Pred -> t:Type 
-                -> { t':Type | Set_sub (free t') (Set_cup (free t) (fv p)) && 
-                               Set_sub (Set_cup (free t) (fv p)) (free t') &&
+{-@ push ::  p:Pred -> t:UserType 
+                -> { t':UserType | Set_sub (free t') (Set_cup (free t) (fv p)) && 
                                Set_sub (freeTV t') (Set_cup (freeTV t) (ftv p)) &&
-                               Set_sub (Set_cup (freeTV t) (ftv p)) (freeTV t') &&
                                Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (Set_dif (freeBV p) (Set_sng 0))) &&
-                               Set_sub (tfreeBV t) (tfreeBV t') &&
                                Set_sub (tfreeBTV t') (Set_cup (tfreeBTV t) (freeBTV p)) &&
-                               Set_sub (tfreeBTV t)  (tfreeBTV t') &&
                                ( erase t' == erase t ) } @-}  
 push :: Pred -> Type -> Type
 push p (TRefn   b x   r) = TRefn   b x            (strengthen p r)
-push p (TFunc   y t_y t) = TFunc   y (push p t_y) (push p t) -- remove this later?
-push p (TExists y t_y t) = TExists y t_y          (push p t)
-push p (TPoly   a k   t) = TPoly   a k            (push p t) -- remove this later?
+push p (TFunc   y t_y t) = TFunc   y t_y t -- TFunc   y (push p t_y) (push p t) -- remove this later? p must be trivial
+--push p (TExists y t_y t) = TExists y t_y          (push p t)
+push p (TPoly   a k   t) = TPoly   a k   t -- TPoly   a k            (push p t) -- remove this later? p must be trivial
 
 -- Also note that non-trivially-refined Star types are unsound, so we cannot have t_a with Star
 --     kind unless p == True, in which case there's nothing to push down. So this only really
@@ -500,23 +534,27 @@ push p (TPoly   a k   t) = TPoly   a k            (push p t) -- remove this late
                         Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (freeBV e)) &&
                         Set_sub (tfreeBTV t) (tfreeBTV t') &&
                         Set_sub (tfreeBTV t') (Set_cup (tfreeBTV t) (freeBTV e)) &&
-                ( (not (Set_mem x (fv e))) => not (Set_mem x (free t')) ) } / [tsize t] @-}
+                        ( (not (Set_mem x (fv e))) => not (Set_mem x (free t')) ) &&
+                        ( noExists t => noExists t' ) } / [tsize t] @-}
 tsubFV :: Vname -> Expr -> Type -> Type
 tsubFV x v_x (TRefn b z r)     = TRefn b z  (subFV x v_x r)
 tsubFV x v_x (TFunc z t_z t)   = TFunc   z (tsubFV x v_x t_z) (tsubFV x v_x t)
 tsubFV x v_x (TExists z t_z t) = TExists z (tsubFV x v_x t_z) (tsubFV x v_x t)
 tsubFV x v_x (TPoly a k   t)   = TPoly   a k                  (tsubFV x v_x t)
 
---  removed for now:     ((isBare t_a && isBare t) => isBare t') && Set_sub (tfreeBV t)  (tfreeBV t')
+--  removed for now:     ((isBare t_a && isBare t) => isBare t') 
+--  trywithout:
+--                        ( Set_sub (freeTV t) (Set_cup (Set_sng a) (freeTV t'))) &&
+--                        Set_sub (free t) (free t') &&
 {-@ reflect tsubFTV @-}
-{-@ tsubFTV :: a:Vname -> t_a:Type -> t:Type 
+{-@ tsubFTV :: a:Vname -> t_a:UserType -> t:Type 
          -> { t':Type | ( Set_mem a (freeTV t) || t == t' )  &&
-                        ( Set_sub (freeTV t) (Set_cup (Set_sng a) (freeTV t'))) &&
                 ( Set_sub (freeTV t') (Set_cup (freeTV t_a) (Set_dif (freeTV t) (Set_sng a))) ) &&
-                        Set_sub (free t) (free t') &&
                         Set_sub (free t') (Set_cup (free t_a) (free t)) && 
                 ( (not (Set_mem a (freeTV t_a))) => not (Set_mem a (freeTV t')) ) &&
-                        Set_sub (tfreeBV t') (Set_cup (tfreeBV t_a) (tfreeBV t)) } / [tsize t] @-} 
+                        Set_sub (tfreeBV t') (Set_cup (tfreeBV t_a) (tfreeBV t)) && 
+                        Set_sub (tfreeBTV t') (Set_cup (tfreeBTV t_a) (tfreeBTV t)) &&
+                        ( noExists t => noExists t' ) } / [tsize t] @-} 
 tsubFTV :: Vname -> Type -> Type -> Type
 tsubFTV a t_a (TRefn b x r)        = case b of
   (FTV a') | a == a' -> push  (subFTV a t_a r) t_a
@@ -532,7 +570,9 @@ tsubFTV a t_a (TPoly   a' k  t)    = TPoly   a' k                   (tsubFTV a t
                 -> { t':Type | (Set_mem a (freeTV t) || t == t') && (free t' == free t) && 
                                Set_sub (freeTV t) (Set_cup (Set_sng a) (freeTV t')) &&
                                Set_sub (freeTV t') (Set_cup (Set_sng a') (Set_dif (freeTV t) (Set_sng a))) &&
-                               ( a != a' => not (Set_mem a (freeTV t')) ) } / [tsize t] @-}
+                               tfreeBV t == tfreeBV t' && tfreeBTV t == tfreeBTV t' &&
+                               ( a != a' => not (Set_mem a (freeTV t')) ) &&
+                               ( noExists t => noExists t' ) } / [tsize t] @-}
 tchgFTV :: Vname -> Vname -> Type -> Type
 tchgFTV a a' (TRefn b x r)      = case b of
   (FTV a1) | a == a1 -> TRefn (FTV a') x (chgFTV a a' r)
@@ -554,7 +594,7 @@ tchgFTV a a' (TPoly   a1 k   t) = TPoly   a1 k                 (tchgFTV a a' t)
                                ( esize v_x != 1 || tsize t == tsize t' ) } / [tsize t] @-}
 tsubBV :: Vname -> Expr -> Type -> Type
 tsubBV x v_x (TRefn b y r)     
-  | x == y                     = TRefn b y r
+  | x == 0                     = TRefn b y r
   | otherwise                  = TRefn b y  (subBV x v_x r)
 tsubBV x v_x (TFunc z t_z t)   
   | x == z                     = TFunc   z (tsubBV x v_x t_z) t
@@ -569,14 +609,15 @@ tsubBV x v_x (TPoly a  k  t)   = TPoly   a k                  (tsubBV x v_x t)
                                Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (tfreeBV t_a)) &&
                                Set_sub (tfreeBTV t') (Set_cup (Set_dif (tfreeBTV t) (Set_sng a)) (tfreeBTV t_a)) &&
                                Set_sub (Set_dif (tfreeBTV t) (Set_sng a)) (tfreeBTV t') &&
- -}
+ -} -- try without:
+--                               Set_sub (free t) (free t') && 
+--                               Set_sub (freeTV t) (freeTV t') && 
 {-@ reflect tsubBTV @-}  --  (( isBare t_a && isBare t ) => isBare t') && ( isTrivial t_a => tsize t == tsize t' )
-{-@ tsubBTV :: a:Vname -> t_a:Type -> t:Type
+{-@ tsubBTV :: a:Vname -> t_a:UserType -> t:Type
                 -> { t':Type | ( Set_mem a (tfreeBTV t) || t == t' ) &&
-                               Set_sub (free t) (free t') && 
                                Set_sub (free t') (Set_cup (free t_a) (free t)) &&
-                               Set_sub (freeTV t) (freeTV t') && 
-                               Set_sub (freeTV t') (Set_cup (freeTV t_a) (freeTV t)) } / [tsize t] @-}
+                               Set_sub (freeTV t') (Set_cup (freeTV t_a) (freeTV t)) &&
+                               ( noExists t => noExists t' ) } / [tsize t] @-}
 tsubBTV :: Vname -> Type -> Type -> Type
 tsubBTV a t_a (TRefn b x r)        = case b of 
   (BTV a') | a == a'  -> push  (subBTV a t_a r) t_a -- TExists y t_y (push x r[t_a/a] t')
@@ -668,7 +709,7 @@ fresh_var g = maxpList g
                 -> { y:Vname | not (in_env y g) && y != x } @-}
 fresh_var_excluding :: Env -> Vname -> Vname
 fresh_var_excluding g x = if in_env x g then maxpList g
-                          else maxpList (Cons x (TRefn TBool 0 (Bc True)) g)
+                          else maxpList (Cons x (TRefn TBool Z (Bc True)) g)
  
 {-@ reflect maxpList @-}
 {-@ maxpList :: g:Env -> { x:Vname | (in_env x g) => (x < maxpList g) } @-}
@@ -777,9 +818,9 @@ erase (TFunc x t_x t)   = FTFunc (erase t_x) (erase t)
 erase (TExists x t_x t) = (erase t)
 erase (TPoly a  k  t)   = FTPoly a k (erase t)
 
-{-@ unerase :: ft:FType -> { t:Type | erase t == ft } @-}
+{-@ unerase :: ft:FType -> { t:UserType | erase t == ft } @-}
 unerase :: FType -> Type
-unerase (FTBasic b)      = TRefn b 0 (Bc True)
+unerase (FTBasic b)      = TRefn b Z (Bc True)
 unerase (FTFunc t_x   t) = TFunc   1 (unerase t_x) (unerase t)
 unerase (FTPoly a  k  t) = TPoly a k (unerase t)
 
@@ -1002,3 +1043,11 @@ lem_erase_freeTV (TFunc   z t_z t) = () ? lem_erase_freeTV t_z
                                         ? lem_erase_freeTV t
 lem_erase_freeTV (TExists z t_z t) = () ? lem_erase_freeTV t
 lem_erase_freeTV (TPoly   a' k' t) = () ? lem_erase_freeTV t
+
+{-@ lem_erase_freeBV :: t:Type -> { pf:_ | Set_sub (ffreeBV (erase t)) (tfreeBTV t) } @-}
+lem_erase_freeBV :: Type -> Proof
+lem_erase_freeBV (TRefn   b   z p) = ()
+lem_erase_freeBV (TFunc   z t_z t) = () ? lem_erase_freeBV t_z
+                                        ? lem_erase_freeBV t
+lem_erase_freeBV (TExists z t_z t) = () ? lem_erase_freeBV t
+lem_erase_freeBV (TPoly   a' k' t) = () ? lem_erase_freeBV t

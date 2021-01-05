@@ -60,6 +60,41 @@ isEql :: Prim -> Bool
 isEql Eql     = True
 isEql _       = False
 
+{-@ lem_prim_compat_in_ftapp :: p:Prim -> v:Value -> t:FType
+        -> ProofOf(HasFType FEmpty (App (Prim p) v) t)
+        -> { pf:_ | isCompat p v } @-}
+lem_prim_compat_in_ftapp :: Prim -> Expr -> FType -> HasFType -> Proof
+lem_prim_compat_in_ftapp Conj     v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+lem_prim_compat_in_ftapp And      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+lem_prim_compat_in_ftapp Or       v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+lem_prim_compat_in_ftapp Not      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+lem_prim_compat_in_ftapp Eqv      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+lem_prim_compat_in_ftapp Leq      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> () ? lem_int_values v p_v_tx
+lem_prim_compat_in_ftapp (Leqn _) v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> () ? lem_int_values v p_v_tx
+lem_prim_compat_in_ftapp Eq       v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> () ? lem_int_values v p_v_tx
+lem_prim_compat_in_ftapp (Eqn _)  v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> () ? lem_int_values v p_v_tx
+lem_prim_compat_in_ftapp Eql      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
+  = case p_p_txt of
+      (FTPrm {}) -> impossible ""
+
 {-@ lemma_function_values :: v:Value -> t:FType -> t':FType
         -> ProofOf(HasFType FEmpty v (FTFunc t t'))
         -> { pf:_ | isLambda v || isPrim v } @-}
@@ -209,6 +244,17 @@ lem_base_types t (WFFTBasic _ _) = ()
         -> { pf:_ | b == TBool || b == TInt } @-}
 lem_base_types_star :: Basic -> WFFT -> Proof
 lem_base_types_star b (WFFTKind FEmpty _ p_t_star) = lem_base_types (FTBasic b) p_t_star
+
+{-@ lem_prim_compatT_in_ftappt :: p:Prim -> rt:Type -> t:FType
+        -> ProofOf(HasFType FEmpty (AppT (Prim p) rt) t)
+        -> { pf:_ | isCompatT p rt } @-}
+lem_prim_compatT_in_ftappt :: Prim -> Type -> FType -> HasFType -> Proof
+lem_prim_compatT_in_ftappt Eql     rt t (FTAppT _ _ a k t' p_c_akt' _ p_emp_errt)
+  = case p_c_akt' of
+      (FTPrm {}) -> () ? lem_base_types (erase rt) p_emp_errt
+lem_prim_compatT_in_ftappt c       rt t (FTAppT _ _ a k t' p_c_akt' _ p_emp_errt)
+  = case p_c_akt' of
+      (FTPrm {}) -> impossible ""
 
 {-@ lem_deltaT_ftyp :: c:Prim -> a:Vname -> k:Kind -> s:FType
         -> ProofOf(HasFType FEmpty (Prim c) (FTPoly a k s)) 

@@ -131,19 +131,24 @@ lem_push_wf g (TPoly   a' k' t) k p_g_ta x p y p_yg_p_bl = undefined
 lem_subtype_in_env_wf :: Env -> Env -> Vname -> Type -> Type -> Subtype -> Type -> Kind -> WFType -> WFType
 lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx t k (WFBase env b)
     = WFBase (concatE (Cons x s_x g) g') b
-lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx t k (WFRefn env z b p_env_b p z'_ p_z'env_p_bl) = undefined
-{-    = WFRefn (concatE (Cons x s_x g) g') z b p_env'_b p z' p_z'env'_p_bl
+lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx t k (WFRefn env z b p_env_b p z'_ p_z'env_p_bl) 
+    = WFRefn (concatE (Cons x s_x g) g') z b p_env'_b p z' p_z'env'_p_bl
         where
           z'            = z'_ ? lem_in_env_concat (Cons x t_x g) g' z'_ -- or lemma binds equal
                               ? lem_in_env_concat (Cons x s_x g) g' z'_
-          p_z'env'_p_bl = p_z'env_p_bl ? lem_erase_concat (Cons x s_x g) g' -- (Cons z' (BTBase b) g')
+          p_env'_b      = lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx (TRefn b 1 (Bc True)) 
+                                                Base p_env_b
+          p_z'env'_p_bl = lem_subtype_in_env_wf g (Cons 
+
+
+p_z'env_p_bl ? lem_erase_concat (Cons x s_x g) g' -- (Cons z' (BTBase b) g')
                                        ? lem_erase_concat (Cons x t_x g) g' -- (Cons z' (BTBase b) g')
                                        ? lem_erase_subtype g s_x t_x p_sx_tx
-          p_env'_b      = case b of 
+{-case b of 
             TBool    -> WFBase (concatE (Cons x s_x g) g') b
             TInt     -> WFBase (concatE (Cons x s_x g) g') b
             (FTV a)  -> simpleWFVar (concatE (Cons x s_x g) g') a Base
-            (BTV a)  -> impossible ""  -}
+            (BTV a)  -> impossible ""  
 lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx t k (WFVar1 {}) 
     = undefined
 lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx t k (WFVar2 {})

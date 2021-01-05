@@ -103,8 +103,8 @@ data Step where
       | EPrimT :: c:Prim -> { t:Type | isCompatT c t }
                          -> ProofOf( Step (AppT (Prim c) t) (deltaT c t) ) 
       | EAppT :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
-                   -> t:Type -> ProofOf( Step (AppT e t) (AppT e' t)) 
-      | EAppTAbs :: a:Vname -> k:Kind -> e:Expr -> t:Type 
+                   -> t:UserType -> ProofOf( Step (AppT e t) (AppT e' t)) 
+      | EAppTAbs :: a:Vname -> k:Kind -> e:Expr -> t:UserType 
                    -> ProofOf( Step (AppT (LambdaT a k e) t) (subBTV a t e)) 
       | ELet  :: e_x:Expr -> e_x':Expr -> ProofOf( Step e_x e_x' )
                    -> x:Vname -> e:Expr -> ProofOf( Step (Let x e_x e) (Let x e_x' e)) 
@@ -161,7 +161,7 @@ lemma_app_many e e' v (AddStep _e e1 s_ee1 _e' p_e1e') = p_ev_e'v
     s_ev_e1v  = EApp1 e e1 s_ee1 v 
     p_e1v_e'v = lemma_app_many e1 e' v p_e1e' 
 
-{-@ lemma_app_many2 :: v:Value -> e:Expr -> e':Expr -> ProofOf(EvalsTo e e')
+{-@ lemma_app_many2 :: v:PredValue -> e:Expr -> e':Expr -> ProofOf(EvalsTo e e')
                        -> ProofOf(EvalsTo (App v e) (App v e')) @-}
 lemma_app_many2 :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
 lemma_app_many2 v e e' (Refl _e) = Refl (App v e)
@@ -182,7 +182,7 @@ lemma_app_both_many e v ev_e_v e' v' ev_e'_v' = ev_ee'_vv'
     ev_ee'_vv' = lemma_evals_trans (App e e') (App v e') (App v v') 
                                    ev_ee'_ve' ev_ve'_vv'
 
-{-@ lemma_appT_many :: e:Expr -> e':Expr -> t:Type -> ProofOf(EvalsTo e e')
+{-@ lemma_appT_many :: e:Expr -> e':Expr -> t:UserType -> ProofOf(EvalsTo e e')
         -> ProofOf(EvalsTo (AppT e t) (AppT e' t)) @-}
 lemma_appT_many :: Expr -> Expr -> Type -> EvalsTo -> EvalsTo
 lemma_appT_many e e' t (Refl _e) = Refl (AppT e t)
@@ -216,13 +216,13 @@ data AppReducedP where
     AppReduced :: Expr -> Expr -> AppReducedP
 
 {-@ data AppReduced where
-        AppRed :: e:Expr -> { v:Expr | isPredValue v } -> ProofOf(EvalsTo e v) -> e':Expr 
-                         -> { v':Expr | isPredValue v' } -> ProofOf(EvalsTo e' v') 
+        AppRed :: e:Expr -> { v:Expr | isValue v } -> ProofOf(EvalsTo e v) -> e':Expr 
+                         -> { v':Expr | isValue v' } -> ProofOf(EvalsTo e' v') 
                          -> ProofOf(AppReduced e e') @-}
 data AppReduced where
     AppRed :: Expr -> Expr -> EvalsTo -> Expr -> Expr -> EvalsTo -> AppReduced
 
-{-@ lemma_evals_app_value :: e:Expr -> e':Expr -> { v:Expr | isPredValue v } 
+{-@ lemma_evals_app_value :: e:Expr -> e':Expr -> { v:Expr | isValue v } 
         -> ProofOf(EvalsTo (App e e') v)
         -> ProofOf(AppReduced e e') @-}
 lemma_evals_app_value :: Expr -> Expr -> Expr -> EvalsTo -> AppReduced
@@ -244,8 +244,7 @@ lemma_evals_app_value e e' v (AddStep _ee' eee st_ee'_eee _v ev_eee_v)
 ----- | Basic LEMMAS of the OPERATIONAL SEMANTICS (Small Step)
 --------------------------------------------------------------------------
 
-{-@ lem_value_stuck :: e:Expr -> e':Expr -> ProofOf(Step e e') 
-                   -> { proof:_ | not (isValue e) && not (isPredValue e) } @-}
+{-@ lem_value_stuck :: e:Expr -> e':Expr -> ProofOf(Step e e') -> { pf:_ | not (isValue e) } @-}
 lem_value_stuck :: Expr -> Expr -> Step -> Proof
 lem_value_stuck e  e' (EPrim _ _)      
     = case e of 
@@ -298,6 +297,25 @@ lem_value_refl :: Expr -> Expr -> EvalsTo -> Proof
 lem_value_refl v v' (Refl _v) = ()
 lem_value_refl v v' (AddStep _v v1 st_v_v1 _v' ev_v1_v')
     = impossible ("stuck" ? lem_value_stuck v v1 st_v_v1)
+
+{-@ lem_step_term :: { e:Expr | isTerm e } -> e1:Expr -> ProofOf(Step e e1) -> { pf:_ | isTerm e1 } @-}
+lem_step_term :: Expr -> Expr -> Step -> Proof
+lem_step_term e e1 p1@(EPrim c v)       = () ? toProof ( isTerm ( delta c v ) )
+lem_step_term e e' (EApp1 e1 e1' p_e1e1' e2) 
+  = () ? lem_step_term e1 e1' p_e1e1'     -- e = e1 e2, e' = e1' e2, e'' = e1'' e2
+lem_step_term e e' (EApp2 e1 e1' p_e1e1' v1) 
+  = () ? lem_step_term e1 e1' p_e1e1'     -- e = v1 e1, e' = v1 e1', e'' = v1 e1''
+lem_step_term e e1 (EAppAbs x e' v)     = () ? toProof ( isTerm ( subBV x v e' ) )
+lem_step_term e e' (EPrimT c t')        = () 
+lem_step_term e e' (EAppT e1 e1' p_e1e1' t') 
+  = () ? lem_step_term e1 e1' p_e1e1'
+lem_step_term e e1 (EAppTAbs a k e' t') = () ? toProof ( isTerm ( subBTV a t' e' ) )
+lem_step_term e e1 (ELet e_x e_x' p_ex_ex' x e1') 
+  = () ? lem_step_term e_x e_x' p_ex_ex'
+lem_step_term e e1 (ELetV x v e')       = () ? toProof ( isTerm ( subBV x v e') )
+lem_step_term e e1 (EAnn e' e1' p_e_e1' t')
+  = () ? lem_step_term e' e1' p_e_e1'
+lem_step_term e e1 (EAnnV v t')         = ()
 
 {-@ lem_sem_det :: e:Expr -> e1:Expr -> ProofOf(Step e e1)
                    -> e2:Expr -> ProofOf(Step e e2) -> { x:_ | e1 == e2 } @-}

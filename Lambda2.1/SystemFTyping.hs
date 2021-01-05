@@ -68,8 +68,8 @@ data HasFType where
                   -> ProofOf(HasFType g (LambdaT a k e) (FTPoly a k b))
      |  FTAppT :: g:FEnv -> e:Expr -> a:Vname -> k:Kind -> t':FType
                 -> ProofOf(HasFType g e (FTPoly a k t')) 
-                -> { rt:Type | Set_sub (free rt) (vbindsF g) && Set_sub (freeTV rt) (tvbindsF g) &&
-                               Set_emp (tfreeBV rt) && Set_emp (tfreeBTV rt) }
+                -> { rt:UserType | Set_sub (free rt) (vbindsF g) && Set_sub (freeTV rt) (tvbindsF g) &&
+                                   Set_emp (tfreeBV rt) && Set_emp (tfreeBTV rt) }
                 -> ProofOf(WFFT g (erase rt) k)
                 -> ProofOf(HasFType g (AppT e rt) (ftsubBV a (erase rt) t'))
      |  FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
@@ -153,12 +153,12 @@ simpleFTVar g x t = case g of
 
 {-@ reflect tybc @-} -- Refined Constant Typing
 tybc :: Bool -> Type
-tybc True  = TRefn TBool 0 (App (App (Prim Eqv) (BV 0)) (Bc True))
-tybc False = TRefn TBool 0 (App (App (Prim Eqv) (BV 0)) (Bc False))
+tybc True  = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) (Bc True))
+tybc False = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) (Bc False))
 
 {-@ reflect tyic @-}
 tyic :: Int -> Type
-tyic n = TRefn TInt 0 (App (App (Prim Eq) (BV 0)) (Ic n))
+tyic n = TRefn TInt Z (App (App (Prim Eq) (BV 0)) (Ic n))
 
 {-@ reflect refn_pred_freeBV @-}
 {-@ refn_pred_freeBV :: { c:Prim | not (c == Conj) } -> S.Set Vname @-}
@@ -192,7 +192,7 @@ refn_pred Eq       = App (App (Prim Eqv) (BV 0))
 refn_pred (Eqn n)  = App (App (Prim Eqv) (BV 0))
                            (App (App (Prim Eq) (Ic n)) (BV 2))
 refn_pred Eql      = App (App (Prim Eqv) (BV 0))
-                           (App (App (AppT (Prim Eql) (TRefn (BTV 1) 0 (Bc True))) (BV 1)) (BV 2))
+                           (App (App (AppT (Prim Eql) (TRefn (BTV 1) Z (Bc True))) (BV 1)) (BV 2))
 
 {-@ reflect ty @-} -- Primitive Typing            -- removed: && Set_emp (tfreeBV t)
 {-@ ty :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
@@ -250,29 +250,29 @@ firstBV _        = 1
 {-@ inType :: { c:Prim | not (c == Conj) } -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 --                                   && noDefnsBaseAppTInRefns Empty t && isWellFormed Empty t Base } @-}
 inType :: Prim -> Type
-inType And     = TRefn TBool   0 (Bc True)
-inType Or      = TRefn TBool   0 (Bc True)
-inType Eqv     = TRefn TBool   0 (Bc True)
-inType Not     = TRefn TBool   0 (Bc True)
-inType Leq     = TRefn TInt    0 (Bc True)
-inType Eq      = TRefn TInt    0 (Bc True)
-inType Eql     = TRefn (BTV 1) 0 (Bc True)
-inType _       = TRefn TInt    0 (Bc True)
+inType And     = TRefn TBool   Z (Bc True)
+inType Or      = TRefn TBool   Z (Bc True)
+inType Eqv     = TRefn TBool   Z (Bc True)
+inType Not     = TRefn TBool   Z (Bc True)
+inType Leq     = TRefn TInt    Z (Bc True)
+inType Eq      = TRefn TInt    Z (Bc True)
+inType Eql     = TRefn (BTV 1) Z (Bc True)
+inType _       = TRefn TInt    Z (Bc True)
 
 {-@ reflect ty' @-}
 {-@ ty' :: { c:Prim | not (c == Conj) } -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 --          && noDefnsBaseAppTInRefns (Cons (firstBV c) (inType c) Empty) (unbindT (firstBV c) (firstBV c) t) 
 --          && isWellFormed (Cons (firstBV c) (inType c) Empty) (unbindT (firstBV c) (firstBV c) t) Star } @-}
 ty' :: Prim -> Type
-ty' And      = TFunc 2 (TRefn TBool 0 (Bc True)) (TRefn TBool 0 (refn_pred And))
-ty' Or       = TFunc 2 (TRefn TBool 0 (Bc True)) (TRefn TBool 0 (refn_pred Or))
-ty' Not      = TRefn TBool 0 (refn_pred Not)
-ty' Eqv      = TFunc 2 (TRefn TBool 0 (Bc True)) (TRefn TBool 0 (refn_pred Eqv))
-ty' Leq      = TFunc 2 (TRefn TInt  0 (Bc True)) (TRefn TBool 0 (refn_pred Leq))
-ty' (Leqn n) = TRefn TBool 0 (refn_pred (Leqn n))
-ty' Eq       = TFunc 2 (TRefn TInt  0 (Bc True)) (TRefn TBool 0 (refn_pred Eq))
-ty' (Eqn n)  = TRefn TBool 0 (refn_pred (Eqn n))
-ty' Eql      = TFunc 2 (TRefn (BTV 1) 0 (Bc True)) (TRefn TBool 0 (refn_pred Eql))
+ty' And      = TFunc 2 (TRefn TBool Z (Bc True)) (TRefn TBool Z (refn_pred And))
+ty' Or       = TFunc 2 (TRefn TBool Z (Bc True)) (TRefn TBool Z (refn_pred Or))
+ty' Not      = TRefn TBool Z (refn_pred Not)
+ty' Eqv      = TFunc 2 (TRefn TBool Z (Bc True)) (TRefn TBool Z (refn_pred Eqv))
+ty' Leq      = TFunc 2 (TRefn TInt  Z (Bc True)) (TRefn TBool Z (refn_pred Leq))
+ty' (Leqn n) = TRefn TBool Z (refn_pred (Leqn n))
+ty' Eq       = TFunc 2 (TRefn TInt  Z (Bc True)) (TRefn TBool Z (refn_pred Eq))
+ty' (Eqn n)  = TRefn TBool Z (refn_pred (Eqn n))
+ty' Eql      = TFunc 2 (TRefn (BTV 1) Z (Bc True)) (TRefn TBool Z (refn_pred Eql))
 
 ------------------------------------------------------------
 ---- | Limited Bi-directional TYPE Checking and Synthesis --
@@ -310,7 +310,7 @@ checkType g (App e e') t     = case ( synthType g e' ) of
     _               -> False
 checkType g (AppT e t2) t    = case ( synthType g e ) of
     (Just (FTPoly a Base t1))  -> ( t == ftsubBV a (erase t2) t1 ) &&
-                                  ( isWFFT g (erase t2) Base ) &&
+                                  ( isWFFT g (erase t2) Base ) && noExists t2 &&
                                   ( S.isSubsetOf (free t2) (vbindsF g) ) &&
                                   ( S.isSubsetOf (freeTV t2) (tvbindsF g) ) && 
                                   ( S.null (tfreeBV  t2) ) && ( S.null (tfreeBTV t2) ) 
@@ -336,7 +336,7 @@ synthType g (App e e')      = case ( synthType g e' ) of
         _                     -> Nothing
 synthType g (AppT e t2)     = case ( synthType g e ) of
     (Just (FTPoly a Base t1)) -> (case ( isWFFT g (erase t2) Base && S.isSubsetOf (free t2) (vbindsF g) &&
-                                         S.isSubsetOf (freeTV t2) (tvbindsF g) && 
+                                         noExists t2 && S.isSubsetOf (freeTV t2) (tvbindsF g) && 
                                          S.null (tfreeBV t2) && S.null (tfreeBTV t2) ) of 
 	True                       -> Just (ftsubBV a (erase t2) t1)
         False                      -> Nothing)

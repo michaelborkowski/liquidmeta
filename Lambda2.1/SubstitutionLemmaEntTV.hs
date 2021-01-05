@@ -204,7 +204,7 @@ lem_add_var_csubst g (ConsT a k_a g') x v_x_ t_x p_vx_tx p_aenv_wf ath' den_aenv
                                               ? toProof ( ath' === CConsT a t_a th' )
                                             === csubst th' (subFTV a t_a (subFV x v_x_ p))
                                             === csubst th' (subFTV a (tsubFV x v_x_ t_a) (subFV x v_x_ p)) 
-                                              ? lem_commute_subFTV_subFV  a t_a x
+                                              ? lem_commute_subFV_subFTV  a t_a x
                                                        (v_x_ ? lem_fv_bound_in_env g v_x_ t_x p_vx_tx a) p
                                             === csubst th' (subFV x v_x_ (subFTV a t_a p)) 
                                               ? eq_func1  (subFTV a t_a p)
