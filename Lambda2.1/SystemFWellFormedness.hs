@@ -40,20 +40,20 @@ data WFFT where
 
 {-@ data WFFT where
         WFFTBasic :: g:FEnv -> { b:Basic | b == TBool || b == TInt } -> ProofOf(WFFT g (FTBasic b) Base)  
-      | WFFTFV1   :: g:FEnv -> { a:Vname | not (in_envF a g) } -> k:Kind 
+        WFFTFV1   :: g:FEnv -> { a:Vname | not (in_envF a g) } -> k:Kind 
           -> ProofOf(WFFT (FConsT a k g) (FTBasic (FTV a)) k)  
-      | WFFTFV2   :: g:FEnv -> a:Vname -> k:Kind -> ProofOf(WFFT g (FTBasic (FTV a)) k)
+        WFFTFV2   :: g:FEnv -> a:Vname -> k:Kind -> ProofOf(WFFT g (FTBasic (FTV a)) k)
           -> { a':Vname | not (in_envF a' g) && a' != a } -> t:FType 
           -> ProofOf(WFFT (FCons a' t g) (FTBasic (FTV a)) k)  
-      | WFFTFV3   :: g:FEnv -> a:Vname -> k:Kind -> ProofOf(WFFT g (FTBasic (FTV a)) k)
+        WFFTFV3   :: g:FEnv -> a:Vname -> k:Kind -> ProofOf(WFFT g (FTBasic (FTV a)) k)
           -> { a':Vname | not (in_envF a' g) && a' != a } -> k':Kind 
           -> ProofOf(WFFT (FConsT a' k' g) (FTBasic (FTV a)) k)  
-      | WFFTFunc  :: g:FEnv -> t1:FType -> k1:Kind -> ProofOf(WFFT g t1 k1) -> t2:FType -> k2:Kind
+        WFFTFunc  :: g:FEnv -> t1:FType -> k1:Kind -> ProofOf(WFFT g t1 k1) -> t2:FType -> k2:Kind
           -> ProofOf(WFFT g t2 k2) -> ProofOf(WFFT g (FTFunc t1 t2) Star)   
-      | WFFTPoly  :: g:FEnv -> a:Vname -> k:Kind -> t:FType -> k_t:Kind
+        WFFTPoly  :: g:FEnv -> a:Vname -> k:Kind -> t:FType -> k_t:Kind
           -> { a':Vname | not (in_envF a' g) && not (Set_mem a' (ffreeTV t)) }
           -> ProofOf(WFFT (FConsT a' k g) (unbindFT a a' t) k_t) -> ProofOf(WFFT g (FTPoly a k t) Star)   
-      | WFFTKind  :: g:FEnv -> t:FType -> ProofOf(WFFT g t Base) -> ProofOf(WFFT g t Star) @-} 
+        WFFTKind  :: g:FEnv -> t:FType -> ProofOf(WFFT g t Base) -> ProofOf(WFFT g t Star) @-} 
 
   -- TODO: what happened to k_t in WFPoly? why Star?
 
@@ -99,9 +99,9 @@ data WFFE where
     WFFBindT :: FEnv -> WFFE -> Vname -> Kind                  -> WFFE
 {-@ data WFFE where
         WFFEmpty :: ProofOf(WFFE FEmpty)  
-      | WFFBind  :: g:FEnv -> ProofOf(WFFE g) -> { x:Vname | not (in_envF x g) } -> t:FType 
+        WFFBind  :: g:FEnv -> ProofOf(WFFE g) -> { x:Vname | not (in_envF x g) } -> t:FType 
                      -> k:Kind -> ProofOf(WFFT g t k) -> ProofOf(WFFE (FCons x t g))  
-      | WFFBindT :: g:FEnv -> ProofOf(WFFE g) -> { a:Vname | not (in_envF a g) } -> k:Kind 
+        WFFBindT :: g:FEnv -> ProofOf(WFFE g) -> { a:Vname | not (in_envF a g) } -> k:Kind 
                                                       -> ProofOf(WFFE (FConsT a k g)) @-}
 
 ----------------------------------------------------------------------------

@@ -221,19 +221,87 @@ lem_remove_tvar_denote_env g a_ k_a (ConsT a1 k1 g') p_a1g'g_wf th den_env_th = 
                             ? lem_in_env_concat g g' a_ 
         den_env''_th'' = lem_remove_tvar_denote_env g a k_a g' p_g'g_wf th' den_env'_th'
 
-{-@ lem_csubst_hasftype' :: g:Env -> e:Expr -> t:Type -> s:FType
-        -> ProofOf(AlphaEqv (erase_env g) s (erase t)) -> ProofOf(HasFType (erase_env g) e s)
-        -> ProofOf(WFFE (erase_env g)) -> th:CSub -> ProofOf(DenotesEnv g th)
+{-@ lem_csubst_hasftype_basic :: g:Env -> e:Expr -> { b:Basic | b == TBool || b == TInt }
+        -> ProofOf(HasFType (erase_env g) e (FTBasic b)) -> th:CSub -> ProofOf(DenotesEnv g th)
+        -> ProofOf(HasFType FEmpty (csubst th e) (FTBasic b)) @-}
+lem_csubst_hasftype_basic :: Env -> Expr -> Basic -> HasFType -> CSub -> DenotesEnv -> HasFType
+lem_csubst_hasftype_basic g e b p_e_b th den_g_th 
+  = let (AEWitness _ _ _ s ae_s_b pf_the_s) 
+                   = lem_csubst_hasftype' g e (TRefn b Z (Bc True)) p_e_b th den_g_th
+                                ? lem_ctsubst_erase_basic th (TRefn b Z (Bc True)) b
+    in case ae_s_b of
+      (AEBasic _ _) -> pf_the_s ? lem_ctsubst_erase_basic th (TRefn b Z (Bc True)) b
+    
+
+        -- -> ProofOf(WFFE (erase_env g)) -> th:CSub -> ProofOf(DenotesEnv g th)
+{-@ lem_csubst_hasftype' :: g:Env -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env g) e (erase t))
+        -> th:CSub -> ProofOf(DenotesEnv g th)
         -> ProofOf(EqvFTyping FEmpty (csubst th e) (erase (ctsubst th t))) @-}
-lem_csubst_hasftype' :: Env -> Expr -> Type -> FType -> AlphaEqv -> HasFType -> WFFE 
+lem_csubst_hasftype' :: Env -> Expr -> Type -> HasFType {-> WFFE-} -> CSub -> DenotesEnv -> EqvFTyping
+lem_csubst_hasftype' g e t (FTBC _g b) th den_g_th 
+  = lem_eqvftyping_refl FEmpty (csubst th e) (erase (ctsubst th t)) p_the_tht WFFEmpty
+      where
+        p_the_tht = FTBC FEmpty b ? lem_csubst_bc    th b
+                                  ? lem_ctsubst_erase_basic th t TBool          
+lem_csubst_hasftype' g e t (FTIC _g n) th den_g_th 
+  = lem_eqvftyping_refl FEmpty (csubst th e) (erase (ctsubst th t)) p_the_tht WFFEmpty
+      where 
+        p_the_tht = FTIC FEmpty n ? lem_csubst_ic    th n
+                                  ? lem_ctsubst_erase_basic th t TInt
+lem_csubst_hasftype' g e t (FTVar1 _ y _t) th den_g_th = undefined {- case den_g_th of
+  (DExt g' th' den_g'_th' _y _ty v_y den_th't_vy) 
+    -> get_aewitness_from_den (ctsubst th t) (csubst th e {-(FV y)-}) den_th't_vy
+-}
+{-
+lem_fv_subset_bindsF g e t (FTVar2 g' y _t p_y_t z t') = ()
+         ? lem_fv_subset_bindsF g' e t p_y_t
+lem_fv_subset_bindsF g e t (FTVar3 g' y _t p_y_t a k)  = ()
+         ? lem_fv_subset_bindsF g' e t p_y_t
+lem_fv_subset_bindsF g e t (FTPrm _g c)      = ()
+lem_fv_subset_bindsF g e t (FTAbs _g y t_y _ _ e' t' y' p_e'_t')
+    = () ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t'
+lem_fv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty)
+    = () ? lem_fv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt'
+         ? lem_fv_subset_bindsF g e2 t_y p_e2_ty
+lem_fv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t')
+    = () ? lem_fv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e')
+                                (unbindFT a a' t') p_e'_t'
+lem_fv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2 _)
+    = () ? lem_fv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
+         ? toProof ( S.isSubsetOf (free t2)   (vbindsF g)  && S.isSubsetOf (vbindsF g)  (bindsF g) )
+         ? toProof ( S.isSubsetOf (freeTV t2) (tvbindsF g) && S.isSubsetOf (tvbindsF g) (bindsF g) )
+lem_fv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')
+    = () ? lem_fv_subset_bindsF g e_y t_y p_ey_ty
+         ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t'
+lem_fv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t)
+    = () ? lem_fv_subset_bindsF g e' t p_e'_t
+         ? toProof ( S.isSubsetOf (free ann_t)   (vbindsF g)  && S.isSubsetOf (vbindsF g)  (bindsF g) )
+         ? toProof ( S.isSubsetOf (freeTV ann_t) (tvbindsF g) && S.isSubsetOf (tvbindsF g) (bindsF g) )
+-}
+lem_csubst_hasftype' g e t p_e_t th den_g_th = undefined
+{-
+lem_csubst_hasftype' g e t p_e_t {-p_g_wf-} th den_g_th = undefined {-
+  = lem_csubst_hasftype'' g e t (erase t) (lem_alpha_refl (erase_env g) erase_t) p_e_t p_g_wf th den_g_th
+      where
+        p_g_t   = lem_ftyping_wfft (erase_env g) e (erase t) p_e_t p_g_wf
+        erase_t = erase t ? lem_ffreeTV_subset_bindsF (erase_env g) (erase t) Star p_g_t -}
+-}
+
+
+--        -> ProofOf(WFFE (erase_env g)) -> th:CSub -> ProofOf(DenotesEnv g th)
+{-@ lem_csubst_hasftype'' :: g:Env -> e:Expr -> t:Type -> s:FType
+        -> ProofOf(AlphaEqv (erase_env g) s (erase t)) -> ProofOf(HasFType (erase_env g) e s)
+        -> th:CSub -> ProofOf(DenotesEnv g th)
+        -> ProofOf(EqvFTyping FEmpty (csubst th e) (erase (ctsubst th t))) @-}
+lem_csubst_hasftype'' :: Env -> Expr -> Type -> FType -> AlphaEqv -> HasFType {-> WFFE -}
                             -> CSub -> DenotesEnv -> EqvFTyping
-lem_csubst_hasftype' Empty           e t s aeqv_s_t p_e_s p_g_wf th den_g_th = case den_g_th of
+lem_csubst_hasftype'' Empty           e t s aeqv_s_t p_e_s {-p_g_wf-} th den_g_th = case den_g_th of
   (DEmp) -> AEWitness FEmpty e (erase t) s aeqv_s_t p_e_s ? lem_binds_env_th Empty th den_g_th
 {-    where
       p_femp_t = lem_ftyping_wfft FEmpty e (erase t) p_e_s WFFEmpty
       aeqv_t_t = lem_alpha_refl FEmpty (erase t
                                 ? lem_ffreeTV_subset_bindsF FEmpty (erase t) Star p_femp_t)-}
-lem_csubst_hasftype' (Cons x t_x g') e t s aeqv_s_t p_e_s p_g_wf th den_g_th = undefined {-case den_g_th of
+lem_csubst_hasftype'' (Cons x t_x g') e t s aeqv_s_t p_e_s {-p_g_wf-} th den_g_th = undefined {-case den_g_th of
   (DExt g' th' den_g'_th' _x _tx v_x den_th'tx_vx)
       -> AEWitness FEmpty (csubst th e) (erase (ctsubst th t)) s'' aeqv_s''_tht p_the_s''
     where
@@ -257,5 +325,5 @@ lem_csubst_hasftype' (Cons x t_x g') e t s aeqv_s_t p_e_s p_g_wf th den_g_th = u
                   = lem_csubst_hasftype' g' (subFV x v_x e) (tsubFV x v_x t) s' aeqv_s'_t p_evx_s'vx
                                          p_g'_wf th' den_g'_th' -- th(s) ~ s' and t ~ s so is th(t) ~~?
 -} -- need a lemma for ctsubst of FV x, then do induction on the structure of p_e_s
-lem_csubst_hasftype' (ConsT a k_a g') e t s aeqv_s_t p_e_s p_g_wf th den_g_th
+lem_csubst_hasftype'' (ConsT a k_a g') e t s aeqv_s_t p_e_s {-p_g_wf-} th den_g_th
   = undefined {- 1 -}

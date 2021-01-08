@@ -396,20 +396,43 @@ ksize :: Kind -> Int
 ksize Base = 0
 ksize Star = 1
 
-{- @ type RVname =  { v:Int | v = 0 } @-} 
+{-@ type RVname =  { v:Int | v = 0 } @-} 
 -- this stands in for the above b/c LH isn't inferring all refn binders are equal
-data RVname = Z deriving (Eq, Show)
+--data RVname = Z deriving (Eq, Show)
 
 {-@ data Type [tsize] where 
         TRefn   :: Basic -> RVname -> Pred -> Type  
-        TFunc   :: Vname -> Type  -> Type -> Type 
-        TExists :: Vname -> Type  -> Type -> Type 
-        TPoly   :: Vname -> Kind  -> Type -> Type @-} -- @-}
-data Type = TRefn   Basic RVname Pred     -- b{x0 : p}
+      | TFunc   :: Vname -> Type  -> Type -> Type 
+      | TExists :: Vname -> Type  -> Type -> Type 
+      | TPoly   :: Vname -> Kind  -> Type -> Type @-} -- @-}
+data Type = TRefn   Basic Vname Pred     -- b{x0 : p}
           | TFunc   Vname Type Type      -- x:t_x -> t
           | TExists Vname Type Type      -- \exists x:t_x. t
           | TPoly   Vname Kind Type      -- \forall a:k. t
   deriving (Eq, Show)
+
+{-@ lem_rvname_equal ::  t:Type  ->  t':Type
+        -> { t'':Type | t'' == t' } @-}
+lem_rvname_equal :: Type -> Type -> Type
+lem_rvname_equal (TRefn b x p) (TRefn b' y q) = TRefn b' x q
+lem_rvname_equal t             t'             = t'
+
+{-@ reflect eqlPred @-}
+{-@ eqlPred :: { t:Type | isTRefn t } -> e:Expr
+        -> { p':Pred | self t e Base == push p' t } @-}
+eqlPred :: Type -> Expr -> Pred
+eqlPred (TRefn b z p) e = App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e
+
+{-@ lem_tsubFTV_eqlPred :: a:Vname -> { t_a:UserType | isTRefn t_a } -> { t:Type | isTRefn t } -> e:Expr
+        -> { pf:_ | subFTV a t_a (eqlPred t e) ==
+                       eqlPred (tsubFTV a t_a t) (subFTV a t_a e) } @-}  
+lem_tsubFTV_eqlPred :: Vname -> Type -> Type -> Expr -> Proof
+lem_tsubFTV_eqlPred a t_a@(TRefn b' y' q') (TRefn b z p) e = case b of
+  (FTV a') | a' == a  -> () ? lem_subFTV_notin a t_a (BV 0)
+                            ? lem_subFTV_notin a t_a (Prim Eql)
+                            ? lem_tsubFTV_trefn a t_a (TRefn b z p)
+                            ? toProof ( y' === z )
+  _                   -> ()
 
   -- This will also avoid issues of capture in type variable substitution and refinement strengthening
 {-@ type UserType = { t:Type | noExists t } @-}
@@ -685,10 +708,10 @@ data Env = Empty                         -- type Env = [(Vname, Type) or Vname]
   deriving (Show)
 {-@ data Env where 
         Empty :: Env 
-        Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } 
+      | Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } 
                          -> { g':Env | Set_cup (vbinds g') (tvbinds g') == binds g' &&
                                        Set_emp (Set_cap (vbinds g') (tvbinds g')) } 
-        ConsT :: a:Vname -> k:Kind -> { g:Env | not (in_env a g) } 
+      | ConsT :: a:Vname -> k:Kind -> { g:Env | not (in_env a g) } 
                          -> { g':Env | Set_cup (vbinds g') (tvbinds g') == binds g' &&
                                        Set_emp (Set_cap (vbinds g') (tvbinds g')) }  @-}
 
@@ -709,7 +732,7 @@ fresh_var g = maxpList g
                 -> { y:Vname | not (in_env y g) && y != x } @-}
 fresh_var_excluding :: Env -> Vname -> Vname
 fresh_var_excluding g x = if in_env x g then maxpList g
-                          else maxpList (Cons x (TRefn TBool Z (Bc True)) g)
+                          else maxpList (Cons x (TRefn TBool 0 (Bc True)) g)
  
 {-@ reflect maxpList @-}
 {-@ maxpList :: g:Env -> { x:Vname | (in_env x g) => (x < maxpList g) } @-}
@@ -820,7 +843,7 @@ erase (TPoly a  k  t)   = FTPoly a k (erase t)
 
 {-@ unerase :: ft:FType -> { t:UserType | erase t == ft } @-}
 unerase :: FType -> Type
-unerase (FTBasic b)      = TRefn b Z (Bc True)
+unerase (FTBasic b)      = TRefn b 0 (Bc True)
 unerase (FTFunc t_x   t) = TFunc   1 (unerase t_x) (unerase t)
 unerase (FTPoly a  k  t) = TPoly a k (unerase t)
 
@@ -895,10 +918,10 @@ data FEnv = FEmpty                       -- type FEnv = [(Vname, FType) or Vname
   deriving (Show) 
 {-@ data FEnv where
         FEmpty :: FEnv
-        FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } 
+      | FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } 
                           -> { g':FEnv | Set_cup (vbindsF g') (tvbindsF g') == bindsF g' &&
                                          Set_emp (Set_cap (vbindsF g') (tvbindsF g')) }
-        FConsT :: a:Vname -> k:Kind  -> { g:FEnv | not (in_envF a g) } 
+      | FConsT :: a:Vname -> k:Kind  -> { g:FEnv | not (in_envF a g) } 
                           -> { g':FEnv | Set_cup (vbindsF g') (tvbindsF g') == bindsF g' &&
                                          Set_emp (Set_cap (vbindsF g') (tvbindsF g')) } @-}
 

@@ -1,7 +1,5 @@
 {-# LANGUAGE GADTs #-}
 
-{-@ LIQUID "--no-termination" @-}
-{-@ LIQUID "--no-totality" @-}
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
@@ -27,12 +25,11 @@ import Typing
 import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
-import Entailments
 import LemmasChangeVarWF
 
-{-@ reflect foo36 @-}
-foo36 x = Just x
-foo36 :: a -> Maybe a
+{-@ reflect foo35 @-}
+foo35 x = Just x
+foo35 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas  
@@ -61,4 +58,7 @@ lem_change_var_wfenv g x t_x (ConsT a k_a g') p_env_wf y = undefined
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
       -> ProofOf(WFEnv (concatE (ConsT a k_a g) (echgFTV a a' g'))) @-}
 lem_change_tvar_wfenv :: Env -> Vname -> Kind -> Env -> WFEnv -> Vname -> WFEnv
-lem_change_tvar_wfenv = undefined {- 3 -}
+lem_change_tvar_wfenv = g a k_a Empty           p_env_wf a' = case p_env_wf of
+  (WFEBindT _g p_g_wf _a _ka)           -> WFEBindT g p_g_wf a' k_a
+lem_change_tvar_wfenv = undefined 
+lem_change_tvar_wfenv = undefined 

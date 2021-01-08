@@ -115,6 +115,14 @@ lem_alpha_trans g t1 t2 t3 (AEPoly _ a1 k t1' a2 t2' a eqv_t1'_t2') eqv_t2_t3
                                            (unbindFT a2 a' t2') (unbindFT a3 a' t3')
                                            eqv_a'_t1'_t2' eqv_t2'_t3'
 
+{-@ lem_eqvftyping_refl :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
+                                  -> ProofOf(WFFE g) -> ProofOf(EqvFTyping g e t) @-}
+lem_eqvftyping_refl :: FEnv -> Expr -> FType -> HasFType -> WFFE -> EqvFTyping
+lem_eqvftyping_refl g e t p_e_t p_g_wf = AEWitness g e t t refl_proof p_e_t
+  where
+    p_g_t      = lem_ftyping_wfft g e t p_e_t p_g_wf
+    refl_proof = lem_alpha_refl g (t ? lem_ffreeTV_subset_bindsF g t Star p_g_t)
+
 -- Only type-variables are relevant in the environment for FTypes
 {-@ lem_strengthen_alpha :: g:FEnv -> { x:Vname | not (in_envF x g) } -> t_x:FType
         -> { g':FEnv | not (in_envF x g') && Set_emp (Set_cap (bindsF g) (bindsF g')) }
@@ -350,20 +358,8 @@ lem_alpha_in_env_ftyp g g' x s_x t_x eqv_sx_tx e t (FTAppT {}) = undefined
 lem_alpha_in_env_ftyp g g' x s_x t_x eqv_sx_tx e t (FTLet {}) = undefined
 lem_alpha_in_env_ftyp g g' x s_x t_x eqv_sx_tx e t (FTAnn {}) = undefined
 
+{- lem_erase_ctsubst -- deleted because it's not true: erase (ctsubst th t) != erase t -}
 {-
-{-@ lem_erase_ctsubst :: th:CSub -> t:Type 
-               -> { pf:_ | erase (ctsubst th t) == erase t } @-} -- not quite true undefined undefined
-lem_erase_ctsubst :: CSub -> Type -> Proof
-lem_erase_ctsubst (CEmpty)       t = ()
-lem_erase_ctsubst (CCons y v th) t = () {-toProof ( erase (ctsubst (CCons y v th) t)
-                                           === erase (ctsubst th (tsubFV y v t))-}
-                                             ? lem_erase_ctsubst th (tsubFV y v t)
-{-                                           === erase (tsubFV y v t)-}
-                                             ? lem_erase_tsubFV y v t
-{-                                           === erase t )-}
-lem_erase_ctsubst (CConsT a t_a th) t
-    = undefined
-
 {-@ lem_erase_th_sub :: g:Env -> t1:Type -> t2:Type -> ProofOf(Subtype g t1 t2) -> th:CSub 
         -> ProofOf(AlphaEqv FEmpty (erase (ctsubst th t1)) (erase (ctsubst th t2))) @-}
 lem_erase_th_sub :: Env -> Type -> Type -> Subtype -> CSub -> AlphaEqv

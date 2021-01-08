@@ -198,6 +198,17 @@ lem_ctsubst_push (CConsT a' t' th) p t_a
   = () ? lem_subFTV_push a' t' p t_a
        ? lem_ctsubst_push th (subFTV a' t' p) (tsubFTV a' t' t_a)
 
+{-@ lem_ctsubst_erase_basic :: th:CSub -> t:Type 
+        -> { b:Basic | erase t == FTBasic b && (b == TBool || b == TInt) }
+        -> { pf:_ | erase (ctsubst th t) == FTBasic b } @-}
+lem_ctsubst_erase_basic :: CSub -> Type -> Basic -> Proof
+lem_ctsubst_erase_basic th (TRefn _b z p) b = case b of
+  TBool -> () ? lem_ctsubst_refn th TBool z p
+  TInt  -> () ? lem_ctsubst_refn th TInt  z p 
+lem_ctsubst_erase_basic th (TExists z t_z t) b 
+  = () ? lem_ctsubst_exis th z t_z t 
+       ? lem_ctsubst_erase_basic th t b
+
 {-@ lem_ctsubst_refn :: th:CSub -> { b:Basic | b == TBool || b == TInt || isBTV b } 
                -> x:RVname -> p:Expr
                -> { pf:_ | ctsubst th (TRefn b x p) == TRefn b x (csubst th p) } @-}

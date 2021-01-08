@@ -32,7 +32,7 @@ foo25 :: a -> Maybe a
 ----- | SOUNDNESS of the SYSTEM F LAMBDA CALCULUS
 -----------------------------------------------------------------------------
 
--- The System F Progress Lemma
+-- The System F Progress Lemma   
 {-@ lemma_progress :: { e:Expr | isTerm e } -> t:FType -> ProofOf(HasFType FEmpty e t)  
              -> Either { pf:_ | isValue e } 
                        (Expr, Step)<{\e' pf -> isTerm e' && propOf pf == Step e e'}> @-}
@@ -186,7 +186,7 @@ lemma_preservation e t (FTAnn FEmpty e1 t_ liqt p_e1_t) e' st_e_e'
             Right p_e1'_t = lemma_preservation e1 t p_e1_t e1' st_e1_e1'
 
 -- Lemma. The underlying bare type system is sound. This is the textbook
---          soundness proof for the STLC.
+--          soundness proof for the STLC. 
 {-@ lemma_soundness :: e:Term -> e':Term -> ProofOf(EvalsTo e e') -> b:FType
                    -> ProofOf(HasFType FEmpty e b) -> ProofOf(HasFType FEmpty e' b) @-}
 lemma_soundness :: Expr -> Expr -> EvalsTo -> FType -> HasFType -> HasFType
