@@ -317,6 +317,12 @@ lem_step_term e e1 (EAnn e' e1' p_e_e1' t')
   = () ? lem_step_term e' e1' p_e_e1'
 lem_step_term e e1 (EAnnV v t')         = ()
 
+{-@ lem_evals_term :: e:Term -> e':Expr -> ProofOf(EvalsTo e e') -> { pf:_ | isTerm e' } @-}
+lem_evals_term :: Expr -> Expr -> EvalsTo -> Proof
+lem_evals_term e e' (Refl _e) = ()
+lem_evals_term e e' (AddStep _ e1 st_e_e1 _ ev_e1_e') 
+  = () ? lem_evals_term (e1 ? lem_step_term e e1 st_e_e1) e' ev_e1_e'
+
 {-@ lem_sem_det :: e:Expr -> e1:Expr -> ProofOf(Step e e1)
                    -> e2:Expr -> ProofOf(Step e e2) -> { x:_ | e1 == e2 } @-}
 lem_sem_det :: Expr -> Expr -> Step -> Expr -> Step -> Proof

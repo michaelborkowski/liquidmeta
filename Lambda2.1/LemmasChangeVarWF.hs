@@ -103,7 +103,10 @@ lem_change_var_wf_wfvar2 g x t_x g' p_zenv_wf t k p_t_wf@(WFVar2 env a' tt k' p_
                                 ? lem_subFV_notin x (FV y) (tt ? lem_trivial_nofv tt)
         where
           (WFFBind _ p_env_wf _ _ k_z p_env_tz) = p_zenv_wf
-      (Cons _z _tz g'') -> WFVar2 (concatE (Cons y t_x g) (esubFV x (FV y) g'')) 
+      (Cons _z _tz g'') -> case ( x == a' ) of 
+          True  -> impossible ("by lemma" ? lem_wfvar_tv_in_env (concatE (Cons x t_x g) g'')
+                                                                a' tt k' p_env_a')
+          False -> WFVar2 (concatE (Cons y t_x g) (esubFV x (FV y) g'')) 
                                   (a' ? lem_in_env_esub g'' x (FV y) a'
                                       ? lem_in_env_concat g g'' a'
                                       ? lem_in_env_concat (Cons x t_x g) g'' a') tt k'

@@ -50,15 +50,29 @@ lem_change_var_wfenv g x t_x (Cons z t_z g') p_env_wf y = case p_env_wf of
         env''      = concatE (Cons y t_x g) (esubFV x (FV y) g')
         p_env''_wf = lem_change_var_wfenv g x t_x g' p_env'_wf y
         p_env''_tz = lem_change_var_wf'   g x t_x g' p_env'_wf t_z k_z p_env'_tz y
-lem_change_var_wfenv g x t_x (ConsT a k_a g') p_env_wf y = undefined
+lem_change_var_wfenv g x t_x (ConsT a k_a g') p_env_wf y = case p_env_wf of
+  (WFEBindT env' p_env'_wf _a _ka) -> WFEBindT  env'' p_env''_wf a k_a
+    where
+        env''      = concatE (Cons y t_x g) (esubFV x (FV y) g')
+        p_env''_wf = lem_change_var_wfenv g x t_x g' p_env'_wf y
 
 {-@ lem_change_tvar_wfenv :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
       -> { g':Env | not (in_env a g') && Set_emp (Set_cap (binds g) (binds g')) }
       -> ProofOf(WFEnv (concatE (ConsT a k_a g) g'))
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
-      -> ProofOf(WFEnv (concatE (ConsT a k_a g) (echgFTV a a' g'))) @-}
+      -> ProofOf(WFEnv (concatE (ConsT a' k_a g) (echgFTV a a' g'))) @-}
 lem_change_tvar_wfenv :: Env -> Vname -> Kind -> Env -> WFEnv -> Vname -> WFEnv
-lem_change_tvar_wfenv = g a k_a Empty           p_env_wf a' = case p_env_wf of
+lem_change_tvar_wfenv g a k_a Empty           p_env_wf a' = case p_env_wf of
   (WFEBindT _g p_g_wf _a _ka)           -> WFEBindT g p_g_wf a' k_a
-lem_change_tvar_wfenv = undefined 
-lem_change_tvar_wfenv = undefined 
+lem_change_tvar_wfenv g a k_a (Cons z t_z g') p_env_wf a' = case p_env_wf of
+  (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz)
+    -> WFEBind env'' p_env''_wf z (tchgFTV a a' t_z) k_z p_env''_tz
+      where     
+        env''      = concatE (ConsT a' k_a g) (echgFTV a a' g')
+        p_env''_wf = lem_change_tvar_wfenv g a k_a g' p_env'_wf a'
+        p_env''_tz = lem_change_tvar_wf'   g a k_a g' p_env'_wf t_z k_z p_env'_tz a'
+lem_change_tvar_wfenv g a k_a (ConsT a1 k1 g') p_env_wf a' = case p_env_wf of
+  (WFEBindT env' p_env'_wf _a1 _k1) -> WFEBindT  env'' p_env''_wf a1 k1
+    where
+        env''      = concatE (ConsT a' k_a g) (echgFTV a a' g')
+        p_env''_wf = lem_change_tvar_wfenv g a k_a g' p_env'_wf a'

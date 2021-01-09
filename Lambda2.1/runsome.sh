@@ -1,7 +1,7 @@
 time liquid --normal --oldple Basics.hs			# much faster
 
 time liquid --normal          Strengthenings.hs
-time liquid --normal --oldple Semantics.hs
+time liquid --normal          Semantics.hs
 time liquid --normal 	      SystemFWellFormedness.hs
 time liquid --normal 	      SystemFTyping.hs 			# SMT2LIB error on oldple
 time liquid --normal --oldple WellFormedness.hs		# much faster
@@ -34,16 +34,15 @@ time liquid --normal          Typing.hs
 time liquid --normal --oldple SystemFAlphaEquivalence.hs
 time liquid --normal --oldple BasicPropsCSubst.hs                         ## new or old?
 time liquid --normal --oldple BasicPropsDenotes.hs                        ## new or old?
-time liquid --normal --oldple PrimitivesSemantics.hs
+time liquid --normal          PrimitivesSemantics.hs
 
-### 
+time liquid --normal --oldple Implications.hs 
 #time liquid --normal --oldple Entailments.hs                              ## new or old?
 #### 
-#time liquid --normal --oldple LemmasChangeVarWF.hs
-############time liquid --normal LemmasChangeVarWFTV.hs
-
-#time liquid --normal --oldple LemmasChangeVarWFEnv.hs
+time liquid --normal --oldple LemmasChangeVarWF.hs
+time liquid --normal --oldple LemmasChangeVarWFEnv.hs
 #time liquid --normal --oldple LemmasChangeVarEnt.hs
+
 #time liquid --normal --oldple LemmasWeakenWF.hs
 ##########time liquid --normal LemmasWeakenWFTV.hs
 #time liquid --normal --oldple LemmasWeakenEnt.hs

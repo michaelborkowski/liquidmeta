@@ -1,43 +1,42 @@
 # Polymorphic Mechanization TODO list
 
-### Definitions, Judgments, Operations
-  - status: DONE
-  - file: Basics.hs -- DONE
-  - file: SystemFWellFormedness.hs -- DONE
-  - file: SystemFTyping.hs -- DONE
-  - file: WellFormedness.hs -- DONE
-  - file: Typing.hs -- DONE
+### ~~Definitions, Judgments, Operations~~ -- DONE
+  - ~~file: Basics.hs~~ -- DONE
+  - ~~file: SystemFWellFormedness.hs~~ -- DONE
+  - ~~file: SystemFTyping.hs~~ -- DONE
+  - ~~file: WellFormedness.hs~~ -- DONE
+  - ~~file: Typing.hs~~ -- DONE
 
 ### Lemmas/Properties too basic to write down
-  - status: mostly done
-  - file: BasicPropsEnvironments.hs -- DONE
-  - file: BasicPropsWellFormedness.hs -- DONE
+  - status: almost done
+  - ~~file: BasicPropsEnvironments.hs~~ -- DONE
+  - ~~file: BasicPropsWellFormedness.hs~~ -- DONE
   - file: BasicPropsDenotes.hs -- some TODO
-  - file: Implications.hs -- split this off and update from Lambda1.1
-          Entailments.hs -- some cases to fill in
+  - ~~file: Implications.hs~~ -- DONE
+  - file: Entailments.hs -- some cases to fill in
 
-### System F Lemmas (not covered in pen and paper)
-  - System F Lemma 1 (Primitives)  -- DONE
-  - file: PrimitvesFTyping.hs -- DONE
+### ~~System F Lemmas (not covered in pen and paper)~~
+  - ~~System F Lemma 1 (Primitives)~~  -- DONE
+  - ~~file: PrimitvesFTyping.hs~~ -- DONE
 
-  - System F Lemma 4 (change of vars, weakening) -- ~~many cases todo~~ DONE
+  - ~~System F Lemma 4 (change of vars, weakening) -- many cases todo~~ DONE
   - ~~file: SystemFLemmasWellFormed.hs -- many cases TODO~~ DONE
   - ~~file: SystemFLemmasFTyping.hs -- many cases TODO~~ DONE
 
   - ~~System F Lemma 13 (Substitution) -- many cases to do~~ DONE
   - ~~file: SystemFSubstitution.hs -- many cases TODO~~ DONE
 
-  - System F Thm 17-18 (Progress & Preservation)	DONE
-  - file: SystemFSoundness.hs			DONE
+  - ~~System F Thm 17-18 (Progress & Preservation)~~ DONE
+  - ~~file: SystemFSoundness.hs~~ DONE
 
 ### Lemma 1 (Primitives)
-  1. Well Formedness of Primitives 
-    - status: DONE or assumed, TODO: add polymorphic Leq
-    - files: PrimitivesWFType.hs, PrimitivesWFType*.hs -- DONE exc. Leq
+  1. ~~Well Formedness of Primitives ~~
+    - status: DONE, (Future: add polymorphic Leq)
+    - ~~files: PrimitivesWFType.hs, PrimitivesWFType*.hs~~ -- DONE 
 
   2. Denotations of Primitives
     - status: DONE or assumed, add polymorphic Leq
-    - file: PrimitiveSemantics.hs -- DONE
+    - ~~file: PrimitiveSemantics.hs~~ -- DONE
     - files: PrimitivesDenotations.hs, PrimitivesDenotations*.hs -- DONE
 
   3. typing of delta(c, v)
@@ -45,13 +44,11 @@
     - file: PrimitivesRefinements.hs -- DONE
     - file: PrimitivesDeltaTyping.hs -- mark as assumed
 
-### Lemma 2 (Values preserved under substitution)
-  - status: DONE
-  - file: BasicPropsSubstitution.hs -- DONE
+### ~~Lemma 2 (Values preserved under substitution)~~ -- DONE
+  - ~~file: BasicPropsSubstitution.hs~~ -- DONE
 
-### Lemma 3 (Deterministic Operational Semantics)
-  - status: DONE
-  - file: Semantics.hs -- DONE
+### ~~Lemma 3 (Deterministic Operational Semantics)~~ -- DONE
+  - ~~file: Semantics.hs~~ -- DONE
 
 ### Lemma 4 (Weakenings)
   - status: several cases TODO
@@ -59,12 +56,13 @@
   - file: LemmasWeakenEnt.hs -- DONE
   - file: LemmasWeakenTyp.hs -- cases todo
 
-  - not included: Change of Variables Lemmas
+  - not included in pen-and-paper: Change of Variables Lemmas
   - status: several cases TODO
-  - file: LemmasChangeVarWF.hs -- cases todo
-  - file: LemmasChangeVarWFEnv.hs -- cases todo
+  - ~~file: LemmasChangeVarWF.hs~~ -- DONE
+  - ~~file: LemmasChangeVarWFEnv.hs~~ -- DONE
   - file: LemmasChangeVarEnt.hs  -- one case todo
   - file: LemmasChangeVarTyp.hs -- cases todo
+  - file: LemmasChangeVarTypTV.hs -- cases todo
 
 ### Lemma 5 (Reflexivity of Subtyping)
   - status: TODO

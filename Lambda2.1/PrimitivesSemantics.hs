@@ -59,7 +59,7 @@ intLeq n m = n <= m
 intEq :: Int -> Int -> Bool
 intEq n m = n == m
 
-{-@ lemma_reduce_to_delta :: c:Prim -> p:Pred -> { v:PredValue | isCompat c v } -> ProofOf(EvalsTo p v)
+{-@ lemma_reduce_to_delta :: c:Prim -> p:Pred -> { v:Value | isCompat c v } -> ProofOf(EvalsTo p v)
                           -> ProofOf(EvalsTo (App (Prim c) p) (delta c v)) @-}
 lemma_reduce_to_delta :: Prim -> Expr -> Expr -> EvalsTo -> EvalsTo
 lemma_reduce_to_delta c p v ev_p_v = ev_appcp
