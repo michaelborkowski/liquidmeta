@@ -123,6 +123,12 @@ lem_eqvftyping_refl g e t p_e_t p_g_wf = AEWitness g e t t refl_proof p_e_t
     p_g_t      = lem_ftyping_wfft g e t p_e_t p_g_wf
     refl_proof = lem_alpha_refl g (t ? lem_ffreeTV_subset_bindsF g t Star p_g_t)
 
+{-@ lem_eqvftyping_basic :: g:FEnv -> e:Expr -> b:Basic 
+        -> ProofOf(EqvFTyping g e (FTBasic b)) -> ProofOf(HasFType g e (FTBasic b)) @-}
+lem_eqvftyping_basic :: FEnv -> Expr -> Basic -> EqvFTyping -> HasFType
+lem_eqvftyping_basic g e b (AEWitness _ _ _ s ae_s_b p_e_s) = case ae_s_b of 
+  (AEBasic _ _b) -> p_e_s
+
 -- Only type-variables are relevant in the environment for FTypes
 {-@ lem_strengthen_alpha :: g:FEnv -> { x:Vname | not (in_envF x g) } -> t_x:FType
         -> { g':FEnv | not (in_envF x g') && Set_emp (Set_cap (bindsF g) (bindsF g')) }
@@ -257,12 +263,12 @@ lem_alpha_ctsubst (ConsT a k_a g') th den_g_th t1 t2 ae_t1_t2 = case den_g_th of
 
 -- the rest of this will be uncommented and worked out (possibly with changes to AlphaEqv) as needed
 
-{-
+
 -- with bound type vars, these are only equiv up to alpha-renaming bound variables
 {-@ lem_erase_subtype :: g:Env -> t1:Type -> t2:Type -> ProofOf(Subtype g t1 t2)
                -> ProofOf(AlphaEqv (erase_env g) (erase t1) (erase t2)) @-}
 lem_erase_subtype :: Env -> Type -> Type -> Subtype -> AlphaEqv
-lem_erase_subtype g t1 t2 (SBase _g x1 b p1 x2 p2 y _) = AEBasic (erase_env g) b
+lem_erase_subtype g t1 t2 (SBase _g x1 b p1 x2 p2 y _) = undefined -- AEBasic (erase_env g) b
 lem_erase_subtype g t1 t2 (SFunc _g x1 s1 x2 s2 p_s2_s1 t1' t2' y p_t1'_t2')
   = AEFunc (erase_env g) (erase s1) (erase s2) ae_s1_s2 (erase t1') (erase t2') ae_g_t1'_t2'
       where
@@ -287,7 +293,7 @@ lem_erase_subtype g t1 t2 (SBind _g x t_x t _t2 y p_t_t')
 {-
     = () ? lem_erase_subtype (Cons y t_x g) (unbindT x y t) t2 p_t_t'
          ? lem_erase_tsubBV x (FV y) t -}
-lem_erase_subtype g t1 t2 (SPoly _g a1 k t1' a2 t2' a p_ag_t1'_t2') 
+lem_erase_subtype g t1 t2 (SPoly _g a1 k t1' a2 t2' a p_ag_t1'_t2')  = undefined {- REDO DEFN
   = AEPoly (erase_env g) a1 k (erase t1') a2 (erase t2') a ae_ag_t1'_t2'
 --                            ? lem_binds_consT_concatF (erase_env g) FEmpty a k 
            --    ? toProof ( S.isSubsetOf (tvbindsF (erase_env g)) (bindsF (erase_env g)) )
@@ -296,18 +302,13 @@ lem_erase_subtype g t1 t2 (SPoly _g a1 k t1' a2 t2' a p_ag_t1'_t2')
                                           p_ag_t1'_t2' ? toProof ( S.isSubsetOf (tvbinds g) (binds g) )
                                                        ? lem_erase_unbind_tvT a1 a t1'
                                                        ? lem_erase_unbind_tvT a2 a t2' 
+-}
 {-    = toProof ( normalize (erase (TPoly a1 k t1))
             === normalize (FTPoly a1 k (erase t1))
             === let a' = maxbinder (FTPoly a1 k (normalize t1)) in
                   FTPoly a' k (ftsubBV a1 (FTBasic (BTV a')) (normalize t1))
             === let a' = maxbinder (FTPoly a2 k (normalize t2)) in 
                   FTPoly a' k (ftsubBV a1 (FTBasic (BTV a')) (normalize t1)) -}
-{-    = () ? lem_erase_subtype (ConsT a k g) (unbind_tvT a1 a t1') (unbind_tvT a2 a t2') p_ag_t1'_t2'
-         ? lem_erase_tsubBTV a1 (TRefn (BTV (maxBinder (FTPoly a1 k (normalize (erase t1))))) 1 (Bc True))
-                                (normalize (erase t1))  
-         ? lem_erase_tsubBTV a2 (TRefn (BTV (maxBinder (FTPoly a2 k (normalize (erase t2))))) 1 (Bc True))
-                                (normalize (erase t2))  -}
--}
 
 {-@ lem_alpha_in_env_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> { x:Vname | (not (in_envF x g)) && not (in_envF x g') } 

@@ -45,7 +45,7 @@ import SubstitutionLemmaTyp
 foo55 x = Just x
 foo55 :: a -> Maybe a
 
-
+{- This one moved to Lemmas Well Formedness -- delete the below
 {-@ lem_narrow_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
         -> t_x:Type -> ProofOf(Subtype g s_x t_x)
@@ -68,6 +68,7 @@ lem_narrow_wfenv g (ConsT a k_a g') x s_x t_x p_sx_tx p_env_wf = case p_env_wf o
     where
       env''      = concatE (Cons x s_x g) g'
       p_env''_wf = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf-}
+-}
 
 -- -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) 
 {-@ lem_narrow_ent :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 

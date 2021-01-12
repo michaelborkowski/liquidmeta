@@ -41,14 +41,15 @@ time liquid --normal --oldple Implications.hs
 #### 
 time liquid --normal --oldple LemmasChangeVarWF.hs
 time liquid --normal --oldple LemmasChangeVarWFEnv.hs
-#time liquid --normal --oldple LemmasChangeVarEnt.hs
 
-#time liquid --normal --oldple LemmasWeakenWF.hs
-##########time liquid --normal LemmasWeakenWFTV.hs
-#time liquid --normal --oldple LemmasWeakenEnt.hs
+time liquid --normal --oldple LemmasChangeVarEnt.hs
+time liquid --normal --oldple LemmasWeakenWF.hs
+time liquid --normal --oldple LemmasWeakenWFTV.hs
+time liquid --normal --oldple LemmasWeakenEnt.hs
+time liquid --normal --oldple LemmasWellFormedness.hs
 
-#time liquid --normal --oldple LemmasWellFormedness.hs
 #time liquid --normal --oldple LemmasTyping.hs
+#### ???
 #time liquid --normal --oldple LemmasSubtyping.hs
 #time liquid --normal --oldple LemmasChangeVarTyp.hs
 ##########

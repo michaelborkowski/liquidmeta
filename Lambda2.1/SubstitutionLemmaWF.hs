@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -28,13 +27,12 @@ import BasicPropsDenotes
 import Entailments
 import LemmasChangeVarWF
 import LemmasWeakenWF
+import LemmasWeakenWFTV
 import LemmasWellFormedness
-import LemmasTyping
-import LemmasSubtyping
 
-{-@ reflect foo48 @-}
-foo48 x = Just x
-foo48 :: a -> Maybe a
+{-@ reflect foo41 @-}
+foo41 x = Just x
+foo41 :: a -> Maybe a
 
 -- -- -- -- -- -- -- -- -- -- -- ---
 -- Part of the Substitution Lemma --
@@ -48,24 +46,26 @@ foo48 :: a -> Maybe a
           -> ProofOf(WFType (concatE g (esubFV x v_x g')) (tsubFV x v_x t) k) / [wftypSize p_env_t, 0] @-}
 lem_subst_wf_wfrefn :: Env -> Env -> Vname -> Expr -> Type -> HasFType -> WFEnv 
                     -> Type -> Kind -> WFType -> WFType
-lem_subst_wf_wfrefn g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFRefn env z b p_env_b p y_ p_env'_p_bl)
-  = WFRefn (concatE g (esubFV x v_x g')) z b p_gg'_b (subFV x v_x p) y -- _env = g'; x:tx; g
+lem_subst_wf_wfrefn g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFRefn env z b tt p_env_b p y_ p_env'_p_bl)
+  = WFRefn (concatE g (esubFV x v_x g')) z b tt p_gg'_b (subFV x v_x p) y -- _env = g'; x:tx; g
            p_ygg'_pvx_bl 
       where
-        p_gg'_b       = lem_subst_wf g g' x v_x t_x p_vx_er_tx p_env_wf (TRefn b 1 (Bc True)) Base p_env_b
+        p_gg'_b       = lem_subst_wf g g' x v_x t_x p_vx_er_tx p_env_wf 
+                                     (TRefn b Z tt) Base p_env_b 
+                                     ? lem_subFV_notin x v_x (tt ? lem_trivial_nofv tt)
         y             = y_ ? lem_in_env_esub g' x v_x y_
                            ? lem_in_env_concat g  g' y_
                            ? lem_in_env_concat (Cons x t_x g) g' y_
                            ? lem_fv_bound_in_fenv (erase_env g) v_x (erase t_x) p_vx_er_tx y_
-        p_env_er_b    = lem_erase_wftype env (TRefn b 1 (Bc True)) Base p_env_b
+        p_env_er_b    = lem_erase_wftype env (TRefn b Z tt) Base p_env_b
         p_er_yenv_wf  = WFFBind (erase_env env) (lem_erase_env_wfenv env p_env_wf) y (FTBasic b) 
                              Base p_env_er_b -- (WFFTBasic (erase_env env) b)
         p_ygg'_pvx_bl = lem_subst_ftyp (erase_env g) (FCons y (FTBasic b) (erase_env g')) 
                            (x ? lem_in_env_concatF (erase_env g) (erase_env g') x
                               ? lem_in_env_concatF (erase_env g) (FCons y (FTBasic b) (erase_env g')) x)
-                           v_x (erase t_x)  p_vx_er_tx p_er_yenv_wf (unbind z y p) (FTBasic TBool) 
+                           v_x (erase t_x)  p_vx_er_tx p_er_yenv_wf (unbind 0 y p) (FTBasic TBool) 
                            (p_env'_p_bl ? lem_erase_concat (Cons x t_x g) g')
-                           ? lem_commute_subFV_subBV1 z (FV y) x 
+                           ? lem_commute_subFV_subBV1 0 (FV y) x 
                                (v_x ? lem_freeBV_emptyB (erase_env g) v_x (erase t_x) p_vx_er_tx) p
                            ? lem_erase_concat g (esubFV x v_x g')
                            ? lem_erase_esubFV x v_x g'
@@ -78,19 +78,20 @@ lem_subst_wf_wfrefn g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFRefn env z b p_env
           -> ProofOf(WFType (concatE g (esubFV x v_x g')) (tsubFV x v_x t) k) / [wftypSize p_env_t, 0] @-}
 lem_subst_wf_wfvar :: Env -> Env -> Vname -> Expr -> Type -> HasFType -> WFEnv 
                           -> Type -> Kind -> WFType -> WFType
-lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar1 _env' a k_a)
+lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar1 _env' a tt k_a)
   = case g' of
       Empty              -> impossible "x <> a"
       (ConsT _a _ka g'') -> WFVar1 (concatE g (esubFV x v_x g''))
                                    (a ? lem_in_env_esub g'' x v_x a
                                       ? lem_in_env_concat g g'' a
-                                      ? lem_in_env_concat (Cons x t_x g) g'' a) k_a
-lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar2 _env' a_ k_a p_env'_a y_ t_y)
+                                      ? lem_in_env_concat (Cons x t_x g) g'' a) 
+                                   (tt ? lem_subFV_notin x v_x (tt ? lem_trivial_nofv tt)) k_a
+lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar2 _env' a_ tt k_a p_env'_a y_ t_y)
   = case g' of 
-      Empty{- x == y -} -> p_env'_a       
+      Empty{- x == y -} -> p_env'_a ? lem_subFV_notin x v_x (tt ? lem_trivial_nofv tt)      
       (Cons _y _ty g'') -> case ( x == a_ ) of 
-        True  -> impossible ("by lemma" ? lem_wfvar_tv_in_env (concatE (Cons x t_x g) g'') a_ k_a p_env'_a)
-        False -> WFVar2 (concatE g (esubFV x v_x g'')) a k_a p_gg''_a y (tsubFV x v_x t_y)
+        True  -> impossible ("by lemma" ? lem_wfvar_tv_in_env (concatE (Cons x t_x g) g'') a_ tt k_a p_env'_a)
+        False -> WFVar2 (concatE g (esubFV x v_x g'')) a tt k_a p_gg''_a y (tsubFV x v_x t_y)
           where
             (WFEBind _ p_env'_wf _ _ _ _) = p_env_wf
             a        = a_ ? lem_in_env_esub g'' x v_x a_
@@ -102,13 +103,14 @@ lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar2 _env' a_ k_a p
                           ? lem_in_env_concat (Cons x t_x g) g'' y_
                           ? lem_fv_bound_in_fenv (erase_env g) v_x (erase t_x) p_vx_er_tx y_
             p_gg''_a = lem_subst_wf g g'' x v_x t_x p_vx_er_tx p_env'_wf 
-                                    (TRefn (FTV a) 1 (Bc True)) k_a p_env'_a
-lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar3 _env' a_ k_a p_env'_a a1_ k_a1) 
+                                    (TRefn (FTV a) Z tt) k_a p_env'_a 
+                                    ? lem_subFV_notin x v_x (tt ? lem_trivial_nofv tt)
+lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar3 _env' a_ tt k_a p_env'_a a1_ k_a1) 
   = case g' of
       Empty               -> impossible "x <> a1"
       (ConsT _a1 _k1 g'') -> case (x == a_) of 
-        True  -> impossible ("by lemma" ? lem_wfvar_tv_in_env (concatE (Cons x t_x g) g'') a_ k_a p_env'_a)
-        False -> WFVar3 (concatE g (esubFV x v_x g'')) a k_a p_gg''_a a1 k_a1
+        True  -> impossible ("by lemma" ? lem_wfvar_tv_in_env (concatE (Cons x t_x g) g'') a_ tt k_a p_env'_a)
+        False -> WFVar3 (concatE g (esubFV x v_x g'')) a tt k_a p_gg''_a a1 k_a1
           where
             (WFEBindT _ p_env'_wf _ _) = p_env_wf
             a        = a_ ? lem_in_env_esub g'' x v_x a_
@@ -120,7 +122,8 @@ lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar3 _env' a_ k_a p
                            ? lem_in_env_concat (Cons x t_x g) g'' a1_
                            ? lem_fv_bound_in_fenv (erase_env g) v_x (erase t_x) p_vx_er_tx a1_
             p_gg''_a = lem_subst_wf g g'' x v_x t_x p_vx_er_tx p_env'_wf 
-                                    (TRefn (FTV a) 1 (Bc True)) k_a p_env'_a
+                                    (TRefn (FTV a) Z tt) k_a p_env'_a 
+                                    ? lem_subFV_notin x v_x (tt ? lem_trivial_nofv tt)
 
 {-@ lem_subst_wf_wffunc :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
           -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
@@ -198,11 +201,11 @@ lem_subst_wf_wfpoly g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFPoly _env a1 k_a1 
           -> ProofOf(WFType (concatE g (esubFV x v_x g')) (tsubFV x v_x t) k) / [wftypSize p_env_t, 1] @-}
 lem_subst_wf :: Env -> Env -> Vname -> Expr -> Type -> HasFType -> WFEnv 
                     -> Type -> Kind -> WFType -> WFType
-lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFBase _env b)
-  = WFBase (concatE g (esubFV x v_x g')) b
-lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t@(WFRefn env z b p_env_b p y_ p_env'_p_bl)  
+lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFBase _env b tt)
+  = WFBase (concatE g (esubFV x v_x g')) b (tt ? lem_subFV_notin x v_x (tt ? lem_trivial_nofv tt))
+lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t@(WFRefn env z b tt p_env_b p y_ p_env'_p_bl)  
   = lem_subst_wf_wfrefn g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t 
-lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t@(WFVar1 _env a k_a)
+lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t@(WFVar1 _env a tt k_a)
   = lem_subst_wf_wfvar g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t
 lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t@(WFVar2 {})
   = lem_subst_wf_wfvar g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t
@@ -218,19 +221,3 @@ lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t k (WFKind _env _t p_env_t_base)
   = WFKind (concatE g (esubFV x v_x g')) (tsubFV x v_x t) p_gg'_tvx_base
       where
         p_gg'_tvx_base = lem_subst_wf g g' x v_x t_x p_vx_tx p_env_wf t Base p_env_t_base
-
--- this version takes a regular typing judgment
-{-@ lem_subst_wf' :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
-          -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
-          -> t_x:Type -> ProofOf(HasType g v_x t_x) 
-          -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) -> t:Type -> k:Kind
-          -> { p_env_t:WFType | propOf p_env_t == WFType (concatE (Cons x t_x g) g') t k }
-          -> ProofOf(WFType (concatE g (esubFV x v_x g')) (tsubFV x v_x t) k) @-} 
-lem_subst_wf' :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv 
-                     -> Type -> Kind -> WFType -> WFType
-lem_subst_wf' g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t
-  = lem_subst_wf g g' x v_x t_x p_vx_er_tx p_env_wf t k p_env_t 
-      where
-        p_xg_wf     = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
-        (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
-        p_vx_er_tx = lem_typing_hasftype g v_x t_x p_vx_tx p_g_wf

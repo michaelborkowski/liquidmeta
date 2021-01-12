@@ -14,6 +14,7 @@
   - file: BasicPropsDenotes.hs -- some TODO
   - ~~file: Implications.hs~~ -- DONE
   - file: Entailments.hs -- some cases to fill in
+  - file: LemmasWellFormedness.hs -- wellformedness of selfified types 
 
 ### ~~System F Lemmas (not covered in pen and paper)~~
   - ~~System F Lemma 1 (Primitives)~~  -- DONE
@@ -52,15 +53,15 @@
 
 ### Lemma 4 (Weakenings)
   - status: several cases TODO
-  - file: LemmasWeakenWF.hs -- cases todo
-  - file: LemmasWeakenEnt.hs -- DONE
+  - ~~file: LemmasWeakenWF.hs~~ -- DONE
+  - ~~file: LemmasWeakenEnt.hs~~ -- DONE
   - file: LemmasWeakenTyp.hs -- cases todo
 
   - not included in pen-and-paper: Change of Variables Lemmas
   - status: several cases TODO
   - ~~file: LemmasChangeVarWF.hs~~ -- DONE
   - ~~file: LemmasChangeVarWFEnv.hs~~ -- DONE
-  - file: LemmasChangeVarEnt.hs  -- one case todo
+  - ~~file: LemmasChangeVarEnt.hs~~ -- DONE
   - file: LemmasChangeVarTyp.hs -- cases todo
   - file: LemmasChangeVarTypTV.hs -- cases todo
 
@@ -69,12 +70,12 @@
   - file: LemmasSubtyping.hs -- some cases todo
 
 ### Lemma 6 (Erasure of types)
-  - status: one case TODO
-  - file: BasicPropsCSubst.hs -- one case, basic properties TODO
+  - status: rephrasing in terms of alpha equivalence
+  - file: BasicPropsCSubst.hs -- one case
 
 ### Lemma 7 (Selfification and Denotations)
-  - status: TODO (two cases)
-  - file: DenotationsSelfify.hs -- cases todo
+  - status: rephrase in terms of new self definition
+  - file: DenotationsSelfify.hs 
 
 ### Lemma 8 (Denotational Soundness)
   - status: TODO polymorphic cases
@@ -82,49 +83,49 @@
   - file: DenotationsSoundnessTyp.hs
 
 ### Lemma 9 (Exact Typing)
-  - status: TODO most cases
-  - file: LemmasExactness.hs -- most cases TODO
+  - status: rephrase cases in terms of new self definition
+  - file: LemmasExactness.hs 
 
 ### Lemma 10 (Substitution Lemma)
   - status: several cases remaining
-  - file: SubstitutionLemmaWF.hs
-  - file: SubstitutionLemmaEnt.hs
+  - file: ~~SubstitutionLemmaWF.hs~~ -- DONE
+  - file: ~~SubstitutionLemmaEnt.hs~~ -- DONE
   - file: SubstitutionLemmaTyp.hs
 
 ### Lemma 11 (Well-Formedness from Typing)
-  - status: polymorphic cases TODO
+  - status: reorder modules to use other results
   - file: LemmasTyping.hs
 
-### Lemma 12 (Witness subtyping)
+### ~~Lemma 12 (Witness subtyping)~~
   - status: DONE
   - file: in SubstitutionLemmaWF.hs
 
 ### Lemma 13 (Narrowing of judgements)
   - status: many cases todo
-  - file: part of LemmasWellFormedness.hs -- ?? TODO
-  - file: LemmasNarrowingEnt.hs -- 6 TODO
+  - ~~file: part of LemmasWellFormedness.hs~~ -- DONE
+  - ~~file: LemmasNarrowingEnt.hs~~ -- DONE
   - file: LemmasNarrowingTyp.hs -- 29 TODO
 
 ### Lemma 14 (Transitivity of subtyping) 
   - status: almost done
-  - file: LemmasTransitive.hs -- TODO: termination/totality
+  - file: LemmasTransitive.hs -- one polymorphic case
 
-### Lemma 15 (Subtyping own transitive/reflexive closure)
+### ~~Lemma 15 (Subtyping own transitive/reflexive closure)~~
   - status: DONE
   - file: LemmasSubtypeClosed.hs -- DONE
 
-### Lemma 16 (Inversion of some typing judgments)
+### ~~Lemma 16 (Inversion of some typing judgments)~~
   - status:  DONE
   - file: LemmasInvertLambda.hs -- DONE
 
-### Theorem 17 (Progress)		
+### ~~Theorem 17 (Progress)~~	
   - status: DONE
   - file: MainTheorems.hs  --  DONE
 
-### Theorem 18 (Preservation)	
+### ~~Theorem 18 (Preservation)	~~
   - status: DONE
   - file: MainTheorems.hs	 -- DONE
 
-### Theorem 19/20 (Crash-free)
+### ~~Theorem 19/20 (Crash-free)~~
   - status: DONE
   - file: MainTheorems.hs	 -- DONE

@@ -43,6 +43,27 @@ import PrimitivesDenotations
 foo52 x = Just x           
 foo52 :: a -> Maybe a    
 
+-- get the full version of this from Lambda1.1:
+--        -> e:Expr -> t_e:Type -> ProofOf(HasType g e t_e)
+{-@ lem_self_entails_self :: g:Env -> b:Basic -> x1:Vname -> p1:Pred -> x2:Vname -> p2:Pred 
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p2)) }  
+        -> ProofOf(Entails (Cons y (TRefn b x1 p1) g) (unbind x2 y p2)) 
+        -> { e:Expr | Set_emp (freeBV e) } 
+        -> ProofOf(Entails (Cons y (TRefn b x1 (selfify p1 b x1 e)) g) (unbind x2 y (selfify p2 b x2 e))) @-}
+lem_self_entails_self :: Env -> Basic -> Vname -> Pred -> Vname -> Pred -> Vname -> Entails
+                             -> Expr -> Entails
+lem_self_entails_self g b x1 p1 x2 p2 y ent_yg_p2 e {-t_e p_e_te-} = undefined
+{- = EntPred g' (unbind x2 y (selfify p2 b x2 e)) reduce_thselfp2_tt             
+       where
+         (EntPred _ _ reduce_thp2_tt) = ent_yg_p2
+         g'            = Cons y (TRefn b x1 (selfify p1 b x1 e)) g  
+         {-@ reduce_thselfp2_tt :: th':CSub -> ProofOf(DenotesEnv g' th')
+                 -> ProofOf(EvalsTo (csubst th' (unbind x2 y (selfify p2 b x2 e)) (Bc True) @-}
+         reduce_thselfp2_tt th' den_g'_th' = ......
+           where
+             (DExt _g th0 den_g_th0 _y self_s v_s
+             den_yg_th' = DExt g th0 den_g_th0 y (TRefn b x1 p1) v_s    -}
+
 -- do I need this?    -> ProofOf(HasType g e t)
 {-@ lem_self_is_subtype :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
         -> { e:Expr | Set_emp ( freeBV e ) && Set_sub (fv e) (binds g) }
@@ -209,6 +230,8 @@ lem_exact_type g e t p_e_t@(TSub _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base
   = TSub g e (self s e Base) p_e_selfs (self t e Base) k p_g_selft p_selfs_selft
      where
        p_e_selfs     = lem_exact_type    g e s p_g_e_s Base
-       p_g_selft     = lem_selfify_wf'   g t k p_g_t e p_e_t
-       p_selfs_selft = lem_exact_subtype g s t p_g_s_t Base e
+       p_g_selft_b   = lem_selfify_wf'   g t Base p_g_t e p_e_t
+       p_g_selft     = if k == Base then p_g_selft_b
+                       else WFKind g (self t e Base) p_g_selft_b
+       p_selfs_selft = lem_exact_subtype g s t p_g_s_t Base (e ? lem_freeBV_empty 
 lem_exact_type g e t p_e_t Star = p_e_t

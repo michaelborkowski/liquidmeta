@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -25,11 +24,10 @@ import Typing
 import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
-import Entailments
 
-{-@ reflect foo40 @-}
-foo40 x = Just x
-foo40 :: a -> Maybe a
+{-@ reflect foo39 @-}
+foo39 x = Just x
+foo39 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
@@ -65,7 +63,7 @@ lem_weaken_tv_ent g g' p_env_wf p (EntPred env_ _p evals_func) a k_a
           env' = (concatE (ConsT a k_a g) g')
           evals_func' ::  CSub -> DenotesEnv -> EvalsTo
           evals_func' th' den_env'_th' = evals_func th den_env_th
-                ? lem_remove_csubst th' a ( p ? lem_binds_env_th (concatE g g') th den_env_th)
+                ? lem_remove_tv_csubst th' a ( p ? lem_binds_env_th (concatE g g') th den_env_th)
             where
               th         = remove_fromCS th' a
               den_env_th = lem_remove_tvar_denote_env g a k_a g' p_env_wf th' den_env'_th'

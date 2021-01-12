@@ -222,7 +222,7 @@ lem_esubFV_inverse g0 x t_x (Cons z t_z g') p_g0g_wf y = case p_g0g_wf of
       === Cons z (tsubFV y (FV x) (tsubFV x (FV y) t_z)) (esubFV y (FV x) (esubFV x (FV y) g')) -}
         ? lem_esubFV_inverse g0 x t_x g' p_env'_wf y 
    {- === Cons z (tsubFV y (FV x) (tsubFV x (FV y) t_z)) g' -}
-        ? lem_chain_tsubFV x y (FV x) (t_z ? lem_free_bound_in_env env' t_z k_z p_env'_tz (y ? lem_in_env_concat (Cons x t_x g0) (Cons z t_z g') y ? lem_in_env_concat (Cons x t_x g0) g'))
+        ? lem_chain_tsubFV x y (FV x) (t_z ? lem_free_bound_in_env env' t_z k_z p_env'_tz (y ? lem_in_env_concat (Cons x t_x g0) (Cons z t_z g') y))
         ? lem_tsubFV_id x t_z
    {- === Cons z t_z g'  ) -}
 lem_esubFV_inverse g0 x t_x (ConsT a k g') p_g0g_wf y = case p_g0g_wf of
@@ -250,6 +250,25 @@ lem_erase_echgFTV a a' (Empty)         = ()
 lem_erase_echgFTV a a' (Cons  y t g)   = () ? lem_erase_echgFTV a a' g
                                             ? lem_erase_tchgFTV a a' t
 lem_erase_echgFTV a a' (ConsT a1 k1 g) = () ? lem_erase_echgFTV a a' g
+
+{-@ lem_echgFTV_inverse :: g0:Env -> { a:Vname | not (in_env a g0) } -> k_a:Kind
+        -> { g:Env | Set_emp (Set_cap (binds g0) (binds g)) && not (in_env a g) } 
+        -> ProofOf(WFEnv (concatE (ConsT a k_a g0) g))
+        -> { a':Vname | not (in_env a' g) && not (in_env a' g0) } 
+        -> { pf:Proof | echgFTV a' a (echgFTV a a' g) == g } @-}
+lem_echgFTV_inverse :: Env -> Vname -> Kind -> Env -> WFEnv -> Vname -> Proof
+lem_echgFTV_inverse g0 a k_a Empty           p_g0g_wf a' = ()
+lem_echgFTV_inverse g0 a k_a (Cons z t_z g') p_g0g_wf a' = case p_g0g_wf of
+  (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) -> case ( a == a' ) of
+    (True)  -> () ? lem_echgFTV_inverse g0 a k_a g' p_env'_wf a'
+                  ? lem_tchgFTV_id a t_z
+    (False) -> () ? lem_echgFTV_inverse g0 a k_a g' p_env'_wf a' 
+                  ? lem_chain_tchgFTV a a' a 
+                      (t_z ? lem_free_bound_in_env env' t_z k_z p_env'_tz 
+                               (a' ? lem_in_env_concat (ConsT a k_a g0) (Cons z t_z g') a'))
+                  ? lem_tchgFTV_id a t_z
+lem_echgFTV_inverse g0 a k_a (ConsT a1 k1 g') p_g0g_wf a' = case p_g0g_wf of
+  (WFEBindT env' p_env'_wf _a1 _k1) -> () ? lem_echgFTV_inverse g0 a k_a g' p_env'_wf a'
 
 {-@ reflect esubFTV @-}
 {-@ esubFTV :: a:Vname -> t_a:UserType -> g:Env 

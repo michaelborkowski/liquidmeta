@@ -660,6 +660,15 @@ lem_change_var_back (CCons z v_z th) x y  | ( x == z ) = ()
 lem_change_var_back (CConsT a t_a th) x y {-| ( x == a ) = ()
                                           | otherwise  -} = () ? lem_change_var_back th x y
 
+{-@ lem_change_tvar_back :: th:CSub -> { a:Vname | tv_in_csubst a th }
+        -> { a':Vname | (a == a' || not (in_csubst a' th)) } 
+        -> { pf:Proof | change_tvarCS (change_tvarCS th a a') a' a == th } @-}
+lem_change_tvar_back :: CSub -> Vname -> Vname -> Proof
+lem_change_tvar_back CEmpty            a a'               = ()
+lem_change_tvar_back (CCons z v_z th)  a a'               = () ? lem_change_tvar_back th a a'
+lem_change_tvar_back (CConsT a1 t1 th) a a' | ( a == a1 ) = ()
+                                            | otherwise   = () ? lem_change_tvar_back th a a'
+
 --        -> { e:Expr | Set_sub (fv e) (bindsC th) && not (Set_mem x (fv e)) }
 {-@ lem_remove_csubst :: th:CSub -> { x:Vname | v_in_csubst x th}
         -> { e:Expr | not (Set_mem x (fv e)) }

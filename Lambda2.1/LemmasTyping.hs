@@ -30,9 +30,9 @@ import LemmasChangeVarWF
 import LemmasWeakenWF
 import LemmasWellFormedness
 
-{-@ reflect foo42 @-}
-foo42 x = Just x
-foo42 :: a -> Maybe a
+{-@ reflect foo41 @-}
+foo41 x = Just x
+foo41 :: a -> Maybe a
 
 {-@ lem_tsubFV_tybc :: x:Vname -> v_x:Value -> b:Bool
         -> { pf:_ | tsubFV x v_x (tybc b) == tybc b } @-}
@@ -48,6 +48,7 @@ lem_tsubFV_tyic x v_x n = ()
 {-@ lem_tsubFV_ty :: x:Vname -> v_x:Value -> c:Prim
         -> { pf:_ | tsubFV x v_x (ty c) == ty c } @-}
 lem_tsubFV_ty :: Vname -> Expr -> Prim -> Proof
+lem_tsubFV_ty x v_x Conj     = ()
 lem_tsubFV_ty x v_x And      = ()
 lem_tsubFV_ty x v_x Or       = () 
 lem_tsubFV_ty x v_x Not      = ()
@@ -58,20 +59,21 @@ lem_tsubFV_ty x v_x Eq       = ()
 lem_tsubFV_ty x v_x (Eqn n)  = ()
 lem_tsubFV_ty x v_x Eql      = ()
 
-{-@ lem_tsubFTV_tybc :: a:Vname -> t_a:Type -> b:Bool
+{-@ lem_tsubFTV_tybc :: a:Vname -> t_a:UserType -> b:Bool
         -> { pf:_ | tsubFTV a t_a (tybc b) == tybc b } @-}
 lem_tsubFTV_tybc :: Vname -> Type -> Bool -> Proof
 lem_tsubFTV_tybc a t_a True  = ()
 lem_tsubFTV_tybc a t_a False = ()
 
-{-@ lem_tsubFTV_tyic :: a:Vname -> t_a:Type -> n:Int
+{-@ lem_tsubFTV_tyic :: a:Vname -> t_a:UserType -> n:Int
         -> { pf:_ | tsubFTV a t_a (tyic n) == tyic n } @-}
 lem_tsubFTV_tyic :: Vname -> Type -> Int -> Proof
 lem_tsubFTV_tyic a t_a n = ()
 
-{-@ lem_tsubFTV_ty :: a:Vname -> t_a:Type -> c:Prim
+{-@ lem_tsubFTV_ty :: a:Vname -> t_a:UserType -> c:Prim
         -> { pf:_ | tsubFTV a t_a (ty c) == ty c } @-}
 lem_tsubFTV_ty :: Vname -> Type -> Prim -> Proof
+lem_tsubFTV_ty a t_a Conj     = ()
 lem_tsubFTV_ty a t_a And      = ()
 lem_tsubFTV_ty a t_a Or       = () 
 lem_tsubFTV_ty a t_a Not      = ()
@@ -158,9 +160,15 @@ lem_typing_wf g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_wf_g
         Star -> p_g_t
 -}
 
+{-@ lem_selfify_wf' :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> e:Expr
+        -> ProofOf(HasType g e t) -> ProofOf(WFType g (self t e k) k) @-}
+lem_selfify_wf' :: Env -> Type -> Kind -> WFType -> Expr -> HasType -> WFType
+lem_selfify_wf' g t@(TRefn b z p) k p_g_t e p_e_t = undefined -- prefer this one
+
+{-
 {-@ lem_typing_hasftype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
-        -> ProofOf(WFEnv g) -> ProofOf(HasFType (erase_env g) e (erase t)) @-}
-lem_typing_hasftype :: Env -> Expr -> Type -> HasType -> WFEnv -> HasFType
+        -> ProofOf(WFEnv g) -> ProofOf(EqvFTyping (erase_env g) e (erase t)) @-}
+lem_typing_hasftype :: Env -> Expr -> Type -> HasType -> WFEnv -> EqvFTyping
 lem_typing_hasftype g e t (TBC _g b) p_g_wf      = FTBC (erase_env g) b
 lem_typing_hasftype g e t (TIC _g n) p_g_wf      = FTIC (erase_env g) n
 lem_typing_hasftype g e t (TVar1 g' x t' k' _) p_g_wf  
@@ -228,6 +236,7 @@ lem_typing_hasftype g e t (TAnn _g e' _ p_e'_t) p_g_wf
 lem_typing_hasftype g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf
     = undefined -- need lemma re: normalization
 --    = lem_typing_hasftype g e s p_e_s p_g_wf ? lem_erase_subtype g s t p_s_t -- p_g_wf
+-}
 
 {-@ lem_csubst_hasftype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t) 
         -> ProofOf(WFEnv g) -> th:CSub -> ProofOf(DenotesEnv g th) 
