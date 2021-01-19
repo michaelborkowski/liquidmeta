@@ -22,20 +22,22 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
-import Entailments
+import BasicPropsEraseTyping
+--import Entailments
 import LemmasChangeVarWF
 import LemmasChangeVarEnt
 import LemmasWeakenWF
+import LemmasWeakenWFTV
 import LemmasWellFormedness
-import LemmasTyping
 import SubstitutionLemmaWF
+import SubstitutionLemmaWFTV
+import LemmasTyping
 
-{-@ reflect foo44 @-}
-foo44 x = Just x
-foo44 :: a -> Maybe a
+{-@ reflect foo46 @-}
+foo46 x = Just x
+foo46 :: a -> Maybe a
 
 -----------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
@@ -419,6 +421,7 @@ lem_change_var_subtype_sfunc :: Env -> Vname -> Type -> Env -> WFEnv -> Type -> 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_var_subtype_sfunc g x t_x g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_ft2 
                        (SFunc env z1 s1 z2 s2 p_env_s2_s1 t1 t2 w p_wenv_t1_t2) y_ 
+ = undefined {- CHECKED 
     = SFunc env' z1 (tsubFV x (FV y) s1) z2 (tsubFV x (FV y) s2) p_env'_s2_s1 
                     (tsubFV x (FV y) t1) (tsubFV x (FV y) t2) w' p_w'env'_t1_t2
         where
@@ -464,7 +467,7 @@ lem_change_var_subtype_sfunc g x t_x g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_f
                                    p_w'env_t1_t2 y
                                    ? lem_commute_tsubFV_unbindT x y z1 w' t1
                                    ? lem_commute_tsubFV_unbindT x y z2 w' t2
-{- -}
+-}
 
 {-@ lem_change_var_subtype_switn :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
       -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) }

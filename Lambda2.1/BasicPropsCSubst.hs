@@ -24,11 +24,30 @@ import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
 
-{-@ reflect foo28 @-}   
-foo28 x = Just x 
-foo28 :: a -> Maybe a 
+{-@ reflect foo27 @-}   
+foo27 x = Just x 
+foo27 :: a -> Maybe a 
 
 -- | Closing Substitution Properties
+
+{-@ lem_unroll_csubst_left :: th:CSub -> { x:Vname | not (in_csubst x th) } 
+        -> { v_x:Value | Set_emp (fv v_x) && Set_emp (ftv v_x) } ->  e:Expr
+        -> { pf:_ | csubst (CCons x v_x th) e == subFV x v_x (csubst th e) } @-}
+lem_unroll_csubst_left :: CSub -> Vname -> Expr -> Expr -> Proof
+lem_unroll_csubst_left CEmpty           x v_x e = ()
+lem_unroll_csubst_left (CCons y v_y th) x v_x e 
+  = () ? lem_subFV_notin x v_x v_y
+--             === ctsubst th (tsubFV y (subFV x v_x v_y) (tsubFV x v_x t))
+       ? lem_commute_subFV y v_y x v_x e
+{-             === ctsubst th (tsubFV x v_x (tsubFV y v_y t))
+               === ctsubst (CCons x v_x th) (tsubFV y v_y t)-}
+       ? lem_unroll_csubst_left th x v_x (subFV y v_y e)
+{-             === tsubFV x v_x (ctsubst th (tsubFV y v_y t))
+               === tsubFV x v_x (ctsubst (CCons y v_y th) t) )-}
+lem_unroll_csubst_left (CConsT a t_a th) x v_x e 
+  = () ? lem_tsubFV_notin x v_x t_a
+       ? lem_commute_subFV_subFTV a t_a x v_x e
+       ? lem_unroll_csubst_left th x v_x (subFTV a t_a e)
 
 {-@ lem_unroll_ctsubst_left :: th:CSub -> { x:Vname | not (in_csubst x th) } 
         -> { v_x:Value | Set_emp (fv v_x) && Set_emp (ftv v_x) } ->  t:Type
@@ -166,6 +185,16 @@ lem_csubst_annot :: CSub -> Expr -> Type -> Proof
 lem_csubst_annot (CEmpty)       e t    = ()
 lem_csubst_annot (CCons y v th) e t    = () ? lem_csubst_annot th (subFV y v e) (tsubFV y v t)
 lem_csubst_annot (CConsT a t_a th) e t = () ? lem_csubst_annot th (subFTV a t_a e) (tsubFTV a t_a t)
+
+{-@ lem_csubst_trivial :: th:CSub -> { tt:Pred | isTrivial tt } -> { pf:_ | csubst th tt == tt } @-}
+lem_csubst_trivial :: CSub -> Pred -> Proof
+lem_csubst_trivial th (Bc True) = () ? lem_csubst_bc th True
+lem_csubst_trivial th (App p r) = case p of
+  (App (Prim Conj) (Bc True)) -> () ? lem_csubst_app th (App (Prim Conj) (Bc True)) r
+                                    ? lem_csubst_app th (Prim Conj) (Bc True)
+                                    ? lem_csubst_prim th Conj
+                                    ? lem_csubst_bc th  True
+                                    ? lem_csubst_trivial th r
 
 {-@ lem_csubst_conjunction :: th:CSub -> { p:Pred | not (isConjunction p) }
         -> { pf:_ | not (isConjunction (csubst th p)) } @-}

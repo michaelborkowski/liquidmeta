@@ -23,7 +23,6 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 
@@ -293,19 +292,16 @@ reduce_eqn_tt n m = reduce_eq_tt n m
 -- | Denotations of the Basic Types
 -- ---------------------------------------------------------------------
 
-
 {-@ lem_den_bools :: v:Value -> { t:Type | erase t == FTBasic TBool } 
         -> ProofOf(Denotes t v) -> { pf:_ | v == Bc True || v == Bc False } @-}
 lem_den_bools :: Expr -> Type -> Denotes -> Proof
-lem_den_bools v t den_t_v = case ae_s_bool of 
-    (AEBasic _ _ ) -> lem_bool_values v p_v_s
+lem_den_bools v t den_t_v = lem_bool_values v p_v_t
   where
-    (AEWitness _ _ _ s ae_s_bool p_v_s) = get_aewitness_from_den t v den_t_v
+    p_v_t = get_ftyp_from_den t v den_t_v
 
 {-@ lem_den_ints :: v:Value -> { t:Type | erase t == FTBasic TInt } 
         -> ProofOf(Denotes t v) -> { pf:_ | isInt v } @-}
 lem_den_ints :: Expr -> Type -> Denotes -> Proof
-lem_den_ints v t den_t_v = case ae_s_int of 
-    (AEBasic _ _) -> lem_int_values v p_v_s
+lem_den_ints v t den_t_v = lem_int_values v p_v_t
   where
-    (AEWitness _ _ _ s ae_s_int p_v_s) = get_aewitness_from_den t v den_t_v
+    p_v_t = get_ftyp_from_den t v den_t_v

@@ -20,15 +20,16 @@ import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
 import SystemFLemmasFTyping
+import SystemFLemmasFTyping2
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
-import BasicPropsDenotes
+--import BasicPropsDenotes
 import Entailments
 import LemmasChangeVarWF
 import LemmasChangeVarEnt
 import LemmasWeakenWF
+import LemmasWeakenWFTV
 import LemmasWeakenEnt
 import LemmasWellFormedness
 import LemmasTyping
@@ -338,12 +339,12 @@ lem_weaken_subtype_sbase g g' p_env_wf t k p_env_t t' k' p_env_t'
                                      ? lem_in_env_concat (Cons x t_x g) g' w')
                                  t k p_env_t
           pf_w'env_ent_p2  = lem_change_var_ent (concatE g g') w t Empty p_wenv_wf
-                                 (unbind z2 w p2 ? lem_free_subset_binds env t' k' p_env_t') 
+                                 (unbind 0 w p2 ? lem_free_subset_binds env t' k' p_env_t') 
                                  pf_wenv_ent_p2 
                                  (w' ? lem_free_bound_in_env env t' k' p_env_t' w')
-                                 ? lem_subFV_unbind z2 w (FV w') p2
+                                 ? lem_subFV_unbind 0 w (FV w') p2
           pf_w'env'_ent_p2 = lem_weaken_ent g (Cons w' t g') 
-                                 p_w'env_wf (unbind z2 w' p2) pf_w'env_ent_p2 x t_x 
+                                 p_w'env_wf (unbind 0 w' p2) pf_w'env_ent_p2 x t_x 
 
 {-@ lem_weaken_subtype_sfunc :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
       -> ProofOf(WFEnv (concatE g g'))
@@ -356,6 +357,7 @@ lem_weaken_subtype_sfunc :: Env -> Env -> WFEnv -> Type -> Kind -> WFType
       -> Type -> Kind -> WFType -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_sfunc g g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_ft2 
                        (SFunc env z1 s1 z2 s2 p_env_s2_s1 t1 t2 w p_wenv_t1_t2) x_ t_x
+ = undefined {- CHECKED
     = SFunc env' z1 s1 z2 s2 p_env'_s2_s1 t1 t2 w' p_w'env'_t1_t2
         where
           (WFFunc _ _ _ k_s1 p_env_s1 _ k_t1 w1 p_w1'env_t1)
@@ -397,7 +399,7 @@ lem_weaken_subtype_sfunc g g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_ft2
           p_w'env'_t1_t2 = lem_weaken_subtype g (Cons w' s2 g') p_w'env_wf
                                    (unbindT z1 w' t1) k_t1 p_w'env_t1 (unbindT z2 w' t2) k_t2
                                    p_w'env_t2 p_w'env_t1_t2 x t_x
-
+-}
 
 {-@ lem_weaken_subtype_switn :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
       -> ProofOf(WFEnv (concatE g g'))
@@ -410,6 +412,7 @@ lem_weaken_subtype_switn :: Env -> Env -> WFEnv -> Type -> Kind -> WFType
       -> Type -> Kind -> WFType -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_switn g g' p_env_wf t k p_env_t t2 k2 p_env_t2
                    (SWitn env v_z t_z p_env_vz_tz _t z t' p_env_t_t'vz) x_ t_x 
+ = undefined {- CHECKED
     = SWitn env' v_z t_z p_env'_vz_tz t z t' p_env'_t_t'vz
         where
           (WFExis _ _ _ k_z p_env_tz _ k' z' p_z'env_t')
@@ -423,7 +426,7 @@ lem_weaken_subtype_switn g g' p_env_wf t k p_env_t t2 k2 p_env_t2
                                          ? lem_tsubFV_unbindT z z' v_z t'
           p_env'_t_t'vz = lem_weaken_subtype g g' p_env_wf t k p_env_t
                                              (tsubBV z v_z t') k' p_env_t'vz p_env_t_t'vz x t_x
-
+-}
 
 {-@ lem_weaken_subtype_sbind :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
       -> ProofOf(WFEnv (concatE g g'))
@@ -436,6 +439,7 @@ lem_weaken_subtype_sbind :: Env -> Env -> WFEnv -> Type -> Kind -> WFType
       -> Type -> Kind -> WFType -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_sbind g g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
                    (SBind env z t_z t _t' z' p_z'env_t_t') x_ t_x
+ = undefined {- CHECKED
     = SBind env' z t_z t t' z'' p_z''env'_t_t'
         where
           (WFExis _ _ _ k_z p_env_tz _ k w p_wenv_t)
@@ -465,7 +469,7 @@ lem_weaken_subtype_sbind g g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
           p_z''env'_t_t' = lem_weaken_subtype g (Cons z'' t_z g') p_z''env_wf
                                    (unbindT z z'' t) k p_z''env_t t' k' p_z''env_t' 
                                    p_z''env_t_t' x t_x
-
+-}
 
 {-@ lem_weaken_subtype_spoly :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
       -> ProofOf(WFEnv (concatE g g'))

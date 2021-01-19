@@ -102,3 +102,11 @@ lem_subBTV_strengthen a t_a p r = case p of
   (App (App (Prim Conj) p') q) -> () ? lem_subBTV_strengthen a t_a q r
                                      ? lem_subBTV_strengthen a t_a p' (strengthen q r)
   _                            -> ()  
+
+{-@ lem_strengthen_trivial :: { p:Pred | isTrivial p } -> { q:Pred | isTrivial q}
+        -> { pf:_ | isTrivial (strengthen p q) } @-}
+lem_strengthen_trivial :: Pred -> Pred -> Proof
+lem_strengthen_trivial (Bc True) r   = ()
+lem_strengthen_trivial (App p' q') r = case p' of 
+  (App (Prim Conj) (Bc True)) -> () ? lem_strengthen_trivial q' r
+                                    ? lem_strengthen_trivial (Bc True) (strengthen q' r)

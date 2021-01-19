@@ -4,14 +4,13 @@
 {-@ LIQUID "--ple"         @-}
 {-@ LIQUID "--short-names" @-}
 
-module PrimitivesDenotationsAnd where
+module PrimitivesDenotationsConj where
 
 import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -27,13 +26,13 @@ import BasicPropsCSubst
 import BasicPropsDenotes
 import PrimitivesSemantics
 
-{-@ reflect foo51 @-}
-foo51 x = Just x
-foo51 :: a -> Maybe a
+{-@ reflect foo56 @-}
+foo56 x = Just x
+foo56 :: a -> Maybe a
  
-{-@ lem_den_and :: ProofOf(Denotes (ty And) (Prim And)) @-}
-lem_den_and :: Denotes
-lem_den_and = DFunc 1 (TRefn TBool Z (Bc True)) t'
+{-@ lem_den_conj :: ProofOf(Denotes (ty Conj) (Prim Conj)) @-}
+lem_den_conj :: Denotes
+lem_den_conj = DFunc 1 (TRefn TBool Z (Bc True)) t'
                     (Prim And) (FTPrm FEmpty And) val_den_func
   where
     val_den_func :: Expr -> Denotes -> ValueDenoted

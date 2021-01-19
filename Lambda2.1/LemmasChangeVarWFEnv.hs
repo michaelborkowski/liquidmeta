@@ -22,7 +22,6 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import LemmasChangeVarWF

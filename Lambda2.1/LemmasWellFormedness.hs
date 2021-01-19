@@ -19,13 +19,14 @@ import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
+import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
+import SystemFLemmasFTyping2
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
-import Entailments
+import BasicPropsEraseTyping
 import LemmasChangeVarWF
 import LemmasWeakenWF
 
@@ -37,79 +38,49 @@ foo40 :: a -> Maybe a
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------
 
-{-@ lem_selfify_wf :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> e:Expr
+{-@ lem_selfify_wf :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
+        -> ProofOf(WFFE (erase_env g)) -> e:Expr
         -> ProofOf(HasFType (erase_env g) e (erase t))
         -> ProofOf(WFType g (self t e k) k) @-}
-lem_selfify_wf :: Env -> Type -> Kind -> WFType -> Expr -> HasFType -> WFType
-lem_selfify_wf g t@(TRefn b z p) k p_g_t e p_e_t = case p_g_t of
-  (WFBase _g b tt)                       -> case b of
-    TBool -> undefined
-    TInt  -> undefined 
-  (WFRefn _g _z _b tt p_g_b _p  y pf_p_bl) -> case b of
-    TBool -> undefined {- WFRefn g' z b p' w pf_p'_bl 
+lem_selfify_wf :: Env -> Type -> Kind -> WFType -> WFFE -> Expr -> HasFType -> WFType
+lem_selfify_wf g t@(TRefn b z p) Base p_g_t p_g_wf e p_e_t 
+  = lem_push_wf g t p_g_t p_g_wf (eqlPred t e) y p_yg_p_bl
       where
-        g'          = Cons x t g
-        w           = fresh_var g' ? lem_free_subset_binds g t p_g_t
-        g''         = BCons w (BTBase b) (erase_env g')
-        pf_pw_bl    = lem_change_var_btyp (erase_env g) y (BTBase b) BEmpty (unbind z y p) (BTBase TBool) 
-                                          pf_p_bl w ? lem_subFV_unbind z y (FV w) p
-        pf_pwx_bl   = lem_weaken_btyp (erase_env g) (BCons w (BTBase b) BEmpty) (unbind z w p) (BTBase TBool)
-                                          pf_pw_bl x (BTBase TBool) -- erase t
-        p'          = App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) (FV x))
-        blbl        = BTFunc (BTBase TBool) (BTBase TBool)
-        app_eqv1    = BTApp g'' (Prim Eqv) (BTBase TBool) blbl (BTPrm g'' Eqv) 
-                            (FV w) (BTVar1 (erase_env g') w (BTBase b))
-        app_eqv2    = BTApp g'' (App (Prim Eqv) (FV w)) (BTBase TBool) (BTBase TBool) app_eqv1
-                            (FV x) (BTVar2 (erase_env g') x (BTBase TBool) 
-                                           (BTVar1 (erase_env g) x (BTBase TBool)) w (BTBase b))
-        app_and1    = BTApp g'' (Prim And) (BTBase TBool) blbl (BTPrm g'' And)
-                            (unbind z w p) pf_pwx_bl
-        {-@ pf_p'_bl :: ProofOf(HasBType g'' (unbind z w p') (BTBase TBool)) @-}
-        pf_p'_bl    = BTApp g'' (App (Prim And) (unbind z w p)) (BTBase TBool) (BTBase TBool) app_and1
-                            (App (App (Prim Eqv) (FV w)) (FV x)) app_eqv2
---                            ? lem_fv_subset_bindsB g'' (unbind z w  -}
-    TInt  -> undefined {-WFRefn g' z b p' w pf_p'_bl
-      where
-        g'          = Cons x t g
-        w           = fresh_var g' ? lem_free_subset_binds g t p_g_t
-        g''         = BCons w (BTBase b) (erase_env g')
-        pf_pw_bl    = lem_change_var_btyp (erase_env g) y (BTBase b) BEmpty (unbind z y p) (BTBase TBool) 
-                                          pf_p_bl w ? lem_subFV_unbind z y (FV w) p
-        pf_pwx_bl   = lem_weaken_btyp (erase_env g) (BCons w (BTBase b) BEmpty) (unbind z w p) (BTBase TBool)
-                                          pf_pw_bl x (BTBase TInt) -- erase t
-        p'          = App (App (Prim And) p) (App (App (Prim Eq) (BV z)) (FV x))
-        blbl        = BTFunc (BTBase TBool) (BTBase TBool)
-        intbl       = BTFunc (BTBase TInt) (BTBase TBool)
-        app_eqv1    = BTApp g'' (Prim Eq) (BTBase TInt) intbl (BTPrm g'' Eq) 
-                            (FV w) (BTVar1 (erase_env g') w (BTBase b))
-        app_eqv2    = BTApp g'' (App (Prim Eq) (FV w)) (BTBase TInt) (BTBase TBool) app_eqv1
-                            (FV x) (BTVar2 (erase_env g') x (BTBase TInt) 
-                                           (BTVar1 (erase_env g) x (BTBase TInt)) w (BTBase b))
-        app_and1    = BTApp g'' (Prim And) (BTBase TBool) blbl (BTPrm g'' And)
-                            (unbind z w p) pf_pwx_bl
-        {-@ pf_p'_bl :: ProofOf(HasBType g'' (unbind z w p') (BTBase TBool)) @-}
-        pf_p'_bl    = BTApp g'' (App (Prim And) (unbind z w p)) (BTBase TBool) (BTBase TBool) app_and1
-                            (App (App (Prim Eq) (FV w)) (FV x)) app_eqv2-}
-    (FTV a) -> undefined
-    (BTV a) -> undefined
-  (WFVar1 {}) -> undefined
-  (WFVar2 {}) -> undefined
-  (WFVar3 {}) -> undefined
-  (WFKind {}) -> undefined
-lem_selfify_wf g t@(TExists z t_z t') k p_g_t e p_e_t = undefined
-lem_selfify_wf g t                    k p_g_t e p_e_t = p_g_t
+        y_        = fresh_var g
+        y         = y_ ? lem_free_subset_binds g t Base p_g_t   
+                       ? lem_fv_bound_in_fenv (erase_env g) e (erase t) p_e_t y_
+                       ? lem_freeBV_emptyB (erase_env g) e (erase t) p_e_t
+        p_yg_p_bl = lem_eqlPred_ftyping g b z p p_g_t p_g_wf y e p_e_t
+                       ? lem_subBV_notin 0 (FV y) (App (AppT (Prim Eql) (TRefn b z p)) (FV y))
+                       ? lem_subBV_notin 0 (FV y) e
+                       ? lem_fv_subset_bindsF (erase_env g) e (erase t) p_e_t
+lem_selfify_wf g t@(TExists z t_z t') Base p_g_t p_g_wf e p_e_t = case p_g_t of 
+  (WFExis _ _z _tz k_z p_tz_wf _t' k' y'_ p_y'_t'_wf)
+      -> WFExis g z t_z k_z p_tz_wf (self t' e Base) k' y' p_y'g_selft'
+    where
+      y'           = y'_ ? lem_fv_bound_in_fenv (erase_env g) e (erase t) p_e_t y'_
+                         ? lem_freeBV_emptyB (erase_env g) e (erase t) p_e_t
+      p_er_g_tz    = lem_erase_wftype g t_z k_z p_tz_wf
+      p_y'g_wf     = WFFBind (erase_env g) p_g_wf y' (erase t_z) k_z p_er_g_tz
+      p_y'g_e_t    = lem_weaken_ftyp (erase_env g) FEmpty p_g_wf e (erase t) p_e_t y' (erase t_z)
+      p_y'g_selft' = lem_selfify_wf (Cons y' t_z g) (unbindT z y' t') Base p_y'_t'_wf p_y'g_wf
+                                    e (p_y'g_e_t ? lem_erase_tsubBV z (FV y') t')
+                                    ? lem_tsubBV_self z (FV y') t' (e
+                                          ? lem_freeBV_emptyB (erase_env g) e (erase t) p_e_t) Base
+lem_selfify_wf g t                    k p_g_t p_g_wf e p_e_t = p_g_t
 
 {-@ lem_strengthen_ftyping :: g:FEnv ->  p:Pred -> r:Pred
         -> ProofOf(HasFType g p (FTBasic TBool))
         -> ProofOf(HasFType g r (FTBasic TBool))
         -> ProofOf(HasFType g (strengthen p r) (FTBasic TBool)) @-}
 lem_strengthen_ftyping :: FEnv -> Pred -> Pred -> HasFType -> HasFType -> HasFType
-lem_strengthen_ftyping g (App (App (Prim Conj) q) q') r pf_p_bl pf_r_bl = case pf_p_bl of
-  (FTApp _ _p' bl _bl pf_p'_blbl _q' pf_q'_bl) -> case pf_p'_blbl of
-    (FTApp _ _ _blbl _bl2 _ _ pf_q_bl) -> undefined {-lem_strengthen_ftyping g q qr pf_q_bl pf_qr_bl
-      where
-        qr       = strengthen q' r
-        pf_qr_bl = lem_strengthen_ftyping g q' r pf_q'_bl pf_r_bl -}
+lem_strengthen_ftyping g (App (App (Prim Conj) _q) _q') r pf_p_bl pf_r_bl = case pf_p_bl of
+  (FTApp _ _p' bl _bl pf_p'_blbl q' pf_q'_bl) -> case pf_p'_blbl of
+    (FTApp _ _ _blbl _bl2 pf_conj_bbb q pf_q_bl) -> case pf_conj_bbb of
+      (FTPrm _ _) -> lem_strengthen_ftyping g q qr pf_q_bl pf_qr_bl
+        where
+          qr       = strengthen q' r
+          pf_qr_bl = lem_strengthen_ftyping g q' r pf_q'_bl pf_r_bl 
 lem_strengthen_ftyping g p r pf_p_bl pf_r_bl 
   = FTApp g (App (Prim Conj) p) (FTBasic TBool) 
           (FTBasic TBool) pf_conjp_blbl r pf_r_bl
@@ -118,42 +89,122 @@ lem_strengthen_ftyping g p r pf_p_bl pf_r_bl
         pf_conjp_blbl = FTApp g (Prim Conj) (FTBasic TBool)  func_type
                               (FTPrm g Conj) p pf_p_bl
 
-{-@ lem_push_wf :: g:Env -> t_a:UserType -> ProofOf(WFType g t_a Base) 
-        -> x:Vname -> p:Pred
+{-@ lem_eqlPred_ftyping :: g:Env -> b:Basic -> z:RVname -> p:Pred
+        -> ProofOf(WFType g (TRefn b z p) Base) -> ProofOf(WFFE (erase_env g))
         -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
-        -> ProofOf(HasFType (FCons y (erase t_a) (erase_env g)) (unbind x y p) (FTBasic TBool))
-        -> ProofOf(WFType g (push p t_a) Base) @-}
-lem_push_wf :: Env -> Type -> WFType -> Vname -> Expr -> Vname -> HasFType -> WFType
-lem_push_wf g t_a@(TRefn   b z   r) p_g_ta x p y p_yg_p_bl = undefined {-
-  = WFRefn g z b tt p_g_tt (strengthen p r) y p_pr_bl
-      where
-        
-
-makeWFType (Cons y t_a g) (TRefn b z (strengthen p r)) Base
-               ? lem_subBV_strengthen 0 (FV y) p r-}
-lem_push_wf g (TFunc   z t_z t) p_g_ta x p y p_yg_p_bl = p_g_ta
-lem_push_wf g (TPoly   a' k' t) p_g_ta x p y p_yg_p_bl = p_g_ta
-
-{-
-{-@ lem_ftyping_eqlPred :: g:Env -> b:Basic -> z:RVname -> p:Pred
-        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
-        -> ProofOf(HasFType (FCons y (erase t_a) (erase_env g)) (unbind x y p) (FTBasic TBool))
-        -> ProofOf(HasFType (erase_env g) e (FTBasic b))
-        -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) 
-                       (App (App (AppT (Prim Eql) (TRefn b z p)) (FV y)) e) (FTBasic TBool)) @-}
-lem_ftyping_eqlPred ::
-lem_ftyping_eqlPred g b z p y p_g_ta ? pf_p_bl pf_e_b = undefined {-
-  = FTApp yg (App (AppT (Prim Eql) (TRefn b z p)) (FV y)) 
+        -> e:Expr -> ProofOf(HasFType (erase_env g) e (FTBasic b))
+        -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g))
+                            (App (App (AppT (Prim Eql) (TRefn b z p)) (FV y)) e) (FTBasic TBool)) @-}
+lem_eqlPred_ftyping :: Env -> Basic -> RVname -> Pred {-> Kind-} -> WFType -> WFFE
+                           -> Vname -> Expr -> HasFType -> HasFType
+lem_eqlPred_ftyping g b z p {-k-} p_g_b p_g_wf y e p_e_t 
+  = FTApp yg (App (AppT (Prim Eql) (TRefn b z p)) (FV y)) (FTBasic b) (FTBasic TBool)
+          inner_app e p_yg_e_b
       where
         yg         = FCons y (FTBasic b) (erase_env g)
-        p_yg_ta    =
-        a'_        = fresh_varF yg
-        a'         = a'_ ? lem_fv_bound_in_fenv (erase_env g) e (FTBasic b) p_e_b a'_
+        inner_app  = FTApp  yg (AppT (Prim Eql) (TRefn b z p)) (FTBasic b)
+                            (FTFunc (FTBasic b) (FTBasic TBool)) inner_appt 
+                            (FV y) (FTVar1 (erase_env g) y (FTBasic b))
+        inner_appt = FTAppT yg (Prim Eql) 1 Base poly_type (FTPrm yg Eql)
+                            (TRefn b z (p ? lem_tfreeBV_empty g (TRefn b z p) Base p_g_b
+                                         ? lem_free_subset_binds g (TRefn b z p) Base p_g_b))
+                            p_er_yg_b
         poly_type  = (FTFunc (FTBasic (BTV 1)) (FTFunc (FTBasic (BTV 1)) (FTBasic TBool)))
-        pf_appt_?  = FTAppT yg (Prim Eql) 1 Base poly_type a' (TRefn b z p)  -- lemma using p_g_ta
-                            p_yg_ta
--}
--}
+        p_er_g_b   = lem_erase_wftype g (TRefn b z p) Base p_g_b
+        p_er_yg_b  = lem_weaken_wfft (erase_env g) FEmpty (FTBasic b) Base p_er_g_b y (FTBasic b)
+        p_yg_e_b   = lem_weaken_ftyp (erase_env g) FEmpty p_g_wf e (FTBasic b) p_e_t y (FTBasic b)
+
+{-@ lem_push_wf :: g:Env -> t_a:UserType -> ProofOf(WFType g t_a Base) 
+        -> ProofOf(WFFE (erase_env g)) -> p:Pred 
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
+        -> ProofOf(HasFType (FCons y (erase t_a) (erase_env g)) (unbind 0 y p) (FTBasic TBool))
+        -> ProofOf(WFType g (push p t_a) Base) @-}
+lem_push_wf :: Env -> Type -> WFType -> WFFE -> Expr -> Vname -> HasFType -> WFType
+lem_push_wf g t_a@(TRefn   b z   r) p_g_ta p_g_wf p y p_yg_p_bl = case p_g_ta of
+  (WFBase _ _ _r) -> WFRefn g z b r p_g_ta (strengthen p r) (y ? lem_trivial_nofv r)  p_pr_bl
+      where
+        p_yg_r_bl  = makeHasFType (FCons y (FTBasic b) (erase_env g)) 
+                                  (r ? lem_trivial_nodefns r)
+                                  (FTBasic TBool 
+                                    ? lem_trivial_check (FCons y (FTBasic b) (erase_env g)) r)
+        p_pr_bl    = lem_strengthen_ftyping (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p)
+                                         (unbind 0 y r) p_yg_p_bl 
+                                         (p_yg_r_bl ? lem_subBV_notin 0 (FV y) (r ? lem_trivial_nobv r))
+                                         ? lem_subBV_strengthen 0 (FV y) p r
+  (WFVar1 _ _ _r _)       -> WFRefn g z b r p_g_ta (strengthen p r) (y ? lem_trivial_nofv r)  p_pr_bl
+      where
+        p_yg_r_bl  = makeHasFType (FCons y (FTBasic b) (erase_env g)) 
+                                  (r ? lem_trivial_nodefns r)
+                                  (FTBasic TBool 
+                                    ? lem_trivial_check (FCons y (FTBasic b) (erase_env g)) r)
+        p_pr_bl    = lem_strengthen_ftyping (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p)
+                                         (unbind 0 y r) p_yg_p_bl 
+                                         (p_yg_r_bl ? lem_subBV_notin 0 (FV y) (r ? lem_trivial_nobv r))
+                                         ? lem_subBV_strengthen 0 (FV y) p r
+  (WFVar2 _ _ _r _ _ _ _) -> WFRefn g z b r p_g_ta (strengthen p r) (y ? lem_trivial_nofv r)  p_pr_bl
+      where
+        p_yg_r_bl  = makeHasFType (FCons y (FTBasic b) (erase_env g)) 
+                                  (r ? lem_trivial_nodefns r)
+                                  (FTBasic TBool 
+                                    ? lem_trivial_check (FCons y (FTBasic b) (erase_env g)) r)
+        p_pr_bl    = lem_strengthen_ftyping (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p)
+                                         (unbind 0 y r) p_yg_p_bl 
+                                         (p_yg_r_bl ? lem_subBV_notin 0 (FV y) (r ? lem_trivial_nobv r))
+                                         ? lem_subBV_strengthen 0 (FV y) p r
+  (WFVar3 _ _ _r _ _ _ _) -> WFRefn g z b r p_g_ta (strengthen p r) (y ? lem_trivial_nofv r) p_pr_bl
+      where
+        p_yg_r_bl  = makeHasFType (FCons y (FTBasic b) (erase_env g)) 
+                                  (r ? lem_trivial_nodefns r)
+                                  (FTBasic TBool 
+                                    ? lem_trivial_check (FCons y (FTBasic b) (erase_env g)) r)
+        p_pr_bl    = lem_strengthen_ftyping (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p)
+                                         (unbind 0 y r) p_yg_p_bl
+                                         (p_yg_r_bl ? lem_subBV_notin 0 (FV y) (r ? lem_trivial_nobv r))
+                                         ? lem_subBV_strengthen 0 (FV y) p r
+  (WFRefn _ _ _ tt p_g_tt _r y' p_y'g_r_bl) -> WFRefn g z b tt p_g_tt (strengthen p r) 
+                                                 (y ? lem_free_bound_in_env g t_a Base p_g_ta y) p_pr_bl
+      where
+        p_er_g_ta  = lem_erase_wftype g t_a Base p_g_ta
+        p_y'g_wf   = WFFBind (erase_env g) p_g_wf y' (erase t_a) Base p_er_g_ta
+        p_yg_r_bl  = lem_change_var_ftyp (erase_env g) y' (erase t_a) FEmpty p_y'g_wf
+                                         (unbind 0 y' r) (FTBasic TBool) p_y'g_r_bl y
+                                         ? lem_subFV_unbind 0 y' (FV y) r
+        p_pr_bl    = lem_strengthen_ftyping (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p)
+                                         (unbind 0 y r) p_yg_p_bl p_yg_r_bl
+                                         ? lem_subBV_strengthen 0 (FV y) p r
+lem_push_wf g (TFunc   z t_z t) p_g_ta p_g_wf p y p_yg_p_bl = p_g_ta
+lem_push_wf g (TPoly   a' k' t) p_g_ta p_g_wf p y p_yg_p_bl = p_g_ta
+
+{-@ lem_push_trivial_wf :: g:Env -> t_a:UserType -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
+        -> ProofOf(WFFE (erase_env g)) -> { tt:Pred | isTrivial tt } 
+        -> ProofOf(WFType g (push tt t_a) k_a) @-}
+lem_push_trivial_wf :: Env -> Type -> Kind -> WFType -> WFFE -> Expr -> WFType
+lem_push_trivial_wf g t_a@(TRefn   b z   r) Base p_g_ta p_g_wf tt 
+  = lem_push_wf g t_a p_g_ta p_g_wf tt (y ? lem_trivial_nofv tt) p_yg_tt_bl
+      where
+        y          = fresh_var g
+        p_yg_tt_bl = makeHasFType (FCons y (FTBasic b) (erase_env g))
+                                  (tt ? lem_trivial_nodefns tt)
+                                  (FTBasic TBool 
+                                     ? lem_trivial_check (FCons y (FTBasic b) (erase_env g)) tt)
+                                  ? lem_subBV_notin 0 (FV y) (tt ? lem_trivial_nobv tt)
+lem_push_trivial_wf g t_a@(TRefn   b z   r) Star p_g_ta p_g_wf tt  = case p_g_ta of
+  (WFVar1 g' a _r _) -> WFVar1 g' a (strengthen tt r ? lem_strengthen_trivial tt r) Star
+  (WFVar2 g' a _r _ p_g'_ta y t) -> WFVar2 g' a (strengthen tt r ? lem_strengthen_trivial tt r) Star
+                                           p_g'_ttr y t
+    where
+      (WFFBind _ p_g'_wf _ _ _ _) = p_g_wf
+      p_g'_ttr = lem_push_trivial_wf g' t_a Star p_g'_ta p_g'_wf tt
+  (WFVar3 g' a _r _ p_g'_ta a' k') -> WFVar3 g' a (strengthen tt r ? lem_strengthen_trivial tt r) Star
+                                             p_g'_ttr a' k'
+    where
+      (WFFBindT _ p_g'_wf _ _) = p_g_wf
+      p_g'_ttr = lem_push_trivial_wf g' t_a Star p_g'_ta p_g'_wf tt
+  (WFKind _ _ p_g_ta_base) -> WFKind g (push tt t_a) p_g_ttr_base
+    where
+      p_g_ttr_base = lem_push_trivial_wf g t_a Base p_g_ta_base p_g_wf tt
+lem_push_trivial_wf g (TFunc  z t_z t) k p_g_ta p_g_wf tt = p_g_ta
+lem_push_trivial_wf g (TPoly  a' k' t) k p_g_ta p_g_wf tt = p_g_ta 
 
 {-@ lem_subtype_in_env_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
       -> { x:Vname | (not (in_env x g)) && not (in_env x g') }
@@ -169,15 +220,9 @@ lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx t k (WFRefn env z b tt p_env_b p z'
           z'              = z'_ ? lem_in_env_concat (Cons x t_x g) g' z'_
                                 ? lem_in_env_concat (Cons x s_x g) g' z'_
           p_env'_b        = lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx (TRefn b Z tt) Base p_env_b
-          ae_sx_tx        = lem_erase_subtype g s_x t_x p_sx_tx
-          eqv_z'env'_p_bl = lem_alpha_in_env_ftyp (erase_env g) (FCons z' (FTBasic b) (erase_env g')) 
-                                                  x (erase s_x) (erase t_x) ae_sx_tx 
-                                                  (unbind 0 z' p) (FTBasic TBool) (p_z'env_p_bl
-                                                  ? lem_erase_concat (Cons x t_x g) g')
-          p_z'env'_p_bl   = lem_eqvftyping_basic (FCons z' (FTBasic b) 
-                                (concatF (FCons x (erase s_x) (erase_env g)) (erase_env g'))) 
-                                (unbind 0 z' p) TBool eqv_z'env'_p_bl
-                                ? lem_erase_concat (Cons x s_x g) g'
+          p_z'env'_p_bl   = p_z'env_p_bl ? lem_erase_concat (Cons x s_x g) g' -- (Cons z' (FTBasic b) g')
+                                         ? lem_erase_concat (Cons x t_x g) g' -- (Cons z' (FTBasic b) g')
+                                         ? lem_erase_subtype g s_x t_x p_sx_tx
 lem_subtype_in_env_wf g g' x s_x t_x p_sx_tx t k (WFVar1 env a tt k_a) = case g' of
     Empty              -> impossible "a <> x"
     (ConsT _a _ka g'') -> WFVar1 (concatE (Cons x s_x g) g'') a tt k_a

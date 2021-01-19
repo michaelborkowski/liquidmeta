@@ -21,10 +21,8 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
-import Entailments
 import LemmasChangeVarWF
 import LemmasWeakenWF
 import LemmasWeakenWFTV
@@ -37,22 +35,6 @@ import LemmasSubtyping
 {-@ reflect foo45 @-}
 foo45 x = Just x
 foo45 :: a -> Maybe a
-
-
-{-@ lem_subst_wf_eqvft :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
-          -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
-          -> t_x:Type -> ProofOf(EqvFTyping (erase_env g) v_x (erase t_x))
-          -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) -> t:Type -> k:Kind
-          -> { p_env_t:WFType | propOf p_env_t == WFType (concatE (Cons x t_x g) g') t k }
-          -> ProofOf(WFType (concatE g (esubFV x v_x g')) (tsubFV x v_x t) k) / [wftypSize p_env_t, 1] @-}
-lem_subst_wf_eqvft :: Env -> Env -> Vname -> Expr -> Type -> EqvFTyping -> WFEnv 
-                    -> Type -> Kind -> WFType -> WFType
-lem_subst_wf_eqvft g g' x v_x t_x eqv_vx_tx p_env_wf t k p_env_t = case eqv_vx_tx of
-  (AEWitness _ _ _ s_x ae_sx_tx p_vx_sx) -> lem_subst_wf g g' x v_x s_x p_vx_sx p_env'_wf t k p_env'_t
-    where
-      (s_x', p_sx'_tx) = lem_alpha_subtype g s_x t_x ae_sx_tx 
-      p_env'_wf        = lem_narrow_wfenv g g' x s_x' t_x p_sx'_tx ?? ?? p_env_wf
-      p_env'_t         = lem_subtype_in_env_wf g g' s_x' t_x p_sx'_tx y p_env_t
 
 -- this version takes a regular typing judgment
 {-@ lem_subst_wf' :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
@@ -72,9 +54,9 @@ lem_subst_wf' g g' x v_x t_x p_vx_tx p_env_wf t k p_env_t
 
 -- the legacy version of TV substitution in WFType that takes WFEnv as a parameter
 {-@ lem_subst_tv_wf' :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
-          -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:Type
+          -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
           -> k_a:Kind -> ProofOf(WFType g t_a k_a) -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') ) 
-          -> { t:Type | same_binders t_a t || isTrivial t } -> k:Kind
+          -> t:Type -> k:Kind
           -> { p_env_t:WFType | propOf p_env_t == WFType (concatE (ConsT a k_a g) g') t k }
           -> ProofOf(WFType (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) k) / [wftypSize p_env_t, 1] @-}
 lem_subst_tv_wf' :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv 

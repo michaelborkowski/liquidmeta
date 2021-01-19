@@ -24,7 +24,6 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Typing
@@ -37,7 +36,7 @@ foo53 :: a -> Maybe a
   
 {-@ lem_den_eqv :: ProofOf(Denotes (ty Eqv) (Prim Eqv)) @-}
 lem_den_eqv :: Denotes
-lem_den_eqv = simpleDFunc 1 (TRefn TBool 1 (Bc True)) t'
+lem_den_eqv = DFunc 1 (TRefn TBool Z (Bc True)) t'
                     (Prim Eqv) (FTPrm FEmpty Eqv) val_den_func 
   where
     val_den_func :: Expr -> Denotes -> ValueDenoted
@@ -48,14 +47,14 @@ lem_den_eqv = simpleDFunc 1 (TRefn TBool 1 (Bc True)) t'
       (Bc False) -> ValDen (App (Prim Eqv) (Bc False)) (tsubBV 1 (Bc False) t') (Lambda 1 (App (Prim Not) (BV 1))) 
                       (lem_step_evals (App (Prim Eqv) (Bc False)) (Lambda 1 (App (Prim Not) (BV 1))) 
                       (EPrim Eqv (Bc False))) den_t'f_nt
-      _     -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool 1 (Bc True)) den_tx_vx)
-    t' = TFunc 2 (TRefn TBool 2 (Bc True)) (TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+      _     -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool Z (Bc True)) den_tx_vx)
+    t' = TFunc 2 (TRefn TBool Z (Bc True)) (TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (BV 1)) (BV 2)) )
                         (App (App (Prim And) (App (Prim Not) (BV 1))) (App (Prim Not) (BV 2))))))
-    t't = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+    t't = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc True)) (BV 2)) )
                         (App (App (Prim And) (App (Prim Not) (Bc True))) (App (Prim Not) (BV 2)))))
-    den_t't_id = simpleDFunc 2 (TRefn TBool 2 (Bc True)) t't (Lambda 1 (BV 1)) 
+    den_t't_id = DFunc 2 (TRefn TBool Z (Bc True)) t't (Lambda 1 (BV 1)) 
                        (FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) (BV 1) 
                               (FTBasic TBool) 1 (FTVar1 FEmpty 1 (FTBasic TBool))) val_den_func2
     val_den_func2 :: Expr -> Denotes -> ValueDenoted
@@ -66,30 +65,30 @@ lem_den_eqv = simpleDFunc 1 (TRefn TBool 1 (Bc True)) t'
       (Bc False) -> ValDen (App (Lambda 1 (BV 1)) (Bc False)) (tsubBV 2 (Bc False) t't) (Bc False)
                       (lem_step_evals (App (Lambda 1 (BV 1)) (Bc False)) (Bc False) 
                       (EAppAbs 1 (BV 1) (Bc False))) den_t''f_ff
-      _          -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool 2 (Bc True)) den_tx_vx)
-    t''t = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+      _          -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool Z (Bc True)) den_tx_vx)
+    t''t = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc True)) (Bc True)) )
                         (App (App (Prim And) (App (Prim Not) (Bc True))) (App (Prim Not) (Bc True)))))
-    t''f = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+    t''f = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc True)) (Bc False)) )
                         (App (App (Prim And) (App (Prim Not) (Bc True))) (App (Prim Not) (Bc False)))))
-    den_t''t_tt = DRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+    den_t''t_tt = DRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc True)) (Bc True)) )
                         (App (App (Prim And) (App (Prim Not) (Bc True))) (App (Prim Not) (Bc True)))))
                         (Bc True) (FTBC FEmpty True) eqv_ev_prt''t_tt
     {-@ eqv_ev_prt''t_tt :: ProofOf(EvalsTo (App (App (Prim Eqv) (Bc True)) (App (App (Prim Or) (App (App (Prim And) (Bc True)) (Bc True)) ) (App (App (Prim And) (App (Prim Not) (Bc True))) (App (Prim Not) (Bc True))))) (Bc True)) @-}
     eqv_ev_prt''t_tt = reduce_eqv_tt True True
-    den_t''f_ff = DRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+    den_t''f_ff = DRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc True)) (Bc False)) )
                         (App (App (Prim And) (App (Prim Not) (Bc True))) (App (Prim Not) (Bc False)))))
                         (Bc False) (FTBC FEmpty False) eqv_ev_prt''f_ff
     {-@ eqv_ev_prt''f_ff :: ProofOf(EvalsTo (App (App (Prim Eqv) (Bc False)) (App (App (Prim Or) (App (App (Prim And) (Bc True)) (Bc False)) ) (App (App (Prim And) (App (Prim Not) (Bc True))) (App (Prim Not) (Bc False))))) (Bc True)) @-}
     eqv_ev_prt''f_ff = reduce_eqv_tt True False
 
-    t'f = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+    t'f = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc False)) (BV 2)) )
                         (App (App (Prim And) (App (Prim Not) (Bc False))) (App (Prim Not) (BV 2)))))
-    den_t'f_nt = simpleDFunc 2 (TRefn TBool 2 (Bc True)) t'f (Lambda 1 (App (Prim Not) (BV 1)))
+    den_t'f_nt = DFunc 2 (TRefn TBool Z (Bc True)) t'f (Lambda 1 (App (Prim Not) (BV 1)))
                        (FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) 
                               (App (Prim Not) (BV 1)) (FTBasic TBool) 1 
                               (FTApp (FCons 1 (FTBasic TBool) FEmpty) (Prim Not) (FTBasic TBool)
@@ -111,20 +110,20 @@ lem_den_eqv = simpleDFunc 1 (TRefn TBool 1 (Bc True)) t'
                                           (Bc True) (lem_step_evals (App (Prim Not) (Bc False)) 
                                                                     (Bc True) (EPrim Not (Bc False))) )
                                           den_t'''f_tt
-      _          -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool 2 (Bc True)) den_tx_vx)
-    t'''t = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+      _          -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool Z (Bc True)) den_tx_vx)
+    t'''t = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc False)) (Bc True)) )
                         (App (App (Prim And) (App (Prim Not) (Bc False))) (App (Prim Not) (Bc True)))))
-    t'''f = TRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+    t'''f = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc False)) (Bc False)) )
                         (App (App (Prim And) (App (Prim Not) (Bc False))) (App (Prim Not) (Bc False)))))
-    den_t'''t_ff = DRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+    den_t'''t_ff = DRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc False)) (Bc True)) )
                         (App (App (Prim And) (App (Prim Not) (Bc False))) (App (Prim Not) (Bc True)))))
                         (Bc False) (FTBC FEmpty False) eqv_ev_prt'''t_ff
     {-@ eqv_ev_prt'''t_ff :: ProofOf(EvalsTo (App (App (Prim Eqv) (Bc False)) (App (App (Prim Or) (App (App (Prim And) (Bc False)) (Bc True)) ) (App (App (Prim And) (App (Prim Not) (Bc False))) (App (Prim Not) (Bc True))))) (Bc True)) @-}
     eqv_ev_prt'''t_ff = reduce_eqv_tt False True
-    den_t'''f_tt = DRefn TBool 3 (App (App (Prim Eqv) (BV 3)) 
+    den_t'''f_tt = DRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc False)) (Bc False)) )
                         (App (App (Prim And) (App (Prim Not) (Bc False))) (App (Prim Not) (Bc False)))))
                         (Bc True) (FTBC FEmpty True) eqv_ev_prt'''f_tt

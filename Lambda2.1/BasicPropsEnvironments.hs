@@ -476,7 +476,8 @@ lem_free_bound_in_env g t k (WFPoly _g a k' t' k_t' a' p_a'_t'_kt') x = case t o
 lem_free_bound_in_env g t k (WFKind _g _t p_t_B) x = () ? lem_free_bound_in_env g t Base p_t_B x
 
 {-@ lem_free_subset_binds :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
-                  -> { pf:_ | Set_sub (Set_cup (free t) (freeTV t)) (binds g) } @-}
+                  -> { pf:_ | Set_sub (Set_cup (free t) (freeTV t)) (binds g) &&
+                              Set_sub (free t) (vbinds g) && Set_sub (freeTV t) (tvbinds g) } @-}
 lem_free_subset_binds :: Env -> Type -> Kind -> WFType -> Proof 
 lem_free_subset_binds g t k (WFBase _ b tt) = case t of
   (TRefn _ _ _) -> case b of
@@ -497,7 +498,9 @@ lem_free_subset_binds g t k (WFVar1 g' a tt _k) = case t of
   (TRefn b _ _) -> case b of
     (FTV _) -> () ? lem_trivial_nofv tt
 lem_free_subset_binds g t k (WFVar2 g' a tt _k p_a_k y t')  = () ? lem_trivial_nofv tt
+                                                                 ? lem_free_subset_binds g' t k p_a_k
 lem_free_subset_binds g t k (WFVar3 g' a tt _k p_a_k a' k') = () ? lem_trivial_nofv tt
+                                                                 ? lem_free_subset_binds g' t k p_a_k
 lem_free_subset_binds g t k (WFFunc _g y t_y k_y p_ty_wf t' k' y' p_y'_t'_wf) = case t of
   (TFunc _ _ _) -> () ? lem_free_subset_binds g t_y k_y p_ty_wf
                       ? lem_free_subset_binds (Cons y' t_y g) (unbindT y y' t') k' p_y'_t'_wf

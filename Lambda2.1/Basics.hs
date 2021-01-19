@@ -298,11 +298,11 @@ subBTV a t_a (Annot e t)                  = Annot (subBTV a t_a e) (tsubBTV a t_
 --                                   esize e == esize e' && (noDefns e => noDefns e') } / [esize e] @-}
 {-@ reflect unbind @-} -- unbind converts (BV x) to (FV y) in e 
 {-@ unbind :: x:Vname -> y:Vname -> e:Expr 
-                    -> { e':Expr | Set_sub (fv e) (fv e') && 
-                                   Set_sub (fv e') (Set_cup (Set_sng y) (fv e)) &&
-                                   Set_sub (ftv e) (ftv e') && Set_sub (ftv e') (ftv e) &&
-                                   freeBV e' == Set_dif (freeBV e) (Set_sng x) &&
-                                   freeBTV e' == freeBTV e && esize e == esize e' } / [esize e] @-}
+                -> { e':Expr | Set_sub (fv e) (fv e') && 
+                               Set_sub (fv e') (Set_cup (Set_sng y) (fv e)) &&
+                               Set_sub (ftv e) (ftv e') && Set_sub (ftv e') (ftv e) &&
+                               freeBV e' == Set_dif (freeBV e) (Set_sng x) && (isTerm e => isTerm e') &&
+                               freeBTV e' == freeBTV e && esize e == esize e' } / [esize e] @-}
 unbind :: Vname -> Vname -> Expr -> Expr
 unbind x y e = subBV x (FV y) e
 

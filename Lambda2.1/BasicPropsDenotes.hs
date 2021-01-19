@@ -23,42 +23,11 @@ import SystemFLemmasFTyping
 import SystemFLemmasFTyping2
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 
-{-@ reflect foo29 @-}
-foo29 x = Just x 
-foo29 :: a -> Maybe a 
-
-  -- smart constructors 
-
-{-@ simpleDFunc :: x:Vname -> t_x:Type -> t:Type -> v:Value  
-                  -> ProofOf(HasFType FEmpty v (erase (TFunc x t_x t)))
-                  -> ( v_x:Value -> ProofOf(Denotes t_x v_x)
-                                 -> ProofOf(ValueDenoted (App v v_x) (tsubBV x v_x t)) ) 
-                  -> ProofOf(Denotes (TFunc x t_x t) v) @-}
-simpleDFunc :: Vname -> Type -> Type -> Expr -> HasFType 
-                     -> ( Expr -> Denotes -> ValueDenoted ) -> Denotes
-simpleDFunc x t_x t v p_v_er_txt val_den_func
-  = DFunc x t_x t v (erase t_x) (erase t) eqv_txt_txt p_v_er_txt val_den_func
-      where
-        p_emp_er_txt = lem_ftyping_wfft FEmpty v (erase (TFunc x t_x t)) p_v_er_txt WFFEmpty
-        eqv_txt_txt  = lem_alpha_refl FEmpty (erase (TFunc x t_x t) 
-                           ? lem_ffreeTV_subset_bindsF FEmpty (erase (TFunc x t_x t)) Star p_emp_er_txt)
-
-{-@ simpleDPoly :: a:Vname -> k:Kind -> t:Type -> v:Value 
-                  -> ProofOf(HasFType FEmpty v (FTPoly a k (erase t)))
-                  -> ( t_a:UserType -> ProofOf(WFType Empty t_a k) 
-                                    -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a t)) )
-                  -> ProofOf(Denotes (TPoly a k t) v) @-} 
-simpleDPoly :: Vname -> Kind -> Type -> Expr -> HasFType
-                     -> (Type -> WFType -> ValueDenoted) -> Denotes
-simpleDPoly a k t v p_v_at val_den_func
-  = DPoly a k t v a (erase t) eqv_at_at p_v_at val_den_func
-      where
-        p_emp_er_at = lem_ftyping_wfft FEmpty v (FTPoly a k (erase t)) p_v_at WFFEmpty
-        eqv_at_at   = lem_alpha_refl FEmpty (erase (TPoly a k t)
-                          ? lem_ffreeTV_subset_bindsF FEmpty (erase (TPoly a k t)) Star p_emp_er_at)
+{-@ reflect foo28 @-}
+foo28 x = Just x 
+foo28 :: a -> Maybe a 
 
   -- formal properties
 
@@ -119,7 +88,7 @@ lem_change_var_denote_env g x_ t_x (ConsT a k_a g') p_env_wf th den_env_th y_ = 
     -> DExtT (concatE (Cons y t_x g) (esubFV x (FV y) g')) (change_varCS th' x y) den_env'y_th'y
               a k_a t_a p_emp_ta ? lem_tsubFV_notin x (FV y) t_a
       where
-        (WFEBindT _ p_env'_wf _ _) = p_env_wf -- TODO can we remove this?
+        (WFEBindT _ p_env'_wf _ _) = p_env_wf 
         x              = x_ ? lem_binds_env_th (concatE (Cons x_ t_x g) g') th' den_env'_th'
                             ? lem_in_env_concat g g' x_
         y              = y_ ? lem_binds_env_th (concatE (Cons x t_x g) g') th' den_env'_th' 
@@ -220,110 +189,3 @@ lem_remove_tvar_denote_env g a_ k_a (ConsT a1 k1 g') p_a1g'g_wf th den_env_th = 
         a              = a_ ? lem_binds_env_th (concatE (ConsT a_ k_a g) g') th' den_env'_th'
                             ? lem_in_env_concat g g' a_ 
         den_env''_th'' = lem_remove_tvar_denote_env g a k_a g' p_g'g_wf th' den_env'_th'
-
-{-@ lem_csubst_hasftype_basic :: g:Env -> e:Expr -> { b:Basic | b == TBool || b == TInt }
-        -> ProofOf(HasFType (erase_env g) e (FTBasic b)) -> th:CSub -> ProofOf(DenotesEnv g th)
-        -> ProofOf(HasFType FEmpty (csubst th e) (FTBasic b)) @-}
-lem_csubst_hasftype_basic :: Env -> Expr -> Basic -> HasFType -> CSub -> DenotesEnv -> HasFType
-lem_csubst_hasftype_basic g e b p_e_b th den_g_th 
-  = let (AEWitness _ _ _ s ae_s_b pf_the_s) 
-                   = lem_csubst_hasftype' g e (TRefn b Z (Bc True)) p_e_b th den_g_th
-                                ? lem_ctsubst_erase_basic th (TRefn b Z (Bc True)) b
-    in case ae_s_b of
-      (AEBasic _ _) -> pf_the_s ? lem_ctsubst_erase_basic th (TRefn b Z (Bc True)) b
-    
-
-        -- -> ProofOf(WFFE (erase_env g)) -> th:CSub -> ProofOf(DenotesEnv g th)
-{-@ lem_csubst_hasftype' :: g:Env -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env g) e (erase t))
-        -> th:CSub -> ProofOf(DenotesEnv g th)
-        -> ProofOf(EqvFTyping FEmpty (csubst th e) (erase (ctsubst th t))) @-}
-lem_csubst_hasftype' :: Env -> Expr -> Type -> HasFType {-> WFFE-} -> CSub -> DenotesEnv -> EqvFTyping
-lem_csubst_hasftype' g e t (FTBC _g b) th den_g_th 
-  = lem_eqvftyping_refl FEmpty (csubst th e) (erase (ctsubst th t)) p_the_tht WFFEmpty
-      where
-        p_the_tht = FTBC FEmpty b ? lem_csubst_bc    th b
-                                  ? lem_ctsubst_erase_basic th t TBool          
-lem_csubst_hasftype' g e t (FTIC _g n) th den_g_th 
-  = lem_eqvftyping_refl FEmpty (csubst th e) (erase (ctsubst th t)) p_the_tht WFFEmpty
-      where 
-        p_the_tht = FTIC FEmpty n ? lem_csubst_ic    th n
-                                  ? lem_ctsubst_erase_basic th t TInt
-lem_csubst_hasftype' g e t (FTVar1 _ y _t) th den_g_th = undefined {- case den_g_th of
-  (DExt g' th' den_g'_th' _y _ty v_y den_th't_vy) 
-    -> get_aewitness_from_den (ctsubst th t) (csubst th e {-(FV y)-}) den_th't_vy
--}
-{-
-lem_fv_subset_bindsF g e t (FTVar2 g' y _t p_y_t z t') = ()
-         ? lem_fv_subset_bindsF g' e t p_y_t
-lem_fv_subset_bindsF g e t (FTVar3 g' y _t p_y_t a k)  = ()
-         ? lem_fv_subset_bindsF g' e t p_y_t
-lem_fv_subset_bindsF g e t (FTPrm _g c)      = ()
-lem_fv_subset_bindsF g e t (FTAbs _g y t_y _ _ e' t' y' p_e'_t')
-    = () ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t'
-lem_fv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty)
-    = () ? lem_fv_subset_bindsF g e1 (FTFunc t_y t') p_e1_tyt'
-         ? lem_fv_subset_bindsF g e2 t_y p_e2_ty
-lem_fv_subset_bindsF g e t (FTAbsT _g a k e' t' a' p_e'_t')
-    = () ? lem_fv_subset_bindsF (FConsT a' k g) (unbind_tv a a' e')
-                                (unbindFT a a' t') p_e'_t'
-lem_fv_subset_bindsF g e t (FTAppT _g e' a k t1 p_e1_at1 t2 _)
-    = () ? lem_fv_subset_bindsF g e' (FTPoly a k t1)  p_e1_at1
-         ? toProof ( S.isSubsetOf (free t2)   (vbindsF g)  && S.isSubsetOf (vbindsF g)  (bindsF g) )
-         ? toProof ( S.isSubsetOf (freeTV t2) (tvbindsF g) && S.isSubsetOf (tvbindsF g) (bindsF g) )
-lem_fv_subset_bindsF g e t (FTLet _g e_y t_y p_ey_ty y e' t' y' p_e'_t')
-    = () ? lem_fv_subset_bindsF g e_y t_y p_ey_ty
-         ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y y' e') t' p_e'_t'
-lem_fv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t)
-    = () ? lem_fv_subset_bindsF g e' t p_e'_t
-         ? toProof ( S.isSubsetOf (free ann_t)   (vbindsF g)  && S.isSubsetOf (vbindsF g)  (bindsF g) )
-         ? toProof ( S.isSubsetOf (freeTV ann_t) (tvbindsF g) && S.isSubsetOf (tvbindsF g) (bindsF g) )
--}
-lem_csubst_hasftype' g e t p_e_t th den_g_th = undefined
-{-
-lem_csubst_hasftype' g e t p_e_t {-p_g_wf-} th den_g_th = undefined {-
-  = lem_csubst_hasftype'' g e t (erase t) (lem_alpha_refl (erase_env g) erase_t) p_e_t p_g_wf th den_g_th
-      where
-        p_g_t   = lem_ftyping_wfft (erase_env g) e (erase t) p_e_t p_g_wf
-        erase_t = erase t ? lem_ffreeTV_subset_bindsF (erase_env g) (erase t) Star p_g_t -}
--}
-
-
---        -> ProofOf(WFFE (erase_env g)) -> th:CSub -> ProofOf(DenotesEnv g th)
-{-@ lem_csubst_hasftype'' :: g:Env -> e:Expr -> t:Type -> s:FType
-        -> ProofOf(AlphaEqv (erase_env g) s (erase t)) -> ProofOf(HasFType (erase_env g) e s)
-        -> th:CSub -> ProofOf(DenotesEnv g th)
-        -> ProofOf(EqvFTyping FEmpty (csubst th e) (erase (ctsubst th t))) @-}
-lem_csubst_hasftype'' :: Env -> Expr -> Type -> FType -> AlphaEqv -> HasFType {-> WFFE -}
-                            -> CSub -> DenotesEnv -> EqvFTyping
-lem_csubst_hasftype'' Empty           e t s aeqv_s_t p_e_s {-p_g_wf-} th den_g_th = case den_g_th of
-  (DEmp) -> AEWitness FEmpty e (erase t) s aeqv_s_t p_e_s ? lem_binds_env_th Empty th den_g_th
-{-    where
-      p_femp_t = lem_ftyping_wfft FEmpty e (erase t) p_e_s WFFEmpty
-      aeqv_t_t = lem_alpha_refl FEmpty (erase t
-                                ? lem_ffreeTV_subset_bindsF FEmpty (erase t) Star p_femp_t)-}
-lem_csubst_hasftype'' (Cons x t_x g') e t s aeqv_s_t p_e_s {-p_g_wf-} th den_g_th = undefined {-case den_g_th of
-  (DExt g' th' den_g'_th' _x _tx v_x den_th'tx_vx)
-      -> AEWitness FEmpty (csubst th e) (erase (ctsubst th t)) s'' aeqv_s''_tht p_the_s''
-    where
-      (WFFBind _ p_g'_wf_ _ _ _ _) = p_g_wf
-      p_g'_wf     = p_g'_wf_ ? lem_empty_concatF (erase_env g')
-      (AEWitness _ _ _ s_x eqv_sx_tx p_emp_vx_sx)  -- this citation here is not true
-                  = get_aewitness_from_den (t_x ? lem_ctsubst_nofree th' t_x)  v_x den_th'tx_vx
-      p_g'_vx_sx  = lem_weaken_many_ftyp FEmpty (erase_env g') p_g'_wf v_x s_x p_emp_vx_sx
-                                         ? lem_empty_concatF (erase_env g')
-      p_g'_sx     = lem_ftyping_wfft (erase_env g') v_x s_x p_g'_vx_sx p_g'_wf
-      p_xg'_wf    = WFFBind (erase_env g') p_g'_wf x s_x Star p_g'_sx
-      (AEWitness _xg' _e _s s' aeqv_s'_s p_e_s')
-                  = lem_alpha_in_env_ftyp (erase_env g') FEmpty x s_x (erase t_x) eqv_sx_tx e s p_e_s
-      aeqv'_s_t   = lem_strengthen_alpha (erase_env g') x (erase t_x) FEmpty s (erase t) aeqv_s_t
-      aeqv''_s_t  = lem_weaken_alpha     (erase_env g')               FEmpty s (erase t) aeqv'_s_t x s_x
-      aeqv_s'_t   = lem_alpha_trans (FCons x s_x (erase_env g')) s' s (erase t) aeqv_s'_s aeqv''_s_t
-                                    ? lem_erase_tsubFV x v_x t
-      p_evx_s'vx  = lem_subst_ftyp (erase_env g') FEmpty x v_x s_x p_g'_vx_sx p_xg'_wf
-                                   e s' p_e_s' -- (erase t) p_e_t ? lem_erase_tsubFV x v_x t
-      (AEWitness _ _the _tht s'' aeqv_s''_tht p_the_s'')
-                  = lem_csubst_hasftype' g' (subFV x v_x e) (tsubFV x v_x t) s' aeqv_s'_t p_evx_s'vx
-                                         p_g'_wf th' den_g'_th' -- th(s) ~ s' and t ~ s so is th(t) ~~?
--} -- need a lemma for ctsubst of FV x, then do induction on the structure of p_e_s
-lem_csubst_hasftype'' (ConsT a k_a g') e t s aeqv_s_t p_e_s {-p_g_wf-} th den_g_th
-  = undefined {- 1 -}

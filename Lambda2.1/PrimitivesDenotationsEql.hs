@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -24,7 +23,6 @@ import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -40,7 +38,7 @@ foo57 :: a -> Maybe a
 
 {-@ lem_den_eql :: () -> ProofOf(Denotes (ty Eql) (Prim Eql)) @-}
 lem_den_eql :: () -> Denotes
-lem_den_eql () = simpleDPoly 1 Base t'{-(TFunc (firstBV Eql) (inType Eql) (ty' Eql))-} (Prim Eql)
+lem_den_eql () = DPoly 1 Base t'{-(TFunc (firstBV Eql) (inType Eql) (ty' Eql))-} (Prim Eql)
                     (FTPrm FEmpty Eql) val_den_func 
   where
     {-@ val_den_func :: t_a:Type -> ProofOf(WFType Empty t_a Base)

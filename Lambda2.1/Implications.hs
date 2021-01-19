@@ -23,9 +23,9 @@ import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import SystemFSoundness
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
+import BasicPropsEraseTyping
 import PrimitivesSemantics
 
 {-@ reflect foo31 @-}   

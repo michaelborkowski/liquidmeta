@@ -21,7 +21,6 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasFTyping2
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import LemmasChangeVarWF

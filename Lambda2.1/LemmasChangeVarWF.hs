@@ -21,7 +21,6 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 
@@ -386,10 +385,8 @@ lem_change_tvar_wf_wfvar3 g a k_a g' p_a1env_wf t k p_t_wf@(WFVar3 env a'_ tt k'
                                    ? lem_chgFTV_notin a aa (tt ? lem_trivial_nofv tt)
       (ConsT _a1 _k1 g'') -> case ( a == a'_ ) of 
           True  -> WFVar3 (concatE (ConsT aa k_a g) (echgFTV a aa g'')) aa tt k' p_env'_a' a1 k1
-          --                ? lem_chgFTV_notin a aa (tt ? lem_trivial_nofv tt)
           False -> WFVar3 (concatE (ConsT aa k_a g) (echgFTV a aa g'')) a' tt k'
                           p_env'_a' a1 k1
-          --                ? lem_chgFTV_notin a aa (tt ? lem_trivial_nofv tt)
         where
           a'      = a'_ ? lem_in_env_echgFTV g'' a aa a'_
                         ? lem_in_env_concat g g'' a'_

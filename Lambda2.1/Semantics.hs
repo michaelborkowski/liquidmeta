@@ -240,6 +240,16 @@ lemma_evals_app_value e e' v (AddStep _ee' eee st_ee'_eee _v ev_eee_v)
           ev_e'_v2                             = AddStep e' e2 st_e'_e2 v2 ev_e2_v2
       (EAppAbs x e'' w)           -> AppRed e e (Refl e) e' e' (Refl e')
 
+{-@ lem_evals_trivial :: { tt:Pred | isTrivial tt } -> ProofOf(EvalsTo tt (Bc True)) @-}
+lem_evals_trivial :: Pred -> EvalsTo
+lem_evals_trivial (Bc True) = Refl (Bc True)
+lem_evals_trivial (App p r) = lemma_add_step_after (App p r) (App (Lambda 1 (BV 1)) (Bc True))
+                                                   ev_pr_idtt (Bc True) (EAppAbs 1 (BV 1) (Bc True))
+  where
+    ev_r_tt    = lem_evals_trivial r
+    ev_p_id    = lem_step_evals (App (Prim Conj) (Bc True)) (Lambda 1 (BV 1)) (EPrim Conj (Bc True))
+    ev_pr_idtt = lemma_app_both_many p (Lambda 1 (BV 1)) ev_p_id r (Bc True) ev_r_tt
+
 --------------------------------------------------------------------------
 ----- | Basic LEMMAS of the OPERATIONAL SEMANTICS (Small Step)
 --------------------------------------------------------------------------
