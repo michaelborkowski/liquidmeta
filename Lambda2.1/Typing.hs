@@ -111,6 +111,27 @@ lem_tsubBV_self z v_z (TExists x t_x t) e Base
 lem_tsubBV_self z v_z (TPoly a k_a t)   e Base = ()
 lem_tsubBV_self z v_z t                 e Star = ()
 
+{-@ lem_tchgFTV_eqlPred :: a:Vname -> a':Vname -> { t:Type | isTRefn t } -> e:Expr
+        -> { pf:_ | chgFTV a a' (eqlPred t e) == 
+                     eqlPred (tchgFTV a a' t) (chgFTV a a' e) } @-}
+lem_tchgFTV_eqlPred :: Vname -> Vname -> Type -> Expr -> Proof
+lem_tchgFTV_eqlPred a a' (TRefn b z p) e = case b of 
+  (FTV a1) | a1 == a  -> () ? lem_chgFTV_notin a a' (BV 0)
+                            ? lem_chgFTV_notin a a' (Prim Eql)
+                            ? lem_tchgFTV_trefn a a' (TRefn b z p)
+  _                   -> ()
+
+{-@ lem_tchgFTV_self :: a:Vname -> a':Vname -> t:Type -> e:Expr -> k:Kind
+        -> { pf:_ | tchgFTV a a' (self t e k) == self (tchgFTV a a' t) (chgFTV a a' e) k } @-}
+lem_tchgFTV_self :: Vname -> Vname -> Type -> Expr -> Kind -> Proof
+lem_tchgFTV_self a a' (TRefn b w p)     e Base = case b of
+  (FTV a1) | a1 == a -> () ? lem_tchgFTV_eqlPred a a' (TRefn b w p) e
+  _                  -> ()
+lem_tchgFTV_self a a' (TFunc   y t_y t) e Base = ()
+lem_tchgFTV_self a a' (TExists y t_y t) e Base = () ? lem_tchgFTV_self a a' t e Base
+lem_tchgFTV_self a a' (TPoly   a1 k1 t) e Base = ()
+lem_tchgFTV_self a a' t                 e Star = ()
+
 {-@ lem_tsubFV_self :: z:Vname -> v_z:Expr -> t:Type -> e:Expr -> k:Kind
         -> { pf:_ | tsubFV z v_z (self t e k) == self (tsubFV z v_z t) (subFV z v_z e) k } @-}
 lem_tsubFV_self :: Vname -> Expr -> Type -> Expr -> Kind -> Proof

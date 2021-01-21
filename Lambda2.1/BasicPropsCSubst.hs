@@ -357,6 +357,12 @@ lem_csubst_value (CEmpty)          v = ()
 lem_csubst_value (CCons y v_y th)  v = () ? lem_csubst_value th (subFV y v_y v)
 lem_csubst_value (CConsT a t_a th) v = () ? lem_csubst_value th (subFTV a t_a v)
 
+{-@ lem_ctsubst_usertype :: th:CSub -> t_a:UserType -> { pf:_ | noExists (ctsubst th t_a) } @-}
+lem_ctsubst_usertype :: CSub -> Type -> Proof
+lem_ctsubst_usertype (CEmpty)          t = ()
+lem_ctsubst_usertype (CCons y v_y th)  t = () ? lem_ctsubst_usertype th (tsubFV y v_y t)
+lem_ctsubst_usertype (CConsT a t_a th) t = () ? lem_ctsubst_usertype th (tsubFTV a t_a t)
+
 {-@ lem_ctsubst_head_not_free :: x:Vname 
         -> { v_x:Value | Set_emp (fv v_x) && Set_emp (ftv v_x) &&
                          Set_emp (freeBV v_x) && Set_emp (freeBTV v_x) } 
@@ -543,6 +549,12 @@ lem_ctsubst_no_more_fv CEmpty            t = ()
 lem_ctsubst_no_more_fv (CCons  y v_y th) t = () ? lem_ctsubst_no_more_fv th (tsubFV y v_y t)
 lem_ctsubst_no_more_fv (CConsT a t_a th) t = () ? lem_ctsubst_no_more_fv th (tsubFTV a t_a t)
     
+{-@ lem_ctsubst_no_more_bv :: th:CSub -> { t:Type | Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
+        -> { pf:_ | Set_emp (tfreeBV (ctsubst th t)) && Set_emp (tfreeBTV (ctsubst th t)) } @-}
+lem_ctsubst_no_more_bv :: CSub -> Type -> Proof
+lem_ctsubst_no_more_bv CEmpty            t = ()
+lem_ctsubst_no_more_bv (CCons  y v_y th) t = () ? lem_ctsubst_no_more_bv th (tsubFV y v_y t)
+lem_ctsubst_no_more_bv (CConsT a t_a th) t = () ? lem_ctsubst_no_more_bv th (tsubFTV a t_a t)
 
 {-@ lem_csubst_subFV :: th:CSub -> { x:Vname | not (in_csubst x th) } 
         -> { v_x:Value | Set_sub (fv v_x) (vbindsC th) && Set_sub (ftv v_x) (tvbindsC th) } -> e:Expr
@@ -602,6 +614,46 @@ lem_ctsubst_tsubFV  (CConsT a t_a th) x v_x t
          ? lem_subFTV_notin a t_a (csubst (CConsT a t_a th) v_x)
          ? lem_ctsubst_tsubFV th x (subFTV a t_a v_x) (tsubFTV a t_a t)
          ? lem_commute_tsubFTV_tsubFV x v_x a t_a t
+
+{-@ lem_csubst_subFTV :: th:CSub -> { a:Vname | not (in_csubst a th) } 
+        -> { t_a:UserType | Set_sub (free t_a) (vbindsC th) && Set_sub (freeTV t_a) (tvbindsC th) } 
+        -> e:Expr -> { pf:_ | csubst th (subFTV a t_a e) == csubst th (subFTV a (ctsubst th t_a) e) } @-}
+lem_csubst_subFTV :: CSub -> Vname -> Type -> Expr -> Proof
+lem_csubst_subFTV  CEmpty            a t_a e = ()
+lem_csubst_subFTV  (CCons y v_y th)  a t_a e 
+  = ()  ? lem_commute_subFV_subFTV a (ctsubst (CCons y v_y th) t_a 
+                                         ? lem_ctsubst_usertype (CCons y v_y th) t_a) y v_y e
+        ? lem_ctsubst_no_more_fv (CCons y v_y th) t_a
+        ? lem_tsubFV_notin y v_y (ctsubst (CCons y v_y th) t_a)
+        ? lem_csubst_subFTV th a (tsubFV y v_y t_a) (subFV y v_y e)
+        ? lem_commute_subFV_subFTV a t_a y v_y e 
+lem_csubst_subFTV  (CConsT a' t_a' th) a t_a e
+    = () ? lem_commute_subFTV a (ctsubst (CConsT a' t_a' th) t_a
+                                    ? lem_ctsubst_usertype (CConsT a' t_a' th) t_a) a' t_a' e
+         ? lem_ctsubst_no_more_fv (CConsT a' t_a' th) t_a
+         ? lem_tsubFTV_notin a' t_a' (ctsubst (CConsT a' t_a' th) t_a)
+         ? lem_csubst_subFTV th a (tsubFTV a' t_a' t_a) (subFTV a' t_a' e)
+         ? lem_commute_subFTV a t_a a' t_a' e
+    
+{-@ lem_ctsubst_tsubFTV :: th:CSub -> { a:Vname | not (in_csubst a th) } 
+        -> { t_a:UserType | Set_sub (free t_a) (vbindsC th) && Set_sub (freeTV t_a) (tvbindsC th) } 
+        -> t:Type -> {pf:_ | ctsubst th (tsubFTV a t_a t) == ctsubst th (tsubFTV a (ctsubst th t_a) t)} @-}
+lem_ctsubst_tsubFTV :: CSub -> Vname -> Type -> Type -> Proof
+lem_ctsubst_tsubFTV  CEmpty            a t_a t = ()
+lem_ctsubst_tsubFTV  (CCons y v_y th)  a t_a t 
+  = ()  ? lem_commute_tsubFV_tsubFTV a (ctsubst (CCons y v_y th) t_a 
+                                         ? lem_ctsubst_usertype (CCons y v_y th) t_a) y v_y t
+        ? lem_ctsubst_no_more_fv (CCons y v_y th) t_a
+        ? lem_tsubFV_notin y v_y (ctsubst (CCons y v_y th) t_a)
+        ? lem_ctsubst_tsubFTV th a (tsubFV y v_y t_a) (tsubFV y v_y t)
+        ? lem_commute_tsubFV_tsubFTV a t_a y v_y t 
+lem_ctsubst_tsubFTV  (CConsT a' t_a' th) a t_a t 
+    = () ? lem_commute_tsubFTV a (ctsubst (CConsT a' t_a' th) t_a
+                                    ? lem_ctsubst_usertype (CConsT a' t_a' th) t_a) a' t_a' t
+         ? lem_ctsubst_no_more_fv (CConsT a' t_a' th) t_a
+         ? lem_tsubFTV_notin a' t_a' (ctsubst (CConsT a' t_a' th) t_a)
+         ? lem_ctsubst_tsubFTV th a (tsubFTV a' t_a' t_a) (tsubFTV a' t_a' t)
+         ? lem_commute_tsubFTV a t_a a' t_a' t
 
   --- Closing Substitutions and Technical Operations
 

@@ -53,21 +53,6 @@ foo55 :: a -> Maybe a
         -> ProofOf(WFEnv (concatE (Cons x s_x g) g') ) / [envSize g'] @-}
 lem_narrow_wfenv :: Env -> Env -> Vname -> Type -> Type -> Subtype -> WFEnv -> WFEnv
 lem_narrow_wfenv g Empty           x s_x t_x p_sx_tx p_xg_wf  = case p_xg_wf of
-  (WFEBind  _g p_g_wf _x _tx k_x p_env'_tx) -> WFEBind g p_g_wf x s_x k_x p_env''_sx
-      where
-        p_env''_sx   = undefined     
-lem_narrow_wfenv g (Cons z t_z g') x s_x t_x p_sx_tx p_env_wf = case p_env_wf of
-  (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) 
-    -> undefined {-WFEBind env'' p_env''_wf z (tsubFV x v_x t_z) k_z p_env''_tzvx
-      where
-        env''        = concatE g (esubFV x v_x g')
-        p_env''_wf   = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
-        p_env''_tzvx = lem_subst_wf g g' x v_x t_x p_vx_tx p_env'_wf t_z k_z p_env'_tz-}
-lem_narrow_wfenv g (ConsT a k_a g') x s_x t_x p_sx_tx p_env_wf = case p_env_wf of
-  (WFEBindT env' p_env'_wf _a _ka)           -> undefined {-WFEBindT env'' p_env''_wf a k_a
-    where
-      env''      = concatE (Cons x s_x g) g'
-      p_env''_wf = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf-}
 -}
 
 -- -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) 

@@ -219,7 +219,7 @@ subFTV a t_a (Annot e t)               = Annot (subFTV a t_a e) (tsubFTV a t_a t
                                  Set_sub (ftv e)  (Set_cup (Set_sng a) (ftv e')) &&
                                  Set_sub (ftv e') (Set_cup (Set_sng a') (Set_dif (ftv e) (Set_sng a))) &&
                                  ( a != a'  => not (Set_mem a (ftv e'))) &&
-                                 ( e == Bc True => e' == Bc True ) &&
+                                 ( e == Bc True => e' == Bc True ) && ( isTerm e => isTerm e' ) && 
                                  freeBV e == freeBV e' && freeBTV e == freeBTV e' &&
                                  fv e == fv e' && (isValue e => isValue e') } / [esize e] @-}
 chgFTV :: Vname -> Vname -> Expr -> Expr

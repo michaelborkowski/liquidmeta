@@ -18,12 +18,16 @@ import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
+import PrimitivesWFType
 import SystemFLemmasFTyping
+import SystemFLemmasFTyping2
 import SystemFLemmasSubstitution
 import Typing
 import BasicPropsCSubst
 import BasicPropsDenotes
-import Entailments
+import BasicPropsEraseTyping
+import Implications
+import SubtypingFromEntailments
 import LemmasChangeVarWF
 import LemmasWeakenWF
 import LemmasWellFormedness
@@ -44,13 +48,14 @@ foo60 :: a -> Maybe a
 {-@ lem_self_entails_self :: g:Env -> ProofOf(WFEnv g) -> b:Basic -> x1:RVname -> p1:Pred 
         -> x2:RVname -> p2:Pred 
         -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p1)) && not (Set_mem y (fv p2)) }  
-        -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind x1 y p1) (FTBasic TBool))
-        -> ProofOf(Entails (Cons y (TRefn b x1 p1) g) (unbind x2 y p2)) 
+        -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p1) (FTBasic TBool))
+        -> ProofOf(Entails (Cons y (TRefn b x1 p1) g) (unbind 0 y p2)) 
         -> e:Expr -> ProofOf(HasFType (erase_env g) e (FTBasic b))
-        -> ProofOf(Entails (Cons y (TRefn b x1 (selfify p1 b x1 e)) g) (unbind x2 y (selfify p2 b x2 e))) @-}
-lem_self_entails_self :: Env -> WFEnv -> Basic -> Vname -> Pred -> Vname -> Pred -> Vname 
+        -> ProofOf(Entails (Cons y (TRefn b x1 (selfify p1 b x1 e)) g) 
+                           (unbind 0 y (selfify p2 b x2 e))) @-}
+lem_self_entails_self :: Env -> WFEnv -> Basic -> RVname -> Pred -> RVname -> Pred -> Vname 
                              -> HasFType -> Entails -> Expr -> HasFType -> Entails
-lem_self_entails_self g p_g_wf b x1 p1 x2 p2 y pf_p1_bl ent_yg_p2 e_ p_e_b 
+lem_self_entails_self g p_g_wf b x1 p1 x2 p2 y pf_p1_bl ent_yg_p2 e_ p_e_b = undefined {- recheck this
   = EntPred yg (unbind x2 y (selfify p2 b x2 e)) reduce_thselfp2_tt             
        where
          {-@ reduce_thselfp2_tt :: th:CSub -> ProofOf(DenotesEnv yg th)
@@ -104,6 +109,7 @@ lem_self_entails_self g p_g_wf b x1 p1 x2 p2 y pf_p1_bl ent_yg_p2 e_ p_e_b
          {-@ pf_r_bl :: ProofOf(HasFType (erase_env yg) (unbind x1 y r1) (FTBasic TBool)) @-} 
          pf_r_bl     = FTApp (erase_env yg) (App (equals b) (FV y)) (FTBasic b) (FTBasic TBool)
                              pf_eqb_bl e p_yg_e_b  
+-}
 
 {-@ lem_subtype_in_exists :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind 
         -> ProofOf(WFType g t_x k_x) -> ProofOf(WFEnv g) -> t:Type 
@@ -282,22 +288,25 @@ lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t Star e p_e_t = p_s_t ? toProof (s
 {-@ lem_exact_type :: g:Env -> v:Value -> t:Type -> ProofOf(HasType g v t) -> k:Kind
         -> ProofOf(WFEnv g) -> ProofOf(HasType g v (self t v k)) @-}
 lem_exact_type :: Env -> Expr -> Type -> HasType -> Kind -> WFEnv -> HasType
-lem_exact_type g e t (TBC _ b)   Base p_g_wf  
+lem_exact_type g e t (TBC _ b)   Base p_g_wf  = undefined {- recheck
   = TSub g (Bc b) (tybc b) (TBC g b) (self (tybc b) (Bc b) Base) Base p_g_self_tybc tybc_self_tybc
       where
-        refn_tybc      = App (App (Prim Eqv) (BV 0)) (Bc b)
+        refn_tybc      = App (App () (BV 0)) (Bc b)
         p_g_tybc       = lem_wf_tybc g b
         p_g_self_tybc  = lem_selfify_wf' g (tybc b) Base p_g_tybc p_g_wf (Bc b) (TBC g b)
         tybc_self_tybc = lem_subtype_repetition g TBool Z refn_tybc p_g_tybc
-lem_exact_type g e t (TIC _ n)   Base p_g_wf  
+-}
+lem_exact_type g e t (TIC _ n)   Base p_g_wf  = undefined {- recheck
   = TSub g (Ic n) (tyic n) (TIC g n) (self (tyic n) (Ic n) Base) Base p_g_self_tyic tyic_self_tyic
       where
         refn_tyic      = App (App (Prim Eq) (BV 0)) (Ic n)
         p_g_tyic       = lem_wf_tyic g n
         p_g_self_tyic  = lem_selfify_wf' g (tyic n) Base p_g_tyic p_g_wf (Ic n) (TIC g n)
         tyic_self_tyic = lem_subtype_repetition g TInt Z refn_tyic p_g_tyic
-lem_exact_type g e t (TVar1 _env z t' k' p_env_t)   Base p_g_wf 
-  = TSub g (FV z) (self t' (FV z)) p_e_t (self (self t' (FV z)) (FV z)) p_g_selft t_self_t 
+-}
+lem_exact_type g e t p_e_t@(TVar1 env z t' k' p_env_t)   Base p_g_wf  = undefined {- rechecks
+  = TSub g (FV z) (self t' (FV z) Base) p_e_t (self (self t' (FV z) Base) (FV z) Base) 
+         Base p_g_selft t_self_t 
       where
         (WFEBind _env p_env_wf _ _ _ p_env_t') = p_g_wf 
         p_g_t'    = lem_weaken_wf   env Empty t' p_env_t' z t'
@@ -306,19 +315,21 @@ lem_exact_type g e t (TVar1 _env z t' k' p_env_t)   Base p_g_wf
         p_g_t_t'  = lem_self_is_subtype g t' p_g_t' (FV z) p_z_t' p_g_wf
         p_z_t'    = FTVar1 (erase_env env)  z (erase t')
         t_self_t  = lem_self_idempotent_upper g t' p_g_t' (FV z) p_z_t' p_g_wf
-lem_exact_type g e t (TVar2 env_ z _t p_z_t w t_w) Base p_g_wf 
-  = TVar2 env z (self t e) p_z_selftz w t_w
+-}
+lem_exact_type g e t (TVar2 env z _t p_z_t w t_w) Base p_g_wf 
+  = TVar2 env z (self t e Base) p_z_selftz w t_w
       where
         (WFEBind _env p_env_wf _ _ _ p_env_tw) = p_g_wf 
         p_z_selftz = lem_exact_type env e t p_z_t Base p_env_wf
-lem_exact_type g e t (TVar3 env_ z _t p_z_t a k_a) Base p_g_wf 
-  = TVar3 env z (self t e) p_z_selftz a k_a
+lem_exact_type g e t (TVar3 env z _t p_z_t a k_a) Base p_g_wf 
+  = TVar3 env z (self t e Base) p_z_selftz a k_a
       where
         (WFEBindT _env p_env_wf _ _) = p_g_wf 
         p_z_selftz = lem_exact_type env e t p_z_t Base p_env_wf
-lem_exact_type g e t (TPrm {})  Base p_g_wf  
+lem_exact_type g e t p_e_t@(TPrm {})  Base p_g_wf  
   = case t of
       (TFunc {}) -> p_e_t 
+      (TPoly {}) -> p_e_t
 lem_exact_type g e t p_e_t@(TAbs env_ z t_z k_z p_env_tz e' t' y_ p_yenv_e'_t') Base p_g_wf
   = case t of
       (TFunc {}) -> p_e_t 
@@ -329,19 +340,20 @@ lem_exact_type g e t p_e_t@(TAbsT _env a k e' t' k_t' a' p_a'env_e'_t' p_a'env_t
 lem_exact_type g e t (TAppT {}) Base p_g_wf = impossible "not a value"
 lem_exact_type g e t (TLet {})  Base p_g_wf = impossible "not a value"
 lem_exact_type g e t (TAnn {})  Base p_g_wf = impossible "not a value"
-lem_exact_type g e t p_e_t@(TSub _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base p_g_wf
+lem_exact_type g e t p_e_t@(TSub _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base p_g_wf = undefined {- recheck
   = TSub g e (self s e Base) p_e_selfs (self t e Base) k p_g_selft p_selfs_selft
      where
        p_g_s         = lem_typing_wf     g e s p_g_e_s p_g_wf
        p_e_selfs     = lem_exact_type    g e s p_g_e_s Base p_g_wf
        p_g_selft     = lem_selfify_wf'   g t k p_g_t p_g_wf e p_e_t
        p_e_er_t      = lem_typing_hasftype g e t p_e_t p_g_wf
-       p_selfs_selft = lem_exact_subtype g p_g_wf s p_g_s t p_g_s_t (e
+       p_selfs_selft = lem_exact_subtype g p_g_wf s Star p_g_s t p_g_s_t Base (e
                            ? lem_freeBV_empty    g e t p_e_t p_g_wf
                            ? lem_fv_subset_binds g e t p_e_t p_g_wf) p_e_er_t
+-}
 {-     p_e_selfs     = lem_exact_type    g e s p_g_e_s Base
        p_g_selft_b   = lem_selfify_wf'   g t Base p_g_t e p_e_t
        p_g_selft     = if k == Base then p_g_selft_b
                        else WFKind g (self t e Base) p_g_selft_b
        p_selfs_selft = lem_exact_subtype g s t p_g_s_t Base (e ? lem_freeBV_empty -}
-lem_exact_type g e t p_e_t Star p_g_wf = p_e_t
+lem_exact_type g e t p_e_t Star p_g_wf = p_e_t ? toProof ( self t e Star === t )

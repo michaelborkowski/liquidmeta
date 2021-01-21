@@ -85,6 +85,31 @@ lem_tsubFTV_ty a t_a Eq       = ()
 lem_tsubFTV_ty a t_a (Eqn n)  = ()
 lem_tsubFTV_ty a t_a Eql      = ()
 
+{-@ lem_tchgFTV_tybc :: a:Vname -> a':Vname -> b:Bool
+        -> { pf:_ | tchgFTV a a' (tybc b) == tybc b } @-}
+lem_tchgFTV_tybc :: Vname -> Vname -> Bool -> Proof
+lem_tchgFTV_tybc a a' True  = ()
+lem_tchgFTV_tybc a a' False = ()
+
+{-@ lem_tchgFTV_tyic :: a:Vname -> a':Vname -> n:Int
+        -> { pf:_ | tchgFTV a a' (tyic n) == tyic n } @-}
+lem_tchgFTV_tyic :: Vname -> Vname -> Int -> Proof
+lem_tchgFTV_tyic a a' n = ()
+
+{-@ lem_tchgFTV_ty :: a:Vname -> a':Vname -> c:Prim
+        -> { pf:_ | tchgFTV a a' (ty c) == ty c } @-}
+lem_tchgFTV_ty :: Vname -> Vname -> Prim -> Proof
+lem_tchgFTV_ty a a' Conj     = ()
+lem_tchgFTV_ty a a' And      = ()
+lem_tchgFTV_ty a a' Or       = () 
+lem_tchgFTV_ty a a' Not      = ()
+lem_tchgFTV_ty a a' Eqv      = ()
+lem_tchgFTV_ty a a' Leq      = ()
+lem_tchgFTV_ty a a' (Leqn n) = ()
+lem_tchgFTV_ty a a' Eq       = ()
+lem_tchgFTV_ty a a' (Eqn n)  = ()
+lem_tchgFTV_ty a a' Eql      = ()
+
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------
@@ -248,6 +273,17 @@ lem_csubst_hasftype g e t p_e_t p_g_wf th den_g_th
         p_e_er_t = lem_typing_hasftype g e t p_e_t p_g_wf
 
 
+{-@ lem_tvar_v_in_env :: g:Env -> x:Vname -> t:Type -> ProofOf(HasType g (FV x) t)
+          -> { pf:_ | S.member x (vbinds g) } @-}
+lem_tvar_v_in_env :: Env -> Vname -> Type -> HasType -> Proof
+lem_tvar_v_in_env g x t (TVar1 _  _x _t _ _) = ()
+lem_tvar_v_in_env g x t (TVar2 g' _x _t p_g'_x_t y t_y)
+  = lem_tvar_v_in_env g' x t p_g'_x_t
+lem_tvar_v_in_env g x t (TVar3 g' _x _t p_g'_x_t a k_a)
+  = lem_tvar_v_in_env g' x t p_g'_x_t
+lem_tvar_v_in_env g x t (TSub _ _ s p_x_s _ k p_g_t p_s_t)
+  = lem_tvar_v_in_env g x s p_x_s
+
 -- Lemma. All free variables in a typed expression are bound in the environment
 {-@ lem_fv_bound_in_env :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
                 -> ProofOf(WFEnv g) -> { x:Vname | not (in_env x g) }
@@ -297,13 +333,20 @@ lem_fv_bound_in_env g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf x
     = () ? lem_fv_bound_in_env g e s p_e_s p_g_wf x
 
 {-@ lem_fv_subset_binds :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
-        -> ProofOf(WFEnv g) -> { pf:_ | Set_sub (Set_cup (fv e) (ftv e)) (binds g) } @-}
+        -> ProofOf(WFEnv g) -> { pf:_ | Set_sub (Set_cup (fv e) (ftv e)) (binds g) &&
+                                        Set_sub (fv e) (vbinds g) && Set_sub (ftv e) (tvbinds g) } @-}
 lem_fv_subset_binds :: Env -> Expr -> Type -> HasType -> WFEnv -> Proof
 lem_fv_subset_binds g e t (TBC _g b) p_g_wf        = ()
 lem_fv_subset_binds g e t (TIC _g n) p_g_wf        = ()
 lem_fv_subset_binds g e t (TVar1 _ y _t _ _) p_g_wf = ()
-lem_fv_subset_binds g e t (TVar2 _ y _t p_y_t z t') p_g_wf = ()
-lem_fv_subset_binds g e t (TVar3 _ y _t p_y_t a k)  p_g_wf = ()
+lem_fv_subset_binds g e t (TVar2 g' y _t p_y_t z t') p_g_wf 
+  = () ? lem_fv_subset_binds g' e t p_y_t p_g'_wf
+      where
+        (WFEBind _ p_g'_wf _ _ _ _) = p_g_wf
+lem_fv_subset_binds g e t (TVar3 g' y _t p_y_t a k)  p_g_wf 
+  = () ? lem_fv_subset_binds g' e t p_y_t p_g'_wf
+      where
+        (WFEBindT _ p_g'_wf _ _) = p_g_wf
 lem_fv_subset_binds g e t (TPrm _g c) p_g_wf     = ()
 lem_fv_subset_binds g e t (TAbs _g y t_y k_y p_g_ty e' t' y' p_e'_t') p_g_wf 
     = () ? lem_fv_subset_binds (Cons y' t_y g) (unbind y y' e') (unbindT y y' t') p_e'_t' p_y'g_wf

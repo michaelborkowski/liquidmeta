@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -22,7 +21,6 @@ import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 import BasicPropsDenotes
 import Entailments
@@ -33,9 +31,10 @@ import LemmasTyping
 import LemmasSubtyping
 import LemmasChangeVarTyp
 import LemmasWeakenTyp
-import SubstitutionLemmaWF
+import LemmasWeakenTypTV
+import SubstitutionWFAgain
 import DenotationsSelfify
-import DenotationsSoundnessSub
+import DenotationsSoundness
 import PrimitivesSemantics
 import PrimitivesDenotations
 import LemmasExactness
@@ -54,16 +53,15 @@ foo63 :: a -> Maybe a
 lem_subst_typ_tvar1 :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tvar1 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar1 _env z t' k' p_env_t) 
- = undefined {- CHECKED
   = case g' of          -- empty case: e = FV z = FV x and t = self t' x = self t_x x
       (Empty)           -> case k' of 
-        Base -> lem_exact_type g v_x t_x p_vx_tx Base
+          Base -> lem_exact_type g v_x t_x p_vx_tx Base p_g_wf 
                                    ? lem_free_bound_in_env g t_x k_x p_g_tx x
                                    ? lem_tsubFV_notin x v_x t_x 
-                                   ? lem_tsubFV_self x v_x t_x z Base
-        Star -> p_vx_tx ? lem_free_bound_in_env g t_x k_x p_g_tx x
-                        ? lem_tsubFV_notin x v_x t_x 
-                        ? toProof (self t' (FV z) k'  === t' === t_x)
+                                   ? lem_tsubFV_self x v_x t_x (FV z) Base
+          Star -> p_vx_tx ? lem_free_bound_in_env g t_x k_x p_g_tx x
+                          ? lem_tsubFV_notin x v_x t_x 
+                          ? toProof (self t' (FV z) k'  === t' === t_x)
         where
           (WFEBind _g p_g_wf _x _tx k_x p_g_tx) = p_env_wf
       (Cons _z _ g'')  -> TVar1 (concatE g (esubFV x v_x g''))  -- z <> x, t = self t' (FV z)
@@ -75,7 +73,7 @@ lem_subst_typ_tvar1 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar1 _env z t' k' p_en
         where
           (WFEBind _ p_g''g_wf _z _tz k_z p_g_tz) = p_env_wf
           p_env'_t'vx = lem_subst_wf' g g'' x v_x t_x p_vx_tx p_g''g_wf t' k' p_env_t
--}
+
 {-@ lem_subst_typ_tvar2 :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
         -> t_x:Type -> ProofOf(HasType g v_x t_x) 
@@ -85,7 +83,6 @@ lem_subst_typ_tvar1 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar1 _env z t' k' p_en
 lem_subst_typ_tvar2 :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tvar2 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar2 env_ z _t p_z_t w_ t_w) 
- = undefined {- CHECKED
     = case g' of             -- g'' = Empty so x = w and p_z_t :: HasFType(g (FV z) t)
         (Empty)           -> case (x == z) of
             (True)  -> impossible "it is"
@@ -125,7 +122,6 @@ lem_subst_typ_tvar2 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar2 env_ z _t p_z_t w
                                   ? lem_fv_bound_in_env g v_x t_x p_vx_tx p_g_wf w_
                            p_z_tvx = lem_subst_typ g g'' x v_x t_x p_vx_tx
                                                    p_gg''_wf e t p_z_t
--}
 
 {-@ lem_subst_typ_tvar3 :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
@@ -136,7 +132,6 @@ lem_subst_typ_tvar2 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar2 env_ z _t p_z_t w
 lem_subst_typ_tvar3 :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tvar3 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar3 env_ z _t p_z_t a_ k_a) 
- = undefined {- CHECKED
     = case g' of             -- g'' = Empty so x = w and p_z_t :: HasFType(g (FV z) t)
         (Empty)            -> impossible "a != x" -- case (x == z) of
         (ConsT _ _ka g'') -> case (x == z) of
@@ -169,7 +164,6 @@ lem_subst_typ_tvar3 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar3 env_ z _t p_z_t a
                                   ? lem_fv_bound_in_env g v_x t_x p_vx_tx p_g_wf a_
                            p_z_tvx = lem_subst_typ g g'' x v_x t_x p_vx_tx
                                                    p_gg''_wf e t p_z_t
- -}
 
 {-@ lem_subst_typ_tabs :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
@@ -180,7 +174,6 @@ lem_subst_typ_tvar3 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar3 env_ z _t p_z_t a
 lem_subst_typ_tabs :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tabs g g' x v_x t_x p_vx_tx p_env_wf e t (TAbs env_ z t_z k_z p_env_tz e' t' y_ p_yenv_e'_t') 
- = undefined {- CHECKED
   = TAbs (concatE g (esubFV x v_x g')) z (tsubFV x v_x t_z) k_z p_g'g_tzvx
          (subFV x v_x e') (tsubFV x v_x t') y p_yg'g_e'vx_t'vx
       where
@@ -198,7 +191,6 @@ lem_subst_typ_tabs g g' x v_x t_x p_vx_tx p_env_wf e t (TAbs env_ z t_z k_z p_en
                                                (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) e'
                                          ? lem_commute_tsubFV_tsubBV1 z (FV y) x 
                                                (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) t' 
--}
 
 {-@ lem_subst_typ_tapp :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
@@ -209,14 +201,12 @@ lem_subst_typ_tabs g g' x v_x t_x p_vx_tx p_env_wf e t (TAbs env_ z t_z k_z p_en
 lem_subst_typ_tapp :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tapp g g' x v_x t_x p_vx_tx p_env_wf e t (TApp env_ e' z t_z t' p_env_e'_tzt' e_z p_env_ez_tz) 
- = undefined {- CHECKED
   = TApp (concatE g (esubFV x v_x g')) (subFV x v_x e') z (tsubFV x v_x t_z) (tsubFV x v_x t') 
          p_g'g_e'vx_tzt'vx (subFV x v_x e_z)  p_g'g_ezvx_tzvx         
       where
         p_g'g_e'vx_tzt'vx = lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e' 
                                           (TFunc z t_z t') p_env_e'_tzt'
         p_g'g_ezvx_tzvx   = lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e_z t_z p_env_ez_tz 
--}
 
 {-@ lem_subst_typ_tabst :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
@@ -227,8 +217,29 @@ lem_subst_typ_tapp g g' x v_x t_x p_vx_tx p_env_wf e t (TApp env_ e' z t_z t' p_
 lem_subst_typ_tabst :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tabst g g' x v_x t_x p_vx_tx p_env_wf e t 
-                    (TAbsT _env a k e' t' k_t' a' p_a'env_e'_t' p_a'env_t') = undefined 
-
+                    p_e_t@(TAbsT env a1 k e' t' k_t' a'_ p_a'env_e'_t' p_a'env_t') 
+  = TAbsT (concatE g (esubFV x v_x g')) a1 k (subFV x v_x e') (tsubFV x v_x t') k_t' a'
+          p_a'env'_e'_t' p_a'env'_t'
+      where
+        p_xg_wf          = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+        (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
+        p_env_t        = lem_typing_wf env e t p_e_t p_env_wf
+        a'             = a'_ ? lem_in_env_esub g' x v_x a'_
+                             ? lem_in_env_concat g  g' a'_
+                             ? lem_in_env_concat (Cons x t_x g) g' a'_
+                             ? lem_fv_bound_in_env g v_x t_x p_vx_tx p_g_wf a'_
+        p_a'env_wf     = WFEBindT env p_env_wf a' k
+        p_a'env'_e'_t' = lem_subst_typ g (ConsT a' k g') x v_x t_x p_vx_tx p_a'env_wf 
+                             (unbind_tv a1 a' e') (unbind_tvT a1 a' t') p_a'env_e'_t'
+                             ? lem_commute_subFV_unbind_tv x
+                                   (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) a1 a' e'
+                             ? lem_commute_tsubFV_unbind_tvT x
+                                   (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) a1 a' t'
+        p_a'env'_t'    = lem_subst_wf' g (ConsT a' k g') x v_x t_x p_vx_tx p_a'env_wf
+                             (unbind_tvT a1 a' t') k_t' p_a'env_t'
+                             ? lem_commute_tsubFV_unbind_tvT x
+                                   (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) a1 a' t'
+          
 {-@ lem_subst_typ_tappt :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
         -> t_x:Type -> ProofOf(HasType g v_x t_x) 
@@ -237,8 +248,17 @@ lem_subst_typ_tabst g g' x v_x t_x p_vx_tx p_env_wf e t
         -> ProofOf(HasType (concatE g (esubFV x v_x g')) (subFV x v_x e) (tsubFV x v_x t)) / [typSize p_e_t, 0] @-}
 lem_subst_typ_tappt :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
-lem_subst_typ_tappt g g' x v_x t_x p_vx_tx p_env_wf e t (TAppT _env e' a k s p_e'_as t' p_env_t') = undefined 
-
+lem_subst_typ_tappt g g' x v_x t_x p_vx_tx p_env_wf e t 
+                    p_e_t@(TAppT env e' a1 k1 s p_e'_a1s t' p_env_t')
+  = TAppT (concatE g (esubFV x v_x g')) (subFV x v_x e') a1 k1 (tsubFV x v_x s) p_env'_e'_a1s
+          (tsubFV x v_x t') p_env'_t'
+          ? lem_commute_tsubFV_tsubBTV a1 t' x (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) s
+      where
+        p_xg_wf          = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+        (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
+        p_env'_e'_a1s = lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e' (TPoly a1 k1 s) p_e'_a1s
+        p_env'_t'     = lem_subst_wf' g g' x v_x t_x p_vx_tx p_env_wf t' k1 p_env_t'
+ 
 {-@ lem_subst_typ_tlet :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
         -> t_x:Type -> ProofOf(HasType g v_x t_x) 
@@ -249,7 +269,6 @@ lem_subst_typ_tlet :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tlet g g' x v_x t_x p_vx_tx p_env_wf e t (TLet env_ e_z t_z p_env_ez_tz z e' t_ k
                                                         p_env_t y_ p_yenv_e'_t) 
- = undefined {- CHECKED
   = TLet (concatE g (esubFV x v_x g')) (subFV x v_x e_z) (tsubFV x v_x t_z) p_g'g_ezvx_tzvx z
          (subFV x v_x e') (tsubFV x v_x t) k p_g'g_t'vx y p_yg'g_e'vx_tvx
       where
@@ -269,7 +288,6 @@ lem_subst_typ_tlet g g' x v_x t_x p_vx_tx p_env_wf e t (TLet env_ e_z t_z p_env_
                                                (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) e'
                                          ? lem_commute_tsubFV_tsubBV1 z (FV y) x 
                                                (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) t
--}
 
 {-@ lem_subst_typ_tsub :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
@@ -297,13 +315,9 @@ lem_subst_typ_tsub g g' x v_x t_x p_vx_tx p_env_wf e t (TSub env_ e_ s p_env_e_s
 lem_subst_typ :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t (TBC _env b) 
- = undefined {- CHECKED
   = TBC (concatE g (esubFV x v_x g')) b ? lem_tsubFV_tybc x v_x b
--}
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t (TIC _env n) 
- = undefined {- CHECKED
   = TIC (concatE g (esubFV x v_x g')) n ? lem_tsubFV_tyic x v_x n 
--}
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(TVar1 {})  
   = lem_subst_typ_tvar1 g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(TVar2 env_ z _t p_z_t w_ t_w)
@@ -311,9 +325,7 @@ lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(TVar2 env_ z _t p_z_t w
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(TVar3 env_ z _t p_z_t a_ k_a)
   = lem_subst_typ_tvar3 g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t (TPrm _en c) 
- = undefined {- CHECKED
   = TPrm (concatE g (esubFV x v_x g')) c ? lem_tsubFV_ty x v_x c 
--}
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(TAbs env_ z t_z k_z p_env_tz e' t' y_ p_yenv_e'_t') 
   = lem_subst_typ_tabs g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t  
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(TApp env_ e' z t_z t' p_env_e'_tzt' e_z p_env_ez_tz) 
@@ -326,11 +338,9 @@ lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(TLet env_ e_z t_z p_env
                                                         p_env_t y_ p_yenv_e'_t) 
   = lem_subst_typ_tlet g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t (TAnn env_ e' t_ p_env_e'_t) 
-  = undefined {- CHECKED
   = TAnn (concatE g (esubFV x v_x g')) (subFV x v_x e') (tsubFV x v_x t) p_g'g_e'_t
       where
         p_g'g_e'_t = lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e' t p_env_e'_t
--}
 lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(TSub env_ e_ s p_env_e_s t_ k p_env_t p_env_s_t) 
   = lem_subst_typ_tsub g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t
 
@@ -365,14 +375,14 @@ lem_subst_sub_sbase g g' x v_x t_x p_vx_tx p_env_wf s k_s p_env_s t k_t p_env_t
         p_yenv_wf        = WFEBind env p_env_wf y (TRefn b z1 p1) k_s p_env_s
         p_er_wenv_wf     = lem_erase_env_wfenv (Cons w (TRefn b z1 p1) env) p_wenv_wf
         p_yenv_p2_bl     = lem_change_var_ftyp (erase_env env) w (FTBasic b) FEmpty p_er_wenv_wf
-                                               (unbind z2 w p2) (FTBasic TBool) p_wenv_p2_bl y
-                                               ? lem_subFV_unbind z2 w (FV y) p2
+                                               (unbind 0 w p2) (FTBasic TBool) p_wenv_p2_bl y
+                                               ? lem_subFV_unbind 0 w (FV y) p2
         --EntPred _yenv _p2 func_th_thp_tt = ent_yenv_p2 -- Entails (Cons y (TRefn b z1 p1) env) (unbind z2 y p2)
         ent_yenv'_p2vx   = lem_subst_ent g (Cons y (TRefn b z1 p1) g') x v_x t_x p_vx_tx p_yenv_wf
-                               (unbind z2 y p2 ? lem_fv_subset_bindsF (FCons y (FTBasic b) (erase_env env)) 
-                                   (unbind z2 y p2) (FTBasic TBool) p_yenv_p2_bl)
+                               (unbind 0 y p2 ? lem_fv_subset_bindsF (FCons y (FTBasic b) (erase_env env)) 
+                                   (unbind 0 y p2) (FTBasic TBool) p_yenv_p2_bl)
                                ent_yenv_p2 
-                               ? lem_commute_subFV_subBV1 z2 (FV y) x 
+                               ? lem_commute_subFV_subBV1 0 (FV y) x 
                                    (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) p2 
 
 {-@ lem_subst_sub_sfunc :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
@@ -497,8 +507,43 @@ lem_subst_sub_sbind g g' x v_x t_x p_vx_tx p_env_wf t1 k1 p_env_t1 t' k' p_env_t
            / [subtypSize p_s_t, 0] @-}
 lem_subst_sub_spoly :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> Kind -> WFType -> Type -> Kind -> WFType -> Subtype -> Subtype
-lem_subst_sub_spoly g g' x v_x t_x p_vx_tx p_env_wf t1 k1 p_env_t1 t2 k2 p_env_t2 
-                    (SPoly {}) = undefined 
+lem_subst_sub_spoly g g' x v_x t_x p_vx_tx p_env_wf t1 k1@Star p_env_t1 t2 k2@Star p_env_t2 
+                    (SPoly env a1 k' t1' a2 t2' a1'_ p_a1'env_t1'_t2') 
+  = SPoly (concatE g (esubFV x v_x g')) a1 k' (tsubFV x v_x t1') a2 (tsubFV x v_x t2')
+          a1' p_a1'g'g_t1'vx_t2'vx
+      where
+        (WFPoly _ _ _ _ k_t1' aa1 p_aa1env_t1')  
+                             = lem_wfpoly_for_wf_tpoly env a1 k' t1' p_env_t1
+        (WFPoly _ _ _ _ k_t2' aa2 p_aa2env_t2')
+                             = lem_wfpoly_for_wf_tpoly env a2 k' t2' p_env_t2
+        a1'                  = a1'_ ? lem_in_env_esub g' x v_x a1'_
+                                    ? lem_in_env_concat g  g' a1'_
+                                    ? lem_in_env_concat (Cons x t_x g) g' a1'_
+                                    ? lem_fv_bound_in_env g v_x t_x p_vx_tx p_g_wf a1'_
+        p_xg_wf              = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+        (WFEBind _ p_g_wf _ _ _ _)  = p_xg_wf
+        p_aa1env_wf          = WFEBindT env p_env_wf aa1  k'
+        p_aa2env_wf          = WFEBindT env p_env_wf aa2  k'
+        p_a1'env_wf          = WFEBindT env p_env_wf a1'  k'
+        p_a1'env_t1'         = lem_change_tvar_wf' (concatE (Cons x t_x g) g') aa1 k' Empty p_aa1env_wf
+                                   (unbind_tvT a1 aa1 t1') k_t1' p_aa1env_t1' a1'
+                                   ? lem_tchgFTV_unbind_tvT a1 aa1 a1' t1'
+        p_a1'env_t2'         = lem_change_tvar_wf' (concatE (Cons x t_x g) g') aa2 k' Empty p_aa2env_wf
+                                   (unbind_tvT a2 aa2 t2') k_t2' p_aa2env_t2' a1'
+                                   ? lem_tchgFTV_unbind_tvT a2 aa2 a1' t2'
+        p_a1'g'g_t1'vx_t2'vx = lem_subst_sub g (ConsT a1' k' g') x v_x t_x p_vx_tx p_a1'env_wf
+                                   (unbind_tvT a1 a1' t1') k_t1' p_a1'env_t1'
+                                   (unbind_tvT a2 a1' t2') k_t2' p_a1'env_t2' p_a1'env_t1'_t2'
+                                   ? lem_commute_tsubFV_unbind_tvT x 
+                                         (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) a1 a1' t1'
+                                   ? lem_commute_tsubFV_unbind_tvT x 
+                                         (v_x ? lem_freeBV_empty g v_x t_x p_vx_tx p_g_wf) a2 a1' t2'
+lem_subst_sub_spoly g g' x v_x t_x p_vx_tx p_env_wf t1 Base p_env_t1 t2 k2   p_env_t2 
+                    (SPoly env a1 k' t1' a2 t2' a1'_ p_a1'env_t1'_t2') 
+  = impossible ("by lemma" ? lem_wf_tpoly_star env a1 k' t1' p_env_t1)
+lem_subst_sub_spoly g g' x v_x t_x p_vx_tx p_env_wf t1 k1   p_env_t1 t2 Base p_env_t2 
+                    (SPoly env a1 k' t1' a2 t2' a1'_ p_a1'env_t1'_t2') 
+  = impossible ("by lemma" ? lem_wf_tpoly_star env a2 k' t2' p_env_t2)
 
 {-@ lem_subst_sub :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value

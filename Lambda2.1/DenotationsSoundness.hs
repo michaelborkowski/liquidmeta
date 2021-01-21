@@ -313,7 +313,7 @@ lem_denote_sound_sub g t1 k1 t2 k2
   = lem_denote_sound_sub_spoly g t1 k1 t2 k2 p_t1_t2 p_g_wf p_g_t1 p_g_t2 th den_g_th v den_tht1_v
 
 
-{-@ lem_denote_sound_typ_tvar1 :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ_tvar1 :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTVar1 p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
@@ -335,7 +335,7 @@ lem_denote_sound_typ_tvar1 g e t (TVar1 g' x t' k' p_g'_t') (WFEBind _ wf_g' _ _
                                                 === ctsubst th' t' )
                                         ? lem_ctsubst_self th t' (FV x) k'
 
-{-@ lem_denote_sound_typ_tvar2 :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ_tvar2 :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTVar2 p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
@@ -356,7 +356,7 @@ lem_denote_sound_typ_tvar2 g e t (TVar2 g' x _t p_x_t y t_y) pf_g_wf th den_g_th
                                 ? lem_binds_env_th g' th' den_g'_th' 
                                 ? lem_tsubFV_notin y v_y t
 
-{-@ lem_denote_sound_typ_tvar3 :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ_tvar3 :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTVar3 p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
@@ -377,7 +377,7 @@ lem_denote_sound_typ_tvar3 g e t (TVar3 g' x _t p_x_t a k_a) pf_g_wf th den_g_th
                                  ? lem_binds_env_th g' th' den_g'_th'
                                  ? lem_tsubFTV_notin a t_a t
 
-{-@ lem_denote_sound_typ_tabs :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ_tabs :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAbs p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
@@ -415,7 +415,7 @@ lem_denote_sound_typ_tabs g e t p_e_t@(TAbs _g x t_x k_x p_g_tx e' t' y p_yg_e'_
                                      v' (ev_th'e'_v' ? lem_csubst_and_unbind x y v_x s_x' pf_vx_sx' th e') 
 -}
 
-{-@ lem_denote_sound_typ_tapp :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ_tapp :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTApp p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
@@ -453,7 +453,7 @@ lem_denote_sound_typ_tapp g e t p_e_t@(TApp _g e' x t_x t' p_e_txt' e_x p_ex_tx)
                            den_thtx_vx den_tht'vx_v'' ? lem_ctsubst_exis th x t_x t' 
 -}
 
-{-@ lem_denote_sound_typ_tabst :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ_tabst :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAbsT p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
@@ -491,7 +491,7 @@ lem_denote_sound_typ_tabst g e t p_e_t@(TAbsT _g a k e' t' k' a' p_e'_t' p_a'g_t
                                      v' (ev_th'e'_v' ? lem_csubst_and_unbind_tv a a' t_a k p_emp_ta th e')
 -}
 
-{-@ lem_denote_sound_typ_tappt :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ_tappt :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAppT p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
@@ -516,7 +516,7 @@ lem_denote_sound_typ_tappt g e t (TAppT _ e' a k s p_e_as t' p_g_t') p_g_wf th d
                                           ev_the_v'tht' ev_v'tht'_v''
 -}
 
-{-@ lem_denote_sound_typ_tlet :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ_tlet :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTLet p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
@@ -554,7 +554,7 @@ lem_denote_sound_typ_tlet g e t (TLet _g e_x t_x p_ex_tx x e' _t k p_g_t y p_yg_
                                       ? lem_tsubBV_notin x v_x (ctsubst th t) 
 -}
 
-{-@ lem_denote_sound_typ_tann :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ_tann :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAnn p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
@@ -573,7 +573,7 @@ lem_denote_sound_typ_tann g e t (TAnn _g e' _t p_e'_t) p_g_wf th den_g_th
       ev_the_v    = lemma_evals_trans (Annot (csubst th e') (ctsubst th t)) 
                                       (Annot v (ctsubst th t)) v ev_the't_vt ev_vt_v 
 
-{-@ lem_denote_sound_typ :: g:Env -> e:Expr -> t:Type 
+{-@ lem_denote_sound_typ :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t } -> ProofOf(WFEnv g)
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  
                 -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 1] @-}

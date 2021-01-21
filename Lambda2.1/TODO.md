@@ -51,19 +51,17 @@
 ### ~~Lemma 3 (Deterministic Operational Semantics)~~ -- DONE
   - ~~file: Semantics.hs~~ -- DONE
 
-### Lemma 4 (Weakenings)
-  - status: several cases TODO
+### ~~Lemma 4 (Weakenings)~~ -- DONE
   - ~~file: LemmasWeakenWF.hs~~ -- DONE
   - ~~file: LemmasWeakenEnt.hs~~ -- DONE
-  - file: LemmasWeakenTyp.hs -- cases todo
+  - ~~file: LemmasWeakenTyp.hs~~ -- DONE
+  - ~~file: LemmasWeakenTypTV.hs~~ -- DONE
 
-  - not included in pen-and-paper: Change of Variables Lemmas
-  - status: several cases TODO
+  - ~~not included in pen-and-paper: Change of Variables Lemmas~~ -- DONE
   - ~~file: LemmasChangeVarWF.hs~~ -- DONE
   - ~~file: LemmasChangeVarWFEnv.hs~~ -- DONE
   - ~~file: LemmasChangeVarEnt.hs~~ -- DONE
-  - file: LemmasChangeVarTyp.hs -- cases todo
-  - file: LemmasChangeVarTypTV.hs -- cases todo
+  - ~~file: LemmasChangeVarTyp.hs~~ -- DONE
 
 ### Lemma 5 (Reflexivity of Subtyping)
   - status: TODO
@@ -87,18 +85,18 @@
   - file: LemmasExactness.hs 
 
 ### Lemma 10 (Substitution Lemma)
-  - status: several cases remaining
-  - file: ~~SubstitutionLemmaWF.hs~~ -- DONE
-  - file: ~~SubstitutionLemmaEnt.hs~~ -- DONE
+  - status: few cases remaining
+  - ~~file: SubstitutionLemmaWF.hs~~ -- DONE
+  - ~~file: SubstitutionLemmaEnt.hs~~ -- DONE
+  - ~~file: SubstitutionLemmaTyp.hs~~ -- DONE
   - file: SubstitutionLemmaTyp.hs
 
 ### Lemma 11 (Well-Formedness from Typing)
   - status: reorder modules to use other results
   - file: LemmasTyping.hs
 
-### ~~Lemma 12 (Witness subtyping)~~
-  - status: DONE
-  - file: in SubstitutionLemmaWF.hs
+### ~~Lemma 12 (Witness subtyping)~~ -- DONE
+  - ~~file: in SubstitutionLemmaWF.hs~~ -- DONE
 
 ### Lemma 13 (Narrowing of judgements)
   - status: many cases todo
