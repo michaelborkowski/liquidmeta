@@ -74,15 +74,15 @@ time liquid --normal --oldple LemmasExactness.hs
 
 time liquid --normal --oldple SubstitutionLemmaEnt.hs
 time liquid --normal --oldple SubstitutionLemmaEntTV.hs
-#time liquid --normal --oldple SubstitutionLemmaTyp.hs
-#time liquid --normal --oldple SubstitutionLemmaTypTV.hs
-#time liquid --normal --oldple LemmasNarrowingEnt.hs
+time liquid --normal --oldple SubstitutionLemmaTyp.hs
+time liquid --normal --oldple SubstitutionLemmaTypTV.hs		# TODO
+time liquid --normal          LemmasNarrowingEnt.hs
 
-#time liquid --normal --oldple LemmasNarrowingTyp.hs
-#time liquid --normal --oldple LemmasTransitive.hs
-#time liquid --normal --oldple LemmasSubtypeClosed.hs
-#time liquid --normal --oldple LemmasInvertLambda.hs
-#time liquid --normal          PrimitivesRefinements.hs
+time liquid --normal --oldple LemmasNarrowingTyp.hs
+time liquid --normal --oldple --max-case-expand=4 LemmasTransitive.hs
+time liquid --normal          LemmasSubtypeClosed.hs
+time liquid --normal --oldple LemmasInvertLambda.hs
+time liquid --normal          PrimitivesRefinements.hs
 
 ###
 #time liquid --normal          PrimitivesDeltaTyping.hs

@@ -423,14 +423,6 @@ noExists (TPoly a k   t)   = noExists t
 
   -- ONLY types with Base Kind may have non-trivial refinements. Star kinded type variables 
   --     may only have the refinement { x : Bc True }.
-{-
-{-@ reflect isBare @-}
-isBare :: Type -> Bool
-isBare (TRefn b x p)     = p == Bc True
-isBare (TFunc x t_x t)   = isBare t_x && isBare t
-isBare (TExists x t_x t) = {-isBare t_x && isBare t-} False
-isBare (TPoly a k   t)   = isBare t
--}
 
 {-@ lazy tsize @-}
 {-@ measure tsize @-}
@@ -450,6 +442,11 @@ isTRefn _          = False
 isTFunc :: Type -> Bool
 isTFunc (TFunc {}) = True
 isTFunc _          = False
+
+{-@ reflect isTExists @-}
+isTExists :: Type -> Bool
+isTExists (TExists {}) = True
+isTExists _            = False
 
 {-@ reflect isTPoly @-}
 isTPoly :: Type -> Bool

@@ -294,7 +294,8 @@ lem_weaken_typ g g' p_env_wf e t p_e_t@(TSub env _e s p_env_e_s _t k p_env_t p_e
       -> t':Type -> k':Kind -> ProofOf(WFType (concatE g g') t' k')
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t'&& isSBase p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
-      -> ProofOf(Subtype (concatE (Cons x t_x g) g') t t') / [subtypSize p_t_t', 0] @-}
+      -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' &&
+                     subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_weaken_subtype_sbase :: Env -> Env -> WFEnv -> Type -> Kind -> WFType 
       -> Type -> Kind -> WFType -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_sbase g g' p_env_wf t k p_env_t t' k' p_env_t' 
@@ -323,7 +324,8 @@ lem_weaken_subtype_sbase g g' p_env_wf t k p_env_t t' k' p_env_t'
       -> t':Type -> k':Kind -> ProofOf(WFType (concatE g g') t' k')
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSFunc p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
-      -> ProofOf(Subtype (concatE (Cons x t_x g) g') t t') / [subtypSize p_t_t', 0] @-}
+      -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' &&
+                     subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_weaken_subtype_sfunc :: Env -> Env -> WFEnv -> Type -> Kind -> WFType 
       -> Type -> Kind -> WFType -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_sfunc g g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_ft2 
@@ -376,7 +378,8 @@ lem_weaken_subtype_sfunc g g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_ft2
       -> t':Type -> k':Kind -> ProofOf(WFType (concatE g g') t' k')
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSWitn p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
-      -> ProofOf(Subtype (concatE (Cons x t_x g) g') t t') / [subtypSize p_t_t', 0] @-}
+      -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' &&
+                     subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_weaken_subtype_switn :: Env -> Env -> WFEnv -> Type -> Kind -> WFType 
       -> Type -> Kind -> WFType -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_switn g g' p_env_wf t k p_env_t t2 k2 p_env_t2
@@ -401,7 +404,8 @@ lem_weaken_subtype_switn g g' p_env_wf t k p_env_t t2 k2 p_env_t2
       -> t':Type -> k':Kind -> ProofOf(WFType (concatE g g') t' k')
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSBind p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
-      -> ProofOf(Subtype (concatE (Cons x t_x g) g') t t') / [subtypSize p_t_t', 0] @-}
+      -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' &&
+                     subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_weaken_subtype_sbind :: Env -> Env -> WFEnv -> Type -> Kind -> WFType 
       -> Type -> Kind -> WFType -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_sbind g g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
@@ -442,7 +446,8 @@ lem_weaken_subtype_sbind g g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
       -> t':Type -> k':Kind -> ProofOf(WFType (concatE g g') t' k')
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSPoly p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
-      -> ProofOf(Subtype (concatE (Cons x t_x g) g') t t') / [subtypSize p_t_t', 0] @-}
+      -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' &&
+                     subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_weaken_subtype_spoly :: Env -> Env -> WFEnv -> Type -> Kind -> WFType 
       -> Type -> Kind -> WFType -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_spoly g g' p_env_wf t1 Star p_env_t1 t2 Star p_env_t2 
@@ -495,7 +500,8 @@ lem_weaken_subtype_spoly g g' p_env_wf t1 k1 p_env_t1 t2 Base p_env_t2
       -> t':Type -> k':Kind -> ProofOf(WFType (concatE g g') t' k')
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
-      -> ProofOf(Subtype (concatE (Cons x t_x g) g') t t') / [subtypSize p_t_t', 1] @-}
+      -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' &&
+                     subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 1] @-}
 lem_weaken_subtype :: Env -> Env -> WFEnv -> Type -> Kind -> WFType 
       -> Type -> Kind -> WFType -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype g g' p_env_wf t k p_env_t t' k' p_env_t' 

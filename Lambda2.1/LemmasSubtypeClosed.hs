@@ -33,10 +33,9 @@ import LemmasChangeVarTyp
 import LemmasWeakenTyp
 import SubstitutionLemmaWF
 import DenotationsSelfify
-import DenotationsSoundnessSub
 import PrimitivesSemantics
 import PrimitivesDenotations
-import DenotationsSoundnessTyp
+import DenotationsSoundness
 import LemmasExactness
 import SubstitutionLemmaEnt
 import SubstitutionLemmaTyp
@@ -53,11 +52,12 @@ data SubtypeStarP where
 
 data SubtypeStar where
     SubRefl :: Env -> Type -> Kind -> WFType -> WFEnv -> SubtypeStar
-    SubStep :: Env -> Type -> Kind -> WFType -> Type -> Type -> Subtype -> SubtypeStar -> WFEnv -> SubtypeStar
+    SubStep :: Env -> Type -> Kind -> WFType -> Type -> Type -> Subtype 
+                   -> SubtypeStar -> WFEnv -> SubtypeStar
 {-@ data SubtypeStar where
         SubRefl :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
                          -> ProofOf(WFEnv g) -> ProofOf(SubtypeStar g t t)
-      | SubStep :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+        SubStep :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
             -> t':Type -> t'':Type -> ProofOf(Subtype g t t')
             -> ProofOf(SubtypeStar g t' t'') -> ProofOf(WFEnv g) -> ProofOf(SubtypeStar g t t'') @-}
 

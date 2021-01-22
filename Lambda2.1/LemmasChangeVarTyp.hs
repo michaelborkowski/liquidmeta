@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -667,7 +666,8 @@ lem_change_tvar_typ g a k_a g' p_env_wf e t p_e_t@(TSub {}) a'
       -> { y:Vname | not (in_env y g) && not (in_env y g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
                          (tsubFV x (FV y) t) (tsubFV x (FV y) t') &&
-                         subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_var_subtype_sbase :: Env -> Vname -> Type -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_var_subtype_sbase g x t_x g' p_env_wf t k p_env_t t' k' p_env_t' 
@@ -701,7 +701,8 @@ lem_change_var_subtype_sbase g x t_x g' p_env_wf t k p_env_t t' k' p_env_t'
       -> { y:Vname | not (in_env y g) && not (in_env y g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
                          (tsubFV x (FV y) t) (tsubFV x (FV y) t') &&
-                         subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_var_subtype_sfunc :: Env -> Vname -> Type -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_var_subtype_sfunc g x t_x g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_ft2 
@@ -761,7 +762,8 @@ lem_change_var_subtype_sfunc g x t_x g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_f
       -> { y:Vname | not (in_env y g) && not (in_env y g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
                          (tsubFV x (FV y) t) (tsubFV x (FV y) t') &&
-                         subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_var_subtype_switn :: Env -> Vname -> Type -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_var_subtype_switn g x t_x g' p_env_wf t k p_env_t t2 k2 p_env_t2
@@ -792,7 +794,8 @@ lem_change_var_subtype_switn g x t_x g' p_env_wf t k p_env_t t2 k2 p_env_t2
       -> { y:Vname | not (in_env y g) && not (in_env y g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
                          (tsubFV x (FV y) t) (tsubFV x (FV y) t') &&
-                         subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_var_subtype_sbind :: Env -> Vname -> Type -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_var_subtype_sbind g x t_x g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
@@ -835,7 +838,8 @@ lem_change_var_subtype_sbind g x t_x g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
       -> { y:Vname | not (in_env y g) && not (in_env y g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
                          (tsubFV x (FV y) t) (tsubFV x (FV y) t') &&
-                         subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_var_subtype_spoly :: Env -> Vname -> Type -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_var_subtype_spoly g x t_x g' p_env_wf t1 Star p_env_t1 t2 Star p_env_t2 
@@ -895,7 +899,8 @@ lem_change_var_subtype_spoly g x t_x g' p_env_wf t1 k1 p_env_t1 t2 Base p_env_t2
       -> { y:Vname | not (in_env y g) && not (in_env y g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons y t_x g) (esubFV x (FV y) g')) 
                          (tsubFV x (FV y) t) (tsubFV x (FV y) t') &&
-                         subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 1] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 1] @-}
 lem_change_var_subtype :: Env -> Vname -> Type -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_var_subtype g x t_x g' p_env_wf t k p_env_t t' k' p_env_t' 
@@ -923,7 +928,8 @@ lem_change_var_subtype g x t_x g' p_env_wf t1 k1 p_env_t1 t2 k2 p_env_t2 p_t1_t2
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a' k_a g) (echgFTV a a' g')) 
                                                        (tchgFTV a a' t) (tchgFTV a a' t') &&
-               subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_tvar_subtype_sbase :: Env -> Vname -> Kind -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_tvar_subtype_sbase g a k_a g' p_env_wf t k p_env_t t' k' p_env_t' 
@@ -959,7 +965,8 @@ lem_change_tvar_subtype_sbase g a k_a g' p_env_wf t k p_env_t t' k' p_env_t'
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a' k_a g) (echgFTV a a' g')) 
                                                        (tchgFTV a a' t) (tchgFTV a a' t') &&
-               subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_tvar_subtype_sfunc :: Env -> Vname -> Kind -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_tvar_subtype_sfunc g a k_a g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_ft2 
@@ -1019,7 +1026,8 @@ lem_change_tvar_subtype_sfunc g a k_a g' p_env_wf ft1 k1 p_env_ft1 ft2 k2 p_env_
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a' k_a g) (echgFTV a a' g')) 
                                                        (tchgFTV a a' t) (tchgFTV a a' t') &&
-               subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_tvar_subtype_switn :: Env -> Vname -> Kind -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_tvar_subtype_switn g a k_a g' p_env_wf t k p_env_t t2 k2 p_env_t2
@@ -1050,7 +1058,8 @@ lem_change_tvar_subtype_switn g a k_a g' p_env_wf t k p_env_t t2 k2 p_env_t2
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a' k_a g) (echgFTV a a' g')) 
                                                        (tchgFTV a a' t) (tchgFTV a a' t') &&
-               subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_tvar_subtype_sbind :: Env -> Vname -> Kind -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_tvar_subtype_sbind g a k_a g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
@@ -1093,7 +1102,8 @@ lem_change_tvar_subtype_sbind g a k_a g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a' k_a g) (echgFTV a a' g')) 
                                                        (tchgFTV a a' t) (tchgFTV a a' t') &&
-               subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 0] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 0] @-}
 lem_change_tvar_subtype_spoly :: Env -> Vname -> Kind -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_tvar_subtype_spoly g a k_a g' p_env_wf t1 Star p_env_t1 t2 Star p_env_t2 
@@ -1154,7 +1164,8 @@ lem_change_tvar_subtype_spoly g a k_a g' p_env_wf t1 k1   p_env_t1 t2 Base p_env
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') }
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a' k_a g) (echgFTV a a' g')) 
                                                        (tchgFTV a a' t) (tchgFTV a a' t') &&
-               subtypSize p_t_t' == subtypSize p'_t_t' } / [subtypSize p_t_t', 1] @-}
+                         subtypSize p_t_t'  == subtypSize p'_t_t' &&
+                         subtypSize' p_t_t' == subtypSize' p'_t_t' } / [subtypSize p_t_t', 1] @-}
 lem_change_tvar_subtype :: Env -> Vname -> Kind -> Env -> WFEnv -> Type -> Kind -> WFType 
                               -> Type -> Kind -> WFType -> Subtype -> Vname -> Subtype
 lem_change_tvar_subtype g a k_a g' p_env_wf t k p_env_t t' k' p_env_t' p_t_t'@(SBase {}) a' 
