@@ -186,28 +186,33 @@ lem_csubst_annot (CEmpty)       e t    = ()
 lem_csubst_annot (CCons y v th) e t    = () ? lem_csubst_annot th (subFV y v e) (tsubFV y v t)
 lem_csubst_annot (CConsT a t_a th) e t = () ? lem_csubst_annot th (subFTV a t_a e) (tsubFTV a t_a t)
 
-{-@ lem_csubst_trivial :: th:CSub -> { tt:Pred | isTrivial tt } -> { pf:_ | csubst th tt == tt } @-}
-lem_csubst_trivial :: CSub -> Pred -> Proof
-lem_csubst_trivial th (Bc True) = () ? lem_csubst_bc th True
-lem_csubst_trivial th (App p r) = case p of
-  (App (Prim Conj) (Bc True)) -> () ? lem_csubst_app th (App (Prim Conj) (Bc True)) r
-                                    ? lem_csubst_app th (Prim Conj) (Bc True)
-                                    ? lem_csubst_prim th Conj
-                                    ? lem_csubst_bc th  True
-                                    ? lem_csubst_trivial th r
+{-@ lem_csubst_conj :: th:CSub -> e:Expr -> e':Expr 
+               -> { pf:_ | csubst th (Conj e e') == Conj (csubst th e) (csubst th e') } @-}
+lem_csubst_conj :: CSub -> Expr -> Expr -> Proof
+lem_csubst_conj (CEmpty)        e e' = ()
+lem_csubst_conj (CCons y v th)  e e' = () ? lem_csubst_conj th (subFV y v e) (subFV y v e')
+lem_csubst_conj (CConsT a t th) e e' = () ? lem_csubst_conj th (subFTV a t e) (subFTV a t e')
 
+{-@ lem_csubst_trivial :: th:CSub -> { tt:Pred | isTrivial tt } -> { pf:_ | csubst th tt == tt } @-}
+lem_csubst_trivial :: CSub -> Expr -> Proof
+lem_csubst_trivial th (Bc True) = () ? lem_csubst_bc th True
+lem_csubst_trivial th (Conj p r) = case p of
+  (Bc True) -> () ? lem_csubst_conj th (Bc True) r
+                  ? lem_csubst_bc th  True
+                  ? lem_csubst_trivial th r
+{-
 {-@ lem_csubst_conjunction :: th:CSub -> { p:Pred | not (isConjunction p) }
         -> { pf:_ | not (isConjunction (csubst th p)) } @-}
-lem_csubst_conjunction :: CSub -> Pred -> Proof
+lem_csubst_conjunction :: CSub -> Expr -> Proof
 lem_csubst_conjunction (CEmpty)          p = ()
 lem_csubst_conjunction (CCons y v_y th)  p 
   = () ? lem_csubst_conjunction th (subFV y v_y p ? lem_subFV_conjunction y v_y p)
 lem_csubst_conjunction (CConsT a t_a th) p 
   = () ? lem_csubst_conjunction th (subFTV a t_a p ? lem_subFTV_conjunction a t_a p)
-
+-}
 {-@ lem_csubst_strengthen :: th:CSub -> p:Pred -> q:Pred
         -> { pf:_ | csubst th (strengthen p q) == strengthen (csubst th p) (csubst th q) } @-}
-lem_csubst_strengthen :: CSub -> Pred -> Pred -> Proof
+lem_csubst_strengthen :: CSub -> Expr -> Expr -> Proof
 lem_csubst_strengthen (CEmpty)          p q = ()
 lem_csubst_strengthen (CCons  y v_y th) p q 
   = () ? lem_subFV_strengthen y v_y p q
@@ -216,7 +221,7 @@ lem_csubst_strengthen (CConsT a t_a th) p q
   = () ? lem_subFTV_strengthen a t_a p q
        ? lem_csubst_strengthen th (subFTV a t_a p) (subFTV a t_a q)
 
-{-@ lem_ctsubst_push :: th:CSub -> p:Expr -> t_a:UserType
+{-@ lem_ctsubst_push :: th:CSub -> p:Pred -> t_a:UserType
         -> { pf:_ | ctsubst th (push p t_a) == push (csubst th p) (ctsubst th t_a) } @-}
 lem_ctsubst_push :: CSub -> Expr -> Type -> Proof
 lem_ctsubst_push (CEmpty)          p t_a = ()
@@ -246,7 +251,7 @@ lem_ctsubst_refn (CEmpty)       b x p    = ()
 lem_ctsubst_refn (CCons y v th) b x p    = () ? lem_ctsubst_refn th b x (subFV y v p)
 lem_ctsubst_refn (CConsT a t_a th) b x p = () ? lem_ctsubst_refn th b x (subFTV a t_a p)
 
-{-@ lem_ctsubst_refn_tv :: th:CSub -> { a:Vname | tv_in_csubst a th } -> x:RVname -> p:Expr 
+{-@ lem_ctsubst_refn_tv :: th:CSub -> { a:Vname | tv_in_csubst a th } -> x:RVname -> p:Pred
         -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == push (csubst th p) (csubst_tv th a) } @-}
 lem_ctsubst_refn_tv :: CSub -> Vname -> RVname -> Expr -> Proof
 lem_ctsubst_refn_tv (CEmpty)          a x p = ()
@@ -294,7 +299,7 @@ lem_ctsubst_poly (CCons  y  v   th) a k t
 lem_ctsubst_poly (CConsT a' t'  th) a k t 
     = () ? lem_ctsubst_poly th a k (tsubFTV a' t' t)
 
-{-@ lem_ctsubst_self :: th:CSub -> t:Type -> e:Expr -> k:Kind 
+{-@ lem_ctsubst_self :: th:CSub -> t:Type -> e:Term -> k:Kind 
       -> { pf:_ | ctsubst th (self t e k) == self (ctsubst th t) (csubst th e) k } / [csubstSize th] @-}
 lem_ctsubst_self :: CSub -> Type -> Expr -> Kind -> Proof
 lem_ctsubst_self (CEmpty)          t e k = ()
@@ -534,7 +539,7 @@ lem_ctsubst_and_unbind_tvT a1 a t_a k p_emp_ta th t
   --- After applying a closing substitution there are no more free variables remaining
 
 {-@ lem_csubst_no_more_fv :: th:CSub 
-        -> { v_x:Value | Set_sub (fv v_x) (vbindsC th) && Set_sub (ftv v_x) (tvbindsC th) }
+        -> { v_x:Expr | Set_sub (fv v_x) (vbindsC th) && Set_sub (ftv v_x) (tvbindsC th) }
         -> { pf:_ | Set_emp (fv (csubst th v_x)) && Set_emp (ftv (csubst th v_x)) } @-}
 lem_csubst_no_more_fv :: CSub -> Expr -> Proof
 lem_csubst_no_more_fv CEmpty v_x            = ()

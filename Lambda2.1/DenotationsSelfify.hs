@@ -11,7 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
+import Strengthenings
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -22,6 +22,7 @@ import BasicPropsEnvironments
 import BasicPropsWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasFTyping2
+import SystemFLemmasSubstitution
 import Typing
 import BasicPropsCSubst
 import BasicPropsDenotes
@@ -29,6 +30,7 @@ import BasicPropsEraseTyping
 import PrimitivesSemantics -- this module has moved "up" in the order
 import LemmasWeakenWF
 import LemmasWeakenWFTV
+import LemmasWellFormedness
 import SubstitutionLemmaWF
 import SubstitutionLemmaWFTV
 import SubstitutionWFAgain
@@ -65,33 +67,60 @@ lem_equals_evals b     z p e v ev_e_v p_v_b = impossible ("by lemma" ? lem_base_
       p_emp_b = lem_ftyping_wfft FEmpty v (FTBasic b) p_v_b WFFEmpty
 
 --- Lemma 7 in the paper version
-{-@ lem_denotations_selfify :: t:Type -> k:Kind 
-        -> { e:Expr | Set_emp (freeBV e) } -> v:Value -> ProofOf(EvalsTo e v) -> ProofOf(Denotes t v)
+{-@ lem_denotations_selfify :: t:Type -> k:Kind -> ProofOf(WFType Empty t k)
+        -> { e:Term | Set_emp (freeBV e) } -> ProofOf(HasFType FEmpty e (erase t))
+        -> v:Value -> ProofOf(EvalsTo e v) -> ProofOf(Denotes t v)
         -> ProofOf(Denotes (self t e k) v) @-}
-lem_denotations_selfify :: Type -> Kind {-> WFType-} -> Expr -> Expr
+lem_denotations_selfify :: Type -> Kind -> WFType -> Expr -> HasFType -> Expr
                                 -> EvalsTo -> Denotes -> Denotes
-lem_denotations_selfify (TRefn b z p)      Base {-p_emp_t-} e v ev_e_v den_t_v = undefined {-= case den_t_v of
-  (DRefn _b _z _p _v p_v_b ev_pv_tt) -> DRefn b z (selfify p b z e) v p_v_b ev_selfpv_tt
+lem_denotations_selfify (TRefn b z p_)     Base p_emp_t e p_e_t v ev_e_v den_t_v = case den_t_v of
+  (DRefn _b _z _p _v p_v_b ev_pv_tt) -> DRefn b z (strengthen (eqlPred (TRefn b z p) e) p) 
+                                              v p_v_b ev_selfpv_tt
+                           ? lem_subBV_strengthen 0 v (eqlPred (TRefn b z p) e) p{--}
       where           -- (subBV x v p) ~>* tt          -- (subBV x v (selfify p b z e)) ~>* tt
+        y_           = fresh_var Empty
+        y            = y_ ? lem_free_bound_in_env Empty (TRefn b z p) Base p_emp_t y_
+        {- @ ev_rhs_tt :: ProofOf(EvalsTo (subBV 0 v (eqlPred (TRefn b z p) e)) (Bc True) ) @-}
         ev_rhs_tt    = lem_equals_evals b z (subFV 0 v p) e v ev_e_v p_v_b 
-        ev_selfpv_tt = lemma_and_semantics 
-                           (subBV 0 v (selfify p b z e) ? lem_subBV_notin 0 v (Prim Eql)
-                                                        ? lem_subBV_notin 0 v e) 
-                           True ev_rhs_tt (subBV 0 v p) True ev_pv_tt
--}
-lem_denotations_selfify (TFunc z t_z t')   k    {-p_emp_t-} e v ev_e_v den_t_v = den_t_v
-lem_denotations_selfify (TExists z t_z t') Base {-p_emp_t-} e v ev_e_v den_t_v = case den_t_v of
+                                                        ? lem_subBV_notin 0 v (Prim Eql)
+                                                        ? lem_subBV_notin 0 v e 
+        p_eqlte_b    = lem_eqlPred_ftyping Empty b z (p ? lem_refn_is_pred (TRefn b z p) b z p)
+                           p_emp_t WFFEmpty y e p_e_t 
+        p_emp_er_t   = lem_erase_wftype Empty (TRefn b z p) Base p_emp_t
+        p_y_wf       = WFFBind FEmpty WFFEmpty y (FTBasic b) Base p_emp_er_t
+        {- @ p_eqltev_b :: ProofOf(HasFType FEmpty (subBV 0 v (eqlPred (TRefn b z p) e)) (FTBasic TBool)) @-}
+        p_eqltev_b   = lem_subst_ftyp FEmpty FEmpty y v (FTBasic b) p_v_b p_y_wf
+                                      (unbind 0 y (eqlPred (TRefn b z p) e)) (FTBasic TBool)
+                                      p_eqlte_b ? lem_subFV_unbind 0 y v (eqlPred (TRefn b z p) e)
+                                      ? lem_empty_concatF FEmpty
+        {-@ ev_selfpv_tt :: ProofOf(EvalsTo (strengthen (subBV 0 v (eqlPred (TRefn b z p) e)) (subBV 0 v p)) (Bc True)) @-}
+        ev_selfpv_tt = undefined {- this one diverges!
+                           lemma_strengthen_semantics 
+                           (subBV 0 v (eqlPred (TRefn b z p) e)) --(selfify p b z e) 
+                           True ev_rhs_tt (subBV 0 v p) True ev_pv_tt p_eqltev_b -}
+        p            = p_ ? lem_refn_is_pred (TRefn b z p_) b z p_
+lem_denotations_selfify (TFunc z t_z t')   k    p_emp_t e p_e_t v ev_e_v den_t_v = den_t_v
+lem_denotations_selfify (TExists z t_z t') Base p_emp_t e p_e_t v ev_e_v den_t_v = case den_t_v of
   (DExis _z _tz _t' _v p_v_ert' v_z den_tz_vz den_t'vz_v) 
     -> DExis z t_z (self t' e Base) v p_v_ert' v_z den_tz_vz den_selft'vz_v
          where 
-           den_selft'vz_v = lem_denotations_selfify (tsubBV z v_z t') Base {-p_emp_t'vz -}
-                                                    e v ev_e_v den_t'vz_v
-               ? lem_tsubBV_self z v_z t' e Base
-lem_denotations_selfify (TPoly a k_a t')   k    {-p_emp_t-} e v ev_e_v den_t_v = den_t_v
-lem_denotations_selfify t                  Star {-p_emp_t-} e v ev_e_v den_t_v = den_t_v
+           p_vz_er_tz     = get_ftyp_from_den t_z v_z den_tz_vz
+           (WFExis _ _ _ k_z p_g_tz _ k_t' y p_y_t')
+                          = lem_wfexis_for_wf_texists Empty  z t_z t' Base p_emp_t 
+           p_y_wf         = WFEBind Empty WFEEmpty y t_z k_z p_g_tz
+           p_emp_t'vz     = lem_subst_wf Empty Empty y v_z t_z p_vz_er_tz p_y_wf 
+                                         (unbindT z y t') k_t' p_y_t'
+                                         ? lem_empty_concatE Empty
+                                         ? lem_tsubFV_unbindT z y v_z t'
+           den_selft'vz_v = lem_denotations_selfify (tsubBV z v_z t') k_t' p_emp_t'vz 
+                                                    e (p_e_t ? lem_erase_tsubBV z v_z t')
+                                                    v ev_e_v den_t'vz_v
+                                                    ? lem_tsubBV_self z v_z t' e Base
+lem_denotations_selfify (TPoly a k_a t')   k    p_emp_t e p_e_t v ev_e_v den_t_v = den_t_v
+lem_denotations_selfify t                  Star p_emp_t e p_e_t v ev_e_v den_t_v = den_t_v
 
 
---- used in Lemma 8
+{--- used in Lemma 8
 {-@ lem_denote_ctsubst_refn_var :: g:Env -> a:Vname -> x:RVname -> p:Pred -> th:CSub
         -> ProofOf(DenotesEnv g th) -> v:Value -> ProofOf(Denotes (ctsubst th (TRefn (FTV a) x p)) v)
         -> (Denotes,EvalsTo)<{\pf ev -> propOf pf == Denotes (csubst_tv th a) v && 
@@ -107,34 +136,4 @@ lem_denote_ctsubst_refn_var g a x p th den_g_th v den_thap_v = undefined
 lem_denote_ctsubst_refn_var' :: Env -> Vname -> RVname -> Pred -> CSub -> DenotesEnv -> Expr
                                     -> Denotes -> EvalsTo -> Denotes
 lem_denote_ctsubst_refn_var' g a x p th den_g_th v den_tha_v ev_thpv_tt = undefined
-
-
--- should be?     -> { th:CSub | same_binders_cs th t } -> ProofOf(DenotesEnv g th)  
-{-@ lem_ctsubst_wf :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> ProofOf (WFEnv g) 
-        -> th:CSub -> ProofOf(DenotesEnv g th)  
-        -> ProofOf(WFType Empty (ctsubst th t) k) @-}
-lem_ctsubst_wf :: Env -> Type -> Kind -> WFType -> WFEnv -> CSub -> DenotesEnv -> WFType
-lem_ctsubst_wf Empty            t k p_g_t p_g_wf th den_g_th = case den_g_th of
-  (DEmp)                                           -> p_g_t ? lem_binds_env_th Empty th den_g_th
-lem_ctsubst_wf (Cons x t_x g')  t k p_g_t p_g_wf th den_g_th = case den_g_th of
-  (DExt  g' th' den_g'_th' _x _tx v_x den_th'tx_vx) -> p_emp_tht
-    where
-      p_emp_vx_th'tx = get_ftyp_from_den (ctsubst th' t_x) v_x den_th'tx_vx ? lem_erase_ctsubst th' t_x
-      p_g'_vx_th'tx  = lem_weaken_many_ftyp FEmpty (erase_env g') 
-                           (p_er_g'_wf ? lem_empty_concatF (erase_env g'))
-                           v_x (erase (ctsubst th' t_x)) p_emp_vx_th'tx 
-      (WFEBind _ p_g'_wf _ _ k_x p_g'_tx) = p_g_wf
-      p_er_g'_wf     = lem_erase_env_wfenv g' p_g'_wf
-      p_g'_th'tx     = lem_ctsubst_wf g' t_x k_x p_g'_tx p_g'_wf th' den_g'_th'
---      p_x'g'_wf      = WFEBind g' p_g'_wf x (ctsubst th' t_x) k_x p_g'_th'tx
-      p_g'_tvx       = undefined {- fix this line
-                       lem_subst_wf g' Empty x v_x (unerase s_x) p_g'_sx p_g'_wf t k p_g_t
-                       -}
-      p_emp_tht      = lem_ctsubst_wf g' (tsubFV x v_x t) k p_g'_tvx p_g'_wf th' den_g'_th'
-lem_ctsubst_wf (ConsT a k_a g') t k p_g_t p_g_wf th den_g_th = case den_g_th of
-  (DExtT g' th' den_g'_th' _a _ka t_a p_emp_ta) -> p_emp_tht
-    where
-      p_g'_ta        = lem_weaken_many_wf' Empty g' (p_g'_wf ? lem_empty_concatE g') t_a k_a p_emp_ta
-      (WFEBindT _ p_g'_wf _ _) = p_g_wf
-      p_g'_tta       = undefined -- lem_subst_tv_wf' g' Empty a t_a k_a p_g'_ta p_g_wf t k p_g_t
-      p_emp_tht      = lem_ctsubst_wf g' (tsubFTV a t_a t) k p_g'_tta p_g'_wf th' den_g'_th'
+-}

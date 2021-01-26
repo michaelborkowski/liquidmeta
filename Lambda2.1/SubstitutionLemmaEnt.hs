@@ -26,6 +26,7 @@ import BasicPropsDenotes
 import Entailments
 import LemmasChangeVarWF
 import LemmasWeakenWF
+import PrimitivesSemantics
 import LemmasWellFormedness
 import LemmasTyping
 import LemmasSubtyping
@@ -33,35 +34,12 @@ import LemmasChangeVarTyp
 import LemmasWeakenTyp
 import SubstitutionLemmaWF
 import SubstitutionWFAgain
-import DenotationsSelfify
-import DenotationsSoundness
-import PrimitivesSemantics
+--import DenotationsSelfify
+--import DenotationsSoundness
 
 {-@ reflect foo61 @-}
 foo61 x = Just x
 foo61 :: a -> Maybe a
-
-{-@ lem_subst_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
-        -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
-        -> t_x:Type -> ProofOf(HasType g v_x t_x)
-        -> ProofOf(WFEnv (concatE (Cons x t_x g) g') )
-        -> ProofOf(WFEnv (concatE g (esubFV x v_x g')) ) / [envsize g'] @-}
-lem_subst_wfenv :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv -> WFEnv
-lem_subst_wfenv g Empty           x v_x t_x p_vx_tx p_xg_wf  = case p_xg_wf of
-  (WFEBind  _g p_g_wf _x _tx _ _) -> p_g_wf
-  (WFEBindT _g p_g_wf _  _)       -> p_g_wf
-lem_subst_wfenv g (Cons z t_z g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
-  (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) 
-    -> WFEBind env'' p_env''_wf z (tsubFV x v_x t_z) k_z p_env''_tzvx
-      where
-        env''        = concatE g (esubFV x v_x g')
-        p_env''_wf   = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
-        p_env''_tzvx = lem_subst_wf' g g' x v_x t_x p_vx_tx p_env'_wf t_z k_z p_env'_tz
-lem_subst_wfenv g (ConsT a k_a g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
-  (WFEBindT env' p_env'_wf _a _ka)           -> WFEBindT env'' p_env''_wf a k_a
-    where
-      env''      = concatE g (esubFV x v_x g')
-      p_env''_wf = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
 
 data AugmentedCSubP where
     AugmentedCSub :: Env -> Env -> Vname -> Expr -> Type -> CSub -> AugmentedCSubP
@@ -136,7 +114,7 @@ lem_add_var_csubst g (Cons z t_z g') x v_x_ t_x p_vx_tx p_zenv_wf zth' den_zenv'
                env          = concatE (Cons x t_x g) g'
                {-@ eq_func1 :: p:Pred -> { pf:Proof | csubst th p == csubst th' (subFV x v_x_ p) } @-}
                {-@ eq_func2 :: t:Type -> { pf:Proof | ctsubst th t == ctsubst th' (tsubFV x v_x_ t) } @-}
-               eq_func1 :: Pred -> Proof
+               eq_func1 :: Expr -> Proof
                eq_func2 :: Type -> Proof 
                (InsertInCS _ _ _ _ _ _ th den_env_th eq_func1 eq_func2)
                             = lem_add_var_csubst g g' x v_x_ t_x p_vx_tx p_env_wf th' den_env'_th'
@@ -182,7 +160,7 @@ lem_add_var_csubst g (ConsT a k_a g') x v_x_ t_x p_vx_tx p_aenv_wf zth' den_aenv
                env          = concatE (Cons x t_x g) g'
                {-@ eq_func1 :: p:Pred -> { pf:Proof | csubst th p == csubst th' (subFV x v_x_ p) } @-}
                {-@ eq_func2 :: t:Type -> { pf:Proof | ctsubst th t == ctsubst th' (tsubFV x v_x_ t) } @-}
-               eq_func1 :: Pred -> Proof
+               eq_func1 :: Expr -> Proof
                eq_func2 :: Type -> Proof 
                (InsertInCS _ _ _ _ _ _ th den_env_th eq_func1 eq_func2)
                             = lem_add_var_csubst g g' x v_x_ t_x p_vx_tx p_env_wf th' den_env'_th'
@@ -224,7 +202,7 @@ lem_add_var_csubst g (ConsT a k_a g') x v_x_ t_x p_vx_tx p_aenv_wf zth' den_aenv
             -> { p:Pred | Set_sub (Set_cup (fv p) (ftv p)) (binds (concatE (Cons x t_x g) g')) }
             -> ProofOf(Entails (concatE (Cons x t_x g) g') p) 
             -> ProofOf(Entails (concatE g (esubFV x v_x g')) (subFV x v_x p)) @-}
-lem_subst_ent :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv -> Pred -> Entails -> Entails
+lem_subst_ent :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv -> Expr -> Entails -> Entails
 lem_subst_ent g g' x v_x t_x p_vx_tx p_env_wf p (EntPred env _p evals_func)
   = EntPred (concatE g (esubFV x v_x g')) (subFV x v_x p) evals_func'
       where

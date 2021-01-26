@@ -165,6 +165,11 @@ lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTAnn env_ e' t_ liqt p_env_
                          ? lem_erase_tsubFV x v_x liqt
                          ? lem_binds_cons_concatF g g' x t_x )
         p_g'g_e'_t = lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e' t p_env_e'_t
+lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e t (FTConj env_ e' p_env_e'_t e_z p_env_ez_t)
+  = FTConj (concatF g g') (subFV x v_x e') p_g'g_e'vx_t (subFV x v_x e_z) p_g'g_ezvx_t
+      where
+        p_g'g_e'vx_t = lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e'  t p_env_e'_t
+        p_g'g_ezvx_t = lem_subst_ftyp g g' x v_x t_x p_vx_tx p_env_wf e_z t p_env_ez_t
 
 
 {-@ lem_subst_tv_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
@@ -287,3 +292,9 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e t (FTAnn env_ e' t_ liqt p_e
         liqt'      = tsubFTV a t_a (liqt ? lem_erase_tsubFTV a t_a liqt
                                          ? lem_binds_consT_concatF g g' a k_a)
         p_g'g_e'_t = lem_subst_tv_ftyp g g' a t_a k_a p_g_ta pf_wf_env e' t p_env_e'_t
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTConj env_ e' p_env_e'_t e_z p_env_ez_t)
+  = FTConj (concatF g (fesubFV a (erase t_a) g')) (subFTV a t_a e') 
+           p_g'g_e'ta_t (subFTV a t_a e_z) p_g'g_ezta_t
+      where
+        p_g'g_e'ta_t = lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e'  t p_env_e'_t
+        p_g'g_ezta_t = lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e_z t p_env_ez_t

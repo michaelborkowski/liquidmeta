@@ -21,9 +21,22 @@ import BasicPropsEnvironments
 foo21 :: a -> Maybe a
 foo21 x = Just x
 
+{-@ lem_trivial_nodefns :: { p:Pred | isTrivial p } -> { pf:_ | noDefnsBaseAppT p } @-} 
+lem_trivial_nodefns :: Expr -> Proof
+lem_trivial_nodefns (Bc True)  = ()
+lem_trivial_nodefns (Conj p r) = case p of
+  (Bc True) -> () ? lem_trivial_nodefns r
+
+{-@ lem_trivial_check :: g:FEnv -> { p:Pred | isTrivial p } 
+        -> { pf:_ | checkType g p (FTBasic TBool) && synthType g p == Just (FTBasic TBool) } @-} 
+lem_trivial_check :: FEnv -> Expr -> Proof
+lem_trivial_check g (Bc True)  = ()
+lem_trivial_check g (Conj p r) = case p of
+  (Bc True) -> () ? lem_trivial_check g r 
+
 {-@ lem_btv_not_wf :: g:Env -> a:Vname -> x:RVname -> p:Pred -> k:Kind
                         -> ProofOf(WFType g (TRefn (BTV a) x p) k) -> { pf:_ | false } @-}
-lem_btv_not_wf :: Env -> Vname -> RVname -> Pred -> Kind -> WFType -> Proof
+lem_btv_not_wf :: Env -> Vname -> RVname -> Expr -> Kind -> WFType -> Proof
 lem_btv_not_wf g a x p k (WFBase {}) = ()
 lem_btv_not_wf g a x p k (WFRefn _ _ _ tt pf_g_b _ _ _) 
   = () ? lem_btv_not_wf g a Z tt Base pf_g_b
@@ -36,10 +49,22 @@ lem_btv_not_wf g a x p k (WFPoly {}) = ()
 lem_btv_not_wf g a x p k (WFKind _ _ pf_g_t_base) 
   = () ? lem_btv_not_wf g a x p Base pf_g_t_base
 
+{-@ lem_wf_refn_kind :: g:Env -> a:Vname -> z:RVname -> p:Pred -> k:Kind 
+       -> ProofOf(WFType g (TRefn (FTV a) z p) k)
+       -> { pf:_ | k == Star || kind_for_tv a g == Base } @-}
+lem_wf_refn_kind :: Env -> Vname -> RVname -> Expr -> Kind -> WFType -> Proof
+lem_wf_refn_kind g a z p k p_g_a = case k of 
+  Base -> case p_g_a of
+    (WFRefn _ _ _ tt' p'_g_a _ _ _) -> lem_wf_ftv_kind g  a tt' k p'_g_a
+    (WFVar1 {})                 -> ()
+    (WFVar2 g' _ _ _ p_g'_a _ _)  -> lem_wf_ftv_kind g' a p k p_g'_a
+    (WFVar3 g' _ _ _ p_g'_a _ _)  -> lem_wf_ftv_kind g' a p k p_g'_a
+  Star -> ()
+
 {-@ lem_wf_ftv_kind :: g:Env -> a:Vname -> { tt:Pred | isTrivial tt } -> k:Kind 
        -> ProofOf(WFType g (TRefn (FTV a) Z tt) k)
        -> { pf:_ | k == Star || kind_for_tv a g == Base } @-}
-lem_wf_ftv_kind :: Env -> Vname -> Pred -> Kind -> WFType -> Proof
+lem_wf_ftv_kind :: Env -> Vname -> Expr -> Kind -> WFType -> Proof
 lem_wf_ftv_kind g a tt k p_g_a = case k of 
   Base -> case p_g_a of
     (WFRefn _ _ _ tt' p'_g_a _ _ _) -> lem_wf_ftv_kind g  a tt' k p'_g_a
@@ -179,6 +204,19 @@ lem_wf_tpoly_star g a k t (WFFunc {}) = ()
 lem_wf_tpoly_star g a k t (WFExis {}) = ()
 lem_wf_tpoly_star g a k t (WFPoly {}) = ()
 lem_wf_tpoly_star g a k t (WFKind {}) = ()
+
+{-@ lem_wf_usertype_base_trefn :: g:Env -> t_a:UserType -> ProofOf(WFType g t_a Base)
+        -> { pf:_ | isTRefn t_a } @-}
+lem_wf_usertype_base_trefn :: Env -> Type -> WFType -> Proof
+lem_wf_usertype_base_trefn g t_a (WFBase {}) = ()
+lem_wf_usertype_base_trefn g t_a (WFRefn {}) = ()
+lem_wf_usertype_base_trefn g t_a (WFVar1 {}) = ()
+lem_wf_usertype_base_trefn g t_a (WFVar2 {}) = ()
+lem_wf_usertype_base_trefn g t_a (WFVar3 {}) = ()
+lem_wf_usertype_base_trefn g t_a (WFFunc {}) = impossible ""
+lem_wf_usertype_base_trefn g t_a (WFExis {}) = impossible ""
+lem_wf_usertype_base_trefn g t_a (WFPoly {}) = impossible ""
+lem_wf_usertype_base_trefn g t_a (WFKind {}) = impossible ""
 
  -- SYSTEM F VERSIONS
 
@@ -397,6 +435,9 @@ lem_freeBV_emptyB g e t (FTLet _g e_x t_x p_ex_tx x e' t' y p_yg_e'_t') = case e
                                                                t' p_yg_e'_t')
 lem_freeBV_emptyB g e t (FTAnn _g e' _t t1 p_e'_t) = case e of
   (Annot _ _)  -> () ? lem_freeBV_emptyB g e' t p_e'_t
+lem_freeBV_emptyB g e t (FTConj _g e' p_e'_t e_x p_ex_t) = case e of
+  (Conj _ _) -> () ? lem_freeBV_emptyB g e'  t p_e'_t
+                   ? lem_freeBV_emptyB g e_x t p_ex_t
 
 {-@ lem_tfreeBV_empty :: g:Env -> t:Type -> k:Kind -> { p_g_t:WFType | propOf p_g_t == WFType g t k }
         -> { pf:Proof | Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) } / [wftypSize p_g_t] @-}

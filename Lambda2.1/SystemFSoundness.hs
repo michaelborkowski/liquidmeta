@@ -33,9 +33,9 @@ foo25 :: a -> Maybe a
 -----------------------------------------------------------------------------
 
 -- The System F Progress Lemma   
-{-@ lemma_progress :: { e:Expr | isTerm e } -> t:FType -> ProofOf(HasFType FEmpty e t)  
-             -> Either { pf:_ | isValue e } 
-                       (Expr, Step)<{\e' pf -> isTerm e' && propOf pf == Step e e'}> @-}
+{-@ lemma_progress :: { e:Expr | isPred e } -> t:FType -> ProofOf(HasFType FEmpty e t)  
+             -> Either { pf:_ | isValue e && isTerm e} 
+                       (Expr, Step)<{\e' pf -> isPred e' && propOf pf == Step e e'}> @-}
 lemma_progress :: Expr -> FType -> HasFType -> Either Proof (Expr,Step) 
 lemma_progress c _b (FTBC FEmpty _)           = Left ()
 lemma_progress c _b (FTIC FEmpty _)           = Left ()
@@ -50,18 +50,18 @@ lemma_progress e t p_e_t@(FTApp FEmpty e1 t_x t' p_e1_txt' e2 p_e2_tx)
               Left ()               -> Right (delta p e2_, EPrim p e2_)
                   where
                       e2_ = e2 ? lem_prim_compat_in_ftapp p e2 t p_e_t
-              Right (e2', p_e2_e2') -> Right (e', p_e_e') ? lem_step_term e e' p_e_e'
+              Right (e2', p_e2_e2') -> Right (e', p_e_e') ? lem_step_pred e e' p_e_e'
                   where
                       e'     = App (Prim p) e2'
                       p_e_e' = EApp2 e2 e2' p_e2_e2' (Prim p)
           (Lambda x e3) -> case (lemma_progress e2 t_x p_e2_tx) of
               Left ()               -> Right (subBV x e2 e3, EAppAbs x e3 e2)
-              Right (e2', p_e2_e2') -> Right (e', p_e_e') ? lem_step_term e e' p_e_e'
+              Right (e2', p_e2_e2') -> Right (e', p_e_e') ? lem_step_pred e e' p_e_e'
                   where
                       e'     = App (Lambda x e3) e2'
                       p_e_e' = EApp2 e2 e2' p_e2_e2' (Lambda x e3)
           _ -> case (isValue e1) of
-              False -> Right (e', p_e_e') ? lem_step_term e e' p_e_e'
+              False -> Right (e', p_e_e') ? lem_step_pred e e' p_e_e'
                   where
                       Right (e1', p_e1_e1') = lemma_progress e1 (FTFunc t_x t) p_e1_txt'
                       e'     = App e1' e2
@@ -74,7 +74,7 @@ lemma_progress e t  p_e_t@(FTAppT FEmpty e1 a k s  p_e1_as rt p_emp_er_rt) = cas
             rt_ = rt ? lem_prim_compatT_in_ftappt c rt t p_e_t
       (LambdaT a' k' e'') -> Right (subBTV a' rt e'', EAppTAbs a' k' e'' rt)
       _                   -> case (isValue e1) of
-        False             -> Right (e', p_e_e') ? lem_step_term e e' p_e_e'
+        False             -> Right (e', p_e_e') ? lem_step_pred e e' p_e_e'
           where
             Right (e2, p_e1_e2) = lemma_progress e1 (FTPoly a k s) p_e1_as
             e'     = AppT e2 rt
@@ -83,19 +83,33 @@ lemma_progress e t  p_e_t@(FTAppT FEmpty e1 a k s  p_e1_as rt p_emp_er_rt) = cas
 lemma_progress e _t (FTLet FEmpty e1 tx p_e1_tx x e2 t y p_e2_t)
       = case (lemma_progress e1 tx p_e1_tx) of
           Left ()               -> Right (subBV x e1 e2, ELetV x e1 e2)
-          Right (e1', p_e1_e1') -> Right (e', p_e_e') ? lem_step_term e e' p_e_e'
+          Right (e1', p_e1_e1') -> Right (e', p_e_e') ? lem_step_pred e e' p_e_e'
             where
               e'     = Let x e1' e2
               p_e_e' = ELet e1 e1' p_e1_e1' x e2
 lemma_progress e _t (FTAnn FEmpty e1 t liqt p_e1_t)
       = case (lemma_progress e1 t p_e1_t) of
           Left ()               -> Right (e1, EAnnV e1 liqt)
-          Right (e1', p_e1_e1') -> Right (e', p_e_e') ? lem_step_term e e' p_e_e'
+          Right (e1', p_e1_e1') -> Right (e', p_e_e') ? lem_step_pred e e' p_e_e'
             where
               e'     = Annot e1' liqt
               p_e_e' = EAnn e1 e1' p_e1_e1' liqt
+lemma_progress e t p_e_t@(FTConj FEmpty e1 p_e1_b e2 p_e2_b)
+      = case (lemma_progress e1 (FTBasic TBool) p_e1_b) of
+          Left ()               -> case (lemma_progress e2 (FTBasic TBool) p_e2_b) of
+              Left ()               -> Right (deltaC e1 e2_, EConjV e1 e2_)
+                where
+                  e2_ = e2 ? lem_conj_compat_in_ftconj e1 e2 p_e_t
+              Right (e2', p_e2_e2') -> Right (e', p_e_e') ? lem_step_pred e e' p_e_e'
+                where
+                  e'     = Conj e1 e2'
+                  p_e_e' = EConj2 e2 e2' p_e2_e2' e1
+          Right (e1', p_e1_e1') -> Right (e', p_e_e') ? lem_step_pred e e' p_e_e'
+            where
+              e'     = Conj e1' e2
+              p_e_e' = EConj1 e1 e1' p_e1_e1' e2
 
-{-@ lemma_preservation :: e:Term -> t:FType -> ProofOf(HasFType FEmpty e t) -> e':Term
+{-@ lemma_preservation :: e:Pred -> t:FType -> ProofOf(HasFType FEmpty e t) -> e':Pred
         -> ProofOf(Step e e') -> Either { pf:_ | false } { pf:_ | propOf pf == HasFType FEmpty e' t} @-}
 lemma_preservation :: Expr -> FType -> HasFType -> Expr -> Step -> Either Proof HasFType 
 lemma_preservation e t (FTBC _emp b)  e' st_e_e'       = Left () ? lem_value_stuck e e' st_e_e'
@@ -184,15 +198,33 @@ lemma_preservation e t (FTAnn FEmpty e1 t_ liqt p_e1_t) e' st_e_e'
                                   ? lem_sem_det e e' st_e_e' (Annot e1' liqt) (EAnn e1 e1' st_e1_e1' liqt)
           where
             Right p_e1'_t = lemma_preservation e1 t p_e1_t e1' st_e1_e1'
+lemma_preservation e t p_e_t@(FTConj FEmpty e1 p_e1_b e2 p_e2_b) e' st_e_e'
+  = case (lemma_progress e1 (FTBasic TBool) p_e1_b) of 
+      Left ()                -> case (lemma_progress e2 (FTBasic TBool) p_e2_b) of
+          Left ()                -> Right p_delC_t
+                                      ? lem_sem_det e e' st_e_e' (deltaC e1 e2_) (EConjV e1 e2_)
+            where
+              e2_      = e2 ? lem_conj_compat_in_ftconj e1 e2 p_e_t
+              p_delC_t = lem_deltaC_ftyp e1 p_e1_b e2 p_e2_b
+          Right (e2', st_e2_e2') -> Right (FTConj FEmpty e1 p_e1_b e2' p_e2'_b)
+            where
+              Right p_e2'_b   = lemma_preservation e2 (FTBasic TBool) p_e2_b e2' st_e2_e2'
+                                  ? lem_sem_det e e' st_e_e' (Conj e1 e2')
+                                                (EConj2 e2 e2' st_e2_e2' e1)
+      Right (e1', st_e1_e1') -> Right (FTConj FEmpty e1' p_e1'_b e2 p_e2_b)
+        where
+          Right p_e1'_b       = lemma_preservation e1 (FTBasic TBool) p_e1_b e1' st_e1_e1'
+                                  ? lem_sem_det e e' st_e_e' (Conj e1' e2) 
+                                                (EConj1 e1 e1' st_e1_e1' e2)
 
 -- Lemma. The underlying bare type system is sound. This is the textbook
 --          soundness proof for the STLC. 
-{-@ lemma_soundness :: e:Term -> e':Term -> ProofOf(EvalsTo e e') -> b:FType
+{-@ lemma_soundness :: e:Pred -> e':Pred -> ProofOf(EvalsTo e e') -> b:FType
                    -> ProofOf(HasFType FEmpty e b) -> ProofOf(HasFType FEmpty e' b) @-}
 lemma_soundness :: Expr -> Expr -> EvalsTo -> FType -> HasFType -> HasFType
 lemma_soundness e e' p_ee' b p_eb = case p_ee' of 
   (Refl e)                            -> p_eb  
   (AddStep _e e1_ st_e_e1 _e' p_e1e') -> lemma_soundness e1 e' p_e1e' b p_e1b
     where
-      e1          = e1_ ? lem_step_term e e1_ st_e_e1
+      e1          = e1_ ? lem_step_pred e e1_ st_e_e1
       Right p_e1b = lemma_preservation e b p_eb e1 st_e_e1

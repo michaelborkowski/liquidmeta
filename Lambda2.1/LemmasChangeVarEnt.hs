@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -27,9 +26,9 @@ import BasicPropsDenotes
 import LemmasChangeVarWF
 import LemmasChangeVarWFEnv
 
-{-@ reflect foo36 @-}
-foo36 x = Just x
-foo36 :: a -> Maybe a
+{-@ reflect foo33 @-}
+foo33 x = Just x
+foo33 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas  
@@ -45,7 +44,7 @@ foo36 :: a -> Maybe a
       -> { ent_g_p:Entails | propOf ent_g_p == Entails (concatE (Cons x t_x g) g') p }
       -> { y:Vname | not (in_env y g) && not (in_env y g') && (x==y || not (Set_mem y (fv p))) }
       -> ProofOf(Entails (concatE (Cons y t_x g) (esubFV x (FV y) g')) (subFV x (FV y) p)) @-}
-lem_change_var_ent :: Env -> Vname -> Type -> Env -> WFEnv -> Pred -> Entails -> Vname -> Entails
+lem_change_var_ent :: Env -> Vname -> Type -> Env -> WFEnv -> Expr -> Entails -> Vname -> Entails
 lem_change_var_ent g x t_x g' p_env_wf p (EntPred _env _p evals_func) y
   = EntPred (concatE (Cons y t_x g) (esubFV x (FV y) g')) (subFV x (FV y) p) evals_func'
       where  -- env' = concatE (Cons y t_x g) (esubFV x (FV y) g')   env = concatE (Cons x t_x g) g'
@@ -72,7 +71,7 @@ lem_change_var_ent g x t_x g' p_env_wf p (EntPred _env _p evals_func) y
       -> { ent_g_p:Entails | propOf ent_g_p == Entails (concatE (ConsT a k_a g) g') p }
       -> { a':Vname | not (in_env a' g) && not (in_env a' g') && (a==a' || not (Set_mem a' (ftv p))) }
       -> ProofOf(Entails (concatE (ConsT a' k_a g) (echgFTV a a' g')) (chgFTV a a' p)) @-}
-lem_change_tvar_ent :: Env -> Vname -> Kind -> Env -> WFEnv -> Pred -> Entails -> Vname -> Entails
+lem_change_tvar_ent :: Env -> Vname -> Kind -> Env -> WFEnv -> Expr -> Entails -> Vname -> Entails
 lem_change_tvar_ent g a k_a g' p_env_wf p (EntPred _env _p evals_func) a' 
   = EntPred (concatE (ConsT a' k_a g) (echgFTV a a' g')) (chgFTV a a' p) evals_func'
       where

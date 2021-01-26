@@ -47,13 +47,45 @@ import LemmasNarrowingTyp
 foo67 x = Just x
 foo67 :: a -> Maybe a
 
+-- might need WFFE g, WFness -- TODO TODO
+{-@ lem_entails_trans :: g:Env -> b:Basic -> x1:RVname -> p:Pred 
+        -> x2:RVname -> q:Pred -> x3:RVname -> r:Pred 
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (fv q)) 
+                                                                  && not (Set_mem y (fv r)) }
+        -> ProofOf(Entails (Cons y (TRefn b x1 p) g) (unbind 0 y q))
+        -> ProofOf(Entails (Cons y (TRefn b x2 q) g) (unbind 0 y r))
+        -> ProofOf(Entails (Cons y (TRefn b x1 p) g) (unbind 0 y r)) @-} -- these preds not already unbound
+lem_entails_trans :: Env -> Basic -> RVname -> Expr -> RVname -> Expr -> RVname -> Expr
+                         -> Vname -> Entails -> Entails -> Entails
+lem_entails_trans g b x1 p x2 q x3 r y (EntPred gp _unq ev_thq_func) ent_gp_r  = case ent_gp_r of
+  (EntPred gq _unr ev_thr_func) -> EntPred gp (unbind 0 y r) ev_thr_func'
+    where
+      {-@ ev_thr_func' :: th:CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x1 p) g) th) 
+                                  -> ProofOf(EvalsTo (csubst th (unbind 0 y r)) (Bc True)) @-}
+      ev_thr_func' :: CSub -> DenotesEnv -> EvalsTo
+      ev_thr_func' th den_gp_th = case den_gp_th of
+        (DExt _g th' den_g_th' _y _bxp v den_thbxp_v) -> ev_thr_func th den_gq_th
+          where
+            p_v_b       = get_ftyp_from_den (ctsubst th' (TRefn b x1 p)) v den_thbxp_v 
+              -- replace?                          ? lem_ctsubst_refn th' b x1 p 
+            ev_thqv_tt  = ev_thq_func th den_gp_th 
+                              ? lem_csubst_subBV 0 v (erase ((ctsubst th' (TRefn b x1 p))) p_v_b th' q
+                              ? lem_subFV_unbind 0 y v q
+
+(t_a, p_emp_ta) = lem_canonical_ctsubst_tv g th' den_g_th' a z p p_g_t     
+       (TRefn b'_ Z q_) = t_a ? lem_wf_usertype_base_trefn Empty t_a p_emp_ta
+
+
+            den_thbxq_v = DRefn b x2 (csubst th' q) v p_v_b ev_thqv_tt ? lem_ctsubst_refn th' b x2 q
+            den_gq_th   = DExt g th' den_g_th' y (TRefn b x2 q) v den_thbxq_v
+
 --            -> ProofOf(Subtype g t t'') / [typSize t, typSize t', typSize t''] @-}
 {-@ lem_sub_trans :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
             -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
             -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' }
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
-            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t', subtypSize' p_t'_t''] @-}
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t''] @-}
 lem_sub_trans :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
 lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''

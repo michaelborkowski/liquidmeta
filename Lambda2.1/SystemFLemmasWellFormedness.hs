@@ -172,6 +172,26 @@ lem_change_tvar_wfft g a k g' _ _ (WFFTKind env t pf_t_base) a1
              (ftsubFV a (FTBasic (FTV a1)) t)
              (lem_change_tvar_wfft g a k g' t Base pf_t_base a1)
 
+{-@ lem_weaken_wffe :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
+      -> ProofOf(WFFE (concatF g g')) 
+      -> { x:Vname | not (in_envF x g) &&  not (in_envF x g') }
+      -> t_x:FType -> k_x:Kind -> ProofOf(WFFT g t_x k_x)
+      -> ProofOf(WFFE (concatF (FCons x t_x g)  g')) @-}
+lem_weaken_wffe :: FEnv -> FEnv -> WFFE -> Vname -> FType -> Kind -> WFFT -> WFFE
+lem_weaken_wffe g FEmpty           p_env_wf x t_x k_x p_g_tx 
+  = WFFBind g p_env_wf x t_x k_x p_g_tx
+lem_weaken_wffe g (FCons z t_z g') p_env_wf x t_x k_x p_g_tx = case p_env_wf of
+  (WFFBind env' p_env'_wf _z _tz k_z p_env'_tz)  -> WFFBind env'' p_env''_wf z t_z k_z p_env''_tz
+    where
+      env''      = concatF (FCons x t_x g) g'
+      p_env''_wf = lem_weaken_wffe g g' p_env'_wf x t_x k_x p_g_tx
+      p_env''_tz = lem_weaken_wfft g g' t_z k_z p_env'_tz x t_x
+lem_weaken_wffe g (FConsT a  k g') p_env_wf x t_x k_x p_g_tx = case p_env_wf of
+  (WFFBindT env' p_env'_wf _a _k)                -> WFFBindT env'' p_env''_wf a k
+    where
+      env''      = concatF (FCons x t_x g) g'
+      p_env''_wf = lem_weaken_wffe g g' p_env'_wf x t_x k_x p_g_tx
+
 {-@ lem_weaken_wfft :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
       -> t:FType -> k:Kind -> { p_t_wf:WFFT | propOf p_t_wf == WFFT (concatF g g') t k }
       -> { x:Vname | not (in_envF x g) && not (in_envF x g') } -> t_x:FType

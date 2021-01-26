@@ -31,42 +31,42 @@ time liquid --normal --oldple SystemFLemmasSubstitution.hs
 time liquid --normal          SystemFSoundness.hs
 
 time liquid --normal          Typing.hs  
-time liquid --normal --oldple BasicPropsCSubst.hs                         ## new or old?
-time liquid --normal --oldple BasicPropsDenotes.hs                        ## new or old?
-time liquid --normal --oldple BasicPropsEraseTyping.hs		#TODO
+time liquid --normal --oldple BasicPropsCSubst.hs                 
+time liquid --normal --oldple BasicPropsDenotes.hs                        
+time liquid --normal --oldple BasicPropsEraseTyping.hs		
 time liquid --normal          PrimitivesSemantics.hs
 
-time liquid --normal --oldple Implications.hs 
-time liquid --normal --oldple Entailments.hs                    #TODO     ## new or old?
-time liquid --normal          SubtypingFromEntailments.hs       
 time liquid --normal --oldple LemmasChangeVarWF.hs
 time liquid --normal --oldple LemmasChangeVarWFEnv.hs
-
 time liquid --normal --oldple LemmasChangeVarEnt.hs
 time liquid --normal --oldple LemmasWeakenWF.hs
 time liquid --normal --oldple LemmasWeakenWFTV.hs
+
 time liquid --normal --oldple LemmasWeakenEnt.hs
 time liquid --normal --oldple LemmasWellFormedness.hs
+time liquid --normal --oldple Implications.hs 
+time liquid --normal --oldple Entailments.hs                    
+time liquid --normal          SubtypingFromEntailments.hs       
 
 time liquid --normal --oldple SubstitutionLemmaWF.hs
 time liquid --normal --oldple SubstitutionLemmaWFTV.hs
 time liquid --normal --oldple LemmasTyping.hs
-time liquid --normal --oldple LemmasSubtyping.hs		#TODO
 time liquid --normal --oldple SubstitutionWFAgain.hs	
-
 time liquid --normal --oldple LemmasChangeVarTyp.hs		
+
 ####
 time liquid --normal --oldple LemmasWeakenTyp.hs		
 time liquid --normal --oldple LemmasWeakenTypTV.hs
+time liquid --normal --oldple LemmasSubtyping.hs		#TODO
 time liquid --normal --oldple DenotationsSelfify.hs		
 
-time liquid --normal --oldple PrimitivesDenotationsAnd.hs
-time liquid --normal --oldple PrimitivesDenotationsOr.hs
-time liquid --normal --oldple PrimitivesDenotationsEqv.hs
-time liquid --normal --oldple PrimitivesDenotationsLeq.hs
-time liquid --normal --oldple PrimitivesDenotationsEq.hs
+time liquid --normal          PrimitivesDenotationsAnd.hs
+time liquid --normal          PrimitivesDenotationsOr.hs
+time liquid --normal          PrimitivesDenotationsEqv.hs
+time liquid --normal          PrimitivesDenotationsLeq.hs
+time liquid --normal          PrimitivesDenotationsEq.hs
 
-time liquid --normal --oldple PrimitivesDenotationsConj.hs
+###e liquid --normal --oldple PrimitivesDenotationsConj.hs	# probably delete this one!
 time liquid --normal --oldple PrimitivesDenotationsEql.hs
 time liquid --normal --oldple PrimitivesDenotations.hs
 time liquid --normal --oldple DenotationsSoundness.hs

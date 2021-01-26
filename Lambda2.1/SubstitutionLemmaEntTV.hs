@@ -43,28 +43,6 @@ import DenotationsSoundness
 foo62 x = Just x
 foo62 :: a -> Maybe a
 
-{-@ lem_subst_tv_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
-        -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
-        -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
-        -> ProofOf(WFEnv (concatE (ConsT a k_a g) g') )
-        -> ProofOf(WFEnv (concatE g (esubFTV a t_a g')) ) / [envsize g'] @-}
-lem_subst_tv_wfenv :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv -> WFEnv
-lem_subst_tv_wfenv g Empty           a t_a k_a p_g_ta p_xg_wf  = case p_xg_wf of
-  (WFEBind  _g p_g_wf _ _ _ _) -> p_g_wf
-  (WFEBindT _g p_g_wf _ _)     -> p_g_wf
-lem_subst_tv_wfenv g (Cons z t_z g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
-  (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) 
-    -> WFEBind env'' p_env''_wf z (tsubFTV a t_a t_z) k_z p_env''_tzta
-      where
-        env''        = concatE g (esubFTV a t_a g')
-        p_env''_wf   = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env'_wf
-        p_env''_tzta = lem_subst_tv_wf'   g g' a t_a k_a p_g_ta p_env'_wf t_z k_z p_env'_tz
-lem_subst_tv_wfenv g (ConsT a1 k1 g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
-  (WFEBindT env' p_env'_wf _a1 _k1)          -> WFEBindT env'' p_env''_wf a1 k1
-    where
-      env''      = concatE g (esubFTV a t_a g')
-      p_env''_wf = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env'_wf
-
 data TVAugmentedCSubP where
     TVAugmentedCSub :: Env -> Env -> Vname -> Type -> Kind -> CSub -> TVAugmentedCSubP
 

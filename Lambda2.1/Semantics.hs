@@ -30,7 +30,6 @@ import Basics
 
 {-@ reflect isCompat @-}
 isCompat :: Prim -> Expr -> Bool
-isCompat Conj (Bc _)     = True
 isCompat And (Bc _)      = True
 isCompat Or  (Bc _)      = True
 isCompat Not (Bc _)      = True
@@ -45,8 +44,6 @@ isCompat _        _      = False
 {-@ delta :: p:Prim -> { e:Value | isCompat p e } 
                     -> { e':Value | Set_emp (fv e') && Set_emp (ftv e') } @-}
 delta :: Prim -> Expr -> Expr
-delta Conj (Bc True)   = Lambda 1 (BV 1)
-delta Conj (Bc False)  = Lambda 1 (Bc False)
 delta And  (Bc True)   = Lambda 1 (BV 1)
 delta And  (Bc False)  = Lambda 1 (Bc False)
 delta Or   (Bc True)   = Lambda 1 (Bc True)
@@ -68,12 +65,29 @@ isCompatT _   _                              = False
 
 {-@ reflect deltaT @-}
 {-@ deltaT :: c:Prim -> { t:Type | isCompatT c t }
-                     -> { e':Value | Set_emp (fv e') && Set_emp (ftv e') } @-}
+                     -> { e':Value | isTerm e' && Set_emp (fv e') && Set_emp (ftv e') } @-}
 deltaT :: Prim -> Type -> Expr
 deltaT  Eql    t = case (erase t) of
   (FTBasic b)    -> case b of
     TBool             -> Prim Eqv
     TInt              -> Prim Eq
+
+{-@ reflect isCompatC @-}
+isCompatC :: Expr -> Expr -> Bool
+isCompatC (Bc _) (Bc _) = True
+isCompatC _      _      = False
+
+{-@ reflect deltaC @-}
+{-@ deltaC :: v1:Value -> { v2:Value | isCompatC v1 v2 } 
+                       -> { v':Value | Set_emp (fv v') && Set_emp (ftv v') } @-}
+deltaC :: Expr -> Expr -> Expr
+deltaC (Bc True) (Bc True) = Bc True
+deltaC (Bc _)    (Bc _)    = Bc False
+
+{-@ lem_deltaC_tt :: v1:Value ->  { v2:Value | isCompatC v1 v2 && deltaC v1 v2 == Bc True}
+        -> { pf:_  | v1 == Bc True && v2 == Bc True } @-}
+lem_deltaC_tt :: Expr -> Expr -> Proof
+lem_deltaC_tt (Bc True) (Bc True) = ()
 
 data StepP where
     Step :: Expr -> Expr -> StepP
@@ -90,6 +104,9 @@ data Step where
     ELetV :: Vname -> Expr -> Expr -> Step
     EAnn  :: Expr -> Expr -> Step -> Type -> Step
     EAnnV :: Expr -> Type -> Step
+    EConj1 :: Expr -> Expr -> Step -> Expr -> Step
+    EConj2 :: Expr -> Expr -> Step -> Expr -> Step
+    EConjV :: Expr -> Expr -> Step
 
 {-@ data Step where 
         EPrim :: c:Prim -> { w:Value | isCompat c w }
@@ -97,8 +114,8 @@ data Step where
         EApp1 :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
                    -> e1:Expr -> ProofOf( Step (App e e1) (App e' e1)) 
         EApp2 :: e:Expr -> e':Expr -> ProofOf( Step e e' )
-                   -> v:PredValue -> ProofOf( Step (App v e) (App v e')) 
-        EAppAbs :: x:Vname -> e:Expr -> v:PredValue  
+                   -> v:Value -> ProofOf( Step (App v e) (App v e')) 
+        EAppAbs :: x:Vname -> e:Expr -> v:Value  
                    -> ProofOf( Step (App (Lambda x e) v) (subBV x v e)) 
         EPrimT :: c:Prim -> { t:Type | isCompatT c t }
                          -> ProofOf( Step (AppT (Prim c) t) (deltaT c t) ) 
@@ -108,11 +125,17 @@ data Step where
                    -> ProofOf( Step (AppT (LambdaT a k e) t) (subBTV a t e)) 
         ELet  :: e_x:Expr -> e_x':Expr -> ProofOf( Step e_x e_x' )
                    -> x:Vname -> e:Expr -> ProofOf( Step (Let x e_x e) (Let x e_x' e)) 
-        ELetV :: x:Vname -> v:PredValue -> e:Expr
+        ELetV :: x:Vname -> v:Value -> e:Expr
                    -> ProofOf( Step (Let x v e) (subBV x v e)) 
         EAnn  :: e:Expr -> e':Expr -> ProofOf(Step e e')
                    -> t:Type -> ProofOf(Step (Annot e t) (Annot e' t)) 
-        EAnnV :: v:PredValue -> t:Type -> ProofOf(Step (Annot v t) v) @-} -- @-}
+        EAnnV :: v:Value -> t:Type -> ProofOf(Step (Annot v t) v) 
+        EConj1 :: e:Expr -> e':Expr -> ProofOf( Step e e' )
+                         -> e1:Expr -> ProofOf( Step (Conj e e1) (Conj e' e1))
+        EConj2 :: e:Expr -> e':Expr -> ProofOf( Step e e' )
+                         -> v:Value -> ProofOf( Step (Conj v e) (Conj v e'))
+        EConjV :: v:Value -> { v':Value | isCompatC v v' } 
+                          -> ProofOf( Step (Conj v v') (deltaC v v') ) @-} 
 
 data EvalsToP where
     EvalsTo :: Expr -> Expr -> EvalsToP
@@ -123,7 +146,7 @@ data EvalsTo where
 {-@ data EvalsTo where 
         Refl     :: e:Expr -> ProofOf ( EvalsTo e e ) 
         AddStep  :: e1:Expr -> e2:Expr -> ProofOf( Step e1 e2 ) -> e3:Expr
-                 -> ProofOf ( EvalsTo e2 e3 ) -> ProofOf( EvalsTo e1 e3 ) @-} -- @-} 
+                 -> ProofOf ( EvalsTo e2 e3 ) -> ProofOf( EvalsTo e1 e3 ) @-} 
 
 --------------------------------------------------------------------------
 ----- | Properties of the OPERATIONAL SEMANTICS (Small Step)
@@ -161,7 +184,7 @@ lemma_app_many e e' v (AddStep _e e1 s_ee1 _e' p_e1e') = p_ev_e'v
     s_ev_e1v  = EApp1 e e1 s_ee1 v 
     p_e1v_e'v = lemma_app_many e1 e' v p_e1e' 
 
-{-@ lemma_app_many2 :: v:PredValue -> e:Expr -> e':Expr -> ProofOf(EvalsTo e e')
+{-@ lemma_app_many2 :: v:Value -> e:Expr -> e':Expr -> ProofOf(EvalsTo e e')
                        -> ProofOf(EvalsTo (App v e) (App v e')) @-}
 lemma_app_many2 :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
 lemma_app_many2 v e e' (Refl _e) = Refl (App v e)
@@ -212,6 +235,37 @@ lemma_annot_many e e' t (AddStep _e e1 s_ee1 _e' p_e1e') = p_et_e't
     p_e1t_e't = lemma_annot_many e1 e' t p_e1e'
     p_et_e't  = AddStep (Annot e t) (Annot e1 t) s_et_e1t (Annot e' t) p_e1t_e't
 
+{-@ lemma_conj_many :: e:Expr -> e':Expr -> v':Expr -> ProofOf(EvalsTo e e')
+                       -> ProofOf(EvalsTo (Conj e v') (Conj e' v')) @-}
+lemma_conj_many :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_conj_many e e' v (Refl _e) = Refl (Conj e v)
+lemma_conj_many e e' v (AddStep _e e1 s_ee1 _e' p_e1e') = p_ev_e'v
+  where
+    p_ev_e'v  = AddStep (Conj e v) (Conj e1 v) s_ev_e1v (Conj e' v) p_e1v_e'v
+    s_ev_e1v  = EConj1 e e1 s_ee1 v 
+    p_e1v_e'v = lemma_conj_many e1 e' v p_e1e' 
+
+{-@ lemma_conj_many2 :: v:Value -> e:Expr -> e':Expr -> ProofOf(EvalsTo e e')
+                       -> ProofOf(EvalsTo (Conj v e) (Conj v e')) @-}
+lemma_conj_many2 :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_conj_many2 v e e' (Refl _e) = Refl (Conj v e)
+lemma_conj_many2 v e e' (AddStep _e e1 s_ee1 _e' p_e1e') = p_ve_ve'
+  where
+    p_ve_ve'  = AddStep (Conj v e) (Conj v e1) s_ve_ve1 (Conj v e') p_ve1_ve'
+    s_ve_ve1  = EConj2 e e1 s_ee1 v 
+    p_ve1_ve' = lemma_conj_many2 v e1 e' p_e1e' 
+
+{-@ lemma_conj_both_many :: e:Expr -> v:Value -> ProofOf(EvalsTo e v)
+                             -> e':Expr -> v':Value -> ProofOf(EvalsTo e' v')
+                             -> ProofOf(EvalsTo (Conj e e') (Conj v v')) @-}
+lemma_conj_both_many :: Expr -> Expr -> EvalsTo -> Expr -> Expr -> EvalsTo -> EvalsTo
+lemma_conj_both_many e v ev_e_v e' v' ev_e'_v' = ev_ee'_vv'
+  where
+    ev_ee'_ve' = lemma_conj_many  e v  e' ev_e_v
+    ev_ve'_vv' = lemma_conj_many2 v e' v' ev_e'_v'
+    ev_ee'_vv' = lemma_evals_trans (Conj e e') (Conj v e') (Conj v v') 
+                                   ev_ee'_ve' ev_ve'_vv'
+
 data AppReducedP where
     AppReduced :: Expr -> Expr -> AppReducedP
 
@@ -240,15 +294,41 @@ lemma_evals_app_value e e' v (AddStep _ee' eee st_ee'_eee _v ev_eee_v)
           ev_e'_v2                             = AddStep e' e2 st_e'_e2 v2 ev_e2_v2
       (EAppAbs x e'' w)           -> AppRed e e (Refl e) e' e' (Refl e')
 
+data ConjReducedP where
+    ConjReduced :: Expr -> Expr -> ConjReducedP
+
+{-@ data ConjReduced where
+        ConjRed :: e:Expr -> { v:Expr | isValue v } -> ProofOf(EvalsTo e v) -> e':Expr 
+                         -> { v':Expr | isValue v' } -> ProofOf(EvalsTo e' v') 
+                         -> ProofOf(ConjReduced e e') @-}
+data ConjReduced where
+    ConjRed :: Expr -> Expr -> EvalsTo -> Expr -> Expr -> EvalsTo -> ConjReduced
+
+{-@ lemma_evals_conj_value :: e:Expr -> e':Expr -> { v:Expr | isValue v } 
+        -> ProofOf(EvalsTo (Conj e e') v)
+        -> ProofOf(ConjReduced e e') @-}
+lemma_evals_conj_value :: Expr -> Expr -> Expr -> EvalsTo -> ConjReduced
+lemma_evals_conj_value e e' v (Refl _v) = impossible "Conj not a value"
+lemma_evals_conj_value e e' v (AddStep _ee' eee st_ee'_eee _v ev_eee_v)
+  = case st_ee'_eee of 
+      (EConj1 _e e1 st_e_e1 _e')   -> ConjRed e v1 ev_e_v1 e' v2 ev_e'_v2
+        where
+          (ConjRed _ v1 ev_e1_v1 _ v2 ev_e'_v2) = lemma_evals_conj_value e1 e' v ev_eee_v
+          ev_e_v1                              = AddStep e e1 st_e_e1 v1 ev_e1_v1
+      (EConj2 _e' e2 st_e'_e2 _e)  -> ConjRed e e (Refl e) e' v2 ev_e'_v2
+        where
+          (ConjRed _ _ _ _e2 v2 ev_e2_v2)       = lemma_evals_conj_value e e2 v ev_eee_v
+          ev_e'_v2                             = AddStep e' e2 st_e'_e2 v2 ev_e2_v2
+      (EConjV v v')                -> ConjRed v v (Refl v) v' v' (Refl v')
+
 {-@ lem_evals_trivial :: { tt:Pred | isTrivial tt } -> ProofOf(EvalsTo tt (Bc True)) @-}
-lem_evals_trivial :: Pred -> EvalsTo
-lem_evals_trivial (Bc True) = Refl (Bc True)
-lem_evals_trivial (App p r) = lemma_add_step_after (App p r) (App (Lambda 1 (BV 1)) (Bc True))
-                                                   ev_pr_idtt (Bc True) (EAppAbs 1 (BV 1) (Bc True))
+lem_evals_trivial :: Expr -> EvalsTo
+lem_evals_trivial (Bc True) = Refl (Bc True) 
+lem_evals_trivial (Conj p r) = lemma_add_step_after (Conj p r) (Conj p (Bc True))
+                                                    ev_pr_idtt (Bc True) (EConjV (Bc True) (Bc True))
   where
     ev_r_tt    = lem_evals_trivial r
-    ev_p_id    = lem_step_evals (App (Prim Conj) (Bc True)) (Lambda 1 (BV 1)) (EPrim Conj (Bc True))
-    ev_pr_idtt = lemma_app_both_many p (Lambda 1 (BV 1)) ev_p_id r (Bc True) ev_r_tt
+    ev_pr_idtt = lemma_conj_many2 p r (Bc True) ev_r_tt
 
 --------------------------------------------------------------------------
 ----- | Basic LEMMAS of the OPERATIONAL SEMANTICS (Small Step)
@@ -300,6 +380,18 @@ lem_value_stuck e  e' (EAnnV _ _)
     = case e of 
         (Annot _ _)  -> ()
         (_)          -> impossible ""
+lem_value_stuck e  e' (EConj1 _ _ _ _)  
+    = case e of 
+        (Conj _ _)    -> ()
+        (_)           -> impossible ""
+lem_value_stuck e  e' (EConj2 _ _ _ _)  
+    = case e of 
+        (Conj _ _)    -> ()
+        (_)           -> impossible ""
+lem_value_stuck e  e' (EConjV _ _)  
+    = case e of 
+        (Conj _ _)    -> ()
+        (_)           -> impossible ""
 
 {-@ lem_value_refl :: { v:Expr | isValue v } -> v':Expr -> ProofOf(EvalsTo v v')
                 -> { pf:_ | v == v' } @-}
@@ -327,11 +419,41 @@ lem_step_term e e1 (EAnn e' e1' p_e_e1' t')
   = () ? lem_step_term e' e1' p_e_e1'
 lem_step_term e e1 (EAnnV v t')         = ()
 
+{-@ lem_step_pred :: { e:Expr | isPred e } -> e1:Expr -> ProofOf(Step e e1) -> { pf:_ | isPred e1 } @-}
+lem_step_pred :: Expr -> Expr -> Step -> Proof
+lem_step_pred e e1 p1@(EPrim c v)       = () ? toProof ( isPred ( delta c v ) )
+lem_step_pred e e' (EApp1 e1 e1' p_e1e1' e2) 
+  = () ? lem_step_term e1 e1' p_e1e1'     -- e = e1 e2, e' = e1' e2, e'' = e1'' e2
+lem_step_pred e e' (EApp2 e1 e1' p_e1e1' v1) 
+  = () ? lem_step_term e1 e1' p_e1e1'     -- e = v1 e1, e' = v1 e1', e'' = v1 e1''
+lem_step_pred e e1 (EAppAbs x e' v)     = () ? toProof ( isPred ( subBV x v e' ) )
+lem_step_pred e e' (EPrimT c t')        = () 
+lem_step_pred e e' (EAppT e1 e1' p_e1e1' t') 
+  = () ? lem_step_term e1 e1' p_e1e1'
+lem_step_pred e e1 (EAppTAbs a k e' t') = () ? toProof ( isPred ( subBTV a t' e' ) )
+lem_step_pred e e1 (ELet e_x e_x' p_ex_ex' x e1') 
+  = () ? lem_step_term e_x e_x' p_ex_ex'
+lem_step_pred e e1 (ELetV x v e')       = () ? toProof ( isPred ( subBV x v e') )
+lem_step_pred e e1 (EAnn e' e1' p_e_e1' t')
+  = () ? lem_step_term e' e1' p_e_e1'
+lem_step_pred e e1 (EAnnV v t')         = ()
+lem_step_pred e e' (EConj1 e1 e1' p_e1e1' e2) 
+  = () ? lem_step_pred e1 e1' p_e1e1'     -- e = e1 e2, e' = e1' e2, e'' = e1'' e2
+lem_step_pred e e' (EConj2 e1 e1' p_e1e1' v1) 
+  = () ? lem_step_pred e1 e1' p_e1e1'     -- e = v1 e1, e' = v1 e1', e'' = v1 e1''
+lem_step_pred e e1 (EConjV v v')        = ()
+
 {-@ lem_evals_term :: e:Term -> e':Expr -> ProofOf(EvalsTo e e') -> { pf:_ | isTerm e' } @-}
 lem_evals_term :: Expr -> Expr -> EvalsTo -> Proof
 lem_evals_term e e' (Refl _e) = ()
 lem_evals_term e e' (AddStep _ e1 st_e_e1 _ ev_e1_e') 
   = () ? lem_evals_term (e1 ? lem_step_term e e1 st_e_e1) e' ev_e1_e'
+
+{-@ lem_evals_pred :: e:Pred -> e':Expr -> ProofOf(EvalsTo e e') -> { pf:_ | isPred e' } @-}
+lem_evals_pred :: Expr -> Expr -> EvalsTo -> Proof
+lem_evals_pred e e' (Refl _e) = ()
+lem_evals_pred e e' (AddStep _ e1 st_e_e1 _ ev_e1_e') 
+  = () ? lem_evals_pred (e1 ? lem_step_pred e e1 st_e_e1) e' ev_e1_e'
 
 {-@ lem_sem_det :: e:Expr -> e1:Expr -> ProofOf(Step e e1)
                    -> e2:Expr -> ProofOf(Step e e2) -> { x:_ | e1 == e2 } @-}
@@ -401,6 +523,24 @@ lem_sem_det e e1 (EAnnV v t) e2 pf_e_e2
         (EAnn e' e1' p_e_e1' t)   -> impossible ("by lem" ? lem_value_stuck e' e1' p_e_e1')
         (EAnnV _v _t)             -> ()
         (_)                       -> impossible "" 
+lem_sem_det e e' (EConj1 e1 e1' p_e1e1' e2) e'' pf_e_e''
+    = case pf_e_e'' of
+        (EConj1 _e1 e1'' p_e1e1'' _) -> () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''  
+        (EConj2 g g' p_g_g' v)       -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (EConjV {})                  -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (_)                          -> impossible "" 
+lem_sem_det e e' (EConj2 e1 e1' p_e1e1' v1) e'' pf_e_e''
+    = case pf_e_e'' of
+        (EConj1 _v1 v1' p_v1v1' _)   -> impossible ("by lem" ? lem_value_stuck _v1 v1' p_v1v1')
+        (EConj2 _ e1'' p_e1e1'' _)   -> () ? lem_sem_det e1 e1' p_e1e1' e1'' p_e1e1''
+        (EConjV {})                  -> impossible ("by lem" ? lem_value_stuck e1 e1' p_e1e1')
+        (_)                          -> impossible ""
+lem_sem_det e e1 (EConjV v v') e2 pf_e_e2
+    = case pf_e_e2 of 
+        (EConj1 f f' p_f_f' _)       -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EConj2 f f' p_f_f' _)       -> impossible ("by lem" ? lem_value_stuck f f' p_f_f')
+        (EConjV _ _)                 -> ()
+        (_)                          -> impossible ""
 
 {-@ lem_evals_val_det :: e:Expr -> v1:Value -> ProofOf(EvalsTo e v1)
                    -> v2:Value -> ProofOf(EvalsTo e v2) -> { x:_ | v1 == v2 } @-}

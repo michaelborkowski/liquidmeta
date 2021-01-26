@@ -24,9 +24,9 @@ import Typing
 import BasicPropsCSubst
 import BasicPropsDenotes
 
-{-@ reflect foo39 @-}
-foo39 x = Just x
-foo39 :: a -> Maybe a
+{-@ reflect foo36 @-}
+foo36 x = Just x
+foo36 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
@@ -37,7 +37,7 @@ foo39 :: a -> Maybe a
         -> { ent_g_p:Entails | propOf ent_g_p == Entails (concatE g g') p } 
         -> { x:Vname | not (in_env x g) && not (in_env x g') && not (Set_mem x (fv p)) } -> t_x:Type
         -> ProofOf(Entails (concatE (Cons x t_x g) g') p) @-}
-lem_weaken_ent :: Env -> Env -> WFEnv -> Pred -> Entails -> Vname -> Type -> Entails
+lem_weaken_ent :: Env -> Env -> WFEnv -> Expr -> Entails -> Vname -> Type -> Entails
 lem_weaken_ent g g' p_env_wf p (EntPred env_ _p evals_func) x t_x 
     = EntPred (concatE (Cons x t_x g) g') p evals_func'
         where
@@ -55,7 +55,7 @@ lem_weaken_ent g g' p_env_wf p (EntPred env_ _p evals_func) x t_x
         -> { ent_g_p:Entails | propOf ent_g_p == Entails (concatE g g') p } 
         -> { a:Vname | not (in_env a g) && not (in_env a g') && not (Set_mem a (ftv p)) } -> k_a:Kind
         -> ProofOf(Entails (concatE (ConsT a k_a g) g') p) @-}
-lem_weaken_tv_ent :: Env -> Env -> WFEnv -> Pred -> Entails -> Vname -> Kind -> Entails
+lem_weaken_tv_ent :: Env -> Env -> WFEnv -> Expr -> Entails -> Vname -> Kind -> Entails
 lem_weaken_tv_ent g g' p_env_wf p (EntPred env_ _p evals_func) a k_a
     = EntPred env' p evals_func'
         where
@@ -67,4 +67,3 @@ lem_weaken_tv_ent g g' p_env_wf p (EntPred env_ _p evals_func) a k_a
               th         = remove_fromCS th' a
               den_env_th = lem_remove_tvar_denote_env g a k_a g' p_env_wf th' den_env'_th'
                                ? lem_binds_env_th env' th' den_env'_th' 
-

@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -32,10 +31,11 @@ import LemmasWeakenWF
 import LemmasWeakenWFTV
 import LemmasWellFormedness
 import LemmasTyping
+import SubstitutionWFAgain
 
-{-@ reflect foo44 @-}
-foo44 x = Just x
-foo44 :: a -> Maybe a
+{-@ reflect foo49 @-}
+foo49 x = Just x
+foo49 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
@@ -46,8 +46,8 @@ foo44 :: a -> Maybe a
         -> e:Term -> ProofOf(HasFType (erase_env g) e (erase t))
         -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self t e k) t) / [tsize t, 1] @-}
 lem_self_is_subtype :: Env -> Type -> Kind -> WFType -> Expr -> HasFType -> WFEnv -> Subtype 
-lem_self_is_subtype g (TRefn b x p)        Base p_g_t e p_e_t p_g_wf 
-  = lem_self_refn_sub g b x p p_g_wf p_g_t e p_e_t
+lem_self_is_subtype g t@(TRefn b x p)      Base p_g_t e p_e_t p_g_wf 
+  = lem_self_refn_sub g b x (p ? lem_refn_is_pred t b x p) p_g_wf p_g_t e p_e_t
 lem_self_is_subtype g t@(TFunc x t_x t')   Base p_g_t e p_e_t p_g_wf 
   = lem_sub_refl g t Base p_g_t p_g_wf 
 lem_self_is_subtype g t@(TExists x t_x t') Base p_g_t e_ p_e_t p_g_wf 
@@ -86,38 +86,26 @@ lem_self_is_subtype g t                    Star p_g_t e p_e_t p_g_wf
 {-@ lem_sub_refl :: g:Env -> t:Type -> k:Kind -> { p_g_t:WFType | propOf p_g_t == WFType g t k } 
                           -> ProofOf(WFEnv g) -> ProofOf(Subtype g t t) / [tsize t, 0] @-}
 lem_sub_refl :: Env -> Type -> Kind -> WFType -> WFEnv -> Subtype
-lem_sub_refl g t k (WFBase _g b tt) p_g_wf
-    = SBase g Z b tt Z tt (y ? lem_trivial_nofv tt)
-            (EntPred (Cons y (TRefn b Z tt) g) (unbind 0 y tt) eval_thp_func)
---                     ? lem_subBV_notin 0 (FV y) (tt ? lem_trivial_nobv tt)))
+lem_sub_refl g t k p_g_t@(WFBase _g b tt) p_g_wf -- k == Base
+    = lem_subtype_itself g p_er_g_wf b Z tt p_g_t
         where
-          {-@ eval_thp_func :: th':CSub -> ProofOf(DenotesEnv (Cons y (TRefn b Z tt) g) th') 
-                                        -> ProofOf(EvalsTo (csubst th' (unbind 0 y tt)) (Bc True)) @-}
-          eval_thp_func :: CSub -> DenotesEnv -> EvalsTo
-          eval_thp_func th' _ = lem_evals_trivial tt ? lem_subBV_notin 0 (FV y) (tt ? lem_trivial_nobv tt)
-                                                     ? lem_csubst_trivial th' tt
-          y                   = fresh_var g
-lem_sub_refl g t k (WFRefn _g x b tt p_g_b p y pf_p_bl) p_g_wf-- t = b{x:p}
-    = SBase g x b p x p y (EntPred (Cons y (TRefn b x p) g) (unbind 0 y p) eval_thp_func)
+          p_er_g_wf = lem_erase_env_wfenv g p_g_wf
+lem_sub_refl g t k p_g_t@(WFRefn _g x b tt p_g_b p y pf_p_bl) p_g_wf -- t = b{x:p} && k == Base
+    = lem_subtype_itself g p_er_g_wf b x p p_g_t
         where
-          {-@ eval_thp_func :: th':CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x p) g) th') 
-                                        -> ProofOf(EvalsTo (csubst th' (unbind 0 y p)) (Bc True)) @-}
-          eval_thp_func :: CSub -> DenotesEnv -> EvalsTo
-          eval_thp_func th' den_yg_th' = undefined {- "type variables!"  case den_yg_th' of 
-            (DEmp)                                 -> impossible "Cons y t g != Empty"
-            (DExt g th den_g_th _y _t v den_tht_v) -> case den_tht_v of 
-              (DRefn _b _x _thp _v pf_v_b ev_thpv_tt) -> ev_thpv_tt 
-                ? lem_subFV_unbind x y v p
-                -- ? lem_ctsubst_refn th b x p
-                ? lem_csubst_subBV x v (FTBasic b) pf_v_b th p
-              (_)                                     -> impossible "" -- ("by lemma" ? lem_ctsubst_refn th b x p)
-          -}
+          p_er_g_wf = lem_erase_env_wfenv g p_g_wf
 lem_sub_refl g t k (WFVar1 g' a tt k_a) p_g_wf
-    = undefined
+    = lem_subtype_itself_trivial g p_er_g_wf (FTV a) Z tt
+        where
+          p_er_g_wf = lem_erase_env_wfenv g p_g_wf
 lem_sub_refl g t k (WFVar2 g' a tt k_a p_g'_a y t_y) p_g_wf
-    = undefined
+    = lem_subtype_itself_trivial g p_er_g_wf (FTV a) Z tt
+        where
+          p_er_g_wf = lem_erase_env_wfenv g p_g_wf
 lem_sub_refl g t k (WFVar3 g' a tt k_a p_g'_a y t_y) p_g_wf
-    = undefined
+    = lem_subtype_itself_trivial g p_er_g_wf (FTV a) Z tt
+        where
+          p_er_g_wf = lem_erase_env_wfenv g p_g_wf
 lem_sub_refl g t k (WFFunc _g x t_x k_x p_g_tx t' k' y p_yg_t') p_g_wf -- t = (x:t_x -> t')
     = SFunc g x t_x x t_x p_tx_tx t' t' y p_t'_t'
         where
@@ -125,23 +113,18 @@ lem_sub_refl g t k (WFFunc _g x t_x k_x p_g_tx t' k' y p_yg_t') p_g_wf -- t = (x
           p_tx_tx = lem_sub_refl g t_x k_x p_g_tx p_g_wf
           p_t'_t' = lem_sub_refl (Cons y t_x g) (unbindT x y t') k' p_yg_t' p_yg_wf
 lem_sub_refl g t k p_g_t@(WFExis _g x t_x k_x p_g_tx t' k' y p_yg_t') p_g_wf -- t = (\exists x:t_x. t')
- = undefined {- update
-    = SBind g x t_x t' (TExists x t_x t' {-? lem_tfreeBV_empty g t p_g_t p_g_wf-})
+    = SBind g x t_x t' (TExists x t_x t' ? lem_tfreeBV_empty g t k p_g_t)
             (y ? lem_free_bound_in_env g t k p_g_t y) p_yg_t'_ext'
         where
-          p_y_self_tx  = TVar1 g y t_x
+          p_g_tx_star  = if k_x == Star then p_g_tx else WFKind g t_x p_g_tx
           {-@ p_y_tx :: ProofOf(HasType (Cons y t_x g) (FV y) t_x) @-}
-          p_y_tx       = case t_x of 
-            (TRefn b z p) -> TSub (Cons y t_x g) (FV y) (self t_x (FV y) k_x) p_y_self_tx t_x k_x p_yg_tx p_selftx_tx
-              where
-                p_selftx_tx = lem_self_refn_sub g b z p p_g_wf p_g_tx y p_y_tx
-            _             -> p_y_self_tx 
+          p_y_tx       = TVar1 g y t_x Star p_g_tx_star ? toProof ( self t_x (FV y) Star == t_x )
           p_yg_wf      = WFEBind g p_g_wf y t_x k_x p_g_tx
-          p_yg_tx      = lem_weaken_wf g Empty (p_g_wf ? lem_empty_concatE g Empty) t_x k_x p_g_tx y t_x
+          p_er_g_wf    = lem_erase_env_wfenv g p_g_wf
+          p_yg_tx      = lem_weaken_wf g Empty p_er_g_wf t_x k_x p_g_tx y t_x
           p_yg_t'_t'   = lem_sub_refl (Cons y t_x g) (unbindT x y t') k' p_yg_t' p_yg_wf
           p_yg_t'_ext' = SWitn (Cons y t_x g) (FV y) t_x p_y_tx (unbindT x y t') 
                                x t' p_yg_t'_t'
--}
 lem_sub_refl g t k (WFPoly _g a k_a t' k_t' a' p_a'g_t') p_g_wf
     = SPoly g a k_a t' a t' a' p_a'g_t'_t'
         where
@@ -164,3 +147,19 @@ lem_change_bv_sub_func g x t_x k_x t k x' t' y p_g_tx p_yg_t p_g_wf
       where
         p_yg_t_t' = lem_sub_refl (Cons y t_x g) (unbindT x y t) k p_yg_t p_yg_wf
         p_yg_wf   = WFEBind g p_g_wf y t_x k_x p_g_tx
+
+{-@ lem_witness_sub :: g:Env -> v_x:Value -> t_x:Type -> ProofOf(HasType g v_x t_x) 
+        -> ProofOf(WFEnv g) -> x:Vname -> t':Type -> k':Kind 
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (free t')) && not (Set_mem y (freeTV t')) }
+        -> ProofOf(WFType (Cons y t_x g) (unbindT x y t') k')
+        -> ProofOf(Subtype g (tsubBV x v_x t') (TExists x t_x t')) @-}
+lem_witness_sub :: Env -> Expr -> Type -> HasType -> WFEnv -> Vname -> Type -> Kind
+                       -> Vname -> WFType -> Subtype
+lem_witness_sub g v_x t_x p_vx_tx p_g_wf x t' k' y p_yg_t' 
+  = SWitn g v_x t_x p_vx_tx (tsubBV x v_x t') x t' p_t'vx_t'vx
+      where
+      p_g_tx      = lem_typing_wf g v_x t_x p_vx_tx p_g_wf
+      p_yg_wf     = WFEBind g p_g_wf y t_x Star p_g_tx
+      p_g_t'vx    = lem_subst_wf' g Empty y v_x t_x p_vx_tx p_yg_wf (unbindT x y t') k' p_yg_t'
+                                  ? lem_tsubFV_unbindT x y v_x t'
+      p_t'vx_t'vx = lem_sub_refl g (tsubBV x v_x t') k' p_g_t'vx p_g_wf

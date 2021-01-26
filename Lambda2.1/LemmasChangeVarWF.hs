@@ -24,9 +24,9 @@ import Typing
 import BasicPropsCSubst
 import BasicPropsDenotes
 
-{-@ reflect foo34 @-}
-foo34 x = Just x
-foo34 :: a -> Maybe a
+{-@ reflect foo31 @-}
+foo31 x = Just x
+foo31 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas  

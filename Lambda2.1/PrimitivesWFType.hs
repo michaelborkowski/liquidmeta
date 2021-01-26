@@ -61,7 +61,7 @@ lem_wf_tyic g n = WFRefn g Z TInt (Bc True) (WFBase g TInt (Bc True)) pred y pf_
     pf_pr_bool  = FTApp g' (App (Prim Eq) (FV y)) (FTBasic TInt) (FTBasic TBool) 
                            pf_eq_v (Ic n) (FTIC g' n)
 
-{-@ lem_wf_intype :: { c:Prim | not (isEql c) && not (c == Conj)} -> ProofOf(WFType Empty (inType c) Base) @-}
+{-@ lem_wf_intype :: { c:Prim | not (isEql c) } -> ProofOf(WFType Empty (inType c) Base) @-}
 lem_wf_intype :: Prim -> WFType
 lem_wf_intype And      = makeWFType Empty (inType And)      Base ? lem_wf_intype_and ()
 lem_wf_intype Or       = makeWFType Empty (inType Or)       Base ? lem_wf_intype_or ()
@@ -74,7 +74,7 @@ lem_wf_intype (Eqn n)  = makeWFType Empty (inType (Eqn n))  Base ? lem_wf_intype
 {-lem_wf_intype (Eql a)  = makeWFType Empty (inType (Eql a))  Base ? lem_wf_intype_eql  a
                                                                  ? lem_wf_intype_eql' a-}
 
-{-@ lem_wf_ty' :: { c:Prim | not (isEql c) && not (c == Conj) } -> y:Int 
+{-@ lem_wf_ty' :: { c:Prim | not (isEql c) } -> y:Int 
         -> ProofOf(WFType (Cons y (inType c) Empty) (unbindT (firstBV c) y (ty' c)) Star) @-}
 lem_wf_ty' :: Prim -> Int -> WFType
 lem_wf_ty' And      y = makeWFType (Cons y (inType And) Empty) (unbindT (firstBV And) y (ty' And)) 
@@ -98,7 +98,6 @@ lem_wf_ty' (Eqn n) y  = makeWFType (Cons y (inType (Eqn n)) Empty)
 
 {-@ lem_wf_ty :: c:Prim -> ProofOf(WFType Empty (ty c) Star) @-}
 lem_wf_ty :: Prim -> WFType
-lem_wf_ty Conj     = makeWFType Empty (ty Conj) Star     ? lem_wf_ty_conj ()
 lem_wf_ty And      = makeWFType Empty (ty And) Star      ? lem_wf_ty_and ()
 lem_wf_ty Or       = makeWFType Empty (ty Or) Star       ? lem_wf_ty_or ()
 lem_wf_ty Not      = makeWFType Empty (ty Not) Star      ? lem_wf_ty_not ()

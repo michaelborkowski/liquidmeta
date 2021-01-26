@@ -22,6 +22,7 @@ import BasicPropsWellFormedness
 import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
 import SystemFLemmasSubstitution
+import SystemFSoundness
 import Typing
 import BasicPropsCSubst
 import BasicPropsDenotes
@@ -37,6 +38,14 @@ foo30 :: a -> Maybe a
 {-@ reflect blAnd @-}
 blAnd :: Bool -> Bool -> Bool
 blAnd b b' = b && b'
+
+{-@ lem_blAnd_assoc :: b1:Bool -> b2:Bool -> b3:Bool
+        -> { pf:_ | blAnd b1 (blAnd b2 b3) == blAnd (blAnd b1 b2) b3 } @-}
+lem_blAnd_assoc :: Bool -> Bool -> Bool -> Proof
+lem_blAnd_assoc True  True  True  = ()
+lem_blAnd_assoc False _     _     = ()
+lem_blAnd_assoc _     False _     = ()
+lem_blAnd_assoc _     _     False = ()
 
 {-@ reflect blOr @-}
 blOr :: Bool -> Bool -> Bool
@@ -58,7 +67,46 @@ intLeq n m = n <= m
 intEq :: Int -> Int -> Bool
 intEq n m = n == m
 
-{-@ lemma_reduce_to_delta :: c:Prim -> p:Pred -> { v:Value | isCompat c v } -> ProofOf(EvalsTo p v)
+{-@ lemma_conj_semantics :: p:Expr -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
+                         -> q:Expr -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
+                        -> ProofOf(EvalsTo (Conj p q) (Bc (blAnd b b'))) @-}
+lemma_conj_semantics :: Expr -> Bool -> EvalsTo -> Expr -> Bool -> EvalsTo -> EvalsTo
+lemma_conj_semantics p b ev_p_b q b' ev_q_b' = ev_andpq
+  where
+    ev_andpq_1 = lemma_conj_both_many p (Bc b) ev_p_b q (Bc b') ev_q_b'
+    ev_andpq   = lemma_add_step_after (Conj p q) (Conj (Bc b) (Bc b'))
+                                      ev_andpq_1 (Bc (b && b')) (EConjV (Bc b) (Bc b'))
+
+{-@ lemma_strengthen_semantics :: p:Pred -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
+                               -> q:Pred -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
+                               -> ProofOf(HasFType FEmpty p (FTBasic TBool))
+                               -> ProofOf(EvalsTo (strengthen p q) (Bc (blAnd b b'))) / [esize p] @-}
+lemma_strengthen_semantics :: Expr -> Bool -> EvalsTo -> Expr -> Bool -> EvalsTo 
+                                   -> HasFType -> EvalsTo
+lemma_strengthen_semantics (Conj p1 p2) b ev_p_b q b' ev_q_b' pf_p_bl = ev_pq_bb'
+                           ? lem_evals_val_det (Conj p1 p2) (Bc b) ev_p_b (Bc (blAnd b1 b2)) ev_p_b1b2
+                           ? lem_blAnd_assoc b1 b2 b'
+  where
+    (ConjRed _p1 v1 ev_p1_v1 _p2 v2 ev_p2_v2)
+                = lemma_evals_conj_value p1 p2 (Bc b) ev_p_b
+    (FTConj _ _ pf_p1_bl _ pf_p2_bl) = pf_p_bl
+    pf_v1_bl    = lemma_soundness p1 (v1  ? lem_evals_pred p1 v1 ev_p1_v1)
+                                  ev_p1_v1 (FTBasic TBool) pf_p1_bl
+    pf_v2_bl    = lemma_soundness p2 (v2  ? lem_evals_pred p2 v2 ev_p2_v2)
+                                  ev_p2_v2 (FTBasic TBool) pf_p2_bl
+    (Bc b1)     = v1 ? lem_bool_values v1  pf_v1_bl
+    (Bc b2)     = v2 ? lem_bool_values v2  pf_v2_bl
+    ev_p_b1b2   = lemma_conj_semantics p1 b1 ev_p1_v1 p2 b2 ev_p2_v2 
+    ev_p2q_b2b' = lemma_strengthen_semantics p2 b2 ev_p2_v2 q b' ev_q_b' pf_p2_bl
+    ev_pq_bb'   = lemma_strengthen_semantics p1 b1 ev_p1_v1 (strengthen p2 q) (blAnd b2 b') 
+                                             ev_p2q_b2b' pf_p1_bl
+lemma_strengthen_semantics p            b ev_p_b q b' ev_q_b' pf_p_bl = ev_andpq
+  where
+    ev_andpq_1 = lemma_conj_both_many p (Bc b) ev_p_b q (Bc b') ev_q_b'
+    ev_andpq   = lemma_add_step_after (Conj p q) (Conj (Bc b) (Bc b'))
+                                      ev_andpq_1 (Bc (b && b')) (EConjV (Bc b) (Bc b'))
+
+{-@ lemma_reduce_to_delta :: c:Prim -> p:Expr -> { v:Value | isCompat c v } -> ProofOf(EvalsTo p v)
                           -> ProofOf(EvalsTo (App (Prim c) p) (delta c v)) @-}
 lemma_reduce_to_delta :: Prim -> Expr -> Expr -> EvalsTo -> EvalsTo
 lemma_reduce_to_delta c p v ev_p_v = ev_appcp
@@ -67,20 +115,6 @@ lemma_reduce_to_delta c p v ev_p_v = ev_appcp
     st_appcp_2 = EPrim c v
     ev_appcp   = lemma_add_step_after (App (Prim c) p) (App (Prim c) v) ev_appcp_1 (delta c v) st_appcp_2
   
-{-@ lemma_conj_semantics :: p:Expr -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
-                         -> q:Expr -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
-                         -> ProofOf(EvalsTo (App (App (Prim Conj) p) q) (Bc (blAnd b b'))) @-}
-lemma_conj_semantics :: Expr -> Bool -> EvalsTo -> Expr -> Bool -> EvalsTo -> EvalsTo
-lemma_conj_semantics p b ev_p_b q b' ev_q_b' = ev_andpq
-  where
-    ev_andp    = lemma_reduce_to_delta Conj p (Bc b) ev_p_b
-    ev_andpq_1 = lemma_app_both_many (App (Prim Conj) p) (delta Conj (Bc b)) ev_andp q (Bc b') ev_q_b'
-    {-@ st_andpq_2 :: ProofOf(Step (App (delta Conj (Bc b)) (Bc b')) (Bc (blAnd b b'))) @-}
-    st_andpq_2 = if b then ( EAppAbs 1 (BV 1)     (Bc b') )
-                      else ( EAppAbs 1 (Bc False) (Bc b') )
-    ev_andpq   = lemma_add_step_after (App (App (Prim Conj) p) q) (App (delta Conj (Bc b)) (Bc b'))
-                                      ev_andpq_1 (Bc (b && b')) st_andpq_2
-
 {-@ lemma_and_semantics :: p:Expr -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
                         -> q:Expr -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
                         -> ProofOf(EvalsTo (App (App (Prim And) p) q) (Bc (blAnd b b'))) @-}

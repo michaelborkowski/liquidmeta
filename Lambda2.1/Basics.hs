@@ -21,7 +21,7 @@ import qualified Data.Set as S
 {- @ type Vname =  { v:Int | v >= 0 } @-} 
 type Vname = Int
 
-data Prim = Conj | And | Or | Not | Eqv  -- Conj is the same as And but it will only appear in
+data Prim = And | Or | Not | Eqv  -- Conj is the same as And but it will only appear in
           | Leq | Leqn Int               --     refinements, and in particular, never in a value
           | Eq  | Eqn Int | Eql          --     being substituted
   deriving (Eq, Show)                 -- Eql is polymorphic. TODO: add Leql and Lqb
@@ -38,7 +38,22 @@ data Expr = Bc Bool                   -- True, False
           | AppT Expr Type            -- e [bt]   type applications (NB: bare type inside)
           | Let Vname Expr Expr       -- let x = e1 in e2
           | Annot Expr Type           -- e : t
-  deriving (Eq, Show)
+          | Conj Expr Expr
+  deriving Eq
+
+{-instance Eq Expr where
+  (Bc b)          == (Bc b')             =  b == b'
+  (Ic n)          == (Ic n')             =  n == n'
+  (Prim c)        == (Prim c')           =  c == c'
+  (BV x)          == (BV x')             =  x == x'
+  (FV y)          == (FV y')             =  y == y'
+  (Lambda z p)    == (Lambda z' p')      = (z == z') && (p == p')
+  (App e1 e2)     == (App e1' e2')       = (e1 == e1') && (e2 == e2')
+  (LambdaT a k t) == (LambdaT a' k' t')  = (a == a') && (k == k') && (t == t')
+  (AppT e t)      == (AppT e' t')        = (e == e') && (t == t')
+  (Let x e v)     == (Let x' e' v')      = (x == x') && (e == e') && (v == v')
+  (Annot e t)     == (Annot e' t')       = (e == e') && (t == t')
+  (Conj e v)      == (Conj e' v')        = (e == e') && (v == v')-}
 
 {-@ lazy esize @-}
 {-@ measure esize @-}
@@ -56,14 +71,18 @@ esize (LambdaT a k e)   = (esize e)   + 1
 esize (AppT e t)        = (esize e)   + (tsize t) + 1
 esize (Let x e_x e)     = (esize e_x) + (esize e) + 1
 esize (Annot e t)       = (esize e)   + (tsize t) + 1
+esize (Conj e e')       = (esize e)   + (esize e') + 1
 
+-- Not every expression is allowed to be used. Actual terms cannot contain Conj. The refinements,
+--   which we'll call predicates, are conjunctions of terms.
 {-@ type Term = { e:Expr | isTerm e } @-}
 
 {-@ reflect isTerm @-} -- a legal program term is an expression that does not contain Conj
+{-@ isTerm :: e:Expr -> { b:Bool | b => isPred e } @-}
 isTerm :: Expr -> Bool --     (outside of refinements of course)
 isTerm (Bc _)           = True
 isTerm (Ic _)           = True
-isTerm (Prim c)         = not ( c == Conj )
+isTerm (Prim c)         = True --not ( c == Conj )
 isTerm (BV _)           = True
 isTerm (FV _)           = True
 isTerm (Lambda _ e)     = isTerm e
@@ -72,11 +91,49 @@ isTerm (LambdaT _ _ e)  = isTerm e
 isTerm (AppT e t)       = isTerm e
 isTerm (Let _ e_x e)    = isTerm e_x && isTerm e 
 isTerm (Annot e t)      = isTerm e
+isTerm (Conj _ _ )      = False
+
+-- For now we'll allow refinements to have definitions in theory, but the ones we'll actually use won't,
+--   so the issue of the incorrect substitution def'n w/ capture  can be avoided for now.
+{-@ type Pred = { p:Expr | isPred p } @-}
+--type Pred = Expr 
+
+{-@ reflect isPred @-}
+{-@ isPred :: e:Expr -> { b:Bool | (isValue e && isTerm e => b ) && (isTerm e => b) } @-}
+isPred :: Expr -> Bool --     (outside of refinements of course)
+isPred (Bc _)           = True
+isPred (Ic _)           = True
+isPred (Prim c)         = True --not ( c == Conj )
+isPred (BV _)           = True
+isPred (FV _)           = True
+isPred (Lambda _ e)     = isTerm e
+isPred (App e e')       = isTerm e && isTerm e'
+isPred (LambdaT _ _ e)  = isTerm e  
+isPred (AppT e t)       = isTerm e
+isPred (Let _ e_x e)    = isTerm e_x && isTerm e 
+isPred (Annot e t)      = isTerm e
+isPred (Conj e e')      = isPred e && isPred e'
+
+{-@ reflect lem_term_pred @-}
+{-@ lem_term_pred :: e:Term -> { pf:_ | isPred e } @-}
+lem_term_pred :: Expr -> Proof
+lem_term_pred (Bc _)          = ()
+lem_term_pred (Ic _)          = ()
+lem_term_pred (Prim c)        = ()
+lem_term_pred (FV _)          = ()
+lem_term_pred (BV _)          = ()
+lem_term_pred (Lambda x e)    = ()
+lem_term_pred (App e e')      = ()
+lem_term_pred (LambdaT a k e) = ()
+lem_term_pred (AppT e t)      = ()
+lem_term_pred (Let _ _ _)     = ()
+lem_term_pred (Annot _ _)     = ()
 
 {-@ type Value = { v:Term | isValue v } @-}
-{-@ type PredValue = { v:Pred | isValue v } @-}
+--{-@ type PredValue = { v:Pred | isValue v } @-}
 
 {-@ reflect isValue @-} -- meaning: is a syntactic value in normal expression
+{-@ isValue :: e:Expr -> { b:Bool | isTerm e => isPred e } @-}
 isValue :: Expr -> Bool
 isValue (Bc _)          = True
 isValue (Ic _)          = True
@@ -87,6 +144,33 @@ isValue (BV _)          = True -- Lambda 2.1: changed mind: now bound variables 
 isValue (Lambda x e)    = True --     well-formed as expressions
 isValue (LambdaT a k e) = True
 isValue _               = False
+
+{-@ reflect lem_value_term @-}
+{-@ lem_value_term :: v:Value -> { pf:_ | isTerm v && not (isConjunction v) } @-}
+lem_value_term :: Expr -> Proof
+lem_value_term (Bc _)          = ()
+lem_value_term (Ic _)          = ()
+lem_value_term (Prim c)        = ()
+lem_value_term (FV _)          = ()
+lem_value_term (BV _)          = ()
+lem_value_term (Lambda x e)    = ()
+lem_value_term (LambdaT a k e) = ()
+
+{-@ reflect lem_value_pred @-}
+{-@ lem_value_pred :: v:Value -> { pf:_ | isPred v } @-}
+lem_value_pred :: Expr -> Proof
+lem_value_pred (Bc _)          = ()
+lem_value_pred (Ic _)          = ()
+lem_value_pred (Prim c)        = ()
+lem_value_pred (FV _)          = ()
+lem_value_pred (BV _)          = ()
+lem_value_pred (Lambda x e)    = ()
+lem_value_pred (LambdaT a k e) = ()
+
+{-@ reflect isConjunction @-}
+isConjunction :: Expr -> Bool
+isConjunction (Conj p q) = True
+isConjunction _          = False
 
 {-@ measure freeBV @-}
 {-@ freeBV :: e:Expr -> S.Set Vname / [esize e] @-}
@@ -103,6 +187,7 @@ freeBV (LambdaT a k e) = freeBV e                                 -- bound type 
 freeBV (AppT e t)      = S.union (freeBV e)  (tfreeBV t)          
 freeBV (Let x ex e)    = S.union (freeBV ex) (S.difference (freeBV e) (S.singleton x))
 freeBV (Annot e t)     = S.union (freeBV e)  (tfreeBV t) 
+freeBV (Conj e e')     = S.union (freeBV e) (freeBV e') 
 
 {-@ measure freeBTV @-}
 {-@ freeBTV :: e:Expr -> S.Set Vname / [esize e] @-}
@@ -118,6 +203,7 @@ freeBTV (LambdaT a k e) = S.difference (freeBTV e) (S.singleton a)
 freeBTV (AppT e t)      = S.union (freeBTV e)  (tfreeBTV t)          
 freeBTV (Let x ex e)    = S.union (freeBTV ex)  (freeBTV e)
 freeBTV (Annot e t)     = S.union (freeBTV e)  (tfreeBTV t) 
+freeBTV (Conj e e')      = S.union (freeBTV e)   (freeBTV e') 
 
 {-@ reflect fv @-}
 {-@ fv :: e:Expr -> S.Set Vname / [esize e] @-}
@@ -133,6 +219,7 @@ fv (LambdaT a k e) = fv e
 fv (AppT e t)      = S.union (fv e) (free t)
 fv (Let x ex e)    = S.union (fv ex) (fv e)
 fv (Annot e t)     = S.union (fv e) (free t) -- fv e
+fv (Conj e e')      = S.union (fv e) (fv e')
 
 {-@ reflect ftv @-}
 {-@ ftv :: e:Expr -> S.Set Vname / [esize e] @-}
@@ -148,13 +235,14 @@ ftv (LambdaT a k e) = ftv e
 ftv (AppT e t)      = S.union (ftv e) (freeTV t)
 ftv (Let x ex e)    = S.union (ftv ex) (ftv e) 
 ftv (Annot e t)     = S.union (ftv e) (freeTV t) -- fv e
+ftv (Conj e e')      = S.union (ftv e) (ftv e')
 
 
   --- TERM-LEVEL SUBSTITUTION
 
 --                                ( (noDefns v && noDefns e) => noDefns e' ) } / [esize e] @-}
 {-@ reflect subFV @-} -- substitute a value for a term variable in a term 
-{-@ subFV :: x:Vname -> v:Value -> e:Expr 
+{-@ subFV :: x:Vname -> {v:Expr | isTerm v && isValue v} -> e:Expr
                      -> { e':Expr | (Set_mem x (fv e) || e == e') &&
                       ( Set_sub (fv e) (Set_cup (Set_sng x) (fv e')) ) &&
                       ( Set_sub (fv e') (Set_cup (fv v) (Set_dif (fv e) (Set_sng x)))) &&
@@ -165,14 +253,16 @@ ftv (Annot e t)     = S.union (ftv e) (freeTV t) -- fv e
                       ( Set_sub (freeBV e') (Set_cup (freeBV e) (freeBV v)) ) &&
                       ( Set_sub (freeBTV e) (freeBTV e') ) &&
                       ( Set_sub (freeBTV e') (Set_cup (freeBTV e) (freeBTV v)) ) &&
-                      ( e == Bc True => e' == Bc True ) && ( isTerm e => isTerm e' ) &&
-                      ( (isValue v && isValue e) => isValue e' ) } / [esize e] @-}
+                      ( e == Bc True => e' == Bc True )  &&
+                      ( isTerm e => isTerm e' ) && ( isPred e => isPred e' ) &&
+                      ( (isConjunction e) <=> (isConjunction e') ) &&
+                      ( isValue e => isValue e' ) } / [esize e] @-}
 subFV :: Vname -> Expr -> Expr -> Expr
 subFV x v_x (Bc b)                    = Bc b
 subFV x v_x (Ic n)                    = Ic n
 subFV x v_x (Prim p)                  = Prim p
 subFV x v_x (BV y)                    = BV y
-subFV x v_x (FV y) | x == y           = v_x 
+subFV x v_x (FV y) | x == y           = v_x `withProof` lem_value_pred v_x
                    | otherwise        = FV y
 subFV x v_x (Lambda y e)              = Lambda  y (subFV x v_x e)
 subFV x v_x (App e e')                = App   (subFV x v_x e)  (subFV x v_x e')
@@ -180,6 +270,7 @@ subFV x v_x (LambdaT a k e)           = LambdaT a k (subFV x v_x e)
 subFV x v_x (AppT e bt)               = AppT  (subFV x v_x e) (tsubFV x v_x bt)
 subFV x v_x (Let y e1 e2)             = Let y (subFV x v_x e1) (subFV x v_x e2)
 subFV x v_x (Annot e t)               = Annot (subFV x v_x e) (tsubFV x v_x t) 
+subFV x v_x (Conj e e')               = Conj   (subFV x v_x e)  (subFV x v_x e')
 {-
                       ( (not (Set_mem a (freeTV t))) => not (Set_mem a (ftv e')) ) && 
  -}
@@ -196,6 +287,7 @@ subFV x v_x (Annot e t)               = Annot (subFV x v_x e) (tsubFV x v_x t)
                         Set_sub (freeBV e')  (Set_cup (tfreeBV t) (freeBV e)) &&
                         Set_sub (freeBTV e') (Set_cup (tfreeBTV t) (freeBTV e)) &&
                       ( isValue e => isValue e' ) && ( isTerm e => isTerm e' ) &&
+                      ( isPred e => isPred e' ) &&
                       ( e == Bc True => e' == Bc True )} / [esize e] @-}
 subFTV :: Vname -> Type -> Expr -> Expr
 subFTV a t_a (Bc b)                    = Bc b
@@ -209,6 +301,7 @@ subFTV a t_a (LambdaT a' k e)          = LambdaT a' k (subFTV a t_a e)
 subFTV a t_a (AppT e t)                = AppT  (subFTV a t_a e) (tsubFTV a t_a t)
 subFTV a t_a (Let y e1 e2)             = Let y (subFTV a t_a e1) (subFTV a t_a e2)
 subFTV a t_a (Annot e t)               = Annot (subFTV a t_a e) (tsubFTV a t_a t) 
+subFTV a t_a (Conj e e')                = Conj   (subFTV a t_a e)  (subFTV a t_a e')
 
 -- TODO removed for now: e' == (subBTV a (TRefn (FTV a') 1 (Bc True)) e) &&
 --                            (not (Set_mem a (ftv e))) => not (Set_mem a (ftv e')) &&
@@ -219,7 +312,8 @@ subFTV a t_a (Annot e t)               = Annot (subFTV a t_a e) (tsubFTV a t_a t
                                  Set_sub (ftv e)  (Set_cup (Set_sng a) (ftv e')) &&
                                  Set_sub (ftv e') (Set_cup (Set_sng a') (Set_dif (ftv e) (Set_sng a))) &&
                                  ( a != a'  => not (Set_mem a (ftv e'))) &&
-                                 ( e == Bc True => e' == Bc True ) && ( isTerm e => isTerm e' ) && 
+                                 ( e == Bc True => e' == Bc True ) && 
+                                 ( isTerm e => isTerm e' ) && ( isPred e => isPred e') &&
                                  freeBV e == freeBV e' && freeBTV e == freeBTV e' &&
                                  fv e == fv e' && (isValue e => isValue e') } / [esize e] @-}
 chgFTV :: Vname -> Vname -> Expr -> Expr
@@ -234,6 +328,7 @@ chgFTV a a' (LambdaT a1 k e)          = LambdaT a1 k (chgFTV a a' e)
 chgFTV a a' (AppT e bt)               = AppT  (chgFTV a a' e) (tchgFTV a a' bt)
 chgFTV a a' (Let y e1 e2)             = Let y (chgFTV a a' e1) (chgFTV a a' e2)
 chgFTV a a' (Annot e t)               = Annot (chgFTV a a' e) (tchgFTV a a' t) 
+chgFTV a a' (Conj e e')                = Conj   (chgFTV a a' e)  (chgFTV a a' e')
 
 --                                    ( (noDefns v && noDefns e) => noDefns e' ) } / [esize e] @-}
 {-@ reflect subBV @-} --substitute a value for x, which is a BOUND var
@@ -246,13 +341,15 @@ chgFTV a a' (Annot e t)               = Annot (chgFTV a a' e) (tchgFTV a a' t)
                                     Set_sub (Set_dif (freeBV e) (Set_sng x)) (freeBV e') &&
                                     Set_sub (freeBTV e') (Set_cup (freeBTV e) (freeBTV v)) &&
                                     Set_sub (freeBTV e) (freeBTV e') &&
-                                    ( e == Bc True => e' == Bc True ) && ( isTerm e => isTerm e' ) &&
+                                    ( e == Bc True => e' == Bc True ) && 
+                                    ( isTerm e => isTerm e' ) && ( isPred e => isPred e' ) &&
+                                    ( (isConjunction e) <=> (isConjunction e') ) &&
                                     ( esize v != 1  || esize e == esize e' ) } / [esize e] @-}
 subBV :: Vname -> Expr -> Expr -> Expr
 subBV x v_x (Bc b)                    = Bc b
 subBV x v_x (Ic n)                    = Ic n
 subBV x v_x (Prim p)                  = Prim p
-subBV x v_x (BV y) | x == y           = v_x
+subBV x v_x (BV y) | x == y           = v_x `withProof` lem_value_pred v_x
                    | otherwise        = BV y
 subBV x v_x (FV y)                    = FV y
 subBV x v_x (Lambda y e) | x == y     = Lambda y e  -- not the same x anymore
@@ -263,6 +360,7 @@ subBV x v_x (AppT e t)                = AppT  (subBV x v_x e) (tsubBV x v_x t)
 subBV x v_x (Let y e1 e2) | x == y    = Let y (subBV x v_x e1) e2 -- not the same x anymore
                           | otherwise = Let y (subBV x v_x e1) (subBV x v_x e2)
 subBV x v_x (Annot e t)               = Annot (subBV x v_x e) (tsubBV x v_x t)
+subBV x v_x (Conj e e')                = Conj   (subBV x v_x e)  (subBV x v_x e')
 
 {-  TODO: work these back in!
                                     Set_sub (freeBV e) (freeBV e') &&
@@ -279,7 +377,7 @@ subBV x v_x (Annot e t)               = Annot (subBV x v_x e) (tsubBV x v_x t)
                      -> { e':Expr | ( Set_mem a (freeBTV e) || e == e' ) &&
                                     Set_sub (fv e') (Set_cup (fv e) (free t)) &&
                                     Set_sub (ftv e') (Set_cup (ftv e) (freeTV t)) &&
-                                    ( isTerm e => isTerm e' ) &&
+                                    ( isTerm e => isTerm e' ) && ( isPred e => isPred e' ) &&
                                     ( e == Bc True => e' == Bc True ) } / [esize e] @-}
 subBTV :: Vname -> Type -> Expr -> Expr
 subBTV a t_a (Bc b)                       = Bc b
@@ -294,6 +392,7 @@ subBTV a t_a (LambdaT a' k e) | a == a'   = LambdaT a' k e
 subBTV a t_a (AppT e t)                   = AppT  (subBTV a t_a e) (tsubBTV a t_a t)
 subBTV a t_a (Let y e1 e2)                = Let y (subBTV a t_a e1) (subBTV a t_a e2)
 subBTV a t_a (Annot e t)                  = Annot (subBTV a t_a e) (tsubBTV a t_a t)
+subBTV a t_a (Conj e e')                   = Conj   (subBTV a t_a e)  (subBTV a t_a e')
 
 --                                   esize e == esize e' && (noDefns e => noDefns e') } / [esize e] @-}
 {-@ reflect unbind @-} -- unbind converts (BV x) to (FV y) in e 
@@ -301,7 +400,8 @@ subBTV a t_a (Annot e t)                  = Annot (subBTV a t_a e) (tsubBTV a t_
                 -> { e':Expr | Set_sub (fv e) (fv e') && 
                                Set_sub (fv e') (Set_cup (Set_sng y) (fv e)) &&
                                Set_sub (ftv e) (ftv e') && Set_sub (ftv e') (ftv e) &&
-                               freeBV e' == Set_dif (freeBV e) (Set_sng x) && (isTerm e => isTerm e') &&
+                               freeBV e' == Set_dif (freeBV e) (Set_sng x) && 
+                               (isTerm e => isTerm e') && ( isPred e => isPred e' ) &&
                                freeBTV e' == freeBTV e && esize e == esize e' } / [esize e] @-}
 unbind :: Vname -> Vname -> Expr -> Expr
 unbind x y e = subBV x (FV y) e
@@ -315,6 +415,7 @@ unbind x y e = subBV x (FV y) e
                                    Set_sub (fv e) (fv e') && Set_sub (fv e') (fv e) &&
                                    freeBV e' == freeBV e && esize e == esize e' &&
                                    freeBTV e' == Set_dif (freeBTV e) (Set_sng a) &&
+                                   (isTerm e => isTerm e') && ( isPred e => isPred e' ) &&
                                    ( e == Bc True => e' == Bc True ) } / [esize e] @-}
 unbind_tv :: Vname -> Vname -> Expr -> Expr
 unbind_tv a a' (Bc b)                       = Bc b
@@ -329,13 +430,10 @@ unbind_tv a a' (LambdaT a1 k e) | a == a1   = LambdaT a1 k e
 unbind_tv a a' (AppT e t)                   = AppT  (unbind_tv a a' e) (unbind_tvT a a' t)
 unbind_tv a a' (Let y e1 e2)                = Let y (unbind_tv a a' e1) (unbind_tv a a' e2)
 unbind_tv a a' (Annot e t)                  = Annot (unbind_tv a a' e) (unbind_tvT a a' t)
+unbind_tv a a' (Conj e e')                   = Conj   (unbind_tv a a' e)  (unbind_tv a a' e')
 
   ---  Refinement Level: Names, Terms (in FO), FO Predicates, SMT Formulae
 
--- For now we'll allow refinements to have definitions in theory, but the ones we'll actually use won't,
---   so the issue of the incorrect substitution def'n w/ capture (TODO) can be avoided for now.
-{- @ type Pred = { p:Expr | noDefns p } @-}
-type Pred = Expr 
 
 -- Assuming the binder in a refinement is always 0, so we don't have to worry about change of vars
 -- new definition: we need this to be right-associate for the substitution properties to go through
@@ -346,32 +444,32 @@ type Pred = Expr
                                                  Set_sub (Set_cup (ftv p) (ftv r)) (ftv q) &&
                                                  freeBV q  == Set_cup (freeBV p) (freeBV r) &&
                                                  freeBTV q == Set_cup (freeBTV p) (freeBTV r) } @-} 
-strengthen :: Pred -> Pred -> Pred
-strengthen (App (App (Prim Conj) p) q) r = strengthen p (strengthen q r)
-strengthen p                           r = App (App (Prim Conj) p) r
+strengthen :: Expr -> Expr -> Expr
+strengthen (Conj p q) r = strengthen p (strengthen q r)
+strengthen p          r = Conj p r
 
 -- Star-kinded type variables may only be refined with a trivial predicate.
 -- a trivial predicate is Bc True and its strengthenings by one more Trues:
 --    i.e. True, True `And` True, True `And` True `And` True, and so on.
 {-@ reflect isTrivial @-}
-isTrivial :: Pred -> Bool
+isTrivial :: Expr -> Bool
 isTrivial (Bc True)         = True
-isTrivial (App p r)         = (p == App (Prim Conj) (Bc True)) && isTrivial r
+isTrivial (Conj p r)        = (p == (Bc True)) && isTrivial r
 isTrivial _                 = False
 
 {-@ lem_trivial_nofv :: { p:Pred | isTrivial p } 
         -> { pf:_ | Set_emp (fv p) && Set_emp (ftv p) } @-} 
-lem_trivial_nofv :: Pred -> Proof
+lem_trivial_nofv :: Expr -> Proof
 lem_trivial_nofv (Bc True) = ()
-lem_trivial_nofv (App p r) = case p of
-  (App (Prim Conj) (Bc True)) -> lem_trivial_nofv r
+lem_trivial_nofv (Conj p r) = case p of
+  (Bc True) -> lem_trivial_nofv r
 
 {-@ lem_trivial_nobv :: { p:Pred | isTrivial p } 
         -> { pf:_ | Set_emp (freeBV p) && Set_emp (freeBTV p) } @-}
-lem_trivial_nobv :: Pred -> Proof
+lem_trivial_nobv :: Expr -> Proof
 lem_trivial_nobv (Bc True) = ()
-lem_trivial_nobv (App p r) = case p of
-  (App (Prim Conj) (Bc True)) -> lem_trivial_nobv r
+lem_trivial_nobv (Conj p r) = case p of
+  (Bc True) -> lem_trivial_nobv r
 
   ---   TYPES
 
@@ -400,16 +498,29 @@ ksize Star = 1
 -- this stands in for the above b/c LH isn't inferring all refn binders are equal
 data RVname = Z deriving (Eq, Show)
 
-{-@ data Type [tsize] where 
-        TRefn   :: Basic -> RVname -> Pred -> Type  
+{-@ data Type where 
+        TRefn   :: Basic -> RVname -> p:Pred  -> { t':Type | isPred p }
         TFunc   :: Vname -> Type  -> Type -> Type 
         TExists :: Vname -> Type  -> Type -> Type 
         TPoly   :: Vname -> Kind  -> Type -> Type @-} -- @-}
-data Type = TRefn   Basic RVname Pred     -- b{x0 : p}
-          | TFunc   Vname Type Type      -- x:t_x -> t
-          | TExists Vname Type Type      -- \exists x:t_x. t
-          | TPoly   Vname Kind Type      -- \forall a:k. t
-  deriving (Eq, Show)
+data Type where 
+    TRefn   :: Basic -> RVname -> Expr -> Type   -- b{x0 : p}
+    TFunc   :: Vname -> Type   -> Type -> Type     -- x:t_x -> t
+    TExists :: Vname -> Type   -> Type -> Type      -- \exists x:t_x. t
+    TPoly   :: Vname -> Kind   -> Type -> Type      -- \forall a:k. t
+--  deriving Eq
+
+instance Eq Type where
+  (TRefn b z p) == (TRefn b' z' p')      = (b == b') && (z == z') && (p == p')
+  (TFunc z s t) == (TFunc z' s' t')      = (z == z') && (s == s') && (t == t')
+  (TExists z s t) == (TExists z' s' t')  = (z == z') && (s == s') && (t == t')
+  (TPoly a k t) == (TPoly a' k' t')      = (a == a') && (k == k') && (t == t')
+
+{-@ reflect lem_refn_is_pred @-}
+{-@ lem_refn_is_pred :: { t:Type | isTRefn t} -> b:Basic -> z:RVname -> { p:Expr | t == (TRefn b z p) }
+        -> { pf:_ | isPred p } @-}
+lem_refn_is_pred :: Type -> Basic -> RVname -> Expr -> Proof 
+lem_refn_is_pred (TRefn _ _ _) b z p = ()
 
   -- This will also avoid issues of capture in type variable substitution and refinement strengthening
 {-@ type UserType = { t:Type | noExists t } @-}
@@ -509,7 +620,7 @@ tfreeBTV (TPoly a  k  t)   = S.difference (tfreeBTV t) (S.singleton a)
                                Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (Set_dif (freeBV p) (Set_sng 0))) &&
                                Set_sub (tfreeBTV t') (Set_cup (tfreeBTV t) (freeBTV p)) &&
                                ( erase t' == erase t ) } @-}  
-push :: Pred -> Type -> Type
+push :: Expr -> Type -> Type
 push p (TRefn   b x   r) = TRefn   b x            (strengthen p r)
 push p (TFunc   y t_y t) = TFunc   y t_y t -- TFunc   y (push p t_y) (push p t) -- remove this later? p must be trivial
 --push p (TExists y t_y t) = TExists y t_y          (push p t)
@@ -679,7 +790,7 @@ max x y = if x >= y then x else y
 data Env = Empty                         -- type Env = [(Vname, Type) or Vname]	
          | Cons  Vname Type Env          
          | ConsT Vname Kind Env
-  deriving (Show)
+--  deriving (Show)
 {-@ data Env where 
         Empty :: Env 
         Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } 
@@ -889,7 +1000,7 @@ unbindFT a a' t = ftsubBV a (FTBasic (FTV a')) t
 data FEnv = FEmpty                       -- type FEnv = [(Vname, FType) or Vname]
           | FCons  Vname FType FEnv
           | FConsT Vname Kind  FEnv
-  deriving (Show) 
+--  deriving (Show) 
 {-@ data FEnv where
         FEmpty :: FEnv
         FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } 

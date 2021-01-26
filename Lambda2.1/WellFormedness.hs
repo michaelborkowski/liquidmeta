@@ -28,11 +28,11 @@ data WFTypeP where
     WFType :: Env -> Type -> Kind -> WFTypeP
 
 data WFType where 
-    WFBase :: Env -> Basic -> Pred -> WFType
-    WFRefn :: Env -> RVname -> Basic -> Pred -> WFType -> Pred -> Vname -> HasFType -> WFType
-    WFVar1 :: Env -> Vname -> Pred -> Kind -> WFType
-    WFVar2 :: Env -> Vname -> Pred -> Kind -> WFType -> Vname -> Type -> WFType
-    WFVar3 :: Env -> Vname -> Pred -> Kind -> WFType -> Vname -> Kind -> WFType
+    WFBase :: Env -> Basic -> Expr -> WFType
+    WFRefn :: Env -> RVname -> Basic -> Expr -> WFType -> Expr -> Vname -> HasFType -> WFType
+    WFVar1 :: Env -> Vname -> Expr -> Kind -> WFType
+    WFVar2 :: Env -> Vname -> Expr -> Kind -> WFType -> Vname -> Type -> WFType
+    WFVar3 :: Env -> Vname -> Expr -> Kind -> WFType -> Vname -> Kind -> WFType
     WFFunc :: Env -> Vname -> Type -> Kind -> WFType -> Type -> Kind -> Vname -> WFType -> WFType
     WFExis :: Env -> Vname -> Type -> Kind -> WFType -> Type -> Kind -> Vname -> WFType -> WFType
     WFPoly :: Env -> Vname -> Kind -> Type -> Kind -> Vname -> WFType -> WFType
@@ -136,7 +136,7 @@ isWFKind _           = False
 
 {-@ simpleWFVar :: g:Env -> { a:Vname | in_env a g } -> { tt:Pred | isTrivial tt }
         -> { k:Kind | tv_bound_in a k g } -> ProofOf(WFType g (TRefn (FTV a) Z tt) k) @-}
-simpleWFVar :: Env -> Vname -> Pred -> Kind -> WFType
+simpleWFVar :: Env -> Vname -> Expr -> Kind -> WFType
 simpleWFVar g a tt k  = case g of
   (Cons y s g')    -> case ( a == y ) of   -- g = Empty is impossible
         (False)    -> WFVar2 g' a tt k (simpleWFVar g' a tt k) y s

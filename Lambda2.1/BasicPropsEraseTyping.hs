@@ -90,79 +90,189 @@ lem_erase_ctsubst (CConsT a t_a th') t1 t2
          ? lem_unroll_ctsubst_tv_left th' a t_a t2
          ? lem_erase_tsubFTV a t_a (ctsubst th' t2)
 
-{-
-data TailEnvP where
-    TailEnv :: Env -> CSub -> TailEnvP
+{-@ reflect csubst_env @-}
+{-@ csubst_env :: th:CSub -> { g:Env | Set_emp (Set_cap (bindsC th) (binds g)) }
+      -> { g':Env | binds g == binds g' && vbinds g == vbinds g' && tvbinds g == tvbinds g' } @-}
+csubst_env :: CSub -> Env -> Env
+csubst_env CEmpty            g' = g' 
+csubst_env (CCons  z v_z th) g' = csubst_env th (esubFV  z v_z g')
+csubst_env (CConsT a t_a th) g' = csubst_env th (esubFTV a t_a g')
 
-data TailEnv where
-    Tail  :: Vname -> Type -> Expr -> Denotes -> Env -> CSub -> DenotesEnv -> TailEnv
-    TailT :: Vname -> Kind -> Type -> WFType  -> Env -> CSub -> DenotesEnv -> TailEnv
-{-@ data TailEnv where
-        Tail  :: x:Vname -> t:Type -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) &&
-                                                  Set_emp (freeBV v) && Set_emp (freeBTV v) }
-                   -> ProofOf(Denotes t v) -> { g:Env | not (in_env x g) } 
-                   -> { th:CSub | binds g == bindsC th }
-                   -> ProofOf(DenotesEnv (concatE (Cons x t Empty) g) (concatCS (CCons x v CEmpty) th))
-                   -> ProofOf(TailEnv (concatE (Cons x t Empty) g) (concatCS (CCons x v CEmpty) th)) 
-        TailT :: a:Vname -> k:Kind -> { t:UserType | Set_emp (free t) && Set_emp (freeTV t) &&
-                                                     Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) } 
-                   -> ProofOf(WFType Empty t k) -> { g:Env | not (in_env a g) } 
-                   -> { th:CSub | binds g == bindsC th }
-                   -> ProofOf(DenotesEnv (concatE (ConsT a k Empty) g) (concatCS (CConsT a t CEmpty) th))
-                   -> ProofOf(TailEnv (concatE (ConsT a k Empty) g) (concatCS (CConsT a t CEmpty) th)) @-}
-{-
-{-@ tailEnv :: { g:Env | not (g == Empty) } 
-        -> (Env,Env)<{\g' g'' -> (envsize g' == 1) && (g == concatE g' g'')}> @-}
-tailEnv :: Env -> (Env, Env)
-tailEnv (Cons x t g') = case g' of
-  Empty -> (Cons x t Empty, Empty)
-  _     -> (g0, Cons x t (g'' ? toProof( binds g' === S.union (binds g0) (binds g''))))
+{-@ lem_csubst_env_empty :: th:CSub -> { pf:_ | csubst_env th Empty == Empty } @-}
+lem_csubst_env_empty :: CSub -> Proof
+lem_csubst_env_empty CEmpty            = ()
+lem_csubst_env_empty (CCons  z v_z th) = () ? lem_csubst_env_empty th
+lem_csubst_env_empty (CConsT a t_a th) = () ? lem_csubst_env_empty th
+
+{-@ lem_csubst_env_concat :: th:CSub -> { g:Env | Set_emp (Set_cap (bindsC th) (binds g)) }
+        -> { g':Env | Set_emp (Set_cap (bindsC th) (binds g)) && Set_emp (Set_cap (binds g) (binds g')) }
+        -> { pf:_ | csubst_env th (concatE g g') == concatE (csubst_env th g) (csubst_env th g') } @-}
+lem_csubst_env_concat :: CSub -> Env -> Env -> Proof
+lem_csubst_env_concat CEmpty            g g' = ()
+lem_csubst_env_concat (CCons  z v_z th) g g' 
+  = () ? lem_esubFV_concat z v_z g g'
+       ? lem_csubst_env_concat th (esubFV z v_z g) (esubFV z v_z g')
+lem_csubst_env_concat (CConsT a t_a th) g g'
+   = () ? lem_esubFTV_concat a t_a g g'
+        ? lem_csubst_env_concat th (esubFTV a t_a g) (esubFTV a t_a g')
+
+{-@ lem_csubst_cons_env :: th:CSub -> x:Vname -> t_x:Type -> g:Env
+        -> { pf:_ | csubst_env th (Cons x t_x g) == Cons x (ctsubst th t_x) (csubst_env th g) } @-}
+lem_csubst_cons_env :: CSub -> Vname -> Type -> Env -> Proof
+lem_csubst_cons_env CEmpty            x t_x g' = ()
+lem_csubst_cons_env (CCons  z v_z th) x t_x g' 
+  = () ? lem_csubst_cons_env th x (tsubFV z v_z t_x) (esubFV z v_z g')
+lem_csubst_cons_env (CConsT a t_a th) x t_x g' 
+  = () ? lem_csubst_cons_env th x (tsubFTV a t_a t_x) (esubFTV a t_a g')
+
+{-@ lem_csubst_consT_env :: th:CSub -> a:Vname -> k_a:Kind -> g':Env
+        -> { pf:_ | csubst_env th (ConsT a k_a g') == ConsT a k_a (csubst_env th g') } @-}
+lem_csubst_consT_env :: CSub -> Vname -> Kind -> Env -> Proof
+lem_csubst_consT_env CEmpty            a k_a g' = ()
+lem_csubst_consT_env (CCons  z v_z th) a k_a g' 
+  = () ? lem_csubst_consT_env th a k_a (esubFV z v_z g')
+lem_csubst_consT_env (CConsT a' t' th) a k_a g'
+  = () ? lem_csubst_consT_env th a k_a (esubFTV a' t' g')
+
+{-@ lem_unroll_csubst_env_left :: th:CSub -> { x:Vname | not (in_csubst x th) }
+        -> { v_x:Value | Set_emp (fv v_x) && Set_emp (ftv v_x) } 
+        -> { g':Env | Set_emp (Set_cap (bindsC th) (binds g')) && not (in_env x g') }
+        -> { pf:_ | csubst_env (CCons x v_x th) g' == esubFV x v_x (csubst_env th g') } @-}
+lem_unroll_csubst_env_left :: CSub -> Vname -> Expr -> Env -> Proof
+lem_unroll_csubst_env_left CEmpty           x v_x g' = ()
+lem_unroll_csubst_env_left (CCons z v_z th) x v_x g'
+  = () ? lem_subFV_notin x v_x v_z
+       ? lem_commute_esubFV z v_z x v_x g'
+       ? lem_unroll_csubst_env_left th x v_x (esubFV z v_z g')
+lem_unroll_csubst_env_left (CConsT a t_a th) x v_x g'
+  = () ? lem_tsubFV_notin x v_x t_a
+       ? lem_commute_esubFV_esubFTV a t_a x v_x g'
+       ? lem_unroll_csubst_env_left th x v_x (esubFTV a t_a g')
+
+{-@ lem_csubst_wfft :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+        -> th:CSub -> ProofOf(DenotesEnv g th) -> t_z:Type -> k_z:Kind
+        -> ProofOf(WFFT (erase_env (concatE g g')) (erase t_z) k_z)
+        -> ProofOf(WFFT (erase_env (csubst_env th g')) (erase (ctsubst th t_z)) k_z) @-}
+lem_csubst_wfft :: Env -> Env -> CSub -> DenotesEnv -> Type -> Kind -> WFFT -> WFFT
+lem_csubst_wfft Empty           g'  th   den_g_th t_z k_z p_g'g_tz  = case den_g_th of
+  (DEmp) -> p_g'g_tz ? lem_binds_env_th Empty th den_g_th
+                     ? lem_empty_concatE g'
+lem_csubst_wfft (Cons x t_x g)  g' xth den_xg_xth t_z k_z p_g'xg_tz = case den_xg_xth of
+  (DExt _g th den_g_th _x _tx v_x den_thtx_vx) -> p_xthg'_xthtz
     where
-      (g0, g'') = tailEnv g'
-tailEnv (ConsT a k g') = case g' of
-  Empty -> (ConsT a k Empty, Empty)
-  _     -> (g0, ConsT a k g'' ? toProof(  g' ===  (concatE g0 g'') ))
+      p_vx_thtx     = get_ftyp_from_den (ctsubst th t_x) v_x den_thtx_vx
+      p_g'g_tz      = lem_strengthen_wfft (erase_env g) x (erase t_x) (erase_env (esubFV x v_x g'))
+                                          (erase (tsubFV x v_x t_z)) k_z 
+                                          (p_g'xg_tz ? lem_erase_concat (Cons x t_x g)  g'
+                                                     ? lem_erase_tsubFV x v_x t_z
+                                                     ? lem_erase_esubFV x v_x g')
+      p_xthg'_xthtz = lem_csubst_wfft g (esubFV x v_x g') th den_g_th (tsubFV x v_x t_z) 
+                                      k_z (p_g'g_tz ? lem_erase_concat g (esubFV x v_x g'))
+lem_csubst_wfft (ConsT a k_a g) g' ath den_ag_ath t_z k_z p_g'ag_tz = case den_ag_ath of
+  (DExtT _g th den_g_th _a _ka t_a p_emp_ta) -> p_athg'_athtz
     where
-      (g0, g'') = tailEnv g'
--}
+      p_g_er_ta     = lem_weaken_many_wfft FEmpty (erase_env g) (erase t_a) k_a 
+                                           (lem_erase_wftype Empty t_a k_a p_emp_ta)
+                                           ? lem_empty_concatF (erase_env g)
+      p_g'g_tzta    = lem_subst_tv_wfft (erase_env g) (erase_env g') a (erase t_a) k_a
+                                        p_g_er_ta (erase t_z) k_z 
+                                        (p_g'ag_tz ? lem_erase_concat (ConsT a k_a g) g')
+                                        ? lem_erase_tsubFTV a t_a t_z
+                                        ? lem_erase_esubFTV a t_a g'
+                                        ? lem_erase_concat  g (esubFTV a t_a g')
+      p_athg'_athtz = lem_csubst_wfft g (esubFTV a t_a g') th den_g_th (tsubFTV a t_a t_z)
+                                      k_z p_g'g_tzta
 
-{-@ lem_get_tail_denotesenv :: { g:Env | not (g == Empty) } -> th:CSub -> ProofOf(DenotesEnv g th)
-            -> ProofOf(TailEnv g th) @-}
-lem_get_tail_denotesenv :: Env -> CSub -> DenotesEnv -> TailEnv
-lem_get_tail_denotesenv g th den_g_th@(DExt g' th' den_g'_th' y t_y v_y den_th'ty_vy) = case g' of
-    Empty -> Tail y t_y v_y den_th'ty_vy Empty CEmpty den_g_th
-                  ? lem_binds_env_th Empty th' den_g'_th'
-    _     -> case (lem_get_tail_denotesenv g' th' den_g'_th') of
-      (Tail  x t v den_t_v g'' th'' _) 
-          -> Tail  x t v den_t_v (Cons y t_y g'') (CCons y v_y th'') den_g_th
---                   ? lem_binds_env_th g' th' den_g'_th'
-      (TailT a k t p_emp_t g''_ th''_ _) 
-          -> TailT a k t p_emp_t (Cons y t_y g'') (CCons y v_y th'') den_g_th
-        where
-          g''  = g''_ ? lem_in_env_concat (ConsT a k Empty) g'' y
-                      ? lem_binds_env_th g' th' den_g'_th'
-          th'' = th''_ ? lem_binds_consT_concatCS CEmpty th''_ a t
-                       ? lem_binds_env_th g' th' den_g'_th'
-  --                 ? lem_binds_env_th g' th' den_g'_th'
-lem_get_tail_denotesenv g th den_g_th@(DExtT g' th' den_g'_th' a' k' t' p_emp_t') = case g' of
-    Empty -> TailT a' k' t' p_emp_t' Empty CEmpty den_g_th
-                   ? lem_binds_env_th Empty th' den_g'_th'
-    _     -> case (lem_get_tail_denotesenv g' th' den_g'_th') of
-      (Tail  x t v den_t_v g'' th'' _) 
-          -> Tail  x t v den_t_v (ConsT a' k' g'') (CConsT a' t' th'') den_g_th
-                   ? lem_binds_env_th g' th' den_g'_th'
-      (TailT a k t p_emp_t g'' th'' _) 
-          -> TailT a k t p_emp_t (ConsT a' k' g'') (CConsT a' t' th'') den_g_th
-                   ? lem_binds_env_th g' th' den_g'_th'
--}        
+{-@ lem_csubst_wffe :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
+        -> th:CSub -> ProofOf(DenotesEnv g th) -> ProofOf(WFFE (erase_env (concatE g g')))
+        -> ProofOf(WFFE (erase_env (csubst_env th g'))) @-}
+lem_csubst_wffe :: Env -> Env -> CSub -> DenotesEnv -> WFFE -> WFFE
+lem_csubst_wffe g Empty            th den_g_th p_g'g_wf   
+  = WFFEmpty ? lem_csubst_env_empty th 
+lem_csubst_wffe g (Cons z t_z g')  th den_g_th p_zg'g_wf 
+  = WFFBind  (erase_env (csubst_env (th ? lem_binds_env_th g th den_g_th) g')) p_thg'_wf z (erase (ctsubst th t_z)) k_z p_thg'_thtz
+             ? lem_csubst_cons_env th z t_z g'
+      where
+        (WFFBind _ p_g'g_wf _z _ k_z p_g'g_tz) = p_zg'g_wf
+        p_thg'_wf = lem_csubst_wffe g g' th den_g_th p_g'g_wf
+        p_thg'_thtz = lem_csubst_wfft g g' th den_g_th t_z k_z p_g'g_tz
+lem_csubst_wffe g (ConsT a k_a g') th den_g_th p_ag'g_wf 
+  = WFFBindT (erase_env (csubst_env (th ? lem_binds_env_th g th den_g_th) g')) p_thg'_wf a k_a
+             ? lem_csubst_consT_env th a k_a g'
+      where
+        (WFFBindT _ p_g'g_wf _ _) = p_ag'g_wf
+        p_thg'_wf = lem_csubst_wffe g g' th den_g_th p_g'g_wf  
 
+{-@ lem_csubst_hasftype' :: g:Env -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env g) e (erase t))
+        -> ProofOf(WFFE (erase_env g)) -> th:CSub -> ProofOf(DenotesEnv g th)
+        -> ProofOf(HasFType FEmpty (csubst th e) (erase (ctsubst th t))) @-}
+lem_csubst_hasftype' :: Env -> Expr -> Type -> HasFType -> WFFE -> CSub -> DenotesEnv -> HasFType
+lem_csubst_hasftype' g e t p_e_t p_g_wf th den_g_th 
+  = lem_partial_csubst_hasftype g Empty p_g_wf th den_g_th e t p_e_t
+                                ? lem_csubst_env_empty th
+
+{-@ lem_partial_csubst_hasftype :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+        -> ProofOf(WFFE (erase_env (concatE g g'))) -> th0:CSub -> ProofOf(DenotesEnv g th0) 
+        -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env (concatE g g')) e (erase t))
+        -> ProofOf(HasFType (erase_env (csubst_env th0 g')) (csubst th0 e) (erase (ctsubst th0 t))) @-}
+lem_partial_csubst_hasftype :: Env -> Env -> WFFE -> CSub -> DenotesEnv -> Expr -> Type
+                                   -> HasFType -> HasFType
+lem_partial_csubst_hasftype Empty           g' p_env_wf  th den_g_th   e t p_e_t = case den_g_th of
+  (DEmp) -> p_e_t ? lem_binds_env_th Empty th den_g_th
+                  ? lem_empty_concatE g'
+lem_partial_csubst_hasftype (Cons x t_x g)  g' p_env_wf xth den_xg_xth e t p_e_t = case den_xg_xth of
+  (DExt _g th_ den_g_th _x _tx v_x den_thtx_vx) -> p_xthe_xtht
+                                   ? lem_empty_concatF (erase_env (csubst_env th g')) 
+                                   ? lem_erase_esubFV x v_x (csubst_env th g')
+                                   ? lem_unroll_csubst_env_left th x v_x g'
+                                   ? lem_unroll_csubst_left th x v_x e
+                                   ? lem_erase_tsubFV x v_x (ctsubst th t)
+                                   ? lem_unroll_ctsubst_left th x v_x t
+    where
+      th          = th_ ? lem_binds_env_th g th_ den_g_th
+      p_vx_thtx   = get_ftyp_from_den (ctsubst th t_x) v_x den_thtx_vx
+      p_emp_thtx  = lem_ftyping_wfft FEmpty v_x (erase (ctsubst th t_x)) p_vx_thtx WFFEmpty
+      p_the_tht   = lem_partial_csubst_hasftype g (concatE (Cons x t_x Empty) g') 
+                                (p_env_wf ? lem_concat_shift g x t_x g') th den_g_th 
+                                e t (p_e_t ? lem_concat_shift g x t_x g')
+                                ? lem_csubst_env_concat th (Cons x t_x Empty) g'
+                                ? lem_erase_concat (csubst_env th (Cons x t_x Empty)) (csubst_env th g')
+                                ? lem_csubst_cons_env th x t_x Empty
+                                ? lem_csubst_env_empty th
+      p_g'g_wf    = lem_strengthen_wffe (erase_env g) x (erase t_x) (erase_env g') 
+                                        (p_env_wf ? lem_erase_concat (Cons x t_x g)  g')
+                                        ? lem_erase_concat g g'
+      p_thg'_wf   = lem_csubst_wffe g g' th den_g_th p_g'g_wf
+                                    ? lem_empty_concatF (erase_env (csubst_env th g'))
+      p_thg'x_wf  = lem_weaken_wffe FEmpty (erase_env (csubst_env th g')) p_thg'_wf
+                                    x (erase (ctsubst th t_x)) Star p_emp_thtx
+      p_xthe_xtht = lem_subst_ftyp FEmpty (erase_env (csubst_env th g')) x v_x (erase (ctsubst th t_x))
+                                   p_vx_thtx p_thg'x_wf (csubst th e) (erase (ctsubst th t)) p_the_tht
+lem_partial_csubst_hasftype (ConsT a k_a g) g' p_env_wf ath den_ag_ath e t p_e_t = case den_ag_ath of
+  (DExtT _g th den_g_th _a _ka t_a p_emp_ta) -> p_athe_atht
+    where
+      p_g_ta      = lem_weaken_many_wfft FEmpty (erase_env g) (erase t_a) k_a
+                                         (lem_erase_wftype Empty t_a k_a p_emp_ta)
+                                         ? lem_empty_concatF (erase_env g)
+      p_eta_tta   = lem_subst_tv_ftyp (erase_env g) (erase_env g') a t_a k_a
+                                      p_g_ta (p_env_wf ? lem_erase_concat (ConsT a k_a g) g') e (erase t) 
+                                      (p_e_t ? lem_erase_concat (ConsT a k_a g) g')
+                                      ? lem_erase_tsubFTV a t_a t  
+                                      ? lem_erase_esubFTV a t_a g'
+                                      ? lem_erase_concat g (esubFTV a t_a g')
+      p_g'g_wf    = lem_subst_tv_wffe (erase_env g) (erase_env g') a (erase t_a) k_a 
+                                      p_g_ta (p_env_wf ? lem_erase_concat (ConsT a k_a g) g') 
+                                      ? lem_erase_esubFTV a t_a g'
+      p_athe_atht = lem_partial_csubst_hasftype g (esubFTV a t_a g') p_g'g_wf th den_g_th 
+                                                (subFTV a t_a e) (tsubFTV a t_a t) p_eta_tta
 
 {-@ lem_csubst_hasftype_basic :: g:Env -> e:Expr -> { b:Basic | b == TBool || b == TInt }
-        -> ProofOf(HasFType (erase_env g) e (FTBasic b)) -> th:CSub -> ProofOf(DenotesEnv g th)
+        -> ProofOf(HasFType (erase_env g) e (FTBasic b)) -> ProofOf(WFFE (erase_env g)) -> th:CSub 
+        -> ProofOf(DenotesEnv g th)
         -> ProofOf(HasFType FEmpty (csubst th e) (FTBasic b)) @-}
-lem_csubst_hasftype_basic :: Env -> Expr -> Basic -> HasFType -> CSub -> DenotesEnv -> HasFType
-lem_csubst_hasftype_basic g e b p_e_b th den_g_th 
-    = lem_csubst_hasftype' g e (TRefn b Z (Bc True)) p_e_b th den_g_th
+lem_csubst_hasftype_basic :: Env -> Expr -> Basic -> HasFType -> WFFE -> CSub -> DenotesEnv -> HasFType
+lem_csubst_hasftype_basic g e b p_e_b p_g_wf th den_g_th 
+    = lem_csubst_hasftype' g e (TRefn b Z (Bc True)) p_e_b p_g_wf th den_g_th
                            ? lem_ctsubst_erase_basic th (TRefn b Z (Bc True)) b
 
 {-@ lem_csubst_fv_in ::  y:Vname -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) &&
@@ -171,57 +281,3 @@ lem_csubst_hasftype_basic g e b p_e_b th den_g_th
                                  -> { pf:_ | csubst (CCons y v th) (FV y) == v } @-}
 lem_csubst_fv_in :: Vname -> Expr -> CSub -> Proof
 lem_csubst_fv_in y v th = () ? lem_csubst_nofv th v
-
-
-{-@ lem_csubst_hasftype' :: g:Env -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env g) e (erase t))
-        -> th:CSub -> ProofOf(DenotesEnv g th)
-        -> ProofOf(HasFType FEmpty (csubst th e) (erase (ctsubst th t))) @-}
-lem_csubst_hasftype' :: Env -> Expr -> Type -> HasFType {-> WFFE-} -> CSub -> DenotesEnv -> HasFType
-lem_csubst_hasftype' g e t p_e_t th den_g_th = undefined
-
-{-
-        -- -> ProofOf(WFFE (erase_env g)) -> th:CSub -> ProofOf(DenotesEnv g th)
-{-@ lem_csubst_hasftype' :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
-        -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env (concatE g g')) e (erase t))
-        -> ProofOf(WFFE (erase_env g)) -> th:CSub -> ProofOf(DenotesEnv g th)
-        -> ProofOf(HasFType (erase_env g') (csubst th e) (erase (ctsubst th t))) @-}
-lem_csubst_hasftype' :: Env -> Env -> Expr -> Type -> HasFType -> WFFE -> CSub -> DenotesEnv -> HasFType
---lem_csubst_hasftype' g g' e t p_e_t th den_g_th = undefined
-{- -}
-lem_csubst_hasftype' Empty          g' e t p_e_t p_g_wf th den_g_th = case den_g_th of
-  (DEmp) -> p_e_t ? lem_binds_env_th Empty th den_g_th
-lem_csubst_hasftype' (Cons x t_x g) g' e t p_e_t p_g_wf xth den_xg_xth = case den_xg_xth of
-  (DExt g th den_g_th _x _tx v_x den_thtx_vx)
-      -> 
-       
-    where
-      p_emp_vx_tx = get_ftyp_from_den (ctsubst th t_x)  v_x den_th'tx_vx
-      p_the_tht   = lem_csubst_hasftype' g (concatE (Cons x t_x Empty) g') e t p_e_t 
-                                         {-p_g'_wf-} th den_g_th
-      p_xthe_xtht = lem_subst_ftyp FEmpty (erase_env g') x v_x t_x p_emp_vx_tx p_??_wf
-                                   (csusbt th e) (erase (ctsubst th t)) p_the_tht
-
---      (WFFBind _ p_g'_wf_ _ _ _ _) = p_g_wf
---      p_g'_wf     = p_g'_wf_ ? lem_empty_concatF (erase_env g')
-      p_g'_vx_tx  = lem_weaken_many_ftyp FEmpty (erase_env g') p_g'_wf v_x s_x p_emp_vx_tx
-                                         ? lem_empty_concatF (erase_env g')
-
-
-      p_g'_sx     = lem_ftyping_wfft (erase_env g') v_x s_x p_g'_vx_sx p_g'_wf
-      p_xg'_wf    = WFFBind (erase_env g') p_g'_wf x s_x Star p_g'_sx
-      (AEWitness _xg' _e _s s' aeqv_s'_s p_e_s')
-                  = lem_alpha_in_env_ftyp (erase_env g') FEmpty x s_x (erase t_x) eqv_sx_tx e s p_e_s
-      aeqv'_s_t   = lem_strengthen_alpha (erase_env g') x (erase t_x) FEmpty s (erase t) aeqv_s_t
-      aeqv''_s_t  = lem_weaken_alpha     (erase_env g')               FEmpty s (erase t) aeqv'_s_t x s_x
-      aeqv_s'_t   = lem_alpha_trans (FCons x s_x (erase_env g')) s' s (erase t) aeqv_s'_s aeqv''_s_t
-                                    ? lem_erase_tsubFV x v_x t
-
-      p_evx_s'vx  = lem_subst_ftyp (erase_env g') FEmpty x v_x s_x p_g'_vx_sx p_xg'_wf
-                                   e s' p_e_s' -- (erase t) p_e_t ? lem_erase_tsubFV x v_x t
-
-
-      (AEWitness _ _the _tht s'' aeqv_s''_tht p_the_s'')
---- need a lemma for ctsubst of FV x, then do induction on the structure of p_e_s
-lem_csubst_hasftype'' (ConsT a k_a g') e t s aeqv_s_t p_e_s {-p_g_wf-} th den_g_th
-  = undefined {- 1 -}
--}

@@ -30,33 +30,27 @@ foo26 :: a -> Maybe a
 -- new version of selfification requires a kind submitted for t
 -- old vers:  selfify p TBool   z e = App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) e)
 {-@ reflect eqlPred @-} 
-{-@ eqlPred :: { t:Type | isTRefn t } -> e:Expr
+{-@ eqlPred :: { t:Type | isTRefn t } -> e:Term
         -> { p':Pred | self t e Base == push p' t && ftv p' == Set_cup (freeTV t) (ftv e) } @-}
-eqlPred :: Type -> Expr -> Pred
+eqlPred :: Type -> Expr -> Expr
 eqlPred (TRefn b z p) e = App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e
-{-
-{-@ reflect eqlPred @-} 
-{-@ eqlPred :: b:Basic -> z:RVname -> p:Pred -> e:Expr
-        -> { p':Pred | self (TRefn b z p) e Base == push p' (TRefn b z p) } @-}
-eqlPred :: Basic -> Vname -> Pred -> Expr -> Pred
-eqlPred b z p e = App (App (AppT (Prim Eql) (TRefn b z p)) (BV z)) e
--}
 
 {-@ reflect selfify @-} 
-{-@ selfify :: p:Pred -> b:Basic -> z:RVname -> e:Expr
+{-@ selfify :: p:Pred -> b:Basic -> z:RVname -> e:Term
         -> { p':Pred | fv p' == Set_cup (fv p) (fv e) && 
                        TRefn b z p' == self (TRefn b z p) e Base } @-}
-selfify :: Pred -> Basic -> RVname -> Expr -> Pred
+selfify :: Expr -> Basic -> RVname -> Expr -> Expr
 selfify p b z e = strengthen  (App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e)  p
 
 {-@ reflect self @-}
-{-@ self :: t:Type -> e:Expr -> k:Kind
+{-@ self :: t:Type -> e:Term -> k:Kind
               -> { t':Type | Set_sub (free t') (Set_cup (free t) (fv e)) &&
                              Set_sub (freeTV t') (Set_cup (freeTV t) (ftv e)) &&
                              Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (freeBV e)) && 
-                             erase t == erase t' } @-}
+                             erase t == erase t' && ( (k == Star) => (t == t') ) } @-}
 self :: Type -> Expr -> Kind -> Type
-self t@(TRefn b z p)   e Base = TRefn b z (strengthen  (App (App (AppT (Prim Eql) t) (BV 0)) e)  p)
+self t@(TRefn b z p)   e Base = TRefn b z (strengthen  (App (App (AppT (Prim Eql) t) (BV 0)) e)  
+                                      (p `withProof` lem_refn_is_pred t b z p))
 self (TFunc   z t_z t) e Base = TFunc   z t_z t
 self (TExists z t_z t) e Base = TExists z t_z (self t e Base)
 self (TPoly   a k_a t) e Base = TPoly   a k_a t
@@ -75,7 +69,7 @@ lem_tsubFTV_eqlPred a t_a@(TRefn b' y' q') (TRefn b z p) e = case b of
   _                   -> ()
 
 
-{-@ lem_tsubFTV_self :: a:Vname -> t_a:UserType -> t:Type -> e:Expr -> k:Kind
+{-@ lem_tsubFTV_self :: a:Vname -> t_a:UserType -> t:Type -> e:Term -> k:Kind
         -> { pf:_ | tsubFTV a t_a (self t e k) == self (tsubFTV a t_a t) (subFTV a t_a e) k } @-}
 lem_tsubFTV_self :: Vname -> Type -> Type -> Expr -> Kind -> Proof
 lem_tsubFTV_self a t_a t@(TRefn b z p)     e Base = case b of
@@ -98,7 +92,7 @@ lem_tsubFTV_self a t_a (TPoly a' k_a' t) e Base = ()
 lem_tsubFTV_self a t_a t                 e Star = ()
 
 {-@ lem_tsubBV_self :: z:Vname -> v_z:Value -> t:Type 
-        -> { e:Expr | not (Set_mem z (freeBV e)) } -> k:Kind
+        -> { e:Term | not (Set_mem z (freeBV e)) } -> k:Kind
         -> { pf:_ | tsubBV z v_z (self t e k) == self (tsubBV z v_z t) e k } @-}
 lem_tsubBV_self :: Vname -> Expr -> Type -> Expr -> Kind -> Proof
 lem_tsubBV_self z v_z (TRefn b x p)     e Base 
@@ -184,15 +178,6 @@ lem_tsubFV_self2 z v (TExists y t_y t) x Base = () ? lem_tsubFV_self2 z v t x Ba
 lem_tsubFV_self2 z v (TPoly   a k_a t) x Base = ()
 lem_tsubFV_self2 z v t             x Star = ()
 
-{-
-{- @ equals :: b:Basic -> { c:Prim | Set_emp (fv (Prim c)) && Set_emp (freeBV (Prim c)) &&
-                  erase_ty c == FTFunc (FTBasic b) (FTFunc (FTBasic b) (FTBasic TBool)) } @-}
-{-@ reflect equals @-}
-{-@ equals :: b:Basic -> { e:Expr | Set_emp (fv e) && Set_emp (freeBV e) } @-}
-equals :: Basic -> Expr
-equals b = AppT (Prim Eql) (TRefn b 0 (Bc True)) {- equals TBool "=" Prim Eqv
-                                                    equals TInt  "=" Prim Eq -}
--}
 
   --- the Typing Judgement
 
@@ -344,7 +329,7 @@ data SubtypeP where
     Subtype :: Env -> Type -> Type -> SubtypeP
 
 data Subtype where
-    SBase :: Env -> RVname -> Basic -> Pred -> RVname -> Pred -> Vname -> Entails -> Subtype
+    SBase :: Env -> RVname -> Basic -> Expr -> RVname -> Expr -> Vname -> Entails -> Subtype
     SFunc :: Env -> Vname -> Type -> Vname -> Type -> Subtype
                -> Type -> Type -> Vname -> Subtype -> Subtype
     SWitn :: Env -> Expr -> Type -> HasType -> Type -> Vname -> Type
@@ -436,7 +421,7 @@ isSPoly _          = False
 data CSub = CEmpty
           | CCons  Vname Expr CSub
           | CConsT Vname Type CSub
-  deriving (Show)
+  
 {-@ data CSub  where
         CEmpty :: CSub
         CCons  :: x:Vname -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) &&
@@ -509,7 +494,7 @@ tv_bound_inC a t (CConsT a' t' th) | (a == a')         = (t == t')
                                    | otherwise         = tv_bound_inC a t th
 
 {-@ reflect csubst @-}
-{-@ csubst :: th:CSub -> e:Expr -> { e':Expr | isTerm e => isTerm e' } @-}
+{-@ csubst :: th:CSub -> e:Expr -> { e':Expr | (isTerm e => isTerm e') && (isPred e => isPred e') } @-}
 csubst :: CSub -> Expr -> Expr
 csubst CEmpty          e = e
 csubst (CCons  x v th) e = csubst th (subFV x v e)
@@ -577,10 +562,10 @@ remove_fromCS (CConsT a t_a th) x | ( x == a ) = th
 -------------------------------------------------------------------------
 
 data EntailsP where
-    Entails :: Env -> Pred -> EntailsP
+    Entails :: Env -> Expr -> EntailsP
 
 data Entails where
-    EntPred :: Env -> Pred -> (CSub -> DenotesEnv -> EvalsTo) -> Entails
+    EntPred :: Env -> Expr -> (CSub -> DenotesEnv -> EvalsTo) -> Entails
 
 {-@ data Entails where
         EntPred :: g:Env -> p:Pred 
@@ -605,7 +590,7 @@ data DenotesP where
     Denotes :: Type -> Expr -> DenotesP    -- e \in [[t]]
 
 data Denotes where
-    DRefn :: Basic -> RVname -> Pred -> Expr -> HasFType -> EvalsTo -> Denotes
+    DRefn :: Basic -> RVname -> Expr -> Expr -> HasFType -> EvalsTo -> Denotes
     DFunc :: Vname -> Type -> Type -> Expr -> HasFType
               -> (Expr -> Denotes -> ValueDenoted) -> Denotes
     DExis :: Vname -> Type -> Type -> Expr -> HasFType

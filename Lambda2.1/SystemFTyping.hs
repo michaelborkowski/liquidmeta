@@ -40,6 +40,7 @@ data HasFType where
     FTLet  :: FEnv -> Expr -> FType -> HasFType -> Vname -> Expr
                    -> FType -> Vname -> HasFType -> HasFType
     FTAnn  :: FEnv -> Expr -> FType -> Type -> HasFType -> HasFType
+    FTConj :: FEnv -> Expr -> HasFType -> Expr -> HasFType -> HasFType
 
 {-@ data HasFType where
         FTBC   :: g:FEnv -> b:Bool -> ProofOf(HasFType g (Bc b) (FTBasic TBool))
@@ -81,7 +82,10 @@ data HasFType where
                 -> { t1:Type | (erase t1 == b) && Set_sub (free t1) (vbindsF g) 
                                                && Set_sub (freeTV t1) (tvbindsF g) 
                                                && Set_emp (tfreeBV t1) && Set_emp (tfreeBTV t1) }
-                -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b) @-} 
+                -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b) 
+        FTConj :: g:FEnv -> e:Expr -> ProofOf(HasFType g e (FTBasic TBool)) 
+                  -> e':Expr -> ProofOf(HasFType g e' (FTBasic TBool)) 
+                  -> ProofOf(HasFType g (Conj e e') (FTBasic TBool)) @-}
  
 {-@ measure ftypSize @-}
 {-@ ftypSize :: HasFType -> { v:Int | v >= 0 } @-}
@@ -98,6 +102,7 @@ ftypSize (FTAbsT _ _ _ _ _ _ p_e_b)          = (ftypSize p_e_b)  + 1
 ftypSize (FTAppT _ _ _ _ _ p_e_at' _ _)      = (ftypSize p_e_at') + 1
 ftypSize (FTLet _ _ _ p_ex_b _ _ _ _ p_e_b') = (ftypSize p_ex_b)  + (ftypSize p_e_b') + 1
 ftypSize (FTAnn _ _ _ _ p_e_b)               = (ftypSize p_e_b)   + 1
+ftypSize (FTConj _ _ p_e_b _ p_e'_b)         = (ftypSize p_e_b)   + (ftypSize p_e'_b) + 1
 
 {-@ reflect isFTVar @-}
 isFTVar :: HasFType -> Bool
@@ -136,6 +141,11 @@ isFTAnn :: HasFType -> Bool
 isFTAnn (FTAnn {}) = True
 isFTAnn _          = False
 
+{-@ reflect isFTConj @-}
+isFTConj :: HasFType -> Bool
+isFTConj (FTConj {}) = True
+isFTConj _           = False
+
 {-@ simpleFTVar :: g:FEnv -> { x:Vname | in_envF x g} -> { t:FType | bound_inF x t g } 
                 -> ProofOf(HasFType g (FV x) t) @-}
 simpleFTVar :: FEnv -> Vname -> FType -> HasFType
@@ -145,7 +155,6 @@ simpleFTVar g x t = case g of
         (False, _)   -> FTVar2 g' x t (simpleFTVar g' x t) y s
   (FConsT a k g') -> case (x == a) of
         False        -> FTVar3 g' x t (simpleFTVar g' x t) a k
-
 
 -------------------------------------------------------------------------
 ----- | REFINEMENT TYPES of BUILT-IN PRIMITIVES
@@ -161,7 +170,7 @@ tyic :: Int -> Type
 tyic n = TRefn TInt Z (App (App (Prim Eq) (BV 0)) (Ic n))
 
 {-@ reflect refn_pred_freeBV @-}
-{-@ refn_pred_freeBV :: { c:Prim | not (c == Conj) } -> S.Set Vname @-}
+{-@ refn_pred_freeBV :: c:Prim -> S.Set Vname @-}
 refn_pred_freeBV :: Prim -> S.Set Vname
 refn_pred_freeBV Not      = S.fromList [0,2]
 refn_pred_freeBV (Leqn _) = S.fromList [0,2]
@@ -170,8 +179,8 @@ refn_pred_freeBV _        = S.fromList [0,2,1]
 
 {- @ refn_pred :: c:Prim -> { p:Pred | noDefnsBaseAppT p && Set_sub (freeBV p) (refn_pred_freeBV c) -}
 {-@ reflect refn_pred @-}
-{-@ refn_pred :: { c:Prim | not (c == Conj) } -> { p:Pred | noDefnsBaseAppT p && Set_emp (fv p) } @-}
-refn_pred :: Prim -> Pred
+{-@ refn_pred :: c:Prim  -> { p:Pred | noDefnsBaseAppT p && Set_emp (fv p) } @-}
+refn_pred :: Prim -> Expr
 refn_pred And      = App (App (Prim Eqv) (BV 0)) 
                                (App (App (Prim And) (BV 1)) (BV 2)) 
 refn_pred Or       = App (App (Prim Eqv) (BV 0)) 
@@ -198,7 +207,6 @@ refn_pred Eql      = App (App (Prim Eqv) (BV 0))
 {-@ ty :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 --                                 && noDefnsBaseAppTInRefns Empty t && isWellFormed Empty t Star } @-}
 ty :: Prim -> Type
-ty Conj     = TFunc (firstBV And)      (inType And)      (ty' And)
 ty And      = TFunc (firstBV And)      (inType And)      (ty' And)
 ty Or       = TFunc (firstBV Or)       (inType Or)       (ty' Or)
 ty Not      = TFunc (firstBV Not)      (inType Not)      (ty' Not)
@@ -226,7 +234,6 @@ ty (Eqn n)  = TFunc 2 (TRefn TInt 2 (Bc True))  (TRefn TBool 3 (refn_pred (Eqn n
 {-@ reflect erase_ty @-}
 {-@ erase_ty :: c:Prim -> { t:FType | Set_emp (ffreeTV t) && t == erase (ty c) } @-}
 erase_ty :: Prim -> FType
-erase_ty Conj     = FTFunc (FTBasic TBool) (FTFunc (FTBasic TBool) (FTBasic TBool))
 erase_ty And      = FTFunc (FTBasic TBool) (FTFunc (FTBasic TBool) (FTBasic TBool))
 erase_ty Or       = FTFunc (FTBasic TBool) (FTFunc (FTBasic TBool) (FTBasic TBool))
 erase_ty Not      = FTFunc (FTBasic TBool) (FTBasic TBool)
@@ -239,7 +246,7 @@ erase_ty Eql      = FTPoly 1 Base (FTFunc (FTBasic (BTV 1))
                                           (FTFunc (FTBasic (BTV 1)) (FTBasic TBool)))
 
 {-@ reflect firstBV @-}
-{-@ firstBV :: { c:Prim | not (c == Conj) } -> Int @-}
+{-@ firstBV :: c:Prim -> Int @-}
 firstBV :: Prim -> Int
 firstBV Not      = 2
 firstBV (Leqn _) = 2
@@ -247,8 +254,7 @@ firstBV (Eqn _)  = 2
 firstBV _        = 1
 
 {-@ reflect inType @-}
-{-@ inType :: { c:Prim | not (c == Conj) } -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
---                                   && noDefnsBaseAppTInRefns Empty t && isWellFormed Empty t Base } @-}
+{-@ inType :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 inType :: Prim -> Type
 inType And     = TRefn TBool   Z (Bc True)
 inType Or      = TRefn TBool   Z (Bc True)
@@ -260,9 +266,7 @@ inType Eql     = TRefn (BTV 1) Z (Bc True)
 inType _       = TRefn TInt    Z (Bc True)
 
 {-@ reflect ty' @-}
-{-@ ty' :: { c:Prim | not (c == Conj) } -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
---          && noDefnsBaseAppTInRefns (Cons (firstBV c) (inType c) Empty) (unbindT (firstBV c) (firstBV c) t) 
---          && isWellFormed (Cons (firstBV c) (inType c) Empty) (unbindT (firstBV c) (firstBV c) t) Star } @-}
+{-@ ty' :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 ty' :: Prim -> Type
 ty' And      = TFunc 2 (TRefn TBool Z (Bc True)) (TRefn TBool Z (refn_pred And))
 ty' Or       = TFunc 2 (TRefn TBool Z (Bc True)) (TRefn TBool Z (refn_pred Or))
@@ -296,6 +300,7 @@ noDefnsBaseAppT (LambdaT _ _ _) = False
 noDefnsBaseAppT (AppT e t)      = (noDefnsBaseAppT e) 
 noDefnsBaseAppT (Let _ _ _)     = False
 noDefnsBaseAppT (Annot e t)     = noDefnsBaseAppT e
+noDefnsBaseAppT (Conj e e')     = (noDefnsBaseAppT e) && (noDefnsBaseAppT e')
 
 {-@ reflect checkType @-} 
 {-@ checkType :: FEnv -> { e:Expr | noDefnsBaseAppT e } -> t:FType -> Bool / [esize e] @-}
@@ -315,10 +320,12 @@ checkType g (AppT e t2) t    = case ( synthType g e ) of
                                   ( S.isSubsetOf (freeTV t2) (tvbindsF g) ) && 
                                   ( S.null (tfreeBV  t2) ) && ( S.null (tfreeBTV t2) ) 
     _                          -> False 
-checkType g (Annot e liqt) t   = ( checkType g e t ) && ( t == erase liqt ) &&
-                                 ( S.isSubsetOf (free liqt) (vbindsF g) ) &&
-                                 ( S.isSubsetOf (freeTV liqt) (tvbindsF g) ) &&
-                                 ( S.null (tfreeBV liqt) && S.null (tfreeBTV liqt) )  
+checkType g (Annot e liqt) t = ( checkType g e t ) && ( t == erase liqt ) &&
+                               ( S.isSubsetOf (free liqt) (vbindsF g) ) &&
+                               ( S.isSubsetOf (freeTV liqt) (tvbindsF g) ) &&
+                               ( S.null (tfreeBV liqt) && S.null (tfreeBTV liqt) )  
+checkType g (Conj e e') t    = ( t == FTBasic TBool) && checkType g e  (FTBasic TBool) &&
+                                                        checkType g e' (FTBasic TBool)
 
 {-@ reflect synthType @-}
 {-@ synthType :: FEnv -> { e:Expr | noDefnsBaseAppT e } 
@@ -347,6 +354,9 @@ synthType g (Annot e liqt)  = case ( checkType g e (erase liqt) && -- S.null (tf
                                 S.null (tfreeBV liqt) && S.null (tfreeBTV liqt) of
     True  -> Just (erase liqt)
     False -> Nothing
+synthType g (Conj e e')     = case (checkType g e (FTBasic TBool) && checkType g e' (FTBasic TBool)) of
+    True  -> Just (FTBasic TBool)
+    False -> Nothing
 
 {-@ lem_check_synth :: g:FEnv -> { e:Expr | noDefnsBaseAppT e } -> { t:FType | synthType g e == Just t }
                               -> { pf:_ | checkType g e t } @-}
@@ -363,6 +373,7 @@ lem_check_synth g (App e e') t     = case (synthType g e') of
 lem_check_synth g (AppT e t2) t    = case (synthType g e) of 
     (Just (FTPoly a Base t1))  -> ()
 lem_check_synth g (Annot e liqt) t = ()
+lem_check_synth g (Conj e e')    t = ()
 
 {-@ makeHasFType :: g:FEnv -> { e:Expr | noDefnsBaseAppT e } -> { t:FType | checkType g e t }
         -> ProofOf(HasFType g e t) / [esize e] @-}
@@ -388,16 +399,7 @@ makeHasFType g (AppT e rt) t    = case (synthType g e) of
 makeHasFType g (Annot e liqt) t = FTAnn g e t liqt pf_e_t
   where
     pf_e_t = makeHasFType g e t
-
-{-@ lem_trivial_nodefns :: { p:Pred | isTrivial p } -> { pf:_ | noDefnsBaseAppT p } @-} 
-lem_trivial_nodefns :: Pred -> Proof
-lem_trivial_nodefns (Bc True) = ()
-lem_trivial_nodefns (App p r) = case p of
-  (App (Prim Conj) (Bc True)) -> () ? lem_trivial_nodefns r
-
-{-@ lem_trivial_check :: g:FEnv -> { p:Pred | isTrivial p } 
-        -> { pf:_ | checkType g p (FTBasic TBool) && synthType g p == Just (FTBasic TBool) } @-} 
-lem_trivial_check :: FEnv -> Pred -> Proof
-lem_trivial_check g (Bc True) = ()
-lem_trivial_check g (App p r) = case p of
-  (App (Prim Conj) (Bc True)) -> () ? lem_trivial_check g r 
+makeHasFType g (Conj e e')    t = FTConj g e p_e_b e' p_e'_b
+  where
+    p_e_b  = makeHasFType g e  (FTBasic TBool)
+    p_e'_b = makeHasFType g e' (FTBasic TBool)

@@ -26,19 +26,19 @@ import BasicPropsDenotes
 import LemmasChangeVarWF
 import LemmasWeakenWF
 
-{-@ reflect foo38 @-}
-foo38 x = Just x
-foo38 :: a -> Maybe a
+{-@ reflect foo35 @-}
+foo35 x = Just x
+foo35 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------
 
 {-@ lem_weaken_tv_wf_wfrefn :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
-            -> ProofOf(WFFE (concatF (erase_env g) (erase_env g'))) -> t:Type -> k:Kind
-            -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && isWFRefn p_t_wf }
-            -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> k_a:Kind
-            -> { pf:WFType | propOf pf == (WFType (concatE (ConsT a k_a g) g') t k) } / [wftypSize p_t_wf, 0] @-}
+        -> ProofOf(WFFE (concatF (erase_env g) (erase_env g'))) -> t:Type -> k:Kind
+        -> { p_t_wf:WFType | propOf p_t_wf == WFType (concatE g g') t k && isWFRefn p_t_wf }
+        -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> k_a:Kind
+        -> { pf:WFType | propOf pf == (WFType (concatE (ConsT a k_a g) g') t k) } / [wftypSize p_t_wf, 0] @-}
 lem_weaken_tv_wf_wfrefn :: Env -> Env -> WFFE -> Type -> Kind -> WFType -> Vname -> Kind -> WFType 
 lem_weaken_tv_wf_wfrefn g g' p_env_wf t k p_t_wf@(WFRefn env y b tt pf_env_b p y'_ pf_p_bl) a k_a
     = WFRefn (concatE (ConsT a k_a g) g') y b tt pf_env'_b p y''

@@ -25,9 +25,9 @@ import BasicPropsCSubst
 import BasicPropsDenotes
 import LemmasChangeVarWF
 
-{-@ reflect foo37 @-}
-foo37 x = Just x
-foo37 :: a -> Maybe a
+{-@ reflect foo34 @-}
+foo34 x = Just x
+foo34 :: a -> Maybe a
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   

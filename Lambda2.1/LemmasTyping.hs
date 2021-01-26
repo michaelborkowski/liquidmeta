@@ -49,7 +49,6 @@ lem_tsubFV_tyic x v_x n = ()
 {-@ lem_tsubFV_ty :: x:Vname -> v_x:Value -> c:Prim
         -> { pf:_ | tsubFV x v_x (ty c) == ty c } @-}
 lem_tsubFV_ty :: Vname -> Expr -> Prim -> Proof
-lem_tsubFV_ty x v_x Conj     = ()
 lem_tsubFV_ty x v_x And      = ()
 lem_tsubFV_ty x v_x Or       = () 
 lem_tsubFV_ty x v_x Not      = ()
@@ -74,7 +73,6 @@ lem_tsubFTV_tyic a t_a n = ()
 {-@ lem_tsubFTV_ty :: a:Vname -> t_a:UserType -> c:Prim
         -> { pf:_ | tsubFTV a t_a (ty c) == ty c } @-}
 lem_tsubFTV_ty :: Vname -> Type -> Prim -> Proof
-lem_tsubFTV_ty a t_a Conj     = ()
 lem_tsubFTV_ty a t_a And      = ()
 lem_tsubFTV_ty a t_a Or       = () 
 lem_tsubFTV_ty a t_a Not      = ()
@@ -99,7 +97,6 @@ lem_tchgFTV_tyic a a' n = ()
 {-@ lem_tchgFTV_ty :: a:Vname -> a':Vname -> c:Prim
         -> { pf:_ | tchgFTV a a' (ty c) == ty c } @-}
 lem_tchgFTV_ty :: Vname -> Vname -> Prim -> Proof
-lem_tchgFTV_ty a a' Conj     = ()
 lem_tchgFTV_ty a a' And      = ()
 lem_tchgFTV_ty a a' Or       = () 
 lem_tchgFTV_ty a a' Not      = ()
@@ -189,7 +186,7 @@ lem_typing_wf g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_wf_g
         Star -> p_g_t
 
 {-@ lem_selfify_wf' :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> ProofOf(WFEnv g)
-        -> e:Expr -> ProofOf(HasType g e t) -> ProofOf(WFType g (self t e k) k) @-}
+        -> e:Term -> ProofOf(HasType g e t) -> ProofOf(WFType g (self t e k) k) @-}
 lem_selfify_wf' :: Env -> Type -> Kind -> WFType -> WFEnv -> Expr -> HasType -> WFType
 lem_selfify_wf' g t {- @(TRefn b z p)-} k p_g_t p_g_wf e p_e_t 
   = lem_selfify_wf g t k p_g_t p_er_g_wf e p_e_er_t
@@ -268,21 +265,10 @@ lem_typing_hasftype g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf
         -> ProofOf(HasFType FEmpty (csubst th e) (erase (ctsubst th t))) @-}
 lem_csubst_hasftype :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub -> DenotesEnv -> HasFType
 lem_csubst_hasftype g e t p_e_t p_g_wf th den_g_th
-  = lem_csubst_hasftype' g e t p_e_er_t th den_g_th
+  = lem_csubst_hasftype' g e t p_e_er_t p_er_g_wf th den_g_th
       where
-        p_e_er_t = lem_typing_hasftype g e t p_e_t p_g_wf
-
-
-{-@ lem_tvar_v_in_env :: g:Env -> x:Vname -> t:Type -> ProofOf(HasType g (FV x) t)
-          -> { pf:_ | S.member x (vbinds g) } @-}
-lem_tvar_v_in_env :: Env -> Vname -> Type -> HasType -> Proof
-lem_tvar_v_in_env g x t (TVar1 _  _x _t _ _) = ()
-lem_tvar_v_in_env g x t (TVar2 g' _x _t p_g'_x_t y t_y)
-  = lem_tvar_v_in_env g' x t p_g'_x_t
-lem_tvar_v_in_env g x t (TVar3 g' _x _t p_g'_x_t a k_a)
-  = lem_tvar_v_in_env g' x t p_g'_x_t
-lem_tvar_v_in_env g x t (TSub _ _ s p_x_s _ k p_g_t p_s_t)
-  = lem_tvar_v_in_env g x s p_x_s
+        p_e_er_t  = lem_typing_hasftype g e t p_e_t p_g_wf
+        p_er_g_wf = lem_erase_env_wfenv g p_g_wf
 
 -- Lemma. All free variables in a typed expression are bound in the environment
 {-@ lem_fv_bound_in_env :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
@@ -381,7 +367,6 @@ lem_fv_subset_binds g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf
 {-@ lem_freeBV_prim_empty :: c:Prim -> { pf:_ | Set_emp (freeBV (Prim c)) && Set_emp (freeBTV (Prim c))
                                             && Set_emp (tfreeBV (ty c)) && Set_emp (tfreeBTV (ty c)) } @-}
 lem_freeBV_prim_empty :: Prim -> Proof
-lem_freeBV_prim_empty Conj     = ()
 lem_freeBV_prim_empty And      = ()
 lem_freeBV_prim_empty Or       = ()
 lem_freeBV_prim_empty Not      = ()

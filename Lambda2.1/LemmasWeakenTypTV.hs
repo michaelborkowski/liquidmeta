@@ -30,14 +30,13 @@ import LemmasWeakenWFTV
 import LemmasWeakenEnt
 import LemmasWellFormedness
 import LemmasTyping
-import LemmasSubtyping
 import SubstitutionWFAgain
 import LemmasChangeVarTyp
 import LemmasWeakenTyp
 
-{-@ reflect foo49 @-}
-foo49 x = Just x
-foo49 :: a -> Maybe a
+{-@ reflect foo48 @-}
+foo48 x = Just x
+foo48 :: a -> Maybe a
 
 -----------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   

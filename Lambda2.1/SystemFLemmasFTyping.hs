@@ -97,6 +97,8 @@ lem_ftyping_wfft g e t (FTLet _g e_x t_x p_ex_tx x e' _t {-p_g_t-} y p_e'_t) p_w
           pf_yg_t = lem_ftyping_wfft (FCons y t_x g) (unbind x y e') t p_e'_t p_wf_yg
 lem_ftyping_wfft g e t (FTAnn _g e' _t liqt p_e'_t) p_wf_g
     = lem_ftyping_wfft g e' t p_e'_t p_wf_g
+lem_ftyping_wfft g e t (FTConj {}) p_wf_g
+    = WFFTKind g (FTBasic TBool) (WFFTBasic g TBool)
 
 --        -> e:Expr -> { t:FType | Set_sub (ffreeTV t) (bindsF (concatF (FCons x t_x g) g')) }
 -- We can alpha-rename a variable anywhere in the environment and recursively alter the type
@@ -229,6 +231,10 @@ lem_change_var_ftyp g x t_x g' pf_wf_env e t (FTAnn _ e' _t liqt p_e'_t) y
                                               ? lem_binds_cons_concatF g g' x t_x
                                               ? lem_binds_cons_concatF g g' y t_x
           p_env'_e'_t = lem_change_var_ftyp g x t_x g' pf_wf_env e' t p_e'_t y
+lem_change_var_ftyp g x t_x g' pf_wf_env e t (FTConj _ e1 p_e1_t e2 p_e2_t) y
+    = FTConj (concatF (FCons y t_x g) g') (subFV x (FV y) e1)  
+             (lem_change_var_ftyp g x t_x g' pf_wf_env e1 t p_e1_t y)
+             (subFV x (FV y) e2) (lem_change_var_ftyp g x t_x g' pf_wf_env e2 t p_e2_t y)
 
 
 --        -> e:Expr -> { t:FType | Set_sub (ffreeTV t) (bindsF (concatF (FConsT a k g) g')) }
@@ -383,3 +389,9 @@ lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTAnn _ e' _t liqt p_e'_t) a'
                                               ? lem_binds_consT_concatF g g' a  k
                                               ? lem_binds_consT_concatF g g' a' k 
           p_env'_e'_t = lem_change_tvar_ftyp g a k g' pf_wf_env e' t p_e'_t a'
+lem_change_tvar_ftyp g a k g' pf_wf_env e t (FTConj _ e1 p_e1_t e2 p_e2_t) a'
+    = FTConj (concatF (FConsT a' k g) (fesubFV a (FTBasic (FTV a')) g')) 
+             (chgFTV a a' e1) p_a'_e1_t (chgFTV a a' e2) p_a'_e2_t
+        where
+          p_a'_e1_t = lem_change_tvar_ftyp g a k g' pf_wf_env e1 t p_e1_t a'
+          p_a'_e2_t = lem_change_tvar_ftyp g a k g' pf_wf_env e2 t p_e2_t a'

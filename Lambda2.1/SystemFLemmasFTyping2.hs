@@ -132,6 +132,11 @@ lem_weaken_ftyp g g' pf_wf_env e t p_e_t@(FTLet env e_y t_y p_ey_ty y e' t' y' p
 lem_weaken_ftyp g g' pf_wf_env e t (FTAnn _ e' _t liqt p_e'_t)  x t_x  
     = FTAnn (concatF (FCons x t_x g) g') e' t (liqt ? lem_binds_cons_concatF g g' x t_x)
             (lem_weaken_ftyp g g' pf_wf_env e' t p_e'_t x t_x)
+lem_weaken_ftyp g g' pf_wf_env e t (FTConj env e1 p_e1_t e2 p_e2_t) x t_x  
+    = FTConj (concatF (FCons x t_x g) g') e1 p_env'_e1_t e2 p_env'_e2_t
+        where
+          p_env'_e1_t = lem_weaken_ftyp g g' pf_wf_env e1 t p_e1_t x t_x
+          p_env'_e2_t = lem_weaken_ftyp g g' pf_wf_env e2 t p_e2_t x t_x
 
 {-@ lem_weaken_tv_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> ProofOf(WFFE (concatF g g')) -> e:Expr -> t:FType 
@@ -234,6 +239,11 @@ lem_weaken_tv_ftyp g g' pf_wf_env e t p_e_t@(FTLet env e_y t_y p_ey_ty y e' t' y
 lem_weaken_tv_ftyp g g' pf_wf_env e t (FTAnn _ e' _t liqt p_e'_t) a k 
     = FTAnn (concatF (FConsT a k g) g') e' t (liqt ? lem_binds_consT_concatF g g' a k)
             (lem_weaken_tv_ftyp g g' pf_wf_env e' t p_e'_t a k)
+lem_weaken_tv_ftyp g g' pf_wf_env e t (FTConj env e1 p_e1_t e2 p_e2_t) a k  
+    = FTConj (concatF (FConsT a k g) g') e1 p_env'_e1_t e2 p_env'_e2_t
+        where
+          p_env'_e1_t = lem_weaken_tv_ftyp g g' pf_wf_env e1 t p_e1_t a k
+          p_env'_e2_t = lem_weaken_tv_ftyp g g' pf_wf_env e2 t p_e2_t a k
 
 {-@ lem_weaken_many_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> ProofOf(WFFE (concatF g g')) -> e:Expr -> t:FType -> ProofOf(HasFType g e t)
