@@ -88,10 +88,8 @@ lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar2 _env' a_ tt k_
   = case g' of 
       Empty{- x == y -} -> p_env'_a ? lem_subFV_notin x v_x (tt ? lem_trivial_nofv tt)      
       (Cons _y _ty g'') -> case ( x == a_ ) of 
-          True  -> impossible ("by lemma" ? lem_wfvar_tv_in_env (concatE (Cons x t_x g) g'') a_ tt k_a p_env'_a)
---                                          ? lem_binds_cons_concatF (erase_env g) (erase_env g') x (erase t_x)
-  --                                        ? lem_ftvar_v_in_env (FCons x (erase t_x) (erase_env g)) x 
-    --                                            (erase t_x) (FTVar1 (erase_env g) x (erase t_x)) )
+          True  -> impossible ("by lemma" ? lem_binds_invariants (concatE (Cons x t_x g) g'') 
+                                          ? lem_wfvar_tv_in_env (concatE (Cons x t_x g) g'') a_ tt k_a p_env'_a)
           False -> WFVar2 (concatE g (esubFV x v_x g'')) a tt k_a p_gg''_a y (tsubFV x v_x t_y)
         where
             (WFEBind _ p_env'_wf _ _ _ _) = p_env_wf
@@ -110,11 +108,8 @@ lem_subst_wf_wfvar g g' x v_x t_x p_vx_er_tx p_env_wf t k (WFVar3 _env' a_ tt k_
   = case g' of
       Empty               -> impossible "x <> a1"
       (ConsT _a1 _k1 g'') -> case (x == a_) of 
-          True  -> impossible ("by lemma" ? lem_wfvar_tv_in_env (concatE (Cons x t_x g) g'') a_ tt k_a p_env'_a)
---                                        ? toProof ( S.null ( S.intersection
-  --                                   (vbinds (concatE (Cons x t_x g) g'')) (tvbinds (concatE (Cons x t_x g) g''))))
-    --                                      ? lem_ftvar_v_in_env (FCons x (erase t_x) (erase_env g)) x 
-      --                                          (erase t_x) (FTVar1 (erase_env g) x (erase t_x)) )
+          True  -> impossible ("by lemma" ? lem_wfvar_tv_in_env (concatE (Cons x t_x g) g'') a_ tt k_a p_env'_a
+                                          ? lem_binds_invariants (concatE (Cons x t_x g) g'') )
           False -> WFVar3 (concatE g (esubFV x v_x g'')) a tt k_a p_gg''_a a1 k_a1
         where
             (WFEBindT _ p_env'_wf _ _) = p_env_wf

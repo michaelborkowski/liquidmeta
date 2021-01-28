@@ -30,12 +30,8 @@ import PrimitivesSemantics
 import LemmasWellFormedness
 import LemmasTyping
 import LemmasSubtyping
-import LemmasChangeVarTyp
-import LemmasWeakenTyp
 import SubstitutionLemmaWF
 import SubstitutionWFAgain
---import DenotationsSelfify
---import DenotationsSoundness
 
 {-@ reflect foo61 @-}
 foo61 x = Just x

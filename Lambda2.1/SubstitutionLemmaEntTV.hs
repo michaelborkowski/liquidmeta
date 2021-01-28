@@ -30,13 +30,14 @@ import LemmasWeakenWF
 import LemmasWellFormedness
 import LemmasTyping
 import LemmasSubtyping
-import LemmasChangeVarTyp
-import LemmasWeakenTyp
+--import LemmasChangeVarTyp
+--import LemmasWeakenTyp
 import SubstitutionLemmaWF
 import SubstitutionLemmaWFTV
 import SubstitutionWFAgain
 import DenotationsSelfify
-import DenotationsSoundness
+import SubstitutionLemmaWFEnv
+--import DenotationsSoundness
 --import LemmasExactness
 
 {-@ reflect foo62 @-}
@@ -106,7 +107,7 @@ lem_add_tvar_csubst g (Cons  z t_z g') a t_a_ k_a p_g_ta p_zenv_wf  zth'  den_ze
                env          = concatE (ConsT a k_a g) g'
                {- @ eq_func1 :: p:Pred -> { pf:Proof | csubst th p == csubst th' (subFTV a t_a p) } @-}
                {-@ eq_func2 :: t:Type -> { pf:Proof | ctsubst th t == ctsubst th' (tsubFTV a t_a t) } @-}
-               eq_func1 :: Pred -> Proof
+               eq_func1 :: Expr -> Proof
                eq_func2 :: Type -> Proof 
                (InsertTVInCS _ _ _ _ _ _ th den_env_th eq_func1 eq_func2)
                             = lem_add_tvar_csubst g g' a t_a k_a p_g_ta p_env_wf th' den_env'_th'
@@ -150,7 +151,7 @@ lem_add_tvar_csubst g (ConsT a1 k1 g') a t_a k_a p_g_ta p_a1env_wf a1th' den_a1e
                env          = concatE (ConsT a k_a g) g'
                {- @ eq_func1 :: p:Pred -> { pf:Proof | csubst th p == csubst th' (subFTV a t_a p) } @-}
                {- @ eq_func2 :: t:Type -> { pf:Proof | ctsubst th t == ctsubst th' (tsubFTV a t_a t) } @-}
-               eq_func1 :: Pred -> Proof
+               eq_func1 :: Expr -> Proof
                eq_func2 :: Type -> Proof 
                (InsertTVInCS _ _ _ _ _ _ th den_env_th eq_func1 eq_func2)
                             = lem_add_tvar_csubst g g' a t_a k_a p_g_ta p_env_wf th' den_env'_th'
@@ -192,7 +193,7 @@ lem_add_tvar_csubst g (ConsT a1 k1 g') a t_a k_a p_g_ta p_a1env_wf a1th' den_a1e
             -> ProofOf(Entails (concatE (ConsT a k_a g) g') p) 
             -> ProofOf(Entails (concatE g (esubFTV a t_a g')) (subFTV a t_a p)) @-}
 lem_subst_tv_ent :: Env -> Env -> Vname -> Type -> Kind -> WFType 
-                        -> WFEnv -> Pred -> Entails -> Entails
+                        -> WFEnv -> Expr -> Entails -> Entails
 lem_subst_tv_ent g g' a t_a k_a p_g_ta p_env_wf p (EntPred env _p evals_func)
   = EntPred (concatE g (esubFTV a t_a g')) (subFTV a t_a p) evals_func'
       where

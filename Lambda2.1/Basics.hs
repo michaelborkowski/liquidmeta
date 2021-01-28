@@ -899,6 +899,13 @@ tvbinds Empty         = S.empty
 tvbinds (Cons x t g)  = tvbinds g
 tvbinds (ConsT a k g) = S.union (S.singleton a) (tvbinds g)
 
+{-@ lem_binds_invariants :: g:Env -> { pf:_ | Set_cup (vbinds g) (tvbinds g) == binds g &&
+                                              Set_emp (Set_cap (vbinds g) (tvbinds g)) } @-}
+lem_binds_invariants :: Env -> Proof
+lem_binds_invariants Empty           = ()
+lem_binds_invariants (Cons x t_x g)  = () ? lem_binds_invariants g
+lem_binds_invariants (ConsT a k_a g) = () ? lem_binds_invariants g
+
   --- BARE TYPES: i.e. System F types. These still contain type polymorphism and type variables, 
   --    but all the refinements, dependent arrow binders, and existentials have been erased.
 

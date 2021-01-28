@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -22,8 +21,8 @@ import BasicPropsCSubst
 import BasicPropsDenotes
 import PrimitivesSemantics
 import PrimitivesDenotationsAnd
---import PrimitivesDenotationsConj
 import PrimitivesDenotationsOr
+import PrimitivesDenotationsNot
 import PrimitivesDenotationsEqv
 import PrimitivesDenotationsLeq
 import PrimitivesDenotationsEq
@@ -55,10 +54,9 @@ lem_den_tyic g th den_g_th n = DRefn TInt Z (App (App (Prim Eq) (BV 0)) (Ic n))
 {-@ lem_den_ty :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
         -> c:Prim -> ProofOf(Denotes (ctsubst th (ty c)) (Prim c)) @-}
 lem_den_ty :: Env -> CSub -> DenotesEnv -> Prim -> Denotes
-lem_den_ty g th den_g_th Conj     = undefined -- lem_den_conj   ? lem_ctsubst_nofree th (ty Conj)
 lem_den_ty g th den_g_th And      = lem_den_and    ? lem_ctsubst_nofree th (ty And)
 lem_den_ty g th den_g_th Or       = lem_den_or     ? lem_ctsubst_nofree th (ty Or)
-lem_den_ty g th den_g_th Not      = lem_den_not    ? lem_ctsubst_nofree th (ty Not)
+lem_den_ty g th den_g_th Not      = lem_den_not () ? lem_ctsubst_nofree th (ty Not)
 lem_den_ty g th den_g_th Eqv      = lem_den_eqv    ? lem_ctsubst_nofree th (ty Eqv)
 lem_den_ty g th den_g_th Leq      = lem_den_leq    ? lem_ctsubst_nofree th (ty Leq)
 lem_den_ty g th den_g_th (Leqn n) = lem_den_leqn n ? lem_ctsubst_nofree th (ty (Leqn n))

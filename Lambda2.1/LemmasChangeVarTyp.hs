@@ -80,33 +80,32 @@ lem_change_var_typ_tvar1 g x t_x g' p_env_wf e t (TVar1 _ z t' k' p_env'_t') y  
                            typSize p_e_t == typSize p'_e_t } / [typSize p_e_t, 0] @-}
 lem_change_var_typ_tvar2 :: Env -> Vname -> Type -> Env -> WFEnv -> Expr -> Type 
                 -> HasType ->  Vname -> HasType
-lem_change_var_typ_tvar2 g x t_x g' p_env_wf e t (TVar2 _ z _t p_z_t w t_w) y
+lem_change_var_typ_tvar2 g x t_x g' p_env_wf e t (TVar2 _ z _t p_z_t w_ t_w) y
     = case g' of             -- g''=Emp so x=w and p_z_t :: HasBType(g (FV z) t)
         (Empty)           -> case (x == z) of
-                                (True)  -> impossible "it is"
-                                (False) -> TVar2 g z t p_z_t  
+                               (True)  -> impossible "it is"
+                               (False) -> TVar2 g z t p_z_t  
                                              (y ? lem_free_bound_in_env g t Star p_g_t y ) t_x
                                              ? toProof ( tsubFV x (FV y) t === t )
-                                  where
-                                   -- p_z_er_t = lem_typing_hasbtype g (FV z) t p_z_t p_g_wf
+                                 where
                                    (WFEBind g_ p_g_wf _ _ _ _ ) = p_env_wf
                                    p_g_t = lem_typing_wf g (FV z) t p_z_t p_g_wf
         (Cons _w _tw g'') -> case (x == z) of
-                    (True)  -> TVar2 (concatE (Cons y t_x g) (esubFV x (FV y) g'')) 
+                (True)  -> TVar2 (concatE (Cons y t_x g) (esubFV x (FV y) g'')) 
                                  (y `withProof` lem_in_env_concat (Cons y t_x g) g'' y)
                                  (tsubFV x (FV y) t) 
                                  (lem_change_var_typ g x t_x g'' p_env'_wf (FV z) t p_z_t y) 
-                                 w (tsubFV x (FV y) t_w)
-                      where
-                        (WFEBind env' p_env'_wf _ _ _ _) = p_env_wf
-                    (False) -> TVar2 (concatE (Cons y t_x g) (esubFV x (FV y) g''))
+                                 w (tsubFV x (FV y) t_w)     
+                (False) -> TVar2 (concatE (Cons y t_x g) (esubFV x (FV y) g''))
                                  (z `withProof` lem_in_env_concat (Cons y t_x g) g'' z
                                     `withProof` lem_in_env_concat (Cons x t_x g) g'' z)
                                  (tsubFV x (FV y) t)
                                  (lem_change_var_typ g x t_x g'' p_env'_wf (FV z) t p_z_t y) 
-                                 w (tsubFV x (FV y) t_w)
-                      where
-                        (WFEBind env' p_env'_wf _ _ _ _) = p_env_wf
+                                 w (tsubFV x (FV y) t_w)  
+            where
+              w = w_ ? lem_in_env_concat g g'' w_
+                     ? lem_in_env_concat g (esubFV x (FV y) g'') w_
+              (WFEBind env' p_env'_wf _ _ _ _) = p_env_wf
 
 {-@ lem_change_var_typ_tvar3 :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
         -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) }
@@ -118,25 +117,25 @@ lem_change_var_typ_tvar2 g x t_x g' p_env_wf e t (TVar2 _ z _t p_z_t w t_w) y
                            typSize p_e_t == typSize p'_e_t } / [typSize p_e_t, 0] @-}
 lem_change_var_typ_tvar3 :: Env -> Vname -> Type -> Env -> WFEnv -> Expr -> Type 
                 -> HasType ->  Vname -> HasType
-lem_change_var_typ_tvar3 g x t_x g' p_env_wf e t (TVar3 _ z _t p_z_t a' k_a') y 
+lem_change_var_typ_tvar3 g x t_x g' p_env_wf e t (TVar3 _ z _t p_z_t a'_ k_a') y 
     = case g' of             -- g''=Emp so x=w and p_z_t :: HasBType(g (FV z) t)
         (Empty)           -> impossible "a' <> x"
         (ConsT _a' _ g'') -> case (x == z) of
-                    (True)  -> TVar3 (concatE (Cons y t_x g) (esubFV x (FV y) g'')) 
+                (True)  -> TVar3 (concatE (Cons y t_x g) (esubFV x (FV y) g'')) 
                                  (y `withProof` lem_in_env_concat (Cons y t_x g) g'' y)
                                  (tsubFV x (FV y) t) 
                                  (lem_change_var_typ g x t_x g'' p_env'_wf (FV z) t p_z_t y) 
-                                 a' k_a' 
-                      where
-                        (WFEBindT env' p_env'_wf _ _) = p_env_wf
-                    (False) -> TVar3 (concatE (Cons y t_x g) (esubFV x (FV y) g''))
+                                 a' k_a'
+                (False) -> TVar3 (concatE (Cons y t_x g) (esubFV x (FV y) g''))
                                  (z `withProof` lem_in_env_concat (Cons y t_x g) g'' z
                                     `withProof` lem_in_env_concat (Cons x t_x g) g'' z)
                                  (tsubFV x (FV y) t)
                                  (lem_change_var_typ g x t_x g'' p_env'_wf (FV z) t p_z_t y) 
-                                 a' k_a' 
-                      where
-                        (WFEBindT env' p_env'_wf _ _) = p_env_wf
+                                 a' k_a'
+            where
+              a' = a'_ ? lem_in_env_concat g g'' a'_
+                       ? lem_in_env_concat g (esubFV x (FV y) g'') a'_
+              (WFEBindT env' p_env'_wf _ _) = p_env_wf
 
 {-@ lem_change_var_typ_tabs :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
         -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) }
@@ -392,19 +391,22 @@ lem_change_tvar_typ_tvar1 g a k_a g' p_env_wf e t (TVar1 _ z t' k' p_env'_t') a'
                               typSize p_e_t == typSize p'_e_t } / [typSize p_e_t, 0] @-}
 lem_change_tvar_typ_tvar2 :: Env -> Vname -> Kind -> Env -> WFEnv -> Expr -> Type 
                 -> HasType ->  Vname -> HasType
-lem_change_tvar_typ_tvar2 g a k_a g' p_env_wf e t p_env_z_t@(TVar2 _ z _t p_z_t w t_w) a'
+lem_change_tvar_typ_tvar2 g a k_a g' p_env_wf e t p_env_z_t@(TVar2 _ z _t p_z_t w_ t_w) a'
     = case g' of             
         (Cons _w _tw g'') -> case (a == z) of
-            True  -> impossible ("by lemma" ? lem_tvar_v_in_env (concatE (ConsT a k_a g) g')
-                                                                z t p_env_z_t)
+            True  -> impossible ("by lemma" ? lem_tvar_v_in_env (concatE (ConsT a k_a g) g') 
+                                                                z t p_env_z_t
+                                            ? lem_binds_invariants (concatE (Cons x t_x g) g''))               
             False -> TVar2 (concatE (ConsT a' k_a g) (echgFTV a a' g''))
                                  (z `withProof` lem_in_env_concat (ConsT a' k_a g) g'' z
                                     `withProof` lem_in_env_concat (ConsT a  k_a g) g'' z)
                                  (tchgFTV a a' t)
                                  (lem_change_tvar_typ g a k_a g'' p_env'_wf (FV z) t p_z_t a') 
                                  w (tchgFTV a a' t_w)
-                      where
-                        (WFEBind env' p_env'_wf _ _ _ _) = p_env_wf
+              where
+                w = w_ ? lem_in_env_concat g g'' w_
+                       ? lem_in_env_concat g (echgFTV a a' g'') w_
+                (WFEBind env' p_env'_wf _ _ _ _) = p_env_wf
 
 {-@ lem_change_tvar_typ_tvar3 :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
         -> { g':Env | not (in_env a g') && Set_emp (Set_cap (binds g) (binds g')) }
@@ -416,7 +418,7 @@ lem_change_tvar_typ_tvar2 g a k_a g' p_env_wf e t p_env_z_t@(TVar2 _ z _t p_z_t 
                               typSize p_e_t == typSize p'_e_t } / [typSize p_e_t, 0] @-}
 lem_change_tvar_typ_tvar3 :: Env -> Vname -> Kind -> Env -> WFEnv -> Expr -> Type 
                 -> HasType ->  Vname -> HasType
-lem_change_tvar_typ_tvar3 g a k_a g' p_env_wf e t p_env_z_t@(TVar3 _ z _t p_z_t a1 k_a1) a'
+lem_change_tvar_typ_tvar3 g a k_a g' p_env_wf e t p_env_z_t@(TVar3 _ z _t p_z_t a1_ k_a1) a'
     = case g' of             
         (Empty)           -> case (a == z) of
             (True)  -> impossible ("by lemma" ? lem_tvar_v_in_env (concatE (ConsT a k_a g) g')
@@ -427,15 +429,18 @@ lem_change_tvar_typ_tvar3 g a k_a g' p_env_wf e t p_env_z_t@(TVar3 _ z _t p_z_t 
                 (WFEBindT g_ p_g_wf _ _) = p_env_wf
                 p_g_t = lem_typing_wf g (FV z) t p_z_t p_g_wf
         (ConsT _a' _ g'') -> case (a == z) of
-            (True)  -> impossible ("by lemma" ? lem_tvar_v_in_env (concatE (ConsT a k_a g) g')
-                                                                  z t p_env_z_t)
+            (True)  -> impossible ("by lemma" ? lem_tvar_v_in_env (concatE (ConsT a k_a g) g') 
+                                                                  z t p_env_z_t
+                                              ? lem_binds_invariants (concatE (Cons x t_x g) g''))
             (False) -> TVar3 (concatE (ConsT a' k_a g) (echgFTV a a' g''))
                              (z `withProof` lem_in_env_concat (ConsT a' k_a g) g'' z
                                 `withProof` lem_in_env_concat (ConsT a  k_a g) g'' z)
                              (tchgFTV a a' t)
                              (lem_change_tvar_typ g a k_a g'' p_env'_wf (FV z) t p_z_t a') a1 k_a1 
-                      where
-                        (WFEBindT env' p_env'_wf _ _) = p_env_wf
+              where
+                a1 = a1_ ? lem_in_env_concat g g'' a1_
+                         ? lem_in_env_concat g (echgFTV a a' g'') a1_
+                (WFEBindT env' p_env'_wf _ _) = p_env_wf
 
 {-@ lem_change_tvar_typ_tabs :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
         -> { g':Env | not (in_env a g') && Set_emp (Set_cap (binds g) (binds g')) }

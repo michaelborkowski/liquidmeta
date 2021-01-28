@@ -49,17 +49,21 @@ foo48 :: a -> Maybe a
         -> { p'_e_t:HasType | (propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') 
                                                         e t) } / [typSize p_e_t, 0] @-}
 lem_weaken_tv_typ_tvar1 :: Env -> Env -> WFEnv -> Expr -> Type -> HasType -> Vname -> Kind -> HasType  
-lem_weaken_tv_typ_tvar1 g g' p_env_wf e t p_y_t@(TVar1 gg y t_y k_y p_gg_ty) a_ k_a
+lem_weaken_tv_typ_tvar1 g g' p_env_wf e t p_y_t@(TVar1 gg y_ t_y k_y p_gg_ty) a_ k_a
     = case g' of     -- env == concatE g (Cons y t_y g'')
-        (Empty)           -> TVar3 (Cons y t_y gg) (y ? lem_free_bound_in_env gg t_y k_y p_gg_ty y) 
-                                   t p_y_t a k_a
+        (Empty)           -> TVar3 (Cons y t_y gg) y t p_y_t a k_a 
           where
             a = a_ ? lem_in_env_concat g g' a_
+                   ? lem_fv_bound_in_env g (FV y) t p_y_t p_env_wf a_
                    ? lem_free_bound_in_env g t Star p_g_t a_
+            y = y_ ? lem_in_env_concat gg Empty y_
+                   ? lem_free_bound_in_env gg t_y k_y p_gg_ty y_
             (WFEBind _gg p_gg_wf _y _ty k_y p_gg_ty) = p_env_wf
             p_g_t  = lem_typing_wf g (FV y) t p_y_t p_env_wf
-        (Cons _y _ty g'') -> TVar1 (concatE (ConsT a_ k_a g) g'') y t_y k_y p_gag_ty
+        (Cons _y _ty g'') -> TVar1 (concatE (ConsT a_ k_a g) g'') y t_y k_y p_gag_ty  
           where
+            a = a_ ? lem_in_env_concat g g' a_
+            y = y_ ? lem_in_env_concat g g'' y_
             (WFEBind _gg p_gg_wf _y _ty _ky _) = p_env_wf
             p_gag_ty = lem_weaken_tv_wf' g g'' p_gg_wf t_y k_y p_gg_ty a_ k_a
 -- (g; g' == _g, z:t_z) |- y : t_y
@@ -71,21 +75,22 @@ lem_weaken_tv_typ_tvar1 g g' p_env_wf e t p_y_t@(TVar1 gg y t_y k_y p_gg_ty) a_ 
         -> { p'_e_t:HasType | (propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') 
                                                         e t) } / [typSize p_e_t, 0] @-}
 lem_weaken_tv_typ_tvar2 :: Env -> Env -> WFEnv -> Expr -> Type -> HasType -> Vname -> Kind -> HasType
-lem_weaken_tv_typ_tvar2 g g' p_env_wf e t p_y_ty@(TVar2 gg y t_y p_gg_y_ty z t_z) a_ k_a
+lem_weaken_tv_typ_tvar2 g g' p_env_wf e t p_y_ty@(TVar2 gg y t_y p_gg_y_ty z_ t_z) a_ k_a
     = case g' of
         (Empty)           -> TVar3 (concatE g g') y t_y p_y_ty a k_a
           where
             a = a_ ? lem_in_env_concat g g' a_ 
-                   ? lem_in_env_concat gg (Cons z t_z Empty) a_
+                   ? lem_in_env_concat gg (Cons z_ t_z Empty) a_
                    ? lem_free_bound_in_env gg t_y Star p_gg_ty a_
             (WFEBind _gg p_gg_wf _ _ _ _) = p_env_wf
             p_gg_ty = lem_typing_wf gg (FV y) t_y p_gg_y_ty p_gg_wf
         (Cons _z _tz g'') -> TVar2 (concatE (ConsT a k_a g) g'') 
                                    (y `withProof` lem_in_env_concat g g'' y
-                                      `withProof` lem_in_env_concat (ConsT a k_a g) g'' y) 
-                                   t_y p_gag_y_ty z t_z
+                                      `withProof` lem_in_env_concat (ConsT a k_a g) g'' y)  
+                                   t_y p_gag_y_ty z t_z      
           where
             a = a_ ? lem_in_env_concat gg (Cons z t_z Empty) a_
+            z = z_ ? lem_in_env_concat g g'' z_
             (WFEBind _gg p_gg_wf _ _ _ _) = p_env_wf 
             p_gag_y_ty = lem_weaken_tv_typ g g'' p_gg_wf e t p_gg_y_ty a k_a
 
@@ -96,12 +101,12 @@ lem_weaken_tv_typ_tvar2 g g' p_env_wf e t p_y_ty@(TVar2 gg y t_y p_gg_y_ty z t_z
         -> { p'_e_t:HasType | (propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') 
                                                         e t) } / [typSize p_e_t, 0] @-}
 lem_weaken_tv_typ_tvar3 :: Env -> Env -> WFEnv -> Expr -> Type -> HasType -> Vname -> Kind -> HasType
-lem_weaken_tv_typ_tvar3 g g' p_env_wf e t p_z_tz@(TVar3 gg z t_z p_z_t a' k_a') a_ k_a
+lem_weaken_tv_typ_tvar3 g g' p_env_wf e t p_z_tz@(TVar3 gg z t_z p_z_t a'_ k_a') a_ k_a
     = case g' of
         (Empty)           -> TVar3 (concatE g g') z t_z p_z_tz a k_a
           where
             a = a_ ? lem_in_env_concat g g' a_
-                   ? lem_in_env_concat gg (ConsT a' k_a' Empty) a_
+                   ? lem_in_env_concat gg (ConsT a'_ k_a' Empty) a_
                    ? lem_free_bound_in_env gg t_z Star p_gg_tz a_
             (WFEBindT _ p_gg_wf _ _) = p_env_wf
             p_gg_tz = lem_typing_wf gg (FV z) t_z p_z_t p_gg_wf
@@ -109,9 +114,10 @@ lem_weaken_tv_typ_tvar3 g g' p_env_wf e t p_z_tz@(TVar3 gg z t_z p_z_t a' k_a') 
                                  (z `withProof` lem_in_env_concat g g'' z
                                     `withProof` lem_in_env_concat (ConsT a k_a g) g'' z)
                                  t (lem_weaken_tv_typ g g'' p_env'_wf (FV z) t p_z_t a k_a)
-                                 a' k_a'
+                                 a' k_a'        
           where
-            a = a_ ? lem_in_env_concat g (ConsT a' k_a' g'') a_
+            a  = a_  ? lem_in_env_concat g (ConsT a' k_a' g'') a_
+            a' = a'_ ? lem_in_env_concat g g'' a'_
             (WFEBindT env' p_env'_wf _ _) = p_env_wf
 
 {-@ lem_weaken_tv_typ_tabs :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }

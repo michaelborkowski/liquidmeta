@@ -66,15 +66,6 @@ lem_equals_evals b     z p e v ev_e_v p_v_b = impossible ("by lemma" ? lem_base_
     where
       p_emp_b = lem_ftyping_wfft FEmpty v (FTBasic b) p_v_b WFFEmpty
 
-{-@ lem_strengthen_evals_tt :: p1:Pred -> p2:Pred -> v:Value
-        -> ProofOf(HasFType FEmpty (subBV 0 v p1) (FTBasic TBool)) 
-        -> ProofOf(EvalsTo (subBV 0 v p1) (Bc True)) -> ProofOf(EvalsTo (subBV 0 v p2) (Bc True))
-        -> ProofOf(EvalsTo (subBV 0 v (strengthen p1 p2)) (Bc True)) @-}
-lem_strengthen_evals_tt :: Expr -> Expr -> Expr -> HasFType -> EvalsTo -> EvalsTo -> EvalsTo
-lem_strengthen_evals_tt p1 p2 v pf_p1v_bl ev_p1v_tt ev_p2v_tt 
-  = lemma_strengthen_semantics (subBV 0 v p1) True ev_p1v_tt (subBV 0 v p2) True ev_p2v_tt pf_p1v_bl
-                               ? lem_subBV_strengthen 0 v p1 p2
-
 --- Lemma 7 in the paper version
 {-@ lem_denotations_selfify :: t:Type -> k:Kind -> ProofOf(WFType Empty t k)
         -> { e:Term | Set_emp (freeBV e) } -> ProofOf(HasFType FEmpty e (erase t))
@@ -85,6 +76,7 @@ lem_denotations_selfify :: Type -> Kind -> WFType -> Expr -> HasFType -> Expr
 lem_denotations_selfify t@(TRefn b z p_)    Base p_emp_t e p_e_t v ev_e_v den_t_v = case den_t_v of
   (DRefn _b _z _p _v p_v_b ev_pv_tt_) -> DRefn b z (strengthen (eqlPred t e) p) 
                                               v p_v_b ev_selfpv_tt
+                           ? lem_subBV_strengthen 0 v (eqlPred t e) p{--}
       where           -- (subBV x v p) ~>* tt          -- (subBV x v (selfify p b z e)) ~>* tt
         y_           = fresh_var Empty
         y            = y_ ? lem_free_bound_in_env Empty t Base p_emp_t y_
@@ -103,11 +95,12 @@ lem_denotations_selfify t@(TRefn b z p_)    Base p_emp_t e p_e_t v ev_e_v den_t_
                                       (unbind 0 y (eqlPred t e)) (FTBasic TBool)
                                       p_eqlte_b ? lem_subFV_unbind 0 y v (eqlPred t e)
                                       ? lem_empty_concatF FEmpty
-        {-@ ev_selfpv_tt :: ProofOf(EvalsTo (subBV 0 v (selfify p b z e)) (Bc True)) @-}
-        ev_selfpv_tt = lem_strengthen_evals_tt (eqlPred t e) p v p_eqltev_b ev_rhs_tt ev_pv_tt
-                       {- lemma_strengthen_semantics
-                          (subBV 0 v (eqlPred t e)) --(selfify p b z e) 
-                          True ev_rhs_tt (subBV 0 v p) True ev_pv_tt p_eqltev_b { - -}
+        {-@ ev_selfpv_tt :: ProofOf(EvalsTo (strengthen (subBV 0 v (eqlPred t e)) (subBV 0 v p)) (Bc True)) @-}
+        ev_selfpv_tt = --undefined {- this one diverges!
+                           lemma_strengthen_semantics
+                           (subBV 0 v (eqlPred t e)) --(selfify p b z e) 
+                           True ev_rhs_tt (subBV 0 v p) True ev_pv_tt p_eqltev_b {- -}
+                           ? toProof ( blAnd True True == True )
         p            = p_ ? lem_refn_is_pred t b z p_
 lem_denotations_selfify (TFunc z t_z t')   k    p_emp_t e p_e_t v ev_e_v den_t_v = den_t_v
 lem_denotations_selfify (TExists z t_z t') Base p_emp_t e p_e_t v ev_e_v den_t_v = case den_t_v of
