@@ -242,6 +242,12 @@ lemma_semantics_refn_or b b' b'' = reduce_eqv
 reduce_or_tt :: Bool -> Bool -> EvalsTo
 reduce_or_tt b b' = lemma_semantics_refn_or b b' (b || b')
 
+{-@ reduce_or_tt' :: b:Bool -> b':Bool -> { pf:_ | propOf pf == 
+      EvalsTo (subBV 0 (Bc (blOr b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) 
+                (App (App (Prim Eqv) (BV 0)) (App (App (Prim Or) (BV 1)) (BV 2)))))) (Bc True) } @-}
+reduce_or_tt' :: Bool -> Bool -> EvalsTo
+reduce_or_tt' b b' = lemma_semantics_refn_or b b' (b || b')
+
 {-@ lemma_semantics_refn_not :: b:Bool -> b':Bool
                 -> ProofOf(EvalsTo (App (App (Prim Eqv) (Bc b')) (App (Prim Not) (Bc b))) 
                                    (Bc (blIff b' (blNot b)))) @-}

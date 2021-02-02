@@ -32,6 +32,7 @@ import LemmasTyping
 import LemmasSubtyping
 import SubstitutionLemmaWF
 import SubstitutionWFAgain
+import DenotationsSoundness
 
 {-@ reflect foo61 @-}
 foo61 x = Just x

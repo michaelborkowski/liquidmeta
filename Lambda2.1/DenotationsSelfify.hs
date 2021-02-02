@@ -66,14 +66,97 @@ lem_equals_evals b     z p e v ev_e_v p_v_b = impossible ("by lemma" ? lem_base_
     where
       p_emp_b = lem_ftyping_wfft FEmpty v (FTBasic b) p_v_b WFFEmpty
 
-{-@ lem_strengthen_evals_tt :: p1:Pred -> p2:Pred -> v:Value
+{-@ lem_strengthen_evals_tt :: p1:Pred -> p2:Pred
+        -> ProofOf(HasFType FEmpty p1 (FTBasic TBool)) 
+        -> ProofOf(EvalsTo p1 (Bc True)) -> ProofOf(EvalsTo p2 (Bc True))
+        -> ProofOf(EvalsTo (strengthen p1 p2) (Bc True)) @-}
+lem_strengthen_evals_tt :: Expr -> Expr -> HasFType -> EvalsTo -> EvalsTo -> EvalsTo
+lem_strengthen_evals_tt p1 p2 pf_p1v_bl ev_p1v_tt ev_p2v_tt 
+  = lemma_strengthen_semantics p1 True ev_p1v_tt  p2 True ev_p2v_tt pf_p1v_bl
+
+{-@ lem_strengthen_evals_subBV :: p1:Pred -> p2:Pred -> v:Value
         -> ProofOf(HasFType FEmpty (subBV 0 v p1) (FTBasic TBool)) 
-        -> ProofOf(EvalsTo (subBV 0 v p1) (Bc True)) -> ProofOf(EvalsTo (subBV 0 v p2) (Bc True))
+        -> ProofOf(EvalsTo (subBV 0 v p1) (Bc True)) -> ProofOf(EvalsTo (subBV 0 v p2) (Bc True)) 
         -> ProofOf(EvalsTo (subBV 0 v (strengthen p1 p2)) (Bc True)) @-}
-lem_strengthen_evals_tt :: Expr -> Expr -> Expr -> HasFType -> EvalsTo -> EvalsTo -> EvalsTo
-lem_strengthen_evals_tt p1 p2 v pf_p1v_bl ev_p1v_tt ev_p2v_tt 
+lem_strengthen_evals_subBV :: Expr -> Expr -> Expr -> HasFType -> EvalsTo -> EvalsTo -> EvalsTo
+lem_strengthen_evals_subBV p1 p2 v pf_p1v_bl ev_p1v_tt ev_p2v_tt 
   = lemma_strengthen_semantics (subBV 0 v p1) True ev_p1v_tt (subBV 0 v p2) True ev_p2v_tt pf_p1v_bl
-                               ? lem_subBV_strengthen 0 v p1 p2
+                               ? lem_subBV_strengthen  0 v p1 p2 
+
+{-@ lem_denotations_selfify_trefn' :: b:Basic -> z:RVname -> p:Pred 
+        -> ProofOf(WFType Empty (TRefn b z p) Base) -> { e:Term | Set_emp (freeBV e) } 
+        -> ProofOf(HasFType FEmpty e (FTBasic b)) -> v:Value 
+        -> ProofOf(EvalsTo (App (App (AppT (Prim Eql) (TRefn b z p)) v) e) (Bc True))
+        -> ProofOf(Denotes (TRefn b z p) v) -> ProofOf(Denotes (self (TRefn b z p) e Base) v) @-}
+lem_denotations_selfify_trefn' :: Basic -> RVname -> Expr -> WFType -> Expr -> HasFType -> Expr
+                                        -> EvalsTo -> Denotes -> Denotes
+lem_denotations_selfify_trefn' b z p p_emp_t e p_e_t v ev_rhs_tt den_t_v 
+  = DRefn b z (strengthen  (App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e)  p) --(selfify p b z e) 
+          v p_v_b (ev_selfpv_tt
+          ? lem_subBV_strengthen 0 v (App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e) p
+          ? lem_subBV_notin 0 v e
+          ? lem_tsubBV_notin 0 v (TRefn b z p) )
+      where
+        (DRefn _b _z _p _v p_v_b ev_pv_tt) = den_t_v
+        y_           = fresh_var Empty
+        y            = y_ ? lem_free_bound_in_env Empty (TRefn b z p) Base p_emp_t y_
+                          ? lem_fv_bound_in_fenv FEmpty e (FTBasic b) p_e_t y_
+--        ev_rhs_tt    = lem_equals_evals b z p e v ev_e_v p_v_b 
+        p_eqlte_b    = lem_eqlPred_ftyping Empty b z p p_emp_t WFFEmpty y e p_e_t 
+        p_emp_er_t   = lem_erase_wftype Empty (TRefn b z p)  Base p_emp_t
+        p_y_wf       = WFFBind FEmpty WFFEmpty y (FTBasic b) Base p_emp_er_t
+        {-@ p_eqltev_b :: ProofOf(HasFType FEmpty 
+                                           (App (App (AppT (Prim Eql) (TRefn b z p)) v) e) 
+                                           (FTBasic TBool)) @-}
+        p_eqltev_b   = lem_subst_ftyp FEmpty FEmpty y v (FTBasic b) p_v_b p_y_wf
+                                      (App (App (AppT (Prim Eql) (TRefn b z p)) (FV y)) e) 
+                                      (FTBasic TBool) p_eqlte_b 
+                           ? lem_subFV_notin y v e
+                           ? lem_subFV_notin y v p
+                           ? lem_empty_concatF FEmpty
+        {-@ ev_selfpv_tt :: ProofOf(EvalsTo 
+                          (strengthen  (App (App (AppT (Prim Eql) (TRefn b z p)) v) e)  (subBV 0 v p)) 
+                          (Bc True)) @-}
+        ev_selfpv_tt = lem_strengthen_evals_tt (App (App (AppT (Prim Eql) (TRefn b z p)) v) e) 
+                                               (subBV 0 v p) p_eqltev_b ev_rhs_tt ev_pv_tt
+
+{-@ lem_denotations_selfify_trefn :: b:Basic -> z:RVname -> p:Pred 
+        -> ProofOf(WFType Empty (TRefn b z p) Base) -> { e:Term | Set_emp (freeBV e) } 
+        -> ProofOf(HasFType FEmpty e (FTBasic b)) -> v:Value -> ProofOf(EvalsTo e v) 
+        -> ProofOf(Denotes (TRefn b z p) v) -> ProofOf(Denotes (self (TRefn b z p) e Base) v) @-}
+lem_denotations_selfify_trefn :: Basic -> RVname -> Expr -> WFType -> Expr -> HasFType -> Expr
+                                -> EvalsTo -> Denotes -> Denotes
+lem_denotations_selfify_trefn b z p p_emp_t e p_e_t v ev_e_v den_t_v 
+  = DRefn b z (strengthen  (App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e)  p) --(selfify p b z e) 
+          v p_v_b (ev_selfpv_tt
+          ? lem_subBV_strengthen 0 v (App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e) p
+          ? lem_subBV_notin 0 v e
+          ? lem_tsubBV_notin 0 v (TRefn b z p) )
+      where
+        (DRefn _b _z _p _v p_v_b ev_pv_tt) = den_t_v
+        y_           = fresh_var Empty
+        y            = y_ ? lem_free_bound_in_env Empty (TRefn b z p) Base p_emp_t y_
+                          ? lem_fv_bound_in_fenv FEmpty e (FTBasic b) p_e_t y_
+        {-@ ev_rhs_tt :: ProofOf(EvalsTo (App (App (AppT (Prim Eql) (TRefn b z p)) v) e) 
+                                         (Bc True)) @-}
+        ev_rhs_tt    = lem_equals_evals b z p e v ev_e_v p_v_b 
+        p_eqlte_b    = lem_eqlPred_ftyping Empty b z p p_emp_t WFFEmpty y e p_e_t 
+        p_emp_er_t   = lem_erase_wftype Empty (TRefn b z p)  Base p_emp_t
+        p_y_wf       = WFFBind FEmpty WFFEmpty y (FTBasic b) Base p_emp_er_t
+        {-@ p_eqltev_b :: ProofOf(HasFType FEmpty 
+                                           (App (App (AppT (Prim Eql) (TRefn b z p)) v) e) 
+                                           (FTBasic TBool)) @-}
+        p_eqltev_b   = lem_subst_ftyp FEmpty FEmpty y v (FTBasic b) p_v_b p_y_wf
+                                      (App (App (AppT (Prim Eql) (TRefn b z p)) (FV y)) e) 
+                                      (FTBasic TBool) p_eqlte_b 
+                           ? lem_subFV_notin y v e
+                           ? lem_subFV_notin y v p
+                           ? lem_empty_concatF FEmpty
+        {-@ ev_selfpv_tt :: ProofOf(EvalsTo 
+                          (strengthen  (App (App (AppT (Prim Eql) (TRefn b z p)) v) e)  (subBV 0 v p)) 
+                          (Bc True)) @-}
+        ev_selfpv_tt = lem_strengthen_evals_tt (App (App (AppT (Prim Eql) (TRefn b z p)) v) e) 
+                                               (subBV 0 v p) p_eqltev_b ev_rhs_tt ev_pv_tt
 
 --- Lemma 7 in the paper version
 {-@ lem_denotations_selfify :: t:Type -> k:Kind -> ProofOf(WFType Empty t k)
@@ -82,33 +165,9 @@ lem_strengthen_evals_tt p1 p2 v pf_p1v_bl ev_p1v_tt ev_p2v_tt
         -> ProofOf(Denotes (self t e k) v) @-}
 lem_denotations_selfify :: Type -> Kind -> WFType -> Expr -> HasFType -> Expr
                                 -> EvalsTo -> Denotes -> Denotes
-lem_denotations_selfify t@(TRefn b z p_)    Base p_emp_t e p_e_t v ev_e_v den_t_v = case den_t_v of
-  (DRefn _b _z _p _v p_v_b ev_pv_tt_) -> DRefn b z (strengthen (eqlPred t e) p) 
-                                              v p_v_b ev_selfpv_tt
-      where           -- (subBV x v p) ~>* tt          -- (subBV x v (selfify p b z e)) ~>* tt
-        y_           = fresh_var Empty
-        y            = y_ ? lem_free_bound_in_env Empty t Base p_emp_t y_
-        {-@ ev_pv_tt  :: ProofOf(EvalsTo (subBV 0 v p)             (Bc True)) @-}
-        ev_pv_tt     = ev_pv_tt_
-        {-@ ev_rhs_tt :: ProofOf(EvalsTo (subBV 0 v (eqlPred t e)) (Bc True)) @-}
-        ev_rhs_tt    = lem_equals_evals b z (subFV 0 v p) e v ev_e_v p_v_b 
-                                                        ? lem_subBV_notin 0 v (Prim Eql)
-                                                        ? lem_subBV_notin 0 v e 
-        p_eqlte_b    = lem_eqlPred_ftyping Empty b z p 
-                           p_emp_t WFFEmpty y e p_e_t 
-        p_emp_er_t   = lem_erase_wftype Empty t Base p_emp_t
-        p_y_wf       = WFFBind FEmpty WFFEmpty y (FTBasic b) Base p_emp_er_t
-        {-@ p_eqltev_b :: ProofOf(HasFType FEmpty (subBV 0 v (eqlPred t e)) (FTBasic TBool)) @-}
-        p_eqltev_b   = lem_subst_ftyp FEmpty FEmpty y v (FTBasic b) p_v_b p_y_wf
-                                      (unbind 0 y (eqlPred t e)) (FTBasic TBool)
-                                      p_eqlte_b ? lem_subFV_unbind 0 y v (eqlPred t e)
-                                      ? lem_empty_concatF FEmpty
-        {-@ ev_selfpv_tt :: ProofOf(EvalsTo (subBV 0 v (selfify p b z e)) (Bc True)) @-}
-        ev_selfpv_tt = lem_strengthen_evals_tt (eqlPred t e) p v p_eqltev_b ev_rhs_tt ev_pv_tt
-                       {- lemma_strengthen_semantics
-                          (subBV 0 v (eqlPred t e)) --(selfify p b z e) 
-                          True ev_rhs_tt (subBV 0 v p) True ev_pv_tt p_eqltev_b { - -}
-        p            = p_ ? lem_refn_is_pred t b z p_
+lem_denotations_selfify t@(TRefn b z p)    Base p_emp_t e p_e_t v ev_e_v den_t_v 
+  = lem_denotations_selfify_trefn b z (p ? lem_refn_is_pred t b z p) p_emp_t 
+                                  e p_e_t v ev_e_v den_t_v
 lem_denotations_selfify (TFunc z t_z t')   k    p_emp_t e p_e_t v ev_e_v den_t_v = den_t_v
 lem_denotations_selfify (TExists z t_z t') Base p_emp_t e p_e_t v ev_e_v den_t_v = case den_t_v of
   (DExis _z _tz _t' _v p_v_ert' v_z den_tz_vz den_t'vz_v) 
@@ -129,21 +188,15 @@ lem_denotations_selfify (TExists z t_z t') Base p_emp_t e p_e_t v ev_e_v den_t_v
 lem_denotations_selfify (TPoly a k_a t')   k    p_emp_t e p_e_t v ev_e_v den_t_v = den_t_v
 lem_denotations_selfify t                  Star p_emp_t e p_e_t v ev_e_v den_t_v = den_t_v
 
-
-{--- used in Lemma 8
-{-@ lem_denote_ctsubst_refn_var :: g:Env -> a:Vname -> x:RVname -> p:Pred -> th:CSub
-        -> ProofOf(DenotesEnv g th) -> v:Value -> ProofOf(Denotes (ctsubst th (TRefn (FTV a) x p)) v)
-        -> (Denotes,EvalsTo)<{\pf ev -> propOf pf == Denotes (csubst_tv th a) v && 
-                                        propOf ev == EvalsTo (subBV 0 v (csubst th p)) (Bc True) }> @-} 
-lem_denote_ctsubst_refn_var :: Env -> Vname -> RVname -> Pred -> CSub -> DenotesEnv -> Expr
-                                   -> Denotes -> (Denotes, EvalsTo)
-lem_denote_ctsubst_refn_var g a x p th den_g_th v den_thap_v = undefined
-
-{-@ lem_denote_ctsubst_refn_var' :: g:Env -> a:Vname -> x:RVname -> p:Pred -> th:CSub
-        -> ProofOf(DenotesEnv g th) -> v:Value -> ProofOf(Denotes (csubst_tv th a) v)
-        -> ProofOf(EvalsTo (subBV 0 v (csubst th p)) (Bc True))
-        -> ProofOf(Denotes (ctsubst th (TRefn (FTV a) x p)) v) @-}
-lem_denote_ctsubst_refn_var' :: Env -> Vname -> RVname -> Pred -> CSub -> DenotesEnv -> Expr
-                                    -> Denotes -> EvalsTo -> Denotes
-lem_denote_ctsubst_refn_var' g a x p th den_g_th v den_tha_v ev_thpv_tt = undefined
--}
+{-@ lem_denotations_selfify' :: t:UserType -> k:Kind -> ProofOf(WFType Empty t k)
+        -> { e:Term | Set_emp (freeBV e) } -> ProofOf(HasFType FEmpty e (erase t))
+        -> v:Value -> ProofOf(EvalsTo (App (App (AppT (Prim Eql) t) v) e) (Bc True))
+        -> ProofOf(Denotes t v) -> ProofOf(Denotes (self t e k) v) @-}
+lem_denotations_selfify' :: Type -> Kind -> WFType -> Expr -> HasFType -> Expr
+                                -> EvalsTo -> Denotes -> Denotes
+lem_denotations_selfify' t@(TRefn b z p)    Base p_emp_t e p_e_t v ev_rhs_tt den_t_v 
+  = lem_denotations_selfify_trefn' b z (p ? lem_refn_is_pred t b z p) p_emp_t 
+                                   e p_e_t v ev_rhs_tt den_t_v
+lem_denotations_selfify' (TFunc z t_z t')   k    p_emp_t e p_e_t v ev_rhs_tt den_t_v = den_t_v
+lem_denotations_selfify' (TPoly a k_a t')   k    p_emp_t e p_e_t v ev_rhs_tt den_t_v = den_t_v
+lem_denotations_selfify' t                  Star p_emp_t e p_e_t v ev_rhs_tt den_t_v = den_t_v

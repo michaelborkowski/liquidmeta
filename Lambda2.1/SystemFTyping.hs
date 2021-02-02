@@ -161,11 +161,13 @@ simpleFTVar g x t = case g of
 -------------------------------------------------------------------------
 
 {-@ reflect tybc @-} -- Refined Constant Typing
+{-@ tybc :: b:Bool -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 tybc :: Bool -> Type
 tybc True  = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) (Bc True))
 tybc False = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) (Bc False))
 
 {-@ reflect tyic @-}
+{-@ tyic :: n:Int -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 tyic :: Int -> Type
 tyic n = TRefn TInt Z (App (App (Prim Eq) (BV 0)) (Ic n))
 

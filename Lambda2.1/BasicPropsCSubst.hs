@@ -261,6 +261,13 @@ lem_ctsubst_refn_tv (CConsT a' t' th) a x p
                    ? lem_ctsubst_nofree th t'
   | otherwise = () ? lem_ctsubst_refn_tv th a x (subFTV a' t' p)
 
+{-@ lem_ctsubst_refn_tv' :: th:CSub -> { a:Vname | tv_in_csubst a th } -> x:RVname -> p:Pred
+        -> { b:Basic | b == TBool || b == TInt } -> z:RVname
+        -> { q:Pred | (TRefn b z q) == csubst_tv th a }
+        -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == TRefn b z (strengthen (csubst th p) q) } @-}
+lem_ctsubst_refn_tv' :: CSub -> Vname -> RVname -> Expr -> Basic -> RVname -> Expr -> Proof
+lem_ctsubst_refn_tv' th a x p b z q = () ? lem_ctsubst_refn_tv th a x p
+
 {-@ lem_ctsubst_refn_tv_notin :: th:CSub -> { a:Vname | not (tv_in_csubst a th) } 
         -> x:RVname -> p:Expr 
         -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == TRefn (FTV a) x (csubst th p) } @-}
@@ -271,6 +278,21 @@ lem_ctsubst_refn_tv_notin (CCons  y v_y th) a x p
 lem_ctsubst_refn_tv_notin (CConsT a' t' th) a x p 
   | a == a'   = impossible ""
   | otherwise = () ? lem_ctsubst_refn_tv_notin th a x (subFTV a' t' p)
+
+{-@ lem_ctsubst_refn_usertype :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
+        -> b:Basic -> x:RVname -> p:Pred -> ProofOf(WFType g (TRefn b x p) Base)
+        -> { pf:_ | noExists (ctsubst th (TRefn b x p)) } @-}
+lem_ctsubst_refn_usertype :: Env -> CSub -> DenotesEnv -> Basic -> RVname -> Expr -> WFType -> Proof
+lem_ctsubst_refn_usertype g th den_g_th b x p p_g_t = case b of
+  (FTV a) -> case ( csubst_tv th (a ? lem_wf_refn_tv_in_env g a x p Base p_g_t
+                                    ? lem_binds_env_th g th den_g_th) ) of
+    (TRefn b' z q_) -> () ? lem_ctsubst_refn_tv th a x p
+                          ? toProof ( noExists (TRefn b' z (strengthen (csubst th p) q)) === True )
+      where
+        q = q_ ? lem_refn_is_pred (TRefn b' z q_) b' z q_
+    (TFunc {})     -> () ? lem_ctsubst_refn_tv th a x p
+    (TPoly {})     -> () ? lem_ctsubst_refn_tv th a x p 
+  _       -> () ? lem_ctsubst_refn    th b x p 
 
 {-@ lem_ctsubst_func :: th:CSub -> x:Vname -> t_x:Type -> t:Type
         -> { pf:_ | ctsubst th (TFunc x t_x t) == TFunc x (ctsubst th t_x) (ctsubst th t) } @-}  

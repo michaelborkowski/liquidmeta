@@ -499,7 +499,7 @@ ksize Star = 1
 data RVname = Z deriving (Eq, Show)
 
 {-@ data Type where 
-        TRefn   :: Basic -> RVname -> p:Pred  -> { t':Type | isPred p }
+        TRefn   :: Basic -> RVname -> p:Pred  -> Type 
         TFunc   :: Vname -> Type  -> Type -> Type 
         TExists :: Vname -> Type  -> Type -> Type 
         TPoly   :: Vname -> Kind  -> Type -> Type @-} -- @-}

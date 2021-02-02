@@ -31,7 +31,8 @@ foo26 :: a -> Maybe a
 -- old vers:  selfify p TBool   z e = App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) e)
 {-@ reflect eqlPred @-} 
 {-@ eqlPred :: { t:Type | isTRefn t } -> e:Term
-        -> { p':Pred | self t e Base == push p' t && ftv p' == Set_cup (freeTV t) (ftv e) } @-}
+        -> { p':Pred | self t e Base == push p' t && ftv p' == Set_cup (freeTV t) (ftv e) 
+                                                  && fv  p' == Set_cup (free t)   (fv e) } @-}
 eqlPred :: Type -> Expr -> Expr
 eqlPred (TRefn b z p) e = App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e
 
@@ -509,7 +510,7 @@ ctsubst (CCons  x v  th) t = ctsubst th (tsubFV x v t)
 ctsubst (CConsT a t' th) t = ctsubst th (tsubFTV a t' t)
 
 {-@ reflect csubst_tv @-}
-{-@ csubst_tv :: th:CSub -> { a:Vname | tv_in_csubst a th } -> Type @-}
+{-@ csubst_tv :: th:CSub -> { a:Vname | tv_in_csubst a th } -> UserType @-}
 csubst_tv :: CSub -> Vname -> Type
 csubst_tv (CCons  x  v  th) a             = csubst_tv th a
 csubst_tv (CConsT a' t' th) a | a' == a   = t'

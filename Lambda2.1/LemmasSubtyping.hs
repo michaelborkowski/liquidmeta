@@ -163,3 +163,33 @@ lem_witness_sub g v_x t_x p_vx_tx p_g_wf x t' k' y p_yg_t'
       p_g_t'vx    = lem_subst_wf' g Empty y v_x t_x p_vx_tx p_yg_wf (unbindT x y t') k' p_yg_t'
                                   ? lem_tsubFV_unbindT x y v_x t'
       p_t'vx_t'vx = lem_sub_refl g (tsubBV x v_x t') k' p_g_t'vx p_g_wf
+
+{-@ lem_sub_sbase_pullback_wftype :: g:Env -> ProofOf(WFEnv g) -> s:Type -> t:Type 
+        -> { p_s_t:Subtype | propOf p_s_t == Subtype g s t && isSBase p_s_t }
+        -> k_s:Kind -> ProofOf(WFType g s k_s) -> k:Kind -> ProofOf(WFType g t k) 
+                    -> ProofOf(WFType g s k) @-}
+lem_sub_sbase_pullback_wftype :: Env -> WFEnv -> Type -> Type -> Subtype 
+                                     -> Kind -> WFType -> Kind -> WFType -> WFType
+lem_sub_sbase_pullback_wftype g p_g_wf s t p_s_t@(SBase _ x1 b p1 x2 p2 y ent_yg_p2) 
+                              k_s p_g_s k p_g_t
+  = case p_g_t of
+        (WFBase _ _ tt)                  -> WFRefn g x1 b tt p_g_t  p1 y' p_y'_p1_bl 
+        (WFRefn _ _ _ tt p_g_tt _p2 _ _) -> WFRefn g x1 b tt p_g_tt p1 y' p_y'_p1_bl
+        (WFVar1 _ a tt _)                -> case (k_s, k) of
+          (_,    Base) -> WFRefn g x1 b tt p_g_t p1 y' p_y'_p1_bl
+          (Base, Star) -> WFKind g s p_g_s
+          (Star, Star) -> p_g_s 
+        (WFVar2 _ a tt _ _ _ _)          -> case (k_s, k) of  
+          (_,    Base) -> WFRefn g x1 b tt p_g_t p1 y' p_y'_p1_bl
+          (Base, Star) -> WFKind g s p_g_s
+          (Star, Star) -> p_g_s 
+        (WFVar3 _ a tt _ _ _ _)          -> case (k_s, k) of  
+          (_,    Base) -> WFRefn g x1 b tt p_g_t p1 y' p_y'_p1_bl
+          (Base, Star) -> WFKind g s p_g_s
+          (Star, Star) -> p_g_s 
+        (WFKind _ _ _) -> if k_s == Star then p_g_s else WFKind g s p_g_s
+      where
+        y'_        = fresh_var g
+        y'         = y'_ ? lem_free_bound_in_env g s k_s p_g_s y'_
+        p_er_g_wf  = lem_erase_env_wfenv    g p_g_wf
+        p_y'_p1_bl = lem_ftyp_for_wf_trefn' g b x1 p1 k_s p_g_s p_er_g_wf

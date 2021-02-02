@@ -406,6 +406,17 @@ lem_wf_refn_tv_star g a x p k (WFVar3 g' a_ tt k_ p_g_a  a1 k_a1)
 lem_wf_refn_tv_star g a x p k (WFKind _g _a p_g_a_base)
   = impossible ("by lemma" ? lem_wf_refn_tv_star g a x p Base p_g_a_base)
 
+{-@ lem_wfftvar_tv_in_env :: g:FEnv -> a:Vname -> k:Kind 
+        -> ProofOf(WFFT g (FTBasic (FTV a)) k) -> { pf:_ | Set_mem a (tvbindsF g) } @-}
+lem_wfftvar_tv_in_env :: FEnv -> Vname -> Kind -> WFFT -> Proof
+lem_wfftvar_tv_in_env env a k (WFFTFV1 g _a _k) = ()
+lem_wfftvar_tv_in_env env a k (WFFTFV2 g _a _k p_g_a  y t_y)
+  = lem_wfftvar_tv_in_env g a k p_g_a
+lem_wfftvar_tv_in_env env a k (WFFTFV3 g _a _k p_g_a a1 k_a1)
+  = lem_wfftvar_tv_in_env g a k p_g_a
+lem_wfftvar_tv_in_env env a k (WFFTKind g _a p_g_a_base)
+  = lem_wfftvar_tv_in_env g a Base p_g_a_base
+
 -----------------------------------------------------------------------------------------
 ----- | Properties of JUDGEMENTS : the Bare-Typing Relation and Well-Formedness of Types
 -----------------------------------------------------------------------------------------

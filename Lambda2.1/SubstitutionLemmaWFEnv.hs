@@ -35,17 +35,9 @@ import SubstitutionLemmaWF
 import SubstitutionLemmaWFTV
 import SubstitutionWFAgain
 
-{-@ reflect foo51 @-}
-foo51 :: a -> Maybe a
-foo51 x = Just x
-
-{-{-@ lem_subst_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
-        -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
-        -> t_x:Type -> ProofOf(HasType g v_x t_x)
-        -> ProofOf(WFEnv (concatE (Cons x t_x g) g') )
-        -> ProofOf(WFEnv (concatE g (esubFV x v_x g')) ) / [envsize g'] @-}
-lem_subst_wfenv :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv -> WFEnv
-lem_subst_wfenv g Empty           x v_x t_x p_vx_tx p_xg_wf  = case p_xg_wf of-}
+{-@ reflect foo59 @-}
+foo59 :: a -> Maybe a
+foo59 x = Just x
 
 {-@ lem_subst_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
@@ -56,16 +48,22 @@ lem_subst_wfenv :: Env -> Env -> Vname -> Expr -> Type -> HasFType -> WFEnv -> W
 lem_subst_wfenv g Empty           x v_x t_x p_vx_tx p_xg_wf  = case p_xg_wf of
   (WFEBind  _g p_g_wf _x _tx _ _) -> p_g_wf
   (WFEBindT _g p_g_wf _  _)       -> p_g_wf
-lem_subst_wfenv g (Cons z t_z g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
+lem_subst_wfenv g (Cons z_ t_z g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
   (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) 
     -> WFEBind env'' p_env''_wf z (tsubFV x v_x t_z) k_z p_env''_tzvx
       where
+        z            = z_ ? lem_in_env_concat (Cons x t_x g) g' z_
+                          ? lem_in_env_esub g' x v_x z_ 
+                          ? lem_in_env_concat g (esubFV x v_x g') z_
         env''        = concatE g (esubFV x v_x g')
         p_env''_wf   = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
         p_env''_tzvx = lem_subst_wf    g g' x v_x t_x p_vx_tx p_env'_wf t_z k_z p_env'_tz
-lem_subst_wfenv g (ConsT a k_a g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
+lem_subst_wfenv g (ConsT a_ k_a g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf of
   (WFEBindT env' p_env'_wf _a _ka)           -> WFEBindT env'' p_env''_wf a k_a
     where
+      a          = a_ ? lem_in_env_concat (Cons x t_x g) g' a_
+                      ? lem_in_env_esub g' x v_x a_ 
+                      ? lem_in_env_concat g (esubFV x v_x g') a_
       env''      = concatE g (esubFV x v_x g')
       p_env''_wf = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
 
@@ -78,26 +76,31 @@ lem_subst_tv_wfenv :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv -> 
 lem_subst_tv_wfenv g Empty           a t_a k_a p_g_ta p_xg_wf  = case p_xg_wf of
   (WFEBind  _g p_g_wf _ _ _ _) -> p_g_wf
   (WFEBindT _g p_g_wf _ _)     -> p_g_wf
-lem_subst_tv_wfenv g (Cons z t_z g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
+lem_subst_tv_wfenv g (Cons z_ t_z g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
   (WFEBind env' p_env'_wf _z _tz k_z p_env'_tz) 
     -> WFEBind env'' p_env''_wf z (tsubFTV a t_a t_z) k_z p_env''_tzta
       where
+        z            = z_ ? lem_in_env_concat (ConsT a k_a g) g' z_
+                          ? lem_in_env_esubFTV g' a t_a z_ 
+                          ? lem_in_env_concat g (esubFTV a t_a g') z_
         env''        = concatE g (esubFTV a t_a g')
         p_env''_wf   = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env'_wf
         p_env''_tzta = lem_subst_tv_wf'   g g' a t_a k_a p_g_ta p_env'_wf t_z k_z p_env'_tz
-lem_subst_tv_wfenv g (ConsT a1 k1 g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
+lem_subst_tv_wfenv g (ConsT a1_ k1 g') a t_a k_a p_g_ta p_env_wf = case p_env_wf of
   (WFEBindT env' p_env'_wf _a1 _k1)          -> WFEBindT env'' p_env''_wf a1 k1
     where
+      a1         = a1_ ? lem_in_env_concat (ConsT a k_a g) g' a1_
+                       ? lem_in_env_esubFTV g' a t_a a1_ 
+                       ? lem_in_env_concat g (esubFTV a t_a g') a1_
       env''      = concatE g (esubFTV a t_a g')
       p_env''_wf = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env'_wf
 
-
 {-@ lem_csubst_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
         -> th:CSub -> ProofOf(DenotesEnv g th) -> ProofOf(WFEnv (concatE g g'))
-        -> ProofOf(WFEnv (csubst_env th g')) @-}
+        -> ProofOf(WFEnv (csubst_env th g')) / [envsize g] @-}
 lem_csubst_wfenv :: Env -> Env -> CSub -> DenotesEnv -> WFEnv -> WFEnv
-lem_csubst_wfenv Empty           g'  th   den_g_th p_g'_wf = p_g'_wf ? lem_empty_concatE g' 
-                                                                     ? lem_csubst_env_empty th
+lem_csubst_wfenv Empty           g'  th   den_g_th p_g'_wf   = case den_g_th of 
+  DEmp  -> p_g'_wf ? lem_empty_concatE g' 
 lem_csubst_wfenv (Cons x t_x g)  g' xth den_xg_xth p_g'xg_wf = case den_xg_xth of
   (DExt _g th_ den_g_th _x _tx v_x den_thtx_vx) -> p_g'_wf
     where
@@ -109,7 +112,7 @@ lem_csubst_wfenv (Cons x t_x g)  g' xth den_xg_xth p_g'xg_wf = case den_xg_xth o
                                     ? lem_csubst_cons_env th x t_x Empty
                                     ? lem_csubst_env_empty th
       p_g'_wf    = lem_subst_wfenv Empty (csubst_env th g') x v_x (ctsubst th t_x) p_emp_vx_thtx
-                                   p_g'_wf ? lem_empty_concatE (esubFV x v_x (csubst_env th g'))
+                                   p_g'x_wf ? lem_empty_concatE (esubFV x v_x (csubst_env th g'))
                                            ? lem_unroll_csubst_env_left th x v_x g'
 lem_csubst_wfenv (ConsT a k_a g) g' ath den_ag_ath p_g'ag_wf = case den_ag_ath of 
   (DExtT _g th_ den_g_th _a _ka t_a p_emp_ta) -> p_g'_wf
@@ -124,10 +127,11 @@ lem_csubst_wfenv (ConsT a k_a g) g' ath den_ag_ath p_g'ag_wf = case den_ag_ath o
 {-@ lem_ctsubst_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
         -> t:Type -> k:Kind -> ProofOf(WFType (concatE g g') t k) -> ProofOf (WFEnv (concatE g g')) 
         -> th:CSub -> ProofOf(DenotesEnv g th)  
-        -> ProofOf(WFType (csubst_env th g') (ctsubst th t) k) @-}
+        -> ProofOf(WFType (csubst_env th g') (ctsubst th t) k) / [envsize g] @-}
 lem_ctsubst_wf :: Env -> Env -> Type -> Kind -> WFType -> WFEnv -> CSub -> DenotesEnv -> WFType
 lem_ctsubst_wf Empty           g' t k p_env_t p_env_wf th den_g_th = case den_g_th of
-  (DEmp)                                           -> p_env_t ? lem_binds_env_th Empty th den_g_th
+  (DEmp)                                        -> p_env_t ? lem_binds_env_th Empty th den_g_th
+                                                           ? lem_empty_concatE g'
 lem_ctsubst_wf (Cons x t_x g)  g' t k p_env_t p_env_wf xth den_xg_xth = case den_xg_xth of
   (DExt _g th_ den_g_th _x _tx v_x den_thtx_vx) -> p_g'_xtht
     where

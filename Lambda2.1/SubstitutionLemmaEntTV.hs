@@ -23,6 +23,7 @@ import SystemFLemmasSubstitution
 import Typing
 import BasicPropsCSubst
 import BasicPropsDenotes
+import BasicPropsEraseTyping
 import PrimitivesSemantics
 import Entailments
 import LemmasChangeVarWF
@@ -30,15 +31,11 @@ import LemmasWeakenWF
 import LemmasWellFormedness
 import LemmasTyping
 import LemmasSubtyping
---import LemmasChangeVarTyp
---import LemmasWeakenTyp
 import SubstitutionLemmaWF
 import SubstitutionLemmaWFTV
 import SubstitutionWFAgain
 import DenotationsSelfify
 import SubstitutionLemmaWFEnv
---import DenotationsSoundness
---import LemmasExactness
 
 {-@ reflect foo62 @-}
 foo62 x = Just x
@@ -85,7 +82,8 @@ lem_add_tvar_csubst g Empty            a t_a_ k_a p_g_ta p_env_wf   th'   den_en
                                        (t_a ? lem_tfreeBV_empty g t_a k_a p_g_ta)
                                  ? lem_ctsubst_usertype th' t_a
                  (WFEBindT _ p_g_wf _ _) = p_env_wf 
-                 p_emp_th'ta = lem_ctsubst_wf g t_a k_a p_g_ta p_g_wf th' den_env'_th'
+                 p_emp_th'ta = lem_ctsubst_wf g Empty t_a k_a p_g_ta p_g_wf th' den_env'_th'
+                                              ? lem_csubst_env_empty th'
         {- @ eq_func1 :: p:Pred -> { pf:Proof | csubst th p == csubst zth' (subFTV a t_a p) } @-}
                  eq_func1 :: Expr -> Proof   -- csubst th p
                  eq_func1 p = () ? lem_csubst_subFTV   th' a t_a  p 

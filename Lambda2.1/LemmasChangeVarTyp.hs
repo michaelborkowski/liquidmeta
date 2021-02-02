@@ -103,8 +103,9 @@ lem_change_var_typ_tvar2 g x t_x g' p_env_wf e t (TVar2 _ z _t p_z_t w_ t_w) y
                                  (lem_change_var_typ g x t_x g'' p_env'_wf (FV z) t p_z_t y) 
                                  w (tsubFV x (FV y) t_w)  
             where
-              w = w_ ? lem_in_env_concat g g'' w_
-                     ? lem_in_env_concat g (esubFV x (FV y) g'') w_
+              w = w_ ? lem_in_env_concat (Cons x t_x g) g'' w_
+                     ? lem_in_env_esub g'' x (FV y) w_
+                     ? lem_in_env_concat (Cons y t_x g) (esubFV x (FV y) g'') w_
               (WFEBind env' p_env'_wf _ _ _ _) = p_env_wf
 
 {-@ lem_change_var_typ_tvar3 :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
@@ -133,8 +134,9 @@ lem_change_var_typ_tvar3 g x t_x g' p_env_wf e t (TVar3 _ z _t p_z_t a'_ k_a') y
                                  (lem_change_var_typ g x t_x g'' p_env'_wf (FV z) t p_z_t y) 
                                  a' k_a'
             where
-              a' = a'_ ? lem_in_env_concat g g'' a'_
-                       ? lem_in_env_concat g (esubFV x (FV y) g'') a'_
+              a' = a'_ ? lem_in_env_concat (Cons x t_x g) g'' a'_
+                       ? lem_in_env_esub g'' x (FV y) a'_
+                       ? lem_in_env_concat (Cons y t_x g) (esubFV x (FV y) g'') a'_
               (WFEBindT env' p_env'_wf _ _) = p_env_wf
 
 {-@ lem_change_var_typ_tabs :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
@@ -396,7 +398,7 @@ lem_change_tvar_typ_tvar2 g a k_a g' p_env_wf e t p_env_z_t@(TVar2 _ z _t p_z_t 
         (Cons _w _tw g'') -> case (a == z) of
             True  -> impossible ("by lemma" ? lem_tvar_v_in_env (concatE (ConsT a k_a g) g') 
                                                                 z t p_env_z_t
-                                            ? lem_binds_invariants (concatE (Cons x t_x g) g''))               
+                                            ? lem_binds_invariants (concatE (ConsT a k_a g) g''))               
             False -> TVar2 (concatE (ConsT a' k_a g) (echgFTV a a' g''))
                                  (z `withProof` lem_in_env_concat (ConsT a' k_a g) g'' z
                                     `withProof` lem_in_env_concat (ConsT a  k_a g) g'' z)
@@ -404,8 +406,9 @@ lem_change_tvar_typ_tvar2 g a k_a g' p_env_wf e t p_env_z_t@(TVar2 _ z _t p_z_t 
                                  (lem_change_tvar_typ g a k_a g'' p_env'_wf (FV z) t p_z_t a') 
                                  w (tchgFTV a a' t_w)
               where
-                w = w_ ? lem_in_env_concat g g'' w_
-                       ? lem_in_env_concat g (echgFTV a a' g'') w_
+                w = w_ ? lem_in_env_concat (ConsT a k_a g) g'' w_
+                       ? lem_in_env_echgFTV g'' a a' w_
+                       ? lem_in_env_concat (ConsT a' k_a g) (echgFTV a a' g'') w_
                 (WFEBind env' p_env'_wf _ _ _ _) = p_env_wf
 
 {-@ lem_change_tvar_typ_tvar3 :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
@@ -431,15 +434,16 @@ lem_change_tvar_typ_tvar3 g a k_a g' p_env_wf e t p_env_z_t@(TVar3 _ z _t p_z_t 
         (ConsT _a' _ g'') -> case (a == z) of
             (True)  -> impossible ("by lemma" ? lem_tvar_v_in_env (concatE (ConsT a k_a g) g') 
                                                                   z t p_env_z_t
-                                              ? lem_binds_invariants (concatE (Cons x t_x g) g''))
+                                              ? lem_binds_invariants (concatE (ConsT a k_a g) g''))
             (False) -> TVar3 (concatE (ConsT a' k_a g) (echgFTV a a' g''))
                              (z `withProof` lem_in_env_concat (ConsT a' k_a g) g'' z
                                 `withProof` lem_in_env_concat (ConsT a  k_a g) g'' z)
                              (tchgFTV a a' t)
                              (lem_change_tvar_typ g a k_a g'' p_env'_wf (FV z) t p_z_t a') a1 k_a1 
               where
-                a1 = a1_ ? lem_in_env_concat g g'' a1_
-                         ? lem_in_env_concat g (echgFTV a a' g'') a1_
+                a1 = a1_ ? lem_in_env_concat (ConsT a k_a g) g'' a1_
+                         ? lem_in_env_echgFTV g'' a a' a1_
+                         ? lem_in_env_concat (ConsT a' k_a g) (echgFTV a a' g'') a1_
                 (WFEBindT env' p_env'_wf _ _) = p_env_wf
 
 {-@ lem_change_tvar_typ_tabs :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
