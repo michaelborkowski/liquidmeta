@@ -109,6 +109,33 @@ lem_eqlPred_ftyping g b z p {-k-} p_g_b p_g_wf y e p_e_t
         p_er_yg_b  = lem_weaken_wfft (erase_env g) FEmpty (FTBasic b) Base p_er_g_b y (FTBasic b)
         p_yg_e_b   = lem_weaken_ftyp (erase_env g) FEmpty p_g_wf e (FTBasic b) p_e_t y (FTBasic b)
 
+{-@ lem_eqlPred_ftyping' :: g:Env -> b:Basic -> z:RVname -> p:Pred
+        -> ProofOf(WFType g (TRefn b z p) Base) -> ProofOf(WFFE (erase_env g))
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
+        -> e:Expr -> ProofOf(HasFType (erase_env g) e (FTBasic b))
+        -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) 
+                            (unbind 0 y (eqlPred (TRefn b z p) e)) (FTBasic TBool)) @-}
+lem_eqlPred_ftyping' :: Env -> Basic -> RVname -> Expr {-> Kind-} -> WFType -> WFFE
+                           -> Vname -> Expr -> HasFType -> HasFType
+lem_eqlPred_ftyping' g b z p {-k-} p_g_b p_g_wf y e p_e_t 
+  = FTApp yg (App (AppT (Prim Eql) (TRefn b z p)) (FV y)) (FTBasic b) (FTBasic TBool)
+          inner_app e p_yg_e_b ? lem_subBV_notin  0 (FV y)
+                                   (e ? lem_freeBV_emptyB (erase_env g) e (FTBasic b) p_e_t)
+                               ? lem_tsubBV_notin 0 (FV y) (TRefn b z p)
+      where
+        yg         = FCons y (FTBasic b) (erase_env g)
+        inner_app  = FTApp  yg (AppT (Prim Eql) (TRefn b z p)) (FTBasic b)
+                            (FTFunc (FTBasic b) (FTBasic TBool)) inner_appt 
+                            (FV y) (FTVar1 (erase_env g) y (FTBasic b))
+        inner_appt = FTAppT yg (Prim Eql) 1 Base poly_type (FTPrm yg Eql)
+                            (TRefn b z (p ? lem_tfreeBV_empty g (TRefn b z p) Base p_g_b
+                                         ? lem_free_subset_binds g (TRefn b z p) Base p_g_b))
+                            p_er_yg_b
+        poly_type  = (FTFunc (FTBasic (BTV 1)) (FTFunc (FTBasic (BTV 1)) (FTBasic TBool)))
+        p_er_g_b   = lem_erase_wftype g (TRefn b z p) Base p_g_b
+        p_er_yg_b  = lem_weaken_wfft (erase_env g) FEmpty (FTBasic b) Base p_er_g_b y (FTBasic b)
+        p_yg_e_b   = lem_weaken_ftyp (erase_env g) FEmpty p_g_wf e (FTBasic b) p_e_t y (FTBasic b)
+
 {-@ lem_push_wf :: g:Env -> t_a:UserType -> ProofOf(WFType g t_a Base) 
         -> ProofOf(WFFE (erase_env g)) -> p:Pred 
         -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }

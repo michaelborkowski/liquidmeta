@@ -163,3 +163,9 @@ lem_ctsubst_wf (ConsT a k_a g) g' t k p_env_t p_env_wf ath den_ag_ath = case den
       p_g'g_at   = lem_subst_tv_wf' g g' a t_a k_a p_g_ta p_env_wf t k p_env_t 
       p_g'g_wf   = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env_wf
       p_g'_atht  = lem_ctsubst_wf g (esubFTV a t_a g') (tsubFTV a t_a t) k p_g'g_at p_g'g_wf th den_g_th
+
+{-@ lem_ctsubst_wf' :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> ProofOf(WFEnv g) 
+        -> th:CSub -> ProofOf(DenotesEnv g th) -> ProofOf(WFType Empty (ctsubst th t) k) @-}
+lem_ctsubst_wf' :: Env -> Type -> Kind -> WFType -> WFEnv -> CSub -> DenotesEnv -> WFType
+lem_ctsubst_wf' g t k p_env_t p_env_wf th den_g_th 
+  = lem_ctsubst_wf g Empty t k p_env_t p_env_wf th den_g_th ? lem_csubst_env_empty th

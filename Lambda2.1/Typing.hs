@@ -57,10 +57,13 @@ self (TExists z t_z t) e Base = TExists z t_z (self t e Base)
 self (TPoly   a k_a t) e Base = TPoly   a k_a t
 self t                 e Star = t
 
+{-@ lem_subFV_eqlPred :: y:Vname -> v_y:Value -> { t:Type | isTRefn t } -> e:Expr
+        -> { pf:_ | subFV y v_y (eqlPred t e) == eqlPred (tsubFV y v_y t) (subFV y v_y e) } @-}
+lem_subFV_eqlPred :: Vname -> Expr -> Type -> Expr -> Proof
+lem_subFV_eqlPred y v_y t e = () ? lem_subFV_notin y v_y (BV 0)
+
 {-@ lem_tsubFTV_eqlPred :: a:Vname -> { t_a:UserType | isTRefn t_a } -> { t:Type | isTRefn t } -> e:Expr
-        -> { pf:_ | subFTV a t_a (eqlPred t e) == 
-                     eqlPred (tsubFTV a t_a t) (subFTV a t_a e) } @-}
-{-                       App (App (AppT (Prim Eql) (tsubFTV a t_a t)) (BV 0)) (subFTV a t_a e) } @-}
+        -> { pf:_ | subFTV a t_a (eqlPred t e) == eqlPred (tsubFTV a t_a t) (subFTV a t_a e) } @-}
 lem_tsubFTV_eqlPred :: Vname -> Type -> Type -> Expr -> Proof
 lem_tsubFTV_eqlPred a t_a@(TRefn b' y' q') (TRefn b z p) e = case b of 
   (FTV a') | a' == a  -> () ? lem_subFTV_notin a t_a (BV 0)
@@ -68,7 +71,6 @@ lem_tsubFTV_eqlPred a t_a@(TRefn b' y' q') (TRefn b z p) e = case b of
                             ? lem_tsubFTV_trefn a t_a (TRefn b z p)
                             ? toProof ( y' === z )
   _                   -> ()
-
 
 {-@ lem_tsubFTV_self :: a:Vname -> t_a:UserType -> t:Type -> e:Term -> k:Kind
         -> { pf:_ | tsubFTV a t_a (self t e k) == self (tsubFTV a t_a t) (subFTV a t_a e) k } @-}
@@ -510,7 +512,9 @@ ctsubst (CCons  x v  th) t = ctsubst th (tsubFV x v t)
 ctsubst (CConsT a t' th) t = ctsubst th (tsubFTV a t' t)
 
 {-@ reflect csubst_tv @-}
-{-@ csubst_tv :: th:CSub -> { a:Vname | tv_in_csubst a th } -> UserType @-}
+{-@ csubst_tv :: th:CSub -> { a:Vname | tv_in_csubst a th } 
+        -> { t':UserType | Set_emp (free t') && Set_emp (freeTV t') &&
+                           Set_emp (tfreeBV t') && Set_emp (tfreeBTV t') }@-}
 csubst_tv :: CSub -> Vname -> Type
 csubst_tv (CCons  x  v  th) a             = csubst_tv th a
 csubst_tv (CConsT a' t' th) a | a' == a   = t'

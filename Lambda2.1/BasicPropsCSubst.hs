@@ -576,6 +576,14 @@ lem_ctsubst_no_more_fv CEmpty            t = ()
 lem_ctsubst_no_more_fv (CCons  y v_y th) t = () ? lem_ctsubst_no_more_fv th (tsubFV y v_y t)
 lem_ctsubst_no_more_fv (CConsT a t_a th) t = () ? lem_ctsubst_no_more_fv th (tsubFTV a t_a t)
     
+{-@ lem_csubst_no_more_bv :: th:CSub 
+        -> { v_x:Expr | Set_emp (freeBV v_x) && Set_emp (freeBTV v_x) }
+        -> { pf:_ | Set_emp (freeBV (csubst th v_x)) && Set_emp (freeBTV (csubst th v_x)) } @-}
+lem_csubst_no_more_bv :: CSub -> Expr -> Proof
+lem_csubst_no_more_bv CEmpty v_x            = ()
+lem_csubst_no_more_bv (CCons  y v_y th) v_x = () ? lem_csubst_no_more_bv th (subFV y v_y v_x)
+lem_csubst_no_more_bv (CConsT a t_a th) v_x = () ? lem_csubst_no_more_bv th (subFTV a t_a v_x)
+
 {-@ lem_ctsubst_no_more_bv :: th:CSub -> { t:Type | Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
         -> { pf:_ | Set_emp (tfreeBV (ctsubst th t)) && Set_emp (tfreeBTV (ctsubst th t)) } @-}
 lem_ctsubst_no_more_bv :: CSub -> Type -> Proof

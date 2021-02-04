@@ -35,6 +35,8 @@ import Implications
 foo39 x = Just x 
 foo39 :: a -> Maybe a 
 
+ --- PRELIMINARIES
+
 {-@ get_wftype_from_denv :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
         -> a:Vname -> { k_a:Kind | tv_bound_in a k_a g }
         -> (UserType, WFType)<{\t_a pf -> t_a == csubst_tv th a &&
@@ -63,6 +65,29 @@ lem_canonical_ctsubst_tv g th den_g_th a z p p_g_t
         where
           (t_a, p_emp_ta) = get_wftype_from_denv g th den_g_th a Base 
       Star -> impossible ("by lemma" ? lem_wf_refn_kind g a z p Base p_g_t)
+
+{-@ lem_ctsubst_refn_istrefn :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
+        -> b:Basic -> x:RVname -> p:Pred -> ProofOf(WFType g (TRefn b x p) Base)
+        -> { pf:_ | isTRefn (ctsubst th (TRefn b x p)) } @-}
+lem_ctsubst_refn_istrefn :: Env -> CSub -> DenotesEnv -> Basic -> RVname -> Expr -> WFType -> Proof
+lem_ctsubst_refn_istrefn g th den_g_th b x p p_g_t = case b of
+  (FTV a) -> case ( csubst_tv th (a ? lem_wf_refn_tv_in_env g a x p Base p_g_t
+                                    ? lem_binds_env_th g th den_g_th) ) of
+    (TRefn b' z q_) -> () ? lem_ctsubst_refn_tv th a x p
+                          ? toProof ( noExists (TRefn b' z (strengthen (csubst th p) q)) === True )
+      where
+        q = q_ ? lem_refn_is_pred (TRefn b' z q_) b' z q_
+    (TFunc {})     -> impossible ("by lemma" ? lem_wf_usertype_base_trefn Empty t_a p_emp_ta )
+      where
+        (t_a, p_emp_ta) = lem_canonical_ctsubst_tv g th den_g_th a x p p_g_t
+    (TPoly {})     -> impossible ("by lemma" ? lem_wf_usertype_base_trefn Empty t_a p_emp_ta )
+      where
+        (t_a, p_emp_ta) = lem_canonical_ctsubst_tv g th den_g_th a x p p_g_t
+  _       -> () ? lem_ctsubst_refn    th b x p
+
+-------------------------
+--- LEMMAS on Entailments
+-------------------------
 
 {-@ get_evals_from_drefn :: b:Basic -> x:RVname -> p:Pred -> v:Value 
         -> ProofOf(Denotes (TRefn b x p) v) -> ProofOf(EvalsTo (subBV 0 v p) (Bc True)) @-}
@@ -246,12 +271,15 @@ lem_entails_repetition g p_g_wf b x p_ y pf_p_bl p_g_t
         -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (fv q)) } 
         -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p) (FTBasic TBool))
         -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind 0 y q) (FTBasic TBool))
-        -> ProofOf(WFType g (TRefn b x (Conj p q)) Base)
+        -> ProofOf(WFType g (TRefn b x (Conj p q)) Base) -> { p':Term | not (Set_mem y (fv p')) }
+        -> ( th':CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x (Conj p q)) g) th') 
+                      -> ProofOf(EvalsTo (csubst th' (unbind 0 y p)) (Bc True))
+                      -> ProofOf(EvalsTo (csubst th' (unbind 0 y p')) (Bc True)) )
         -> ProofOf(Entails (Cons y (TRefn b x (Conj p q)) g) 
-                           (unbind 0 y (Conj p (Conj p q)))) @-}
-lem_entails_redundancy :: Env -> WFFE -> Basic -> RVname -> Expr -> Expr -> Vname 
-                              -> HasFType -> HasFType -> WFType -> Entails
-lem_entails_redundancy g p_g_wf b x p_ q y pf_p_bl pf_q_bl p_g_tpq
+                           (unbind 0 y (Conj p' (Conj p q)))) @-}
+lem_entails_redundancy :: Env -> WFFE -> Basic -> RVname -> Expr -> Expr -> Vname -> HasFType 
+     -> HasFType -> WFType -> Expr -> (CSub -> DenotesEnv -> EvalsTo -> EvalsTo ) -> Entails
+lem_entails_redundancy g p_g_wf b x p_ q y pf_p_bl pf_q_bl p_g_tpq p'_ transf_func
   = EntPred (Cons y tpandq g) (unbind 0 y pandpandq) ev_func
       where
         {-@ ev_func :: th:CSub -> ProofOf(DenotesEnv (Cons y tpandq g) th)
@@ -260,10 +288,10 @@ lem_entails_redundancy g p_g_wf b x p_ q y pf_p_bl pf_q_bl p_g_tpq
         ev_func th den_yg_th = case den_yg_th of
           (DExt _g th' den_g_th' _y _tpq th'y den_th'tpq_th'y) ->
               lem_implies_conjunction (Cons y tpandq g) th den_yg_th
-                          (unbind 0 y p) (unbind 0 y pandq) --(unbind 0 y q)
-                          (ev_thp_tt  ? lem_csubst_subBV 0 th'y (erase (ctsubst th' tpandq)) --(FTBasic b) 
-                                            p_th'y_b th' p
-                                      ? lem_subFV_unbind 0 y th'y p) 
+                          (unbind 0 y p') (unbind 0 y pandq) --(unbind 0 y q)
+                          (ev_thp'_tt ? lem_csubst_subBV 0 th'y (erase (ctsubst th' tpandq)) --(FTBasic b) 
+                                            p_th'y_b th' p'
+                                      ? lem_subFV_unbind 0 y th'y p') 
                           (ev_thpq_tt ? lem_csubst_subBV 0 th'y (erase (ctsubst th' tpandq)) --(FTBasic b) 
                                             p_th'y_b th' pandq
                                       ? lem_subFV_unbind 0 y th'y pandq)
@@ -281,10 +309,12 @@ lem_entails_redundancy g p_g_wf b x p_ q y pf_p_bl pf_q_bl p_g_tpq
                                                         p_th'y_b th' pandq
                                                   ? lem_subFV_unbind 0 y th'y pandq)
                                       ? lem_binds_env_th g th' den_g_th'
-        p         = p_ ? lem_term_pred p_
+              ev_thp'_tt     = transf_func th den_yg_th ev_thp_tt
+        p         = p_  ? lem_term_pred p_
+        p'        = p'_ ? lem_term_pred p'_
         tpandq    = TRefn b x (Conj p q) 
         pandq     =            Conj p q
-        pandpandq = Conj p (Conj p q)
+        pandpandq = Conj p' (Conj p q)
         p_yg_wf   = WFFBind (erase_env g) p_g_wf y (erase tpandq) Base 
                             (lem_erase_wftype g tpandq Base p_g_tpq)
 

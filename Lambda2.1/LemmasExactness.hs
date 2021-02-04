@@ -1,7 +1,7 @@
 {-# LANGUAGE GADTs #-}
 
 {-@ LIQUID "--reflection"  @-}
-{-i @ LIQUID "--ple"         @-}
+{-@ LIQUID "--ple-local"   @-}
 {-@ LIQUID "--short-names" @-}
 
 module LemmasExactness where
@@ -46,8 +46,118 @@ import SubstitutionLemmaWFEnv
 foo62 x = Just x           
 foo62 :: a -> Maybe a    
 
-{-
--- --                       -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p1) (FTBasic TBool))
+{-@ lem_csubst_eqlPred_ftyp :: g:Env -> ProofOf(WFEnv g) -> b:Basic -> x:RVname -> p:Pred
+        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
+        -> ProofOf(WFType g (TRefn b x p) Base) -> e:Term -> ProofOf(HasFType (erase_env g) e (FTBasic b))
+        -> { th:CSub | not (Set_mem y (bindsC th)) } -> ProofOf(DenotesEnv g th)  
+        -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) && Set_emp (freeBV v) && Set_emp (freeBTV v) } 
+        -> ProofOf(HasFType FEmpty v (erase (ctsubst th (TRefn b x p ))))
+        -> ProofOf(Denotes  (ctsubst th (TRefn b x (selfify p b x e))) v)
+        -> ProofOf(HasFType FEmpty (subBV 0 v (csubst th (eqlPred (TRefn b x p) e))) (FTBasic TBool)) @-}
+lem_csubst_eqlPred_ftyp :: Env -> WFEnv -> Basic -> RVname -> Expr -> Vname -> WFType -> Expr
+                               -> HasFType -> CSub -> DenotesEnv -> Expr -> HasFType -> Denotes -> HasFType
+lem_csubst_eqlPred_ftyp g p_g_wf b x1 p1 y p_g_s e p_e_s th den_g_th v p_v_thb den_thselfs_v = undefined {- CHECKED 2021 pf_eqlthe_bl
+  where
+    yg            = Cons y (TRefn b x1 (selfify p1 b x1 e)) g
+    self_s        =         TRefn b x1 (selfify p1 b x1 e)
+    p_er_g_wf     = lem_erase_env_wfenv g p_g_wf
+    p_yg_wf       = WFFBind (erase_env g) p_er_g_wf (y ? binds_pf) (FTBasic b) Base 
+                            (lem_erase_wftype g (TRefn b x1 p1) Base p_g_s ? erase_pf_b)
+    yth           = CCons y v th
+    den_yg_yth    = DExt g th den_g_th y self_s v den_thselfs_v
+    unb_eqlpred    = unbind 0 y (eqlPred (TRefn b x1 p1 ? refn_pf) e) 
+
+    {-@ pf_y_eqle_bl :: ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) unb_eqlpred (FTBasic TBool)) @-}
+    pf_y_eqle_bl  = lem_eqlPred_ftyping'    g b x1 p1      p_g_s p_er_g_wf y e p_e_s  ? erase_env_pf
+    pf_eqlthe_bl   = lem_csubst_hasftype' yg  unb_eqlpred  (TRefn TBool Z (Bc True))
+                                          pf_y_eqle_bl (p_yg_wf ? erase_env_pf)  yth  den_yg_yth   
+       ? toProof ( csubst yth unb_eqlpred
+               === csubst (CCons y v th) (unbind 0 y (eqlPred (TRefn b x1 p1 ? refn_pf) e))
+                 ? lem_csubst_and_unbind 0 y v (erase (ctsubst th (TRefn b x1 p1))) p_v_thb th 
+                       (eqlPred (TRefn b x1 p1 ? refn_pf) e 
+                           ? lem_free_bound_in_env g (TRefn b x1 p1) Base p_g_s y
+                           ? lem_fv_bound_in_fenv (erase_env g) e (FTBasic b) p_e_s (y ? binds_pf))
+               === subBV 0 v (csubst th (eqlPred (TRefn b x1 p1 ? refn_pf) e)) )
+       ? lem_ctsubst_nofree yth (TRefn TBool Z (Bc True) ? free_pf ? fv_pf)
+       ? erase_pf
+    binds_pf      = toProof ( in_envF y (erase_env g) === in_env y g )
+                  ? toProof ( bindsF (erase_env g) === binds g )
+    erase_pf      = toProof ( erase (TRefn TBool Z (Bc True)) === FTBasic TBool )
+    erase_pf_b    = toProof ( erase (TRefn b x1 p1) === FTBasic b )
+    erase_env_pf  = toProof ( erase_env (Cons y (TRefn b x1 (selfify p1 b x1 e)) g)
+                          === FCons y (erase (TRefn b x1 (selfify p1 b x1 e))) (erase_env g ? binds_pf)
+                          === FCons y (FTBasic b) (erase_env g ? binds_pf) )
+    free_pf       = toProof ( freeTV (TRefn TBool Z (Bc True)) === ftv (Bc True) === S.empty )
+    fv_pf         = toProof ( free (TRefn TBool Z (Bc True))   === fv (Bc True)  === S.empty )
+    refn_pf       = toProof ( isTRefn ( TRefn b x1 p1 ) === True )
+-}
+
+{-@ ple lem_evals_eqlPred @-}
+{-@ lem_evals_eqlPred :: b:Basic -> x1:RVname 
+        -> { p1:Pred | Set_emp (tfreeBV (TRefn b x1 p1)) && Set_emp (tfreeBTV (TRefn b x1 p1)) }
+        -> { e:Expr | Set_emp (freeBV e) && Set_emp (freeBTV e) } -> v:Value -> th:CSub
+        -> ProofOf(EvalsTo (subBV 0 v (csubst th (eqlPred (TRefn b x1 p1) e))) (Bc True))
+        -> ProofOf(EvalsTo (App (App (AppT (Prim Eql) (ctsubst th (TRefn b x1 p1))) v) (csubst th e)) (Bc True)) @-}
+lem_evals_eqlPred :: Basic -> RVname -> Expr -> Expr -> Expr -> CSub -> EvalsTo -> EvalsTo
+lem_evals_eqlPred b x1 p1 e v th ev_theqlv_tt 
+ = undefined {- CHECKED 2021
+  = ev_theqlv_tt ? lem_csubst_app  th (App (AppT (Prim Eql) (TRefn b x1 p1)) (BV 0)) e
+                 ? lem_csubst_app  th (AppT (Prim Eql) (TRefn b x1 p1)) (BV 0)
+                 ? lem_csubst_appT th (Prim Eql) (TRefn b x1 p1)
+                 ? lem_csubst_prim th Eql -- change precons if necc for th(s)
+                 ? lem_csubst_bv   th 0
+                 ? lem_subBV_notin  0 v (csubst  th e ? lem_csubst_no_more_bv th e)
+                 ? lem_tsubBV_notin 0 v (ctsubst th (TRefn b x1 p1) ? lem_ctsubst_no_more_bv th (TRefn b x1 p1))
+-}
+
+{-@ ple lem_eqlPred_exchange_refn @-}
+{-@ lem_eqlPred_exchange_refn :: { b:Basic | b == TBool || b == TInt } 
+        -> { t1:UserType | erase t1 == FTBasic b } -> { t2:UserType | erase t2 == erase t1 }
+        -> e:Term -> v:Value
+        -> ProofOf(EvalsTo (App (App (AppT (Prim Eql) t1) v) e) (Bc True)) 
+        -> ProofOf(EvalsTo (App (App (AppT (Prim Eql) t2) v) e) (Bc True)) @-}
+lem_eqlPred_exchange_refn :: Basic -> Type -> Type -> Expr -> Expr -> EvalsTo -> EvalsTo
+lem_eqlPred_exchange_refn b t1 t2 e v ev_eql1_tt = undefined {- CHECKED 2021    case ev_eql1_tt of
+  (AddStep eql1 eql1' st_eql1_eql' _true ev_eql'_tt) 
+    -> AddStep eql2 eql' st_eql2_eql' (Bc True) 
+               (ev_eql'_tt ? lem_sem_det eql1 eql1' st_eql1_eql' eql' step_one1)
+         where
+           eql2         = App (App (AppT (Prim Eql) t2) v) e
+           (Prim c)     = deltaT Eql t1
+           eql'         = App (App (Prim c) v) e
+           step1        = EApp1 (AppT (Prim Eql) t1) (Prim c) (EPrimT Eql t1) v
+           step_one1    = EApp1 (App (AppT (Prim Eql) t1) v) (App (Prim c) v) step1 e
+           step2        = EApp1 (AppT (Prim Eql) t2) (Prim c) (EPrimT Eql t2) v
+           st_eql2_eql' = EApp1 (App (AppT (Prim Eql) t2) v) (App (Prim c) v) step2 e
+-}
+
+{-@ ple lem_ctsubst_refn_isrefnconc @-} 
+{-@ lem_ctsubst_refn_isrefnconc :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
+          -> b:Basic -> x:RVname -> p:Pred -> ProofOf(WFType g (TRefn b x p) Base)
+          -> { b':Basic | isTRefn (ctsubst th (TRefn b x p)) && noExists (ctsubst th (TRefn b x p)) &&
+                          erase (ctsubst th (TRefn b x p)) == FTBasic b' &&
+                        ( b' == TBool || b' == TInt ) } @-}
+lem_ctsubst_refn_isrefnconc :: Env -> CSub -> DenotesEnv -> Basic -> RVname -> Expr -> WFType -> Basic
+lem_ctsubst_refn_isrefnconc g th den_g_th b x p p_g_t = undefined {- CHECKED case b of
+  (FTV a) -> case ( csubst_tv th (a ? lem_wf_refn_tv_in_env g a x p Base p_g_t
+                                    ? lem_binds_env_th g th den_g_th) ) of
+    (TRefn b' z q_) -> case b' of 
+         (BTV a') -> impossible () 
+         (FTV a') -> impossible () 
+         _        -> b' ? lem_ctsubst_refn_tv th a x p
+                        ? toProof ( noExists (TRefn b' z (strengthen (csubst th p) q)) === True )
+      where
+        q        = q_ ? lem_refn_is_pred (TRefn b' z q_) b' z q_
+    (TFunc {})     -> impossible ("by lemma" ? lem_wf_usertype_base_trefn Empty t_a p_emp_ta )
+      where
+        (t_a, p_emp_ta) = lem_canonical_ctsubst_tv g th den_g_th a x p p_g_t
+    (TPoly {})     -> impossible ("by lemma" ? lem_wf_usertype_base_trefn Empty t_a p_emp_ta )
+      where
+        (t_a, p_emp_ta) = lem_canonical_ctsubst_tv g th den_g_th a x p p_g_t
+  (BTV a) -> impossible ("by lemma" ? lem_btv_not_wf g a x p Base p_g_t)
+  _       -> b ? lem_ctsubst_refn    th b x p
+-}
+
 {-@ lem_self_entails_self :: g:Env -> ProofOf(WFEnv g) -> b:Basic -> x1:RVname -> p1:Pred 
         -> x2:RVname -> p2:Pred 
         -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p1)) && not (Set_mem y (fv p2)) 
@@ -61,179 +171,119 @@ foo62 :: a -> Maybe a
 lem_self_entails_self :: Env -> WFEnv -> Basic -> RVname -> Expr -> RVname -> Expr -> Vname 
                              -> WFType -> WFType -> Subtype -> Entails -> Expr -> HasFType -> Entails
 lem_self_entails_self g p_g_wf b x1 p1 x2 p2 y p_g_s p_g_t p_s_t ent_yg_p2 e p_e_t 
+ = undefined {- CHECKED 2021
   = EntPred yg (unbind 0 y (selfify p2 b x2 e)) reduce_thselfp2_tt             
-       where
-         s             = TRefn b x1 p1
-         t             = TRefn b x2 p2 
-         yg            = Cons y (TRefn b x1 (selfify p1 b x1 e)) g
-         self_s        =         TRefn b x1 (selfify p1 b x1 e)
-         p_g_b         = lem_erase_wftype    g (TRefn b x1 p1) Base p_g_s 
-         p_er_g_wf     = lem_erase_env_wfenv g p_g_wf
-         p_g_selfs     = lem_selfify_wf      g s Base p_g_s p_er_g_wf e
-                                             (p_e_t ? lem_erase_subtype g s t p_s_t)
-         p_selfs_s     = lem_self_is_subtype g s Base p_g_s e 
-                                             (p_e_t ? lem_erase_subtype g s t p_s_t) p_g_wf
-         p_g_selft     = lem_selfify_wf      g t Base p_g_t      p_er_g_wf e p_e_t 
-         {-@ pf_y_eqle_bl :: ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) 
-                               (App (App (AppT (Prim Eql) (TRefn b x1 p1)) (FV y)) e) (FTBasic TBool)) @-}
-         pf_y_eqle_bl  = lem_eqlPred_ftyping    g b x1 p1      p_g_s p_er_g_wf y e p_e_t
-         y'            = fresh_var g
-         y'g           = Cons y' (TRefn b x1 (selfify p1 b x1 e)) g
-         p_y'_p1_bl    = lem_ftyp_for_wf_trefn' g b x1 p1 Base p_g_s p_er_g_wf
-         p_yg_wf       = WFFBind (erase_env g) p_er_g_wf y  (FTBasic b) Base p_g_b
-         p_y'g_wf      = WFFBind (erase_env g) p_er_g_wf y' (FTBasic b) Base p_g_b
-         {-@ reduce_thselfp2_tt :: yth:CSub -> ProofOf(DenotesEnv yg yth)
-                         -> ProofOf(EvalsTo (csubst yth (unbind 0 y (selfify p2 b x2 e))) (Bc True)) @-}
-         reduce_thselfp2_tt :: CSub -> DenotesEnv -> EvalsTo
-         reduce_thselfp2_tt yth den_yg_yth = case den_yg_yth of
-           (DExt _g th den_g_th _y _selfs v den_thselfs_v) -> ev_thselp2v_tt
-             where
-               p_v_b          = get_ftyp_from_den (ctsubst th self_s) v den_thselfs_v
-               {-@ ev_thselp1_tt :: ProofOf(EvalsTo (subBV 0 v (csubst th (strengthen (eqlPred s e) p1))) (Bc True)) @-}
-               ev_thselp1_tt  = get_evals_from_ctsubst_drefn g th den_g_th p_er_g_wf b x1
-                                                     (selfify p1 b x1 e) p_g_selfs v den_thselfs_v
-               {-@ ev_thselp1_tt' :: ProofOf(EvalsTo (strengthen (subBV 0 v (csubst th (eqlPred s e))) (subBV 0 v (csubst th p1))) (Bc True)) @-}
-               ev_thselp1_tt' = ev_thselp1_tt ? lem_csubst_strengthen th (eqlPred s e) p1
-                                              ? lem_subBV_strengthen 0 v (csubst th (eqlPred s e)) (csubst th p1)
-               den_ths_v      = lem_denote_sound_sub g self_s Base s Base p_selfs_s p_g_wf
-                                                     p_g_selfs p_g_s th den_g_th v den_thselfs_v
-               den_tht_v      = lem_denote_sound_sub g s Base t Base p_s_t p_g_wf 
-                                                     p_g_s p_g_t th den_g_th v den_ths_v
-               p_emp_tht      = undefined -- .... lem_ctsubst_wf 
-               p_the_tht      = undefined -- ....
+      where
+        s             = TRefn b x1 p1     ? toProof ( isTRefn ( TRefn b x1 p1 ) === True )
+        t             = TRefn b x2 p2     ? toProof ( isTRefn ( TRefn b x2 p2 ) === True )
+        yg            = Cons y (TRefn b x1 (selfify p1 b x1 e)) g
+        self_s        =         TRefn b x1 (selfify p1 b x1 e)
+        p_g_b         = lem_erase_wftype    g (TRefn b x1 p1) Base p_g_s 
+        p_er_g_wf     = lem_erase_env_wfenv g p_g_wf
+        p_g_selfs     = lem_selfify_wf      g s Base p_g_s p_er_g_wf e
+                                            (p_e_t ? erase_s) -- ? lem_erase_subtype g s t p_s_t)
+        p_selfs_s     = lem_self_is_subtype g s Base p_g_s e 
+                                            (p_e_t ? erase_s) p_g_wf -- ? lem_erase_subtype g s t p_s_t) p_g_wf
+        p_g_selft     = lem_selfify_wf      g t Base p_g_t      p_er_g_wf e (p_e_t ? erase_t )
+        y'_           = fresh_var g
+        y'            = y'_ ? lem_free_bound_in_env g s Base p_g_s y'_
+        y'g           = Cons y' (TRefn b x1 (selfify p1 b x1 e)) g
+        p_y'_p1_bl    = lem_ftyp_for_wf_trefn' g b x1 p1 Base p_g_s p_er_g_wf
+        p_yg_wf       = WFFBind (erase_env g) p_er_g_wf  y              (FTBasic b) Base p_g_b
+        p_y'g_wf      = WFFBind (erase_env g) p_er_g_wf (y' ? binds_pf) (FTBasic b) Base p_g_b
+        {-@ reduce_thselfp2_tt :: yth:CSub -> ProofOf(DenotesEnv yg yth)
+                        -> ProofOf(EvalsTo (csubst yth (unbind 0 y (selfify p2 b x2 e))) (Bc True)) @-}
+        reduce_thselfp2_tt :: CSub -> DenotesEnv -> EvalsTo
+        reduce_thselfp2_tt yth den_yg_yth = case den_yg_yth of
+          (DExt _g th_ den_g_th _y _selfs v den_thselfs_v) -> ev_thselp2v_tt
+            where
+              th             = th_ ? lem_binds_env_th g th_ den_g_th
+              p_v_b          = get_ftyp_from_den (ctsubst th self_s) v den_thselfs_v
+              {-@ ev_thselp1_tt :: ProofOf(EvalsTo (subBV 0 v (csubst th (strengthen (eqlPred s e) p1))) (Bc True)) @-}
+              ev_thselp1_tt  = get_evals_from_ctsubst_drefn g th den_g_th p_er_g_wf b x1
+                                                    (selfify p1 b x1 e) p_g_selfs v den_thselfs_v
+                                ? toProof ( selfify p1 b x1 e === (strengthen (eqlPred (TRefn b x1 p1) e) p1) )
+              {-@ ev_thselp1_tt' :: ProofOf(EvalsTo (strengthen (subBV 0 v (csubst th (eqlPred s e))) (subBV 0 v (csubst th p1))) (Bc True)) @-}
+              ev_thselp1_tt' = ev_thselp1_tt ? lem_csubst_strengthen th (eqlPred s e) p1
+                                             ? lem_subBV_strengthen 0 v (csubst th (eqlPred s e)) (csubst th p1)
+              den_ths_v      = lem_denote_sound_sub g self_s Base s Base p_selfs_s p_g_wf
+                                                    p_g_selfs p_g_s th den_g_th v den_thselfs_v
+              den_tht_v      = lem_denote_sound_sub g s Base t Base p_s_t p_g_wf 
+                                                    p_g_s p_g_t th den_g_th v den_ths_v
+              {-@ p_emp_tht :: ProofOf(WFType Empty (ctsubst th t) Base) @-}
+              p_emp_tht      = lem_ctsubst_wf'      g t Base p_g_t p_g_wf th den_g_th
+              p_the_tht      = lem_csubst_hasftype' g e t p_e_t p_er_g_wf th den_g_th
 
-               {-@ eqlpred_v_the :: { ex:Expr | ex == subBV 0 v (csubst th (App (App (AppT (Prim Eql) (TRefn b x1 p1)) (BV 0)) e)) } @-}
-               {- @ eqlpred_v_the :: { ex:Expr | ex == (csubst yth (eqlPred s e)) } @-}
-               eqlpred_v_the  = App (App (AppT (Prim Eql) (ctsubst th (TRefn b x1 p1))) v) (csubst th e)
-                                    ? lem_csubst_and_unbind 0 y v (erase (ctsubst th self_s)) p_v_b th (App (App (AppT (Prim Eql) (TRefn b x1 p1)) (BV 0)) e)
-                                                     ? lem_subFV_notin  y v e
-                                                     ? lem_tsubFV_notin y v s
-                                                     ? lem_csubst_nofv  th v
---App (App (AppT (Prim Eql) (ctsubst th s)) v) 
---                                    (csubst th e) 
-               unb_eqlpred    = App (App (AppT (Prim Eql) s) (FV y)) e
-               pf_eqlthe_bl   = lem_csubst_hasftype' yg  unb_eqlpred      (TRefn TBool Z (Bc True))
-                                                     pf_y_eqle_bl p_yg_wf  yth  den_yg_yth   
-                                                     ? lem_subFV_notin  y v e
-                                                     ? lem_tsubFV_notin y v s
-                                                     ? lem_tsubFV_notin y v (TRefn TBool Z (Bc True))
-                                                     ? lem_csubst_nofv  th v
-                                                     ? lem_ctsubst_nofree th (TRefn TBool Z (Bc True))
-                                    ? lem_csubst_and_unbind 0 y v (erase (ctsubst th self_s)) p_v_b th (App (App (AppT (Prim Eql) (TRefn b x1 p1)) (BV 0)) e)
--}
-{-@ lem_csubst_eqlPred_ftyp :: g:Env -> ProofOf(WFEnv g) -> b:Basic -> x:RVname -> p:Pred
-        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
-        -> ProofOf(WFType g (TRefn b x p) Base) -> e:Term -> ProofOf(HasFType (erase_env g) e (FTBasic b))
-        -> { th:CSub | not (Set_mem y (bindsC th)) } -> ProofOf(DenotesEnv g th)  
-        -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) && Set_emp (freeBV v) && Set_emp (freeBTV v) } 
-        -> ProofOf(HasFType FEmpty v (erase (ctsubst th (TRefn b x p ))))
-        -> ProofOf(Denotes  (ctsubst th (TRefn b x (selfify p b x e))) v)
-        -> ProofOf(HasFType FEmpty (subBV 0 v (csubst th (eqlPred (TRefn b x p) e))) (FTBasic TBool)) @-}
-lem_csubst_eqlPred_ftyp :: Env -> WFEnv -> Basic -> RVname -> Expr -> Vname -> WFType -> Expr
-                               -> HasFType -> CSub -> DenotesEnv -> Expr -> HasFType -> Denotes -> HasFType
-lem_csubst_eqlPred_ftyp g p_g_wf b x1 p1 y p_g_s e p_e_s th den_g_th v p_v_thb den_thselfs_v = pf_eqlthe_bl
-  where
-    yg            = Cons y (TRefn b x1 (selfify p1 b x1 e)) g
-    self_s        =         TRefn b x1 (selfify p1 b x1 e)
-    p_er_g_wf     = lem_erase_env_wfenv g p_g_wf
-    p_yg_wf       = WFFBind (erase_env g) p_er_g_wf y  (FTBasic b) Base 
-                            (lem_erase_wftype g (TRefn b x1 p1) Base p_g_s)
-    yth           = CCons y v th
-    den_yg_yth    = DExt g th den_g_th y self_s v den_thselfs_v
-    {-@ unb_eqlpred :: { ee:Expr | ee == App (App (AppT (Prim Eql) (TRefn b x1 p1)) (FV y)) e } @-}
-    unb_eqlpred    = unbind 0 y (eqlPred (TRefn b x1 p1) e) -- (App (App (AppT (Prim Eql) (TRefn b x1 p1)) (BV 0)) e)
-                       ? lem_subBV_notin  0 (FV y ? toProof (isTerm (FV y) === True)) 
-                             (e ? lem_freeBV_emptyB (erase_env g) e (FTBasic b) p_e_s)
-                       ? lem_tsubBV_notin 0 (FV y) (TRefn b x1 p1)
+              p_v_thb        = p_v_b ? lem_erase_ctsubst th self_s (s ? lem_erase_subtype g self_s s p_selfs_s)
+              {-@ pf_eqlthe_bl :: ProofOf(HasFType FEmpty (subBV 0 v (csubst th (eqlPred (TRefn b x1 p1) e))) (FTBasic TBool)) @-}
+              pf_eqlthe_bl   = lem_csubst_eqlPred_ftyp g p_g_wf b x1 p1 y p_g_s e 
+                                                       (p_e_t ? lem_erase_subtype g s t p_s_t) 
+                                                       th den_g_th v p_v_thb den_thselfs_v
 
-    {-@ pf_y_eqle_bl :: ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) unb_eqlpred (FTBasic TBool)) @-}
-    pf_y_eqle_bl  = lem_eqlPred_ftyping    g b x1 p1      p_g_s p_er_g_wf y e p_e_s
---App (App (AppT (Prim Eql) (ctsubst th s)) v) 
---                                    (csubst th e) 
-    pf_eqlthe_bl   = lem_csubst_hasftype' yg  unb_eqlpred  (TRefn TBool Z (Bc True))
-                                          pf_y_eqle_bl p_yg_wf  yth  den_yg_yth   
- --                                                     ? lem_subFV_notin  y v e
-  --                                                   ? lem_tsubFV_notin y v (TRefn b x1 p1)
-      --                                               ? lem_csubst_nofv  th v
-                                    ? lem_ctsubst_nofree yth (TRefn TBool Z (Bc True) ? free_pf)
-                                    ? lem_csubst_and_unbind 0 y v (erase (ctsubst th (TRefn b x1 p1))) p_v_thb th 
-                                          (eqlPred (TRefn b x1 p1) e {-)
-                                        (App (App (AppT (Prim Eql) (TRefn b x1 p1)) (BV 0)) e ) -}
-                                          ? lem_free_bound_in_env g (TRefn b x1 p1) Base p_g_s y
-                                          ? lem_fv_bound_in_fenv (erase_env g) e (FTBasic b) p_e_s y)
-    free_pf       = toProof ( freeTV (TRefn TBool Z (Bc True)) === ftv (Bc True) === S.empty )
+              y'th           = CCons y' v th
+              den_y'g_y'th   = DExt g th den_g_th y' (TRefn b x1 (selfify p1 b x1 e)) v den_thselfs_v
+              {-@ pf_thp1v_bl :: ProofOf(HasFType FEmpty (subBV 0 v (csubst th p1)) (FTBasic TBool)) @-}
+              pf_thp1v_bl    = lem_csubst_hasftype' y'g (unbind 0 y' p1) (TRefn TBool Z (Bc True))
+                                                    p_y'_p1_bl (p_y'g_wf ? erase_env_pf) y'th den_y'g_y'th 
+                ? toProof ( csubst y'th (unbind 0 y' p1)
+                        === csubst (CCons y' v th) (unbind 0 y' p1) 
+                          ? lem_csubst_and_unbind 0 y' v (erase (ctsubst th self_s)) p_v_b th 
+                                (p1 ? lem_free_bound_in_env g (TRefn b x1 p1) Base p_g_s y'
+                                    ? toProof (S.isSubsetOf (fv p1) (free (TRefn b x1 p1))) )
+                        === subBV 0 v (csubst th p1) )
+                ? lem_ctsubst_nofree y'th (TRefn TBool Z (Bc True) ? free_pf ? fv_pf)
+                ? erase_pf
 
+              b'             = lem_ctsubst_refn_isrefnconc g th den_g_th b x1 p1 p_g_s
+              (ev_eqle_tt,_) = lem_strengthen_elimination (subBV 0 v (csubst th (eqlPred s e))) --eqlpred_v_the 
+                                                          (subBV 0 v (csubst th p1)) 
+                                                          pf_eqlthe_bl pf_thp1v_bl ev_thselp1_tt'
+              ev_eql1e_tt    = lem_evals_eqlPred b x1 (p1 ? lem_tfreeBV_empty g (TRefn b x1 p1) Base p_g_s)
+                                                 (e ? lem_freeBV_emptyB (erase_env g) e (FTBasic b) p_e_t)
+                                                 v th ev_eqle_tt
+              {-@ ev_eql2e_tt :: ProofOf(EvalsTo (App (App (AppT (Prim Eql) (ctsubst th (TRefn b x2 p2))) v) 
+                                                      (csubst th e)) (Bc True)) @-}
+              ev_eql2e_tt    = lem_eqlPred_exchange_refn b' (ctsubst th s)
+                                   (ctsubst th t ? lem_erase_ctsubst th s (t ? erase_s ? erase_t)
+                                                 ? lem_ctsubst_usertype th (t ? noexists_pf)) 
+                                   (csubst th e) v ev_eql1e_tt
 
-
-
-
-
-
-
- 
-{- good stuff
-               y'th           = CCons y' v th
-               den_y'g_y'th   = DExt g th den_g_th y' (TRefn b x1 (selfify p1 b x1 e)) v den_thselfs_v
-               pf_thp1v_bl    = lem_csubst_hasftype' y'g (unbind 0 y' p1) (TRefn TBool Z (Bc True))
-                                                     p_y'_p1_bl   p_y'g_wf y'th den_y'g_y'th 
-                                                     ? lem_csubst_and_unbind 0 y' v (erase (ctsubst th self_s)) p_v_b
-                                                           th p1
-               (ev_eqle_tt,_) = lem_strengthen_elimination eqlpred_v_the (subBV 0 v (csubst th p1)) 
-                                                           pf_eqlthe_bl pf_thp1v_bl ev_thselp1_tt'
-               den_thselft_v  = lem_denotations_selfify' 
-                                     (ctsubst th t ? lem_ctsubst_refn_usertype g th den_g_th b x2 p2 p_g_t) 
-                                     Base p_emp_tht (csubst  th e) p_the_tht v ev_eqle_tt den_tht_v
-               ev_thselp2v_tt = get_evals_from_ctsubst_drefn g th den_g_th p_er_g_wf b x2 
-                                                     (selfify p2 b x2 e) p_g_selft
-                                                     v den_thselft_v
-
+              den_thselft_v  = lem_denotations_selfify' 
+                                    (ctsubst th t ? lem_ctsubst_usertype th (t ? noexists_pf)) 
+                                    Base p_emp_tht (csubst  th e ? lem_csubst_no_more_bv th 
+                                                     (e ? lem_freeBV_emptyB (erase_env g) e (FTBasic b) p_e_t )) 
+                                    p_the_tht v ev_eql2e_tt den_tht_v
+                                    ? lem_ctsubst_self th (TRefn b x2 p2) e Base
+              ev_thselp2v_tt = get_evals_from_ctsubst_drefn g th den_g_th p_er_g_wf b x2 
+                                                    (selfify p2 b x2 e) p_g_selft
+                                                    v den_thselft_v
+                ? toProof ( csubst yth (unbind 0 y (selfify p2 b x2 e))
+                        === csubst (CCons y v th) (unbind 0 y (selfify p2 b x2 e)) 
+                          ? lem_csubst_and_unbind 0 y v (erase (ctsubst th self_s)) p_v_b 
+                                    (th ? toProof ( S.member y (binds g) === S.member y (bindsC th) )) 
+                                    (selfify p2 b x2 e ? self_fv_pf)
+                        === subBV 0 v (csubst th (selfify p2 b x2 e)) )
+              bindsC_pf     = toProof ( S.member y (binds g) ? lem_binds_env_th g th den_g_th 
+                                    === S.member y (bindsC th) )
+                       
+        binds_y_pf    = toProof ( in_envF y (erase_env g) === in_env y g )
+                      ? toProof ( bindsF (erase_env g) === binds g )
+        binds_pf      = toProof ( in_envF y' (erase_env g) === in_env y' g )
+                      ? toProof ( bindsF (erase_env g) === binds g )
+        erase_s       = toProof ( erase (TRefn b x1 p1)            === FTBasic b )
+        erase_t       = toProof ( erase (TRefn b x2 p2)            === FTBasic b )
+        erase_pf      = toProof ( erase (TRefn TBool Z (Bc True))  === FTBasic TBool )
+        erase_env_pf  = toProof ( erase_env (Cons y' (TRefn b x1 (selfify p1 b x1 e)) g)
+                              === FCons y' (erase (TRefn b x1 (selfify p1 b x1 e))) (erase_env g ? binds_pf)
+                              === FCons y' (FTBasic b) (erase_env g ? binds_pf) )
+        free_pf       = toProof ( freeTV (TRefn TBool Z (Bc True)) === ftv (Bc True) === S.empty )
+        fv_pf         = toProof ( free (TRefn TBool Z (Bc True))   === fv (Bc True)  === S.empty )
+        self_fv_pf    = toProof ( fv (selfify p2 b x2 e) === S.union (fv p2) (fv e) ) 
+                      ? lem_fv_bound_in_fenv (erase_env g) e (FTBasic b) p_e_t (y ? binds_y_pf)
+        noexists_pf   = toProof ( noExists (TRefn b x2 p2) === True )
 -}
 
-{-
-                 lemma_and_semantics (csubst th (unbind x2 y p2)) True ev_thp2_tt
-                                     (csubst th (unbind x2 y r2)) True ev_thr1_tt
-                                     ? lem_csubst_app th (App (Prim And) (unbind x2 y p2)) (unbind x2 y r2)
-                                     ? lem_csubst_app th (Prim And) (unbind x2 y p2)
-                                     ? lem_csubst_prim th And
-             where
-               {-@ ev_thp1r_tt :: ProofOf(EvalsTo (subBV x1 th'y (csubst th' p1andr)) (Bc True)) @-}
-               {-@ p_th'y_b :: ProofOf(HasFType FEmpty th'y (FTBasic b)) @-}
-               ev_thp1r_tt = get_evals_from_drefn b x1 (csubst th' (selfify p1 b x1 e)) th'y (den_th't1_th'y
-                                 ? lem_ctsubst_refn th' b x1 (selfify p1 b x1 e)) 
-               p_th'y_b    = get_ftyp_from_den (ctsubst th' (TRefn b x1 (selfify p1 b x1 e))) th'y  den_th't1_th'y
-                                 ? lem_erase_ctsubst th' (TRefn b x1 (selfify p1 b x1 e)) 
-               (ev_thp1_tt, ev_thr1_tt) = lem_implies_elimination (Cons y t1 g) th den_yg_th
-                                 (unbind x1 y p1) (unbind x1 y r1) pf_p1_bl pf_r_bl 
-                                 (ev_thp1r_tt ? lem_csubst_subBV x1 th'y (FTBasic b) p_th'y_b th' p1andr
-                                              ? lem_subFV_unbind x1 y th'y p1andr)
-                                 ? lem_binds_env_th g th' den_g_th'
-               den_th'p1_th'y = lem_denote_sound_sub g t1 (TRefn b x1 p1) p_t1_t1' p_g_wf 
-                                                     p_g_t1 p_g_t1' th' den_g_th' th'y den_th't1_th'y
-               den_yg'_th  = DExt g th' den_g_th' y (TRefn b x1 p1) th'y den_th'p1_th'y
-               ev_thp2_tt  = reduce_thp2_tt th den_yg'_th
-         e             = e_ ? lem_freeBV_emptyB (erase_env g) e_ (FTBasic b) p_e_b
-                            ? lem_fv_subset_bindsF (erase_env g) e_ (FTBasic b) p_e_b
-                            ? lem_subBV_notin x1 (FV y) e_ 
-                            ? lem_subBV_notin x2 (FV y) e_ 
-         p_g_t1'       = WFRefn g x1 b p1 y pf_p1_bl
-         p_g_t1        = lem_selfify_wf g (TRefn b x1 p1) p_g_t1' e p_e_b
-         p_t1_t1'      = lem_self_is_subtype g (TRefn b x1 p1) p_g_t1' e p_e_b p_g_wf
-         {-@ reduce_thp2_tt :: th0:CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x1 p1) g) th0) 
-                                        -> ProofOf(EvalsTo (csubst th0 (unbind x2 y p2)) (Bc True)) @-}
-         (EntPred _ _ reduce_thp2_tt) = ent_yg_p2
-         {-@ r1 :: { r1:Expr | unbind x1 y r1 ==  App (App (equals b) (FV y)) e } @-}
-         r1            = App (App (equals b) (BV x1)) e 
-         {-@ r2 :: { r2:Expr | unbind x2 y r2 ==  App (App (equals b) (FV y)) e } @-}
-         r2            = App (App (equals b) (BV x2)) e 
-         {-@ p1andr :: { pr:Expr | unbind x1 y pr == App (App (Prim And) (unbind x1 y p1)) (unbind x1 y r1) } @-}
-         p1andr        = App (App (Prim And) p1) (App (App (equals b) (BV x1)) e)
-         p_yg_e_b    = lem_weaken_ftyp (erase_env g) FEmpty e (FTBasic b) p_e_b y (FTBasic b)
-         pf_eqb_bl   = FTApp (erase_env yg) (equals b) (FTBasic b) (FTFunc (FTBasic b) (FTBasic TBool))
-                             (FTPrm (erase_env yg) c) (FV y) (FTVar1 (erase_env g) y (FTBasic b))
-         {-@ pf_r_bl :: ProofOf(HasFType (erase_env yg) (unbind x1 y r1) (FTBasic TBool)) @-} 
-         pf_r_bl     = FTApp (erase_env yg) (App (equals b) (FV y)) (FTBasic b) (FTBasic TBool)
-                             pf_eqb_bl e p_yg_e_b  
--}
+{-@ ple lem_subtype_in_exists @-}
 {-@ lem_subtype_in_exists :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind 
         -> ProofOf(WFType g t_x k_x) -> ProofOf(WFEnv g) -> t:Type 
         -> { t':Type | not (Set_mem x (tfreeBV t')) }
@@ -243,38 +293,45 @@ lem_csubst_eqlPred_ftyp g p_g_wf b x1 p1 y p_g_s e p_e_s th den_g_th v p_v_thb d
         -> ProofOf(Subtype g (TExists x t_x t) (TExists x t_x t')) @-}
 lem_subtype_in_exists :: Env -> Vname -> Type -> Kind -> WFType -> WFEnv -> Type -> Type 
                            -> Vname -> Subtype -> Subtype
-lem_subtype_in_exists g x t_x k_x p_g_tx p_g_wf t t' y p_yg_t_t' = undefined {- CHECKED??
+lem_subtype_in_exists g x t_x k_x p_g_tx p_g_wf t t' y p_yg_t_t' 
+ = undefined {- CHECKED 2021
   = SBind g x t_x t (TExists x t_x t' ? lem_free_bound_in_env g t_x k_x p_g_tx y
-                                      ? lem_tfreeBV_empty g t_x k_x p_g_tx p_g_wf
+                                      ? lem_tfreeBV_empty g t_x k_x p_g_tx 
                                       ? toProof ( free (TExists x t_x t') === S.union (free t_x) (free t') ))
           y p_t_ext'
       where
         p_yg_wf     = WFEBind g p_g_wf y t_x k_x p_g_tx
-        p_yg_tx     = lem_weaken_wf g Empty p_g_wf t_x k_x p_g_tx y t_x
+        p_yg_tx     = lem_weaken_wf' g Empty p_g_wf t_x k_x p_g_tx y t_x
         -- y:t_x, g |- (self t_x y) <: tx
-        p_selftx_tx = lem_self_is_subtype (Cons y t_x g) t_x k_x p_yg_tx (FV y) p_yg_wf
+        p_selftx_tx = lem_self_is_subtype (Cons y t_x g) t_x k_x p_yg_tx (FV y) 
+                                          (FTVar1 (erase_env g) y (erase t_x)) p_yg_wf
         p_y_tx      = TSub (Cons y t_x g) (FV y) (self t_x (FV y) k_x) 
                            (TVar1 g y t_x k_x p_g_tx) t_x k_x p_yg_tx p_selftx_tx
         p_t_ext'    = SWitn (Cons y t_x g) (FV y) t_x p_y_tx (unbindT x y t) x t' p_yg_t_t'        
 -}
 
+{-@ ple lem_self_idempotent_upper @-}
 {-@ lem_self_idempotent_upper :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
         -> e:Expr -> ProofOf(HasFType (erase_env g) e (erase t))
         -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self t e k) (self (self t e k) e k)) / [tsize t] @-}
 lem_self_idempotent_upper :: Env -> Type -> Kind -> WFType -> Expr -> HasFType -> WFEnv -> Subtype
-lem_self_idempotent_upper g (TRefn b z p) Base p_g_t e_ p_e_t p_g_wf = undefined {- TODO TODO
-  = SBase g z b (selfify p b z e) z (selfify (selfify p b z e) b z e) y p_ent_ssp
+lem_self_idempotent_upper g (TRefn b z q_) Base p_g_t e_ p_e_t p_g_wf 
+  = SBase g z b (selfify q b z e) z (selfify (selfify q b z e) b z e) y p_ent_ssq
       where 
+        q         = q_ ? lem_refn_is_pred (TRefn b z q_) b z q_
         e         = e_ ? lem_freeBV_emptyB (erase_env g) e_ (FTBasic b) p_e_t
-        -- .... invert wfrefn
-        pf_p_bl   = undefined
         y_        = fresh_var g
-        y         = y_ ? lem_free_bound_in_env g (TRefn b z p) Base p_g_t y_
+        y         = y_ ? lem_free_bound_in_env g (TRefn b z q) Base p_g_t y_
                        ? lem_fv_bound_in_fenv (erase_env g) e (FTBasic b) p_e_t y_
-        q         = (App (App (AppT (Prim Eql) (TRefn b 1 (Bc True))) (BV z)) e)
-        pf_q_bl   = undefined
-        p_ent_ssp = lem_entails_redundancy g b z p q y pf_p_bl pf_q_bl
--}
+        p_er_g_wf = lem_erase_env_wfenv g p_g_wf
+	pf_q_bl   = lem_ftyp_for_wf_trefn' g b z q Base p_g_t p_er_g_wf        
+
+
+
+        -- use eqlPred ftyping
+        p         = (App (App (AppT (Prim Eql) (TRefn b 1 (Bc True))) (BV z)) e)
+        pf_p_bl   = undefined...
+        p_ent_ssp = lem_entails_redundancy g p_er_g_wf b z p q y pf_p_bl pf_q_bl
 {- Lambda 1.1 version
 lem_self_idempotent_upper g t{- @(TRefn b z p)-} p_g_t@(WFRefn _ z b p w pf_wg_p) 
                           e_ p_e_t p_g_wf  
@@ -347,19 +404,20 @@ lem_self_idempotent_upper g t@(TPoly a k_a t') Base p_g_t e p_e_t p_g_wf
 lem_self_idempotent_upper g t                  Star p_g_t e p_e_t p_g_wf 
   = lem_sub_refl g t Star p_g_t p_g_wf
 
+{-@ ple lem_self_idempotent_lower @-}
 {-@ lem_self_idempotent_lower :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
         -> e:Expr -> ProofOf(HasFType (erase_env g) e (erase t))
         -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self (self t e k) e k) (self t e k)) @-}
 lem_self_idempotent_lower :: Env -> Type -> Kind -> WFType -> Expr -> HasFType -> WFEnv -> Subtype
-lem_self_idempotent_lower g t k p_g_t e_ p_e_t p_g_wf = undefined {- CHECKED
+lem_self_idempotent_lower g t k p_g_t e_ p_e_t p_g_wf 
   = lem_self_is_subtype g (self t e k) k p_g_selft e p_g_wf
       where
         e         = e_ ? lem_fv_subset_bindsF (erase_env g) e_ (erase t) p_e_t
                        ? lem_freeBV_emptyB    (erase_env g) e_ (erase t) p_e_t
         p_g_selft = lem_selfify_wf g t k p_g_t e p_e_t
--}
 
 --        -> k:Kind -> { e:Expr | Set_emp (freeBV e) } -> t_e:Type -> ProofOf(HasType g e t_e) 
+{-@ ple lem_exact_subtype @-}
 {-@ lem_exact_subtype :: g:Env -> ProofOf(WFEnv g) -> s:Type -> k_s:Kind -> ProofOf(WFType g s k_s)
         -> t:Type -> ProofOf(Subtype g s t) -> k:Kind -> ProofOf(WFType g t k)
         -> { e:Term | Set_emp (freeBV e) && Set_sub (fv e) (binds g) } 
@@ -368,53 +426,17 @@ lem_self_idempotent_lower g t k p_g_t e_ p_e_t p_g_wf = undefined {- CHECKED
 lem_exact_subtype :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Subtype -> Kind -> WFType
                          -> Expr -> HasFType -> Subtype
 -- lem_exact_subtype = undefined {-
-lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBase _ x1 b p1 x2 p2 y ent_yg_p2) Base p_g_t e p_e_t
- = undefined {- redo
-  = {-case p_g_s of 
-??      (WFRefn  _ _ _ _p1 w pf_w_p1_bl) -> 
-  ??  -}    SBase g x1 b (selfify p1 b x1 e) x2 (selfify p2 b x2 e) y 
-                  (EntPred (Cons y (TRefn b x1 (selfify p1 b x1 e)) g) 
-                           (unbind 0 y (selfify p2 b x2 e)) ent_yg_selfp2) {-
-    ??      where
-      ??      y             = y_ ? lem_free_subset_binds g s p_g_s
-    ??        pf_y_p1_bl    = lem_change_var_ftyp (erase_env g) w (FTBasic b) FEmpty 
-  ??                                              (unbind x1 w p1) (FTBasic TBool) pf_w_p1_bl y
-??                                                ? lem_subFV_unbind x1 w (FV y) p1-}
+lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBase _ x1 b p1 x2 p2 y_ ent_yg_p2) Base p_g_t e p_e_t = undefined {- OK!
+  = SBase g x1 b (selfify p1 b x1 e) x2 (selfify p2 b x2 e) y ent_yg_selfp2
       where
-            yg            = Cons y (TRefn b x1 (selfify p1 b x1 e)) g
-            self_s        =         TRefn b x1 (selfify p1 b x1 e)
-            p_er_g_wf     = lem_erase_env_wfenv g p_g_wf
-            p_g_s_base    = lem_sub_sbase_pullback_wftype g p_g_wf s t p_s_t k_s p_g_s Base p_g_t
-            p_g_selfs     = lem_selfify_wf      g s Base p_g_s_base p_er_g_wf e
-                                                (p_e_t ? lem_erase_subtype g s t p_s_t)
-            p_selfs_s     = lem_self_is_subtype g s Base p_g_s_base e 
-                                                (p_e_t ? lem_erase_subtype g s t p_s_t) p_g_wf
-            p_g_selft     = lem_selfify_wf      g t Base p_g_t      p_er_g_wf e p_e_t 
-	    {-@ ent_yg_selfp2 :: yth:CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x1 (selfify p1 b x1 e)) g) yth) 
-                                   -> ProofOf(EvalsTo (csubst yth (unbind 0 y (selfify p2 b x2 e))) (Bc True)) @-}
-            ent_yg_selfp2 :: CSub -> DenotesEnv -> EvalsTo    -- have Ent (y:s, g) (unb 0 y p2)
-            ent_yg_selfp2 yth den_yg_yth = case den_yg_yth of -- need th(selfify p2 b x2 e)[v/y] ~> tt
-              (DExt _g th den_g_th _y _selfs v den_thselfs_v) -> ev_thselpv_tt
-                where
-                  den_ths_v     = lem_denote_sound_sub g self_s Base s Base p_selfs_s p_g_wf
-                                                       p_g_selfs p_g_s_base th den_g_th v den_thselfs_v
-                  den_tht_v     = lem_denote_sound_sub g s Base t Base p_s_t p_g_wf 
-                                                       p_g_s_base p_g_t th den_g_th v den_ths_v
-                  p_emp_tht     = undefined -- ....
-                  p_the_tht     = undefined -- ....
-                  ev_e_v        = undefined -- ....
-                  den_thselft_v = lem_denotations_selfify (ctsubst th t) Base p_emp_tht
-                                                          (csubst  th e) p_the_tht v ev_e_v den_tht_v
-                  ev_thselpv_tt = get_evals_from_ctsubst_drefn g th den_g_th p_er_g_wf b x2 
-                                                               (selfify p2 b x2 e) p_g_selft
-                                                               v den_thselft_v
--}
---            ent_yg_selfp2 = lem_self_entails_self g p_g_wf b x1 p1 x2 p2 y pf_y_p1_bl ent_yg_p2 e p_e_t
-{-  = SBase g x1 b (selfify p1 b x1 e) x2 (selfify p2 b x2 e) y ent_yg_selfp2
-      where
+        y             = y_ ? lem_free_bound_in_env g (TRefn b x1 p1) k_s  p_g_s y_
+                           ? lem_free_bound_in_env g (TRefn b x2 p2) Base p_g_t y_  
         (EntPred _ _ reduce_thp2_tt) = ent_yg_p2
         g'            = Cons y (TRefn b x1 (selfify p1 b x1 e)) g
-        ent_yg_selfp2 = lem_self_entails_self g b x1 p1 x2 p2 y ent_yg_p2 e p_e_t-}
+        p_g_s_base    = lem_sub_sbase_pullback_wftype g p_g_wf s t p_s_t k_s p_g_s Base p_g_t
+        ent_yg_selfp2 = lem_self_entails_self g p_g_wf b x1 p1 x2 p2 y p_g_s_base p_g_t p_s_t 
+                                              ent_yg_p2 e p_e_t
+-}
 lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SFunc {}) k _ e p_e_t = p_s_t
 lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SWitn _ v_x t_x p_vx_tx _s x t' p_s_t'vx) Base p_g_t e p_e_t = undefined {-
   = SWitn g v_x t_x p_vx_tx (self s e Base) x (self t' e Base) p_self_s_t'vx
@@ -423,7 +445,7 @@ lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SWitn _ v_x t_x p_vx_tx _s x t' 
                                           (p_e_t ? lem_erase_tsubBV x v_x t')
                                           ? lem_tsubBV_self x v_x t' e Base
 -}
-lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBind _ x s_x s' _t y p_s'_t) Base p_g_t e p_e_t = undefined {-
+lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBind _ x s_x s' _t y p_s'_t) Base p_g_t e p_e_t  = undefined {-
   = SBind g x s_x (self s' e Base) (self t e Base) y p_self_s'_t
       where
         (WFExis _ _ _sx p_g_sx _ w p_wg_s') = p_g_s
@@ -436,12 +458,13 @@ lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBind _ x s_x s' _t y p_s'_t) Ba
                                         ? lem_tsubBV_self x (FV y) s' e 
         --p_self_s'_t = lem_exact_subtype (Cons y s_x g) (unbindT x y s') t p_s'_t Base e p_e_t
         --                                ? lem_tsubBV_self x (FV y) s' e Base
-        --}                                
+        -}                                
 lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SPoly {}) k _ e p_e_t = p_s_t
 lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t Star _ e p_e_t 
   = p_s_t ? toProof (self s e Star === s)
           ? toProof (self t e Star === t)
 
+{-
 {-@ lem_exact_type :: g:Env -> v:Value -> t:Type -> ProofOf(HasType g v t) -> k:Kind
         -> ProofOf(WFEnv g) -> ProofOf(HasType g v (self t v k)) @-}
 lem_exact_type :: Env -> Expr -> Type -> HasType -> Kind -> WFEnv -> HasType
@@ -515,4 +538,4 @@ lem_exact_type g e t p_e_t@(TSub _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base p_g_wf
                        else WFKind g (self t e Base) p_g_selft_b
        p_selfs_selft = lem_exact_subtype g s t p_g_s_t Base (e ? lem_freeBV_empty -}
 lem_exact_type g e t p_e_t Star p_g_wf = p_e_t ? toProof ( self t e Star === t )
--}
+-}-}
