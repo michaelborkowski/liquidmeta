@@ -35,11 +35,11 @@ lem_den_not :: () -> Denotes
 lem_den_not _ = DFunc 2 (TRefn TBool Z (Bc True)) (ty' Not) (Prim Not ? val_not) 
                       (FTPrm FEmpty Not ? er_not) val_den_func ? ty_not
   where
-    er_not    = toProof ( erase_ty Not === erase (ty Not) ? ty_not
-                                       === erase (TFunc 2   (TRefn TBool   Z (Bc True))  (ty' Not)) )
-    ty_not    = toProof ( ty Not === TFunc (firstBV Not)      (inType Not)  (ty' Not)
-                                 === TFunc 2   (TRefn TBool   Z (Bc True))  (ty' Not) )
-    val_not   = toProof ( isValue (Prim Not) === True ) ? toProof ( isTerm (Prim Not) === True )
+    er_not    = erase_ty Not === erase (ty Not) ? ty_not
+--                                       === erase (TFunc 2   (TRefn TBool   Z (Bc True))  (ty' Not)) )
+    ty_not    = ty Not === TFunc (firstBV Not)      (inType Not)  (ty' Not)
+--                                 === TFunc 2   (TRefn TBool   Z (Bc True))  (ty' Not) )
+    val_not   = isValue (Prim Not) ? isTerm (Prim Not) 
 
 {-@ val_den_func :: v_x:Value -> ProofOf(Denotes (TRefn TBool Z (Bc True)) v_x)
                               -> ProofOf(ValueDenoted (App (Prim Not) v_x) (tsubBV 2 v_x (ty' Not))) @-}
@@ -61,13 +61,13 @@ val_den_func v_x den_tx_vx = case v_x of
     den_t'f = DRefn TBool Z p'f (Bc True ? val_t) (FTBC FEmpty True) ev_prt'f
     p'f = subBV 2 (Bc False ? val_f) (refn_pred Not)
 
-    comp_f    = toProof ( isCompat Not (Bc False) === True )
-    comp_t    = toProof ( isCompat Not (Bc True)  === True )
-    del_f     = toProof ( delta Not (Bc False ? comp_f) === Bc True )
-    del_t     = toProof ( delta Not (Bc True  ? comp_t)  === Bc False )
-    val_f     = toProof ( isValue (Bc False) === True ) ? toProof ( isTerm (Bc False) === True )
-    val_t     = toProof ( isValue (Bc True)  === True ) ? toProof ( isTerm (Bc True)  === True )
-    er_bool   = toProof ( erase (TRefn TBool Z (Bc True)) === FTBasic TBool )
+    comp_f    = isCompat Not (Bc False) 
+    comp_t    = isCompat Not (Bc True)  
+    del_f     = delta Not (Bc False ? comp_f) 
+    del_t     = delta Not (Bc True  ? comp_t)  
+    val_f     = isValue (Bc False)  ? isTerm (Bc False) 
+    val_t     = isValue (Bc True)   ? isTerm (Bc True)  
+    er_bool   = erase (TRefn TBool Z (Bc True)) 
 
 {-@ ple ev_prt't @-}
 {-@ ev_prt't :: ProofOf(EvalsTo (subBV 0 (Bc False) (subBV 2 (Bc True) (refn_pred Not))) (Bc True)) @-}

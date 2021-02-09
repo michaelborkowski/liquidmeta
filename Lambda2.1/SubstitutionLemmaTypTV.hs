@@ -39,14 +39,15 @@ import PrimitivesSemantics
 import PrimitivesDenotations
 import DenotationsSoundness
 import LemmasExactness
+import SubstitutionLemmaWFEnv
 import SubstitutionLemmaEnt
 import SubstitutionLemmaEntTV
+import EntailmentsExtra
 
-{-@ reflect foo64 @-}
-foo64 x = Just x
-foo64 :: a -> Maybe a
+{-@ reflect foo68 @-}
+foo68 x = Just x
+foo68 :: a -> Maybe a
 
-{-
 {-@ lem_subst_tv_typ_tvar1 :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
         -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
@@ -83,7 +84,8 @@ lem_subst_tv_typ_tvar2 g g' a t_a k_a p_g_ta p_env_wf e t p_env_z_t@(TVar2 env_ 
         (Empty)           -> impossible "a <> w"
         (Cons _w _tw g'') -> case (a == z) of
             (True)  -> impossible ("by lemma" ? lem_tvar_v_in_env (concatE (ConsT a k_a g) g')
-                                                                z t p_env_z_t)
+                                                                z t p_env_z_t
+                                              ? lem_binds_invariants (concatE (ConsT a k_a g) g''))
             (False) -> TVar2 (concatE g (esubFTV a t_a g'')) 
                              (z ? lem_in_env_esubFTV g'' a t_a z
                                 ? lem_in_env_concat g g'' z
@@ -119,7 +121,8 @@ lem_subst_tv_typ_tvar3 g g' a t_a k_a p_g_ta p_env_wf e t p_env_z_t@(TVar3 env_ 
                            p_g_t = lem_typing_wf g (FV z) t p_z_t p_g_wf
         (ConsT _ _ka g'') -> case (a == z) of
             (True)  -> impossible ("by lemma" ? lem_tvar_v_in_env (concatE (ConsT a k_a g) g')
-                                                                z t p_env_z_t)
+                                                                z t p_env_z_t
+                                              ? lem_binds_invariants (concatE (ConsT a k_a g) g''))
             (False) -> TVar3 (concatE g (esubFTV a t_a g'')) --z
                              (z ? lem_in_env_esubFTV g'' a t_a z
                                 ? lem_in_env_concat g g'' z
@@ -275,7 +278,6 @@ lem_subst_tv_typ_tsub g g' a t_a k_a p_g_ta p_env_wf e t
         p_g'g_t    = lem_subst_tv_wf' g g' a t_a k_a p_g_ta p_env_wf t k p_env_t
         p_env_s    = lem_typing_wf (concatE (ConsT a k_a g) g') e s p_env_e_s p_env_wf
         p_g'g_s_t  = lem_subst_tv_sub g g' a t_a k_a p_g_ta p_env_wf s Star p_env_s t k p_env_t p_env_s_t
--}
 
 {-@ lem_subst_tv_typ :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -286,7 +288,6 @@ lem_subst_tv_typ_tsub g g' a t_a k_a p_g_ta p_env_wf e t
                / [typSize p_e_t, 1] @-}
 lem_subst_tv_typ :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
-lem_subst_tv_typ g g' a t_a k_a p_g_ta p_env_wf e t p_e_t = undefined {-
 lem_subst_tv_typ g g' a t_a k_a p_g_ta p_env_wf e t (TBC _env b)
   = TBC (concatE g (esubFTV a t_a g')) b ? lem_tsubFTV_tybc a t_a b
 lem_subst_tv_typ g g' a t_a k_a p_g_ta p_env_wf e t (TIC _env n)
@@ -315,7 +316,6 @@ lem_subst_tv_typ g g' a t_a k_a p_g_ta p_env_wf e t (TAnn env_ e' t_ p_env_e'_t)
         p_env'_e'ta_tta = lem_subst_tv_typ g g' a t_a k_a p_g_ta p_env_wf e' t p_env_e'_t
 lem_subst_tv_typ g g' a t_a k_a p_g_ta p_env_wf e t p_e_t@(TSub {}) 
   = lem_subst_tv_typ_tsub g g' a t_a k_a p_g_ta p_env_wf e t p_e_t
--}
 
 
 {-@ lem_subst_tv_sub_sbase :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
@@ -330,30 +330,12 @@ lem_subst_tv_typ g g' a t_a k_a p_g_ta p_env_wf e t p_e_t@(TSub {})
 lem_subst_tv_sub_sbase :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type -> Kind -> WFType -> Type -> Kind -> WFType -> Subtype -> Subtype
 lem_subst_tv_sub_sbase g g' a t_a k_a p_g_ta p_env_wf s k_s p_env_s t k_t p_env_t 
-                       (SBase env z1 b p1 z2 p2 y_ ent_yenv_p2) = case b of
-  (FTV a1) | a1 == a -> case t_a of
-    (TRefn b' z q)   -> undefined {- TODO SBase (concatE g (esubFTV a t_a g')) z b' (strengthen (subFTV a t_a p1) q)
-                              z (strengthen (subFTV a t_a p2) q) y ent_yenv'_p2taq
+                       p_s_t@(SBase env z1 b p1 z2 p2 y_ ent_yenv_p2) = case b of
+  (FTV a1) | a1 == a -> case t_a of -- b' could be FTV here
+    (TRefn b' z q_)   -> lem_subst_tv_sub_sbase_ftv g g' a b' z q k_a p_g_ta p_env_wf 
+                                                   z1 p1 k_s p_env_s z2 p2 k_t p_env_t p_s_t
       where 
-        y                = y_  ? lem_in_env_esubFTV g' a t_a y_ 
-                               ? lem_in_env_concat g  g' y_ 
-                               ? lem_in_env_concat (ConsT a k_a g) g' y_
-                               ? lem_fv_bound_in_env g t_a k_a p_g_ta y_
-        t1	           = TRefn b' z (strengthen (subFTV a t_a p1) q)
-         ......	-- Entails (Cons y t1 env) (unbind 0 y (strengthen (subFTV a t_a p2) q))
-
-        ent_yenv'_p2taq  = EntPred (Cons y t1 env) (unbind 0 y (strengthen (subFTV a t_a p2) q))
-                                   ev_func
-        ev_func :: CSub -> DenotesEnv -> EvalsTo
-        ev_func th' den_yenv_th' = case den_yenv_th' of
-          (DExt _ th _ _t _t1 v1 den_tht1_v1)
-            ->
-                where
-                  ev_thp1q_tt = get_evals_from_drefn b' z (csubst th (strengthen (subFTV a t_a p1) q))
-                                    v1 den_tht1_v1 
-                                    ? lem_ctsusbt_refn b' z (strengthen (subFTV a t_a p1) q)
-                                    ? lem_csubst_strengthen th  (subFTV a t_a p1) q
-                  -}
+        q = q_ ? lem_refn_is_pred (TRefn b' z q_) b' z q_
     (TFunc x t_x t') -> lem_sub_refl (concatE g (esubFTV a t_a g')) t_a k_a p_env'_ta p_env'_wf
       where
         p_env'_wf = lem_subst_tv_wfenv g g' a t_a k_a p_g_ta p_env_wf
@@ -364,13 +346,11 @@ lem_subst_tv_sub_sbase g g' a t_a k_a p_g_ta p_env_wf s k_s p_env_s t k_t p_env_
         p_env'_ta = lem_weaken_many_wf' g (esubFTV a t_a g') p_env'_wf t_a k_a p_g_ta 
   _                  -> SBase (concatE g (esubFTV a t_a g')) z1 b (subFTV a t_a p1) 
                               z2 (subFTV a t_a p2) y ent_yenv'_p2ta
-               -- Entails (Cons y (TRefn b z1 (subFV x v_x p1)) env') (unbind z2 y (subFV x v_x p2))
     where
       y                = y_  ? lem_in_env_esubFTV g' a t_a y_ 
                              ? lem_in_env_concat g  g' y_ 
                              ? lem_in_env_concat (ConsT a k_a g) g' y_
                              ? lem_free_bound_in_env g t_a k_a p_g_ta y_
---        --(WFRefn _ _ _ _p2 w_ p_wenv_p2_bl) = p_env_t
       (w_, p_wenv_p2_bl) = lem_ftyp_for_wf_trefn env b z2 p2 k_t p_env_t
       w                = w_  ? lem_in_env_concat g  g' w_ 
                              ? lem_in_env_concat (ConsT a k_a g) g' w_
@@ -380,13 +360,12 @@ lem_subst_tv_sub_sbase g g' a t_a k_a p_g_ta p_env_wf s k_s p_env_s t k_t p_env_
       p_yenv_p2_bl     = lem_change_var_ftyp (erase_env env) w (FTBasic b) FEmpty p_er_wenv_wf
                                              (unbind 0 w p2) (FTBasic TBool) p_wenv_p2_bl y
                                              ? lem_subFV_unbind 0 w (FV y) p2
-      --EntPred _yenv _p2 func_th_thp_tt = ent_yenv_p2 -- Entails (Cons y (TRefn b z1 p1) env) (unbind z2 y p2)
       ent_yenv'_p2ta   = lem_subst_tv_ent g (Cons y (TRefn b z1 p1) g') a t_a k_a p_g_ta p_yenv_wf
                              (unbind 0 y p2 ? lem_fv_subset_bindsF (FCons y (FTBasic b) (erase_env env)) 
                                  (unbind 0 y p2) (FTBasic TBool) p_yenv_p2_bl)
                              ent_yenv_p2 
                              ? lem_commute_subFTV_unbind a
-                                   (t_a ? lem_tfreeBV_empty g t_a k_a p_g_ta) 0 y p2
+                                   (t_a ? lem_tfreeBV_empty g t_a k_a p_g_ta) 0 y p2 
 
 {-@ lem_subst_tv_sub_sfunc :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -517,8 +496,6 @@ lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_env_wf t1 k1@Star p_env_t1 t2 k2@
                                     ? lem_in_env_concat g  g' a1'_
                                     ? lem_in_env_concat (ConsT a k_a g) g' a1'_
                                     ? lem_free_bound_in_env g t_a k_a p_g_ta a1'_
---        p_xg_wf              = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
- --       (WFEBind _ p_g_wf _ _ _ _)  = p_xg_wf
         p_aa1env_wf          = WFEBindT env p_env_wf aa1  k'
         p_aa2env_wf          = WFEBindT env p_env_wf aa2  k'
         p_a1'env_wf          = WFEBindT env p_env_wf a1'  k'

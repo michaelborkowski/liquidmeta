@@ -42,9 +42,9 @@ import SubstitutionLemmaEnt
 import SubstitutionLemmaTyp
 import LemmasNarrowingEnt
 
-{-@ reflect foo66 @-}
-foo66 x = Just x
-foo66 :: a -> Maybe a
+{-@ reflect foo70 @-}
+foo70 x = Just x
+foo70 :: a -> Maybe a
 
 {-@ lem_narrow_typ_tvar :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
@@ -62,16 +62,19 @@ lem_narrow_typ_tvar g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf e t p_e_t@(TVar1
           p_er_g_wf   = lem_erase_env_wfenv g p_g_wf
           p_env'_wf   = WFEBind g p_g_wf x s_x k_sx p_g_sx
           p_g_sx_star = if k_sx == Star then p_g_sx else WFKind g s_x p_g_sx 
-          p_z_sx      = TVar1 g z s_x Star p_g_sx_star
+          p_z_sx      = TVar1 g z s_x Star p_g_sx_star ? (self s_x (FV z) Star === s_x)
           p_env'_sx   = lem_weaken_wf' g Empty p_g_wf s_x k_sx p_g_sx x s_x
+          p_env'_t'   = lem_weaken_wf' g Empty p_g_wf t_x k' p_env_t' x s_x
           p_xg_sx_tx  = lem_weaken_subtype g Empty p_g_wf s_x k_sx p_g_sx t_x k_x p_g_tx p_sx_tx x s_x
           p_z_er_tx   = lem_typing_hasftype (Cons x t_x g) (FV z) t p_e_t p_env_wf
                             ? lem_erase_subtype g s_x t_x p_sx_tx
+          p_env'_sxk' = lem_sub_pullback_wftype (concatE (Cons x s_x g) g') p_env'_wf s_x t' 
+                                                p_xg_sx_tx k_sx p_env'_sx k' p_env'_t'
           p_xg_sx_tx' = lem_exact_subtype (Cons x s_x g) p_env'_wf s_x k_sx p_env'_sx t_x 
-                                          p_xg_sx_tx k' (FV z) 
+                                          p_xg_sx_tx k' p_env'_t' (FV z) 
                                           (FTVar1 (erase_env g) z (erase t_x)
                                             ? lem_erase_subtype g s_x t_x p_sx_tx)
-          p_z_self_sx = lem_exact_type (Cons x s_x g) (FV z) s_x p_z_sx k' p_env'_wf
+          p_z_self_sx = lem_exact_type (Cons x s_x g) (FV z) s_x p_z_sx k' p_env'_sxk' p_env'_wf
           p_xtxg_t    = lem_typing_wf (Cons x t_x g) (FV z) (self t_x (FV z) k') p_e_t p_env_wf
           p_xsxg_t    = lem_subtype_in_env_wf g Empty x s_x t_x p_sx_tx t Star p_xtxg_t
           p_z_tx      = TSub (Cons x s_x g) (FV z) (self s_x (FV z) k') p_z_self_sx 
@@ -82,17 +85,19 @@ lem_narrow_typ_tvar g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf e t p_e_t@(TVar1
                                    ? lem_in_env_concat (Cons x t_x g) g'' z) t' k' p_env'_t'
         where
           p_env'_t'   = lem_subtype_in_env_wf g g'' x s_x t_x p_sx_tx t' k' p_env_t' 
-lem_narrow_typ_tvar g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf e _t (TVar2 env' z_ t p_z_t w t_w) 
+lem_narrow_typ_tvar g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf e _t (TVar2 env' z_ t p_z_t w_ t_w) 
   = case g' of             -- g''=Emp so x=w and p_z_t :: HasType(g (FV z) t)
-        (Empty)           -> TVar2 g z_ t p_z_t w s_x
+        (Empty)           -> TVar2 g z_ t p_z_t w_ s_x
         (Cons _w _tw g'') -> TVar2 (concatE (Cons x s_x g) g'') z t p'_z_t w t_w 
           where
             (WFEBind _env' p_env'_wf _ _ _ _) = p_env_wf
             z      = z_ ? lem_in_env_concat (Cons x s_x g) g'' z_
                         ? lem_in_env_concat g g'' z_
                         ? lem_in_env_concat (Cons x t_x g) g'' z_
+            w      = w_ ? lem_in_env_concat (Cons x s_x g) g'' w_
+                        ? lem_in_env_concat (Cons x t_x g) g'' w_
             p'_z_t = lem_narrow_typ g g'' x s_x k_sx p_g_sx t_x p_sx_tx p_env'_wf (FV z) t p_z_t
-lem_narrow_typ_tvar g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf e t (TVar3 env_ z_ _t p_z_t a k_a) 
+lem_narrow_typ_tvar g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf e t (TVar3 env_ z_ _t p_z_t a_ k_a) 
   = case g' of 
         (Empty)            -> impossible "x <> a"
         (ConsT _a _ka g'') -> TVar3 (concatE (Cons x s_x g) g'') z t p'_z_t a k_a
@@ -101,6 +106,8 @@ lem_narrow_typ_tvar g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf e t (TVar3 env_ 
             z      = z_ ? lem_in_env_concat (Cons x s_x g) g'' z_
                         ? lem_in_env_concat g g'' z_
                         ? lem_in_env_concat (Cons x t_x g) g'' z_
+            a      = a_ ? lem_in_env_concat (Cons x s_x g) g'' a_
+                        ? lem_in_env_concat (Cons x t_x g) g'' a_
             p'_z_t = lem_narrow_typ g g'' x s_x k_sx p_g_sx t_x p_sx_tx p_env'_wf (FV z) t p_z_t
 
 {-@ lem_narrow_typ :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 

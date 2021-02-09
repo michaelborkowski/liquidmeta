@@ -524,3 +524,25 @@ lem_weaken_tv_subtype g g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t'
     = lem_weaken_tv_subtype_sbind g g' p_env_wf t1 k1 p_env_t1 t' k' p_env_t' p_t_t' a_ k_a
 lem_weaken_tv_subtype g g' p_env_wf t1 k1 p_env_t1 t2 k2 p_env_tw p_t_t'@(SPoly {}) a k_a
     = lem_weaken_tv_subtype_spoly g g' p_env_wf t1 k1 p_env_t1 t2 k2 p_env_tw p_t_t' a k_a
+
+{-@ lem_weaken_many_subtype :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+      -> ProofOf(WFEnv (concatE g g')) -> s:Type -> k_s:Kind -> ProofOf(WFType g s k_s)
+      -> t:Type -> k_t:Kind -> ProofOf(WFType g t k_t) -> ProofOf(Subtype g s t) 
+      -> ProofOf(Subtype (concatE g g') s t) @-}
+lem_weaken_many_subtype :: Env -> Env -> WFEnv -> Type -> Kind -> WFType 
+                               -> Type -> Kind -> WFType -> Subtype -> Subtype
+lem_weaken_many_subtype g Empty            p_g_wf    s k_s p_g_s t k_t p_g_t p_g_s_t = p_g_s_t
+lem_weaken_many_subtype g (Cons x t_x g')  p_xenv_wf s k_s p_g_s t k_t p_g_t p_g_s_t 
+  = lem_weaken_subtype (concatE g g') Empty p_env_wf s k_s p_g'g_s t k_t p_g'g_t p_g'g_s_t x t_x
+      where
+        (WFEBind _ p_env_wf _ _ _ _) = p_xenv_wf
+        p_g'g_s   = lem_weaken_many_wf'     g g' p_env_wf s k_s p_g_s
+        p_g'g_t   = lem_weaken_many_wf'     g g' p_env_wf t k_t p_g_t
+        p_g'g_s_t = lem_weaken_many_subtype g g' p_env_wf s k_s p_g_s t k_t p_g_t p_g_s_t 
+lem_weaken_many_subtype g (ConsT a k_a g') p_aenv_wf s k_s p_g_s t k_t p_g_t p_g_s_t 
+  = lem_weaken_tv_subtype (concatE g g') Empty p_env_wf s k_s p_g'g_s t k_t p_g'g_t p_g'g_s_t a k_a
+      where
+        (WFEBindT _ p_env_wf _ _)    = p_aenv_wf
+        p_g'g_s   = lem_weaken_many_wf'     g g' p_env_wf s k_s p_g_s
+        p_g'g_t   = lem_weaken_many_wf'     g g' p_env_wf t k_t p_g_t
+        p_g'g_s_t = lem_weaken_many_subtype g g' p_env_wf s k_s p_g_s t k_t p_g_t p_g_s_t

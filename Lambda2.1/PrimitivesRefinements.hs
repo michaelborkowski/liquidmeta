@@ -32,9 +32,9 @@ import LemmasSubtyping
 import LemmasChangeVarTyp
 import LemmasWeakenTyp
 
-{-@ reflect foo70 @-}
-foo70 x = Just x
-foo70 :: a -> Maybe a
+{-@ reflect foo74 @-}
+foo74 x = Just x
+foo74 :: a -> Maybe a
 
 {-@ lem_sub_refn_pred_and :: b:Bool -> { pf:_ | subBV 1 (Bc b) (refn_pred And)
                              == App (App (Prim Eqv) (BV 0)) (App (App (Prim And) (Bc b)) (BV 2)) } @-}
@@ -82,5 +82,5 @@ lem_sub_refn_pred_eqn n m = ()
       -> { pf:_ | subBTV 1 (TRefn b Z p) (refn_pred Eql)
                   == App (App (Prim Eqv) (BV 0)) 
                          (App (App (AppT (Prim Eql) (TRefn b Z (strengthen (Bc True) p))) (BV 1)) (BV 2)) } @-}
-lem_sub_refn_pred_eql :: Basic -> Pred -> Proof
+lem_sub_refn_pred_eql :: Basic -> Expr -> Proof
 lem_sub_refn_pred_eql b p = ()

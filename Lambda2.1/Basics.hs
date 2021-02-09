@@ -443,7 +443,8 @@ unbind_tv a a' (Conj e e')                   = Conj   (unbind_tv a a' e)  (unbin
                                                  Set_sub (ftv q) (Set_cup (ftv p) (ftv r)) && 
                                                  Set_sub (Set_cup (ftv p) (ftv r)) (ftv q) &&
                                                  freeBV q  == Set_cup (freeBV p) (freeBV r) &&
-                                                 freeBTV q == Set_cup (freeBTV p) (freeBTV r) } @-} 
+                                                 freeBTV q == Set_cup (freeBTV p) (freeBTV r) &&  
+                                                 ( (not (isConjunction p)) => q == Conj p r ) } @-} 
 strengthen :: Expr -> Expr -> Expr
 strengthen (Conj p q) r = strengthen p (strengthen q r)
 strengthen p          r = Conj p r

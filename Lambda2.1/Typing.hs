@@ -32,7 +32,7 @@ foo26 :: a -> Maybe a
 {-@ reflect eqlPred @-} 
 {-@ eqlPred :: { t:Type | isTRefn t } -> e:Term
         -> { p':Pred | self t e Base == push p' t && ftv p' == Set_cup (freeTV t) (ftv e) 
-                                                  && fv  p' == Set_cup (free t)   (fv e) } @-}
+                                   && isTerm p'   && fv  p' == Set_cup (free t)   (fv e) } @-}
 eqlPred :: Type -> Expr -> Expr
 eqlPred (TRefn b z p) e = App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e
 
@@ -48,6 +48,7 @@ selfify p b z e = strengthen  (App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) 
               -> { t':Type | Set_sub (free t') (Set_cup (free t) (fv e)) &&
                              Set_sub (freeTV t') (Set_cup (freeTV t) (ftv e)) &&
                              Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (freeBV e)) && 
+                             (isTRefn t => isTRefn t') && (noExists t => noExists t' ) &&
                              erase t == erase t' && ( (k == Star) => (t == t') ) } @-}
 self :: Type -> Expr -> Kind -> Type
 self t@(TRefn b z p)   e Base = TRefn b z (strengthen  (App (App (AppT (Prim Eql) t) (BV 0)) e)  
@@ -266,6 +267,16 @@ typSize (TAppT _ _ _ _ _ p_e_as _ _)           = (typSize p_e_as)  + 1
 typSize (TLet _ _ _ p_ex_b _ _ _ _ _ _ p_e_b') = (typSize p_ex_b)  + (typSize p_e_b')   + 1
 typSize (TAnn _ _ _ p_e_b)                     = (typSize p_e_b)   + 1
 typSize (TSub _ _ _ p_e_s _ _ _ p_s_t)         = (typSize p_e_s)   + (subtypSize p_s_t) + 1
+
+{-@ reflect isTBC @-}
+isTBC :: HasType -> Bool
+isTBC (TBC {}) = True
+isTBC _        = False
+
+{-@ reflect isTIC @-}
+isTIC :: HasType -> Bool
+isTIC (TIC {}) = True
+isTIC _        = False
 
 {-@ reflect isTVar @-}
 isTVar :: HasType -> Bool

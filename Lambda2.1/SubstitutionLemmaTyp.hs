@@ -38,6 +38,7 @@ import DenotationsSoundness
 import PrimitivesSemantics
 import PrimitivesDenotations
 import LemmasExactness
+import SubstitutionLemmaWFEnv
 import SubstitutionLemmaEnt
 
 {-@ reflect foo63 @-}
@@ -55,7 +56,7 @@ lem_subst_typ_tvar1 :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
 lem_subst_typ_tvar1 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar1 _env z t' k' p_env_t) 
   = case g' of          -- empty case: e = FV z = FV x and t = self t' x = self t_x x
       (Empty)           -> case k' of 
-          Base -> lem_exact_type g v_x t_x p_vx_tx Base p_g_wf 
+          Base -> lem_exact_type g v_x t_x p_vx_tx Base p_env_t p_g_wf 
                                    ? lem_free_bound_in_env g t_x k_x p_g_tx x
                                    ? lem_tsubFV_notin x v_x t_x 
                                    ? lem_tsubFV_self x v_x t_x (FV z) Base
@@ -104,7 +105,7 @@ lem_subst_typ_tvar2 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar2 env_ z _t p_z_t w
                                   ? lem_in_env_concat g g'' w_
                                   ? lem_in_env_concat (Cons x t_x g) g'' w_
                                   ? lem_fv_bound_in_env g v_x t_x p_vx_tx p_g_wf w_
-                           p_env'_wf    = lem_subst_wfenv g g'' x v_x t_x p_vx_tx p_gg''_wf
+                           p_env'_wf    = lem_subst_wfenv' g g'' x v_x t_x p_vx_tx p_gg''_wf
                            p_gg''_vx_tx = lem_subst_typ g g'' x v_x t_x p_vx_tx p_gg''_wf
                                                         e t p_z_t
             (False) -> TVar2 (concatE g (esubFV x v_x g'')) --z
@@ -146,7 +147,7 @@ lem_subst_typ_tvar3 g g' x v_x t_x p_vx_tx p_env_wf e t (TVar3 env_ z _t p_z_t a
                                   ? lem_in_env_concat g g'' a_
                                   ? lem_in_env_concat (Cons x t_x g) g'' a_
                                   ? lem_fv_bound_in_env g v_x t_x p_vx_tx p_g_wf a_
-                           p_env'_wf    = lem_subst_wfenv g g'' x v_x t_x p_vx_tx p_gg''_wf
+                           p_env'_wf    = lem_subst_wfenv' g g'' x v_x t_x p_vx_tx p_gg''_wf
                            p_gg''_vx_tx = lem_subst_typ g g'' x v_x t_x p_vx_tx p_gg''_wf
                                                         e t p_z_t
             (False) -> TVar3 (concatE g (esubFV x v_x g'')) --z

@@ -35,18 +35,23 @@ foo40 x = Just x
 foo40 :: a -> Maybe a 
 
 {-@ lem_subtype_repetition :: g:Env -> ProofOf(WFFE (erase_env g)) -> b:Basic -> x:RVname ->  p:Term
-        -> ProofOf(WFType g (TRefn b x p) Base)
-        -> ProofOf(Subtype g (TRefn b x p) (TRefn b x (Conj p p))) @-}
-lem_subtype_repetition :: Env -> WFFE -> Basic -> RVname -> Expr -> WFType -> Subtype
-lem_subtype_repetition g p_g_wf b x p_ p_g_t 
+        -> ProofOf(WFType g (TRefn b x p) Base) -> { p':Term | Set_sub (fv p') (binds g) }
+        -> ( th':CSub -> ProofOf(DenotesEnv (Cons (fresh_var g) (TRefn b x p) g) th')
+                      -> ProofOf(EvalsTo (csubst th' (unbind 0 (fresh_var g) p)) (Bc True))
+                      -> ProofOf(EvalsTo (csubst th' (unbind 0 (fresh_var g) p')) (Bc True)) )
+        -> ProofOf(Subtype g (TRefn b x p) (TRefn b x (Conj p' p))) @-}
+lem_subtype_repetition :: Env -> WFFE -> Basic -> RVname -> Expr -> WFType 
+           -> Expr -> (CSub -> DenotesEnv -> EvalsTo -> EvalsTo ) -> Subtype
+lem_subtype_repetition g p_g_wf b x p_ p_g_t p'_ transf_func
   = SBase g x b p x pandp y ent_pandp
       where
-        p         = p_ ? lem_term_pred p_
+        p         = p_  ? lem_term_pred p_
+        p'        = p'_ ? lem_term_pred p'_
         y_        = fresh_var g 
         y         = y_ ? lem_free_bound_in_env g (TRefn b x p) Base p_g_t y_
         pf_p_bl   = lem_ftyp_for_wf_trefn' g b x p Base p_g_t p_g_wf
-        pandp     = Conj p p
-        ent_pandp = lem_entails_repetition g p_g_wf b x p y pf_p_bl p_g_t 
+        pandp     = Conj p' p
+        ent_pandp = lem_entails_repetition g p_g_wf b x p y pf_p_bl p_g_t p' transf_func
 
 {-@ lem_subtype_itself :: g:Env -> ProofOf(WFFE (erase_env g)) -> b:Basic -> x:RVname ->  p:Pred
         -> ProofOf(WFType g (TRefn b x p) Base)

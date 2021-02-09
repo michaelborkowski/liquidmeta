@@ -31,6 +31,7 @@ import PrimitivesSemantics -- this module has moved "up" in the order
 import LemmasWeakenWF
 import LemmasWeakenWFTV
 import LemmasWellFormedness
+import LemmasTyping
 import SubstitutionLemmaWF
 import SubstitutionLemmaWFTV
 import SubstitutionWFAgain
@@ -66,6 +67,19 @@ lem_subst_wfenv g (ConsT a_ k_a g') x v_x t_x p_vx_tx p_env_wf = case p_env_wf o
                       ? lem_in_env_concat g (esubFV x v_x g') a_
       env''      = concatE g (esubFV x v_x g')
       p_env''_wf = lem_subst_wfenv g g' x v_x t_x p_vx_tx p_env'_wf
+
+{-@ lem_subst_wfenv' :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+        -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
+        -> t_x:Type -> ProofOf(HasType g v_x t_x)
+        -> ProofOf(WFEnv (concatE (Cons x t_x g) g') )
+        -> ProofOf(WFEnv (concatE g (esubFV x v_x g')) ) @-}
+lem_subst_wfenv' :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv -> WFEnv
+lem_subst_wfenv' g g' x v_x t_x p_vx_tx p_env_wf  
+  = lem_subst_wfenv g g' x v_x t_x p_vx_er_tx p_env_wf
+      where
+        p_xg_wf    = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
+        (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
+        p_vx_er_tx = lem_typing_hasftype g v_x t_x p_vx_tx p_g_wf
 
 {-@ lem_subst_tv_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType

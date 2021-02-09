@@ -44,9 +44,9 @@ import LemmasNarrowingTyp
 import LemmasTransitive
 import LemmasSubtypeClosed
 
-{-@ reflect foo69 @-}
-foo69 x = Just x
-foo69 :: a -> Maybe a
+{-@ reflect foo73 @-}
+foo73 x = Just x
+foo73 :: a -> Maybe a
 
 -- A collection of Lemmas about inverting typing judgements for abstraction types. In our
 --   system this is not trivial because TSub could be used finitely many times to produce

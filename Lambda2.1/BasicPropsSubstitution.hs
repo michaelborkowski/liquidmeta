@@ -138,6 +138,29 @@ lem_subFV_id x (Annot e' t)       = () ? lem_subFV_id x e'
 lem_subFV_id x (Conj e1 e2)       = () ? lem_subFV_id x e1
                                        ? lem_subFV_id x e2
 
+{-@ lem_subBV_id :: x:Vname -> e:Expr -> { pf:_ | subBV x (BV x) e == e } / [esize e] @-}
+lem_subBV_id :: Vname -> Expr -> Proof
+lem_subBV_id x (Bc b)   = ()
+lem_subBV_id x (Ic n)   = ()
+lem_subBV_id x (Prim c) = ()
+lem_subBV_id x (BV w) | x == w    = ()
+                      | otherwise = ()
+lem_subBV_id x (FV w)   = ()
+lem_subBV_id x e@(Lambda w e') | x == w    = ()
+                               | otherwise = () ? lem_subBV_id x e'
+lem_subBV_id x (App e1 e2)        = () ? lem_subBV_id x e1
+                                       ? lem_subBV_id x e2
+lem_subBV_id x (LambdaT a k e')   = () ? lem_subBV_id x e'
+lem_subBV_id x (AppT e t)         = () ? lem_subBV_id x e
+                                       ? lem_tsubBV_id x t
+lem_subBV_id x e@(Let w ew e') | x == w    = () ? lem_subBV_id x ew
+                               | otherwise = () ? lem_subBV_id x ew
+                                                ? lem_subBV_id x e'
+lem_subBV_id x (Annot e' t)       = () ? lem_subBV_id x e'
+                                       ? lem_tsubBV_id x t
+lem_subBV_id x (Conj e1 e2)       = () ? lem_subBV_id x e1
+                                       ? lem_subBV_id x e2
+
 {-@ lem_chain_subFV :: x:Vname -> y:Vname -> v:Value
       -> { e:Expr | x == y || not (Set_mem y (fv e)) }
       -> { pf:_ | subFV x v e == subFV y v (subFV x (FV y) e) } / [esize e] @-}
@@ -989,6 +1012,18 @@ lem_tsubFV_id x t@(TFunc w t_w t')   = () ? lem_tsubFV_id x t_w
 lem_tsubFV_id x t@(TExists w t_w t') = () ? lem_tsubFV_id x t_w
                                           ? lem_tsubFV_id x t'
 lem_tsubFV_id x t@(TPoly a k t')     = () ? lem_tsubFV_id x t'
+
+{-@ lem_tsubBV_id :: x:Vname -> t:Type -> { pf:_ | tsubBV x (BV x) t == t } / [tsize t] @-}
+lem_tsubBV_id :: Vname -> Type -> Proof
+lem_tsubBV_id x t@(TRefn b w p) | x == 0     = ()
+                                | otherwise  = () ? lem_subBV_id x p
+lem_tsubBV_id x t@(TFunc w t_w t')   | x == w    = () ? lem_tsubBV_id x t_w 
+                                     | otherwise = () ? lem_tsubBV_id x t_w
+                                                      ? lem_tsubBV_id x t'
+lem_tsubBV_id x t@(TExists w t_w t') | x == w    = () ? lem_tsubBV_id x t_w 
+                                     | otherwise = () ? lem_tsubBV_id x t_w
+                                                      ? lem_tsubBV_id x t'
+lem_tsubBV_id x t@(TPoly a k t')     = () ? lem_tsubBV_id x t'
 
 {-@ lem_tsubFV_notin :: x:Vname -> v:Value -> { t:Type | not (Set_mem x (free t)) } 
                                -> { pf:_ | tsubFV x v t == t } / [tsize t] @-}

@@ -2,6 +2,7 @@
 
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
+{-@ LIQUID "--fuel=1"      @-}
 {-@ LIQUID "--short-names" @-}
 
 module PrimitivesDeltaTyping where

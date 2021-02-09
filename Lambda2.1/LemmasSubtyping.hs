@@ -193,3 +193,52 @@ lem_sub_sbase_pullback_wftype g p_g_wf s t p_s_t@(SBase _ x1 b p1 x2 p2 y ent_yg
         y'         = y'_ ? lem_free_bound_in_env g s k_s p_g_s y'_
         p_er_g_wf  = lem_erase_env_wfenv    g p_g_wf
         p_y'_p1_bl = lem_ftyp_for_wf_trefn' g b x1 p1 k_s p_g_s p_er_g_wf
+
+{-@ lem_sub_pullback_wftype :: g:Env -> ProofOf(WFEnv g) -> s:Type -> t:Type 
+        -> { p_s_t:Subtype | propOf p_s_t == Subtype g s t }
+        -> k_s:Kind -> ProofOf(WFType g s k_s) -> k:Kind -> ProofOf(WFType g t k) 
+                    -> ProofOf(WFType g s k) @-}
+lem_sub_pullback_wftype :: Env -> WFEnv -> Type -> Type -> Subtype 
+                                     -> Kind -> WFType -> Kind -> WFType -> WFType
+lem_sub_pullback_wftype g p_g_wf s t p_s_t@(SBase _ x1 b p1 x2 p2 y ent_yg_p2) 
+                              k_s p_g_s k p_g_t
+  = lem_sub_sbase_pullback_wftype g p_g_wf s t p_s_t k_s p_g_s k p_g_t
+lem_sub_pullback_wftype g p_g_wf s t p_s_t@(SFunc _ x s_x y t_y _ s' t' _ _) 
+                              k_s p_g_s k p_g_t
+  = case (k_s, k) of
+      (Star, Star) -> p_g_s
+      (Base, _   ) -> impossible ("by lemma" ? lem_wf_tfunc_star g x s_x s' p_g_s)
+      (_   , Base) -> impossible ("by lemma" ? lem_wf_tfunc_star g y t_y t' p_g_t)
+lem_sub_pullback_wftype g p_g_wf s t p_s_t@(SWitn _ v_x t_x p_vx_tx _s x t' p_s_t'vx) 
+                              k_s p_g_s k p_g_t
+  = lem_sub_pullback_wftype g p_g_wf s (tsubBV x v_x t') p_s_t'vx k_s p_g_s k p_g_t'vx
+      where
+        (WFExis _ _ _tx k_x p_g_tx _ _k w p_wg_t')
+                      = lem_wfexis_for_wf_texists g x t_x t' k p_g_t
+        p_wg_wf       = WFEBind g p_g_wf w t_x k_x p_g_tx
+        p_g_t'vx      = lem_subst_wf' g Empty w v_x t_x p_vx_tx p_wg_wf (unbindT x w t') 
+                                      k p_wg_t'
+                                      ? lem_tsubFV_unbindT x w v_x t'
+lem_sub_pullback_wftype g p_g_wf s t p_s_t@(SBind _ x s_x s' _t y p_yg_s'_t) 
+                              k_s p_g_s k p_g_t
+  = WFExis g x s_x k_x p_g_sx s' k w p_wg_s'_k
+      where
+        (WFExis _ _ _sx k_x p_g_sx _ _ w p_wg_s')
+                    = lem_wfexis_for_wf_texists g x s_x s' k_s p_g_s
+        p_wg_wf     = WFEBind g p_g_wf w s_x k_x p_g_sx
+        p_yg_wf     = WFEBind g p_g_wf y s_x k_x p_g_sx
+        p_yg_s'     = lem_change_var_wf' g w s_x Empty p_wg_wf (unbindT x w s') 
+                                         k_s p_wg_s' y
+                                         ? lem_tsubFV_unbindT x w (FV y) s'
+        p_yg_t      = lem_weaken_wf' g Empty p_g_wf t k p_g_t y s_x
+        p_yg_s'_k   = lem_sub_pullback_wftype (Cons y s_x g) p_yg_wf (unbindT x y s') t
+                                         p_yg_s'_t k_s p_yg_s' k p_yg_t
+        p_wg_s'_k   = lem_change_var_wf' g y s_x Empty p_yg_wf (unbindT x y s') 
+                                         k p_yg_s'_k w
+                                         ? lem_tsubFV_unbindT x y (FV w) s'
+lem_sub_pullback_wftype g p_g_wf s t p_s_t@(SPoly _ a1 k' s' a2 t' _ _) 
+                              k_s p_g_s k p_g_t
+  = case (k_s, k) of
+      (Star, Star) -> p_g_s
+      (Base, _   ) -> impossible ("by lemma" ? lem_wf_tpoly_star g a1 k' s' p_g_s)
+      (_   , Base) -> impossible ("by lemma" ? lem_wf_tpoly_star g a2 k' t' p_g_t)

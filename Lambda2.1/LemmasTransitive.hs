@@ -40,55 +40,23 @@ import DenotationsSoundness
 import LemmasExactness
 import SubstitutionLemmaEnt
 import SubstitutionLemmaTyp
+import EntailmentsExtra
 import LemmasNarrowingEnt
 import LemmasNarrowingTyp
 
-{-@ reflect foo67 @-}
-foo67 x = Just x
-foo67 :: a -> Maybe a
+{-@ reflect foo71 @-}
+foo71 x = Just x
+foo71 :: a -> Maybe a
 
--- might need WFFE g, WFness -- TODO TODO
-{-@ lem_entails_trans :: g:Env -> b:Basic -> x1:RVname -> p:Pred 
-        -> x2:RVname -> q:Pred -> x3:RVname -> r:Pred 
-        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (fv q)) 
-                                                                  && not (Set_mem y (fv r)) }
-        -> ProofOf(Entails (Cons y (TRefn b x1 p) g) (unbind 0 y q))
-        -> ProofOf(Entails (Cons y (TRefn b x2 q) g) (unbind 0 y r))
-        -> ProofOf(Entails (Cons y (TRefn b x1 p) g) (unbind 0 y r)) @-} -- these preds not already unbound
-lem_entails_trans :: Env -> Basic -> RVname -> Expr -> RVname -> Expr -> RVname -> Expr
-                         -> Vname -> Entails -> Entails -> Entails
-lem_entails_trans g b x1 p x2 q x3 r y (EntPred gp _unq ev_thq_func) ent_gp_r  = case ent_gp_r of
-  (EntPred gq _unr ev_thr_func) -> EntPred gp (unbind 0 y r) ev_thr_func'
-    where
-      {-@ ev_thr_func' :: th:CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x1 p) g) th) 
-                                  -> ProofOf(EvalsTo (csubst th (unbind 0 y r)) (Bc True)) @-}
-      ev_thr_func' :: CSub -> DenotesEnv -> EvalsTo
-      ev_thr_func' th den_gp_th = case den_gp_th of
-        (DExt _g th' den_g_th' _y _bxp v den_thbxp_v) -> ev_thr_func th den_gq_th
-          where
-            p_v_b       = get_ftyp_from_den (ctsubst th' (TRefn b x1 p)) v den_thbxp_v 
-              -- replace?                          ? lem_ctsubst_refn th' b x1 p 
-            ev_thqv_tt  = ev_thq_func th den_gp_th 
-                              ? lem_csubst_subBV 0 v (erase ((ctsubst th' (TRefn b x1 p))) p_v_b th' q
-                              ? lem_subFV_unbind 0 y v q
-
-(t_a, p_emp_ta) = lem_canonical_ctsubst_tv g th' den_g_th' a z p p_g_t     
-       (TRefn b'_ Z q_) = t_a ? lem_wf_usertype_base_trefn Empty t_a p_emp_ta
-
-
-            den_thbxq_v = DRefn b x2 (csubst th' q) v p_v_b ev_thqv_tt ? lem_ctsubst_refn th' b x2 q
-            den_gq_th   = DExt g th' den_g_th' y (TRefn b x2 q) v den_thbxq_v
-
---            -> ProofOf(Subtype g t t'') / [typSize t, typSize t', typSize t''] @-}
-{-@ lem_sub_trans :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+{-@ lem_sub_trans_sbase :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
             -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
             -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
-            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' }
-            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
-            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t''] @-}
-lem_sub_trans :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t'  && isSBase p_t_t' }
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSBase p_t'_t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 0] @-}
+lem_sub_trans_sbase :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
-lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+lem_sub_trans_sbase g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
               (SBase _  x1  b  p1 x2 p2 y_ p_yp1_p2) (SBase _ _x2 _b _p2 x3 p3 z p_zp2_p3)
   = SBase g x1 b p1 x3 p3 y p_yp1_p3
       where
@@ -98,8 +66,18 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
         p_yp2_p3 = lem_change_var_ent g z (TRefn b x2 p2) Empty p_zg_wf 
                       (unbind 0 z p3 ? lem_free_subset_binds g t'' k'' p_g_t'') p_zp2_p3 y
                       ? lem_subFV_unbind 0 z (FV y) p3
-        p_yp1_p3 = lem_entails_trans g b x1 p1 x2 p2 x3 p3 y p_yp1_p2 p_yp2_p3 
-lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+        p_yp1_p3 = lem_entails_trans g p_g_wf b x1 p1 k p_g_t x2 p2 k' p_g_t' x3 p3 y 
+                                     p_yp1_p2 p_yp2_p3 
+
+{-@ lem_sub_trans_sfunc :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t'  && isSFunc p_t_t' }
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSFunc p_t'_t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 0] @-}
+lem_sub_trans_sfunc :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans_sfunc g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
               (SFunc _  x1  s1 x2 s2 p_s2_s1  t1 t2 y  p_y2g_t1_t2)
               (SFunc _ _x2 _s2 x3 s3 p_s3_s2 _t2 t3 z_ p_z3g_t2_t3)
   = SFunc g x1 s1 x3 s3 p_s3_s1 t1 t3 z p_z3g_t1_t3
@@ -146,15 +124,27 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
         p_z3g_t1_t3 = lem_sub_trans (Cons z s3 g) p_z3g_wf (unbindT x1 z t1) k_t1 p_z3g_t1
                            (unbindT x2 z t2) k_t2 p_z3g_t2 (unbindT x3 z t3) k_t3 p_z3g_t3    
                            p_z3g_t1_t2 p_z3g_t2_t3
-lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+
+{-@ lem_sub_trans_spoly :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t'  && isSPoly p_t_t' }
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSPoly p_t'_t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 0] @-}
+lem_sub_trans_spoly :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans_spoly g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
               (SPoly _ a1 k1 t1 a2 t2 a'_ p_a'g_t1_t2) (SPoly _ _ _ _ a3 t3 a'' p_a''g_t2_t3)
   = SPoly g a1 k1 t1 a3 t3 a' p_a'g_t1_t3
       where
         a'          = a'_ ? lem_free_bound_in_env g t   k   p_g_t   a'_
                           ? lem_free_bound_in_env g t'' k'' p_g_t'' a'_
-        (WFPoly _ _ _ _ k_t1 a'1 p_a'1g_t1) = lem_wfpoly_for_wf_tpoly g a1 k1 t1 p_g_t
-        (WFPoly _ _ _ _ k_t2 a'2 p_a'2g_t2) = lem_wfpoly_for_wf_tpoly g a2 k1 t2 p_g_t' 
-        (WFPoly _ _ _ _ k_t3 a'3 p_a'3g_t3) = lem_wfpoly_for_wf_tpoly g a3 k1 t3 p_g_t'' 
+        p_g_t_st    = if k   == Star then p_g_t   else WFKind g t   p_g_t
+        p_g_t'_st   = if k'  == Star then p_g_t'  else WFKind g t'  p_g_t'
+        p_g_t''_st  = if k'' == Star then p_g_t'' else WFKind g t'' p_g_t''
+        (WFPoly _ _ _ _ k_t1 a'1 p_a'1g_t1) = lem_wfpoly_for_wf_tpoly g a1 k1 t1 p_g_t_st
+        (WFPoly _ _ _ _ k_t2 a'2 p_a'2g_t2) = lem_wfpoly_for_wf_tpoly g a2 k1 t2 p_g_t'_st
+        (WFPoly _ _ _ _ k_t3 a'3 p_a'3g_t3) = lem_wfpoly_for_wf_tpoly g a3 k1 t3 p_g_t''_st
         p_a'1g_wf   = WFEBindT g p_g_wf a'1 k1        
         p_a'2g_wf   = WFEBindT g p_g_wf a'2 k1        
         p_a'3g_wf   = WFEBindT g p_g_wf a'3 k1
@@ -178,8 +168,17 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
         p_a'g_t1_t3 = lem_sub_trans (ConsT a' k1 g) p_a'g_wf (unbind_tvT a1 a' t1) k_t1 p_a'g_t1
                                     (unbind_tvT a2 a' t2) k_t2 p_a'g_t2 (unbind_tvT a3 a' t3) 
                                     k_t3 p_a'g_t3 p_a'g_t1_t2 p_a'g_t2_t3
-lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t'
-              (SWitn _ v_y s_y p_vy_sy _t' y s'' p_g_t'_s''vy)
+
+{-@ lem_sub_trans_switnR :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' }
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSWitn p_t'_t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 0] @-}
+lem_sub_trans_switnR :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans_switnR g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t'
+                     (SWitn _ v_y s_y p_vy_sy _t' y s'' p_g_t'_s''vy)
   = SWitn g v_y s_y p_vy_sy t y s'' p_g_t_s''vy
       where
         (WFExis _ _ _ k_sy p_g_sy _ _ w p_wg_s'') 
@@ -189,7 +188,16 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t'
                                     ? lem_tsubFV_unbindT y w v_y s''
         p_g_t_s''vy = lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' (tsubBV y v_y s'') k'' 
                                     p_g_s''vy p_g_t_t' p_g_t'_s''vy
-lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+
+{-@ lem_sub_trans_switnbind :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t'  && isSWitn p_t_t' }
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSBind p_t'_t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 0] @-}
+lem_sub_trans_switnbind :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans_switnbind g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
         (SWitn _ v_x s_x p_vx_sx _t x s' p_g_t_s'vx) (SBind _ _x _sx _s' _t'' y p_yg_s'_t'')
   = lem_sub_trans g p_g_wf t k p_g_t (tsubBV x v_x s') k' p_g_s'vx 
                   t'' k'' p_g_t'' p_g_t_s'vx p_g_s'vx_t''
@@ -207,7 +215,16 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
                                      t'' k'' p_yg_t'' p_yg_s'_t''
                                      ? lem_tsubFV_unbindT x y v_x s'
                                      ? lem_tsubFV_notin y v_x t''
-lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t''_ k'' p_g_t''
+
+{-@ lem_sub_trans_sbindL :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSBind p_t_t'}
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 0] @-}
+lem_sub_trans_sbindL :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans_sbindL g p_g_wf t k p_g_t t' k' p_g_t' t''_ k'' p_g_t''
               (SBind _ x s_x s _t' y_ p_yg_s_t') p_g_t'_t'' = case (isTExists t) of
   True  -> SBind g x s_x s t'' y p_yg_s_t''
       where
@@ -225,15 +242,103 @@ lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t''_ k'' p_g_t''
         p_yg_s_t''  = lem_sub_trans (Cons y s_x g) p_yg_wf (unbindT x y s) k_s p_yg_s t' k' p_yg_t'
                                     t'' k'' p_yg_t'' p_yg_s_t' p_yg_t'_t''
   False -> impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SBase {}) (SFunc {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SBase {}) (SBind {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SBase {}) (SPoly {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SFunc {}) (SBase {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SFunc {}) (SBind {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SFunc {}) (SPoly {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SWitn {}) (SBase {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SWitn {}) (SFunc {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SWitn {}) (SPoly {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SPoly {}) (SBase {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SPoly {}) (SFunc {}) = impossible ""
-lem_sub_trans g _ t _ _ t' _ _ t'' _ _ (SPoly {}) (SBind {}) = impossible ""
+
+
+{-@ lem_sub_trans_go_sbase :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSBase p_t_t'}
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 1] @-}
+lem_sub_trans_go_sbase :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans_go_sbase g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+              p_t_t' p_t'_t''@(SBase _ _x2 _b _p2 x3 p3 z p_zp2_p3)
+  = lem_sub_trans_sbase g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_t_t' p_t'_t''
+lem_sub_trans_go_sbase g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t'
+              p_g_t'_t''@(SWitn _ v_y s_y p_vy_sy _t' y s'' p_g_t'_s''vy)
+  = lem_sub_trans_switnR g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t' p_g_t'_t''
+lem_sub_trans_go_sbase g _ t _ _ t' _ _ t'' _ _ (SBase {}) (SFunc {}) = impossible ""
+lem_sub_trans_go_sbase g _ t _ _ t' _ _ t'' _ _ (SBase {}) (SBind {}) = impossible ""
+lem_sub_trans_go_sbase g _ t _ _ t' _ _ t'' _ _ (SBase {}) (SPoly {}) = impossible ""
+
+{-@ lem_sub_trans_go_sfunc :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSFunc p_t_t'}
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 1] @-}
+lem_sub_trans_go_sfunc :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans_go_sfunc g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+              p_t_t'{- @(SFunc   _  x1  s1 x2 s2 p_s2_s1  t1 t2 y  p_y2g_t1_t2)-}
+              p_t'_t''@(SFunc _ _x2 _s2 x3 s3 p_s3_s2 _t2 t3 z_ p_z3g_t2_t3)
+  = lem_sub_trans_sfunc g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_t_t' p_t'_t''
+lem_sub_trans_go_sfunc g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t'
+              p_g_t'_t''@(SWitn _ v_y s_y p_vy_sy _t' y s'' p_g_t'_s''vy)
+  = lem_sub_trans_switnR g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t' p_g_t'_t''
+lem_sub_trans_go_sfunc g _ t _ _ t' _ _ t'' _ _ (SFunc {}) (SBase {}) = impossible ""
+lem_sub_trans_go_sfunc g _ t _ _ t' _ _ t'' _ _ (SFunc {}) (SBind {}) = impossible ""
+lem_sub_trans_go_sfunc g _ t _ _ t' _ _ t'' _ _ (SFunc {}) (SPoly {}) = impossible ""
+
+{-@ lem_sub_trans_go_spoly :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSPoly p_t_t'}
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 1] @-}
+lem_sub_trans_go_spoly :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans_go_spoly g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+              p_t_t'{- @(SPoly _ a1 k1 t1 a2 t2 a'_ p_a'g_t1_t2)-} p_t'_t''@(SPoly _ _ _ _ a3 t3 a'' p_a''g_t2_t3)
+  = lem_sub_trans_spoly g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_t_t' p_t'_t''
+lem_sub_trans_go_spoly g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t'
+              p_g_t'_t''@(SWitn _ v_y s_y p_vy_sy _t' y s'' p_g_t'_s''vy)
+  = lem_sub_trans_switnR g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t' p_g_t'_t''
+lem_sub_trans_go_spoly g _ t _ _ t' _ _ t'' _ _ (SPoly {}) (SBase {}) = impossible ""
+lem_sub_trans_go_spoly g _ t _ _ t' _ _ t'' _ _ (SPoly {}) (SFunc {}) = impossible ""
+lem_sub_trans_go_spoly g _ t _ _ t' _ _ t'' _ _ (SPoly {}) (SBind {}) = impossible ""
+
+{-@ lem_sub_trans_go_switn :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSWitn p_t_t'}
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 1] @-}
+lem_sub_trans_go_switn :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans_go_switn g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t'
+              p_g_t'_t''@(SWitn _ v_y s_y p_vy_sy _t' y s'' p_g_t'_s''vy)
+  = lem_sub_trans_switnR g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_g_t_t' p_g_t'_t''
+lem_sub_trans_go_switn g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+        p_t_t'{- @(SWitn _ v_x s_x p_vx_sx _t x s' p_g_t_s'vx)-} p_t'_t''@(SBind _ _x _sx _s' _t'' y p_yg_s'_t'')
+  = lem_sub_trans_switnbind g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_t_t' p_t'_t''
+lem_sub_trans_go_switn g _ t _ _ t' _ _ t'' _ _ (SWitn {}) (SBase {}) = impossible ""
+lem_sub_trans_go_switn g _ t _ _ t' _ _ t'' _ _ (SWitn {}) (SFunc {}) = impossible ""
+lem_sub_trans_go_switn g _ t _ _ t' _ _ t'' _ _ (SWitn {}) (SPoly {}) = impossible ""
+
+
+{-@ lem_sub_trans :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> t':Type -> k':Kind -> ProofOf(WFType g t' k') 
+            -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
+            -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' }
+            -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
+            -> ProofOf(Subtype g t t'') / [subtypSize' p_t_t' + subtypSize' p_t'_t'', 2] @-}
+lem_sub_trans :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Kind -> WFType
+                     -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
+lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+              p_t_t'@(SBase _  x1  b  p1 x2 p2 y_ p_yp1_p2) p_t'_t'' -- @(SBase _ _x2 _b _p2 x3 p3 z p_zp2_p3)
+  = lem_sub_trans_go_sbase g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_t_t' p_t'_t''
+lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+              p_t_t'@(SFunc   _  x1  s1 x2 s2 p_s2_s1  t1 t2 y  p_y2g_t1_t2) p_t'_t''
+              --p_t'_t''@(SFunc _ _x2 _s2 x3 s3 p_s3_s2 _t2 t3 z_ p_z3g_t2_t3)
+  = lem_sub_trans_go_sfunc g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_t_t' p_t'_t''
+lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+              p_t_t'@(SPoly _ a1 k1 t1 a2 t2 a'_ p_a'g_t1_t2) p_t'_t'' -- @(SPoly _ _ _ _ a3 t3 a'' p_a''g_t2_t3)
+  = lem_sub_trans_go_spoly g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_t_t' p_t'_t''
+lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t''
+        p_t_t'@(SWitn _ v_x s_x p_vx_sx _t x s' p_g_t_s'vx) p_t'_t'' -- @(SBind _ _x _sx _s' _t'' y p_yg_s'_t'')
+  = lem_sub_trans_go_switn g p_g_wf t k p_g_t t' k' p_g_t' t'' k'' p_g_t'' p_t_t' p_t'_t''
+lem_sub_trans g p_g_wf t k p_g_t t' k' p_g_t' t''_ k'' p_g_t''
+              p_g_t_t'@(SBind _ x s_x s _t' y_ p_yg_s_t') p_g_t'_t'' 
+  = lem_sub_trans_sbindL g p_g_wf t k p_g_t t' k' p_g_t' t''_ k'' p_g_t'' p_g_t_t' p_g_t'_t''

@@ -43,9 +43,9 @@ import LemmasNarrowingEnt
 import LemmasNarrowingTyp
 import LemmasTransitive
 
-{-@ reflect foo58 @-}
-foo58 x = Just x
-foo58 :: a -> Maybe a
+{-@ reflect foo72 @-}
+foo72 x = Just x
+foo72 :: a -> Maybe a
 
 data SubtypeStarP where
     SubtypeStar :: Env -> Type -> Type -> SubtypeStarP
