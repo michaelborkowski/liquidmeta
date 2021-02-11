@@ -323,14 +323,18 @@ lem_narrow_sub_sbind g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf t1 k1 p_env_t1 
                               && subtypSize' p_s_t == subtypSize' p'_s_t } / [subtypSize p_s_t, 0] @-}
 lem_narrow_sub_spoly :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Type -> Kind -> WFType -> Type -> Kind -> WFType -> Subtype -> Subtype
-lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf t1 Star p_env_t1 t2 Star p_env_t2
+lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf t1 k1 p_env_t1 t2 k2 p_env_t2
                      (SPoly env a1 k t1' a2 t2' a p_env_t1'_t2') 
   = SPoly (concatE (Cons x s_x g) g') a1 k t1' a2 t2' a p_env'_t1'_t2'
       where
+        p_env_t1_st    = if (k1 == Star) then p_env_t1 
+                                         else WFKind (concatE (Cons x t_x g) g') t1 p_env_t1
+        p_env_t2_st    = if (k2 == Star) then p_env_t2 
+                                         else WFKind (concatE (Cons x t_x g) g') t2 p_env_t2
         (WFPoly _ _ _ _ k_t1' a1' p_a1'env_t1')
-                       = lem_wfpoly_for_wf_tpoly env a1 k t1' p_env_t1
+                       = lem_wfpoly_for_wf_tpoly env a1 k t1' p_env_t1_st
         (WFPoly _ _ _ _ k_t2' a2' p_a2'env_t2')
-                       = lem_wfpoly_for_wf_tpoly env a2 k t2' p_env_t2
+                       = lem_wfpoly_for_wf_tpoly env a2 k t2' p_env_t2_st
         p_aenv_wf      = WFEBindT env p_env_wf a   k
         p_a1'env_wf    = WFEBindT env p_env_wf a1' k
         p_a2'env_wf    = WFEBindT env p_env_wf a2' k
@@ -343,13 +347,6 @@ lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf t1 Star p_env_t
         p_env'_t1'_t2' = lem_narrow_sub g (ConsT a k g') x s_x k_sx p_g_sx t_x p_sx_tx p_aenv_wf 
                              (unbind_tvT a1 a t1') k_t1' p_aenv_t1' 
                              (unbind_tvT a2 a t2') k_t2' p_aenv_t2' p_env_t1'_t2'
-lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf t1 Base p_env_t1 t2 k2   p_env_t2
-                     (SPoly env a1 k t1' a2 t2' a p_env_t1'_t2') 
-  = impossible ("by lemma" ? lem_wf_tpoly_star env a1 k t1' p_env_t1)
-lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_env_wf t1 k1   p_env_t1 t2 Base p_env_t2
-                     (SPoly env a1 k t1' a2 t2' a p_env_t1'_t2') 
-  = impossible ("by lemma" ? lem_wf_tpoly_star env a2 k t2' p_env_t2)
-
 
 {-@ lem_narrow_sub :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type

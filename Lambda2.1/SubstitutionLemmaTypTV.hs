@@ -43,6 +43,7 @@ import SubstitutionLemmaWFEnv
 import SubstitutionLemmaEnt
 import SubstitutionLemmaEntTV
 import EntailmentsExtra
+import EntailmentsExtra2
 
 {-@ reflect foo68 @-}
 foo68 x = Just x
@@ -483,15 +484,17 @@ lem_subst_tv_sub_sbind g g' a t_a k_a p_g_ta p_env_wf t1 k1 p_env_t1 t' k' p_env
                / [subtypSize p_s_t, 0] @-}
 lem_subst_tv_sub_spoly :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type -> Kind -> WFType -> Type -> Kind -> WFType -> Subtype -> Subtype
-lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_env_wf t1 k1@Star p_env_t1 t2 k2@Star p_env_t2 
+lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_env_wf t1 k1 p_env_t1 t2 k2 p_env_t2 
                        (SPoly env a1 k' t1' a2 t2' a1'_ p_a1'env_t1'_t2') 
   = SPoly (concatE g (esubFTV a t_a g')) a1 k' (tsubFTV a t_a t1') a2 (tsubFTV a t_a t2')
           a1' p_a1'g'g_t1'ta_t2'ta
       where
+        p_env_t1_star        = if (k1 == Star) then p_env_t1 else WFKind env t1 p_env_t1
+        p_env_t2_star        = if (k2 == Star) then p_env_t2 else WFKind env t2 p_env_t2
         (WFPoly _ _ _ _ k_t1' aa1 p_aa1env_t1')  
-                             = lem_wfpoly_for_wf_tpoly env a1 k' t1' p_env_t1
+                             = lem_wfpoly_for_wf_tpoly env a1 k' t1' p_env_t1_star
         (WFPoly _ _ _ _ k_t2' aa2 p_aa2env_t2')
-                             = lem_wfpoly_for_wf_tpoly env a2 k' t2' p_env_t2
+                             = lem_wfpoly_for_wf_tpoly env a2 k' t2' p_env_t2_star
         a1'                  = a1'_ ? lem_in_env_esubFTV g' a t_a a1'_
                                     ? lem_in_env_concat g  g' a1'_
                                     ? lem_in_env_concat (ConsT a k_a g) g' a1'_
@@ -512,12 +515,6 @@ lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_env_wf t1 k1@Star p_env_t1 t2 k2@
                                          (t_a ? lem_tfreeBV_empty g t_a k_a p_g_ta) a1 a1' t1'
                                    ? lem_commute_tsubFTV_unbind_tvT a 
                                          (t_a ? lem_tfreeBV_empty g t_a k_a p_g_ta) a2 a1' t2'
-lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_env_wf t1 Base p_env_t1 t2 k2   p_env_t2 
-                    (SPoly env a1 k' t1' a2 t2' a1'_ p_a1'env_t1'_t2') 
-  = impossible ("by lemma" ? lem_wf_tpoly_star env a1 k' t1' p_env_t1)
-lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_env_wf t1 k1   p_env_t1 t2 Base p_env_t2 
-                    (SPoly env a1 k' t1' a2 t2' a1'_ p_a1'env_t1'_t2') 
-  = impossible ("by lemma" ? lem_wf_tpoly_star env a2 k' t2' p_env_t2)
 
 {-@ lem_subst_tv_sub :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType

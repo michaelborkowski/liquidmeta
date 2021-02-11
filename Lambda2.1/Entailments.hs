@@ -230,7 +230,7 @@ lem_entails_elimination g p_g_wf b x p q y pf_p_bl pf_q_bl p_g_t1
         -> ProofOf(WFType g (TRefn b x p) Base)
         -> ProofOf(Entails (Cons y (TRefn b x p) g) (unbind 0 y p ) ) @-}
 lem_entails_itself :: Env -> WFFE -> Basic -> RVname -> Expr -> Vname -> HasFType -> WFType -> Entails
-lem_entails_itself g p_g_wf b x p y pf_p_bl p_g_t
+lem_entails_itself g p_g_wf b x p y pf_p_bl p_g_t   -- TODO: remove unused pf_p_bl
   = EntPred (Cons y (TRefn b x p) g) (unbind 0 y p) ev_func
       where 
         {-@ ev_func :: th:CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x p) g) th)
@@ -246,31 +246,7 @@ lem_entails_itself g p_g_wf b x p y pf_p_bl p_g_t
               {-@ p_th'y_b :: ProofOf(HasFType FEmpty th'y (erase (ctsubst th' (TRefn b x p)))) @-}
               ev_thp_tt     = get_evals_from_ctsubst_drefn g th' den_g_th' p_g_wf b x 
                                                             p p_g_t th'y den_th't_th'y
-              p_th'y_b      = get_ftyp_from_den (ctsubst th' (TRefn b x p)) th'y den_th't_th'y
-
-{-@ lem_entails_itself' :: g:Env -> ProofOf(WFFE (erase_env g)) -> b:Basic -> x:RVname -> p:Pred
-        -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) } 
-        -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind 0 y p) (FTBasic TBool))
-        -> k:Kind -> ProofOf(WFType g (TRefn b x p) k)
-        -> ProofOf(Entails (Cons y (TRefn b x p) g) (unbind 0 y p ) ) @-}
-lem_entails_itself' :: Env -> WFFE -> Basic -> RVname -> Expr -> Vname -> HasFType -> Kind -> WFType -> Entails
-lem_entails_itself' g p_g_wf b x p y pf_p_bl k p_g_t
-  = EntPred (Cons y (TRefn b x p) g) (unbind 0 y p) ev_func
-      where 
-        {-@ ev_func :: th:CSub -> ProofOf(DenotesEnv (Cons y (TRefn b x p) g) th)
-                               -> ProofOf(EvalsTo (csubst th (unbind 0 y p)) (Bc True)) @-}
-        ev_func :: CSub -> DenotesEnv -> EvalsTo
-        ev_func th den_yg_th = case den_yg_th of 
-          (DExt _g th' den_g_th' _y _t th'y den_th't_th'y) 
-            -> ev_thp_tt ? lem_csubst_subBV 0 th'y (erase (ctsubst th' (TRefn b x p)))             
-                                             p_th'y_b th' p
-                         ? lem_subFV_unbind 0 y th'y p
-            where
-              {-@ ev_thp_tt :: ProofOf(EvalsTo (subBV 0 th'y (csubst th' p)) (Bc True)) @-}
-              {-@ p_th'y_b :: ProofOf(HasFType FEmpty th'y (erase (ctsubst th' (TRefn b x p)))) @-}
-              ev_thp_tt     = get_evals_from_ctsubst_drefn' g th' den_g_th' p_g_wf b x 
-                                                            p k p_g_t th'y den_th't_th'y
-              p_th'y_b      = get_ftyp_from_den (ctsubst th' (TRefn b x p)) th'y den_th't_th'y
+              p_th'y_b      = get_ftyp_from_den (ctsubst th' (TRefn b x p)) th'y den_th't_th'y 
 
 {-@ lem_entails_itself_trivial :: g:Env -> ProofOf(WFFE (erase_env g)) -> b:Basic -> x:RVname 
         -> { tt:Pred | isTrivial tt} -> { y:Vname | not (in_env y g) && not (Set_mem y (fv tt)) } 

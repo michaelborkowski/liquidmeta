@@ -85,6 +85,23 @@ lem_strengthen_ftyping g (Conj _q _q') r pf_p_bl pf_r_bl
 lem_strengthen_ftyping g p             r pf_p_bl pf_r_bl 
   = FTConj g p pf_p_bl r pf_r_bl
 
+{-@ lem_unstrengthen_ftyping :: g:FEnv ->  p:Pred -> r:Pred
+        -> ProofOf(HasFType g (strengthen p r) (FTBasic TBool)) 
+        -> (ProofOf(HasFType g p (FTBasic TBool)),
+            ProofOf(HasFType g r (FTBasic TBool))) @-}
+lem_unstrengthen_ftyping :: FEnv -> Expr -> Expr -> HasFType -> (HasFType, HasFType)
+lem_unstrengthen_ftyping g p@(Conj q q') r pf_pr_bl 
+  = (pf_p_bl, pf_r_bl) -- ? (strengthen (Conj q q') r === strengthen q (strengthen q' r) )
+      where
+        q'r       = strengthen q' r
+        (pf_q_bl, pf_q'r_bl) = lem_unstrengthen_ftyping g q q'r pf_pr_bl
+        (pf_q'_bl, pf_r_bl)  = lem_unstrengthen_ftyping g q'  r pf_q'r_bl
+        pf_p_bl   = FTConj g q pf_q_bl q' pf_q'_bl
+lem_unstrengthen_ftyping g p             r pf_pr_bl  
+  = (pf_p_bl, pf_r_bl)
+      where
+        (FTConj _ _p pf_p_bl _r pf_r_bl) = pf_pr_bl
+
 {-@ lem_eqlPred_ftyping :: g:Env -> b:Basic -> z:RVname -> p:Pred
         -> ProofOf(WFType g (TRefn b z p) Base) -> ProofOf(WFFE (erase_env g))
         -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) && not (Set_mem y (ftv p)) }
