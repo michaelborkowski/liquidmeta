@@ -342,7 +342,7 @@ chgFTV a a' (Conj e e')                = Conj   (chgFTV a a' e)  (chgFTV a a' e'
                                     Set_sub (freeBTV e') (Set_cup (freeBTV e) (freeBTV v)) &&
                                     Set_sub (freeBTV e) (freeBTV e') &&
                                     ( e == Bc True => e' == Bc True ) && 
-                                    ( isTerm e => isTerm e' ) && ( isPred e => isPred e' ) &&
+                                    ( isTerm e <=> isTerm e' ) && ( isPred e => isPred e' ) &&
                                     ( (isConjunction e) <=> (isConjunction e') ) &&
                                     ( esize v != 1  || esize e == esize e' ) } / [esize e] @-}
 subBV :: Vname -> Expr -> Expr -> Expr
@@ -401,7 +401,7 @@ subBTV a t_a (Conj e e')                   = Conj   (subBTV a t_a e)  (subBTV a 
                                Set_sub (fv e') (Set_cup (Set_sng y) (fv e)) &&
                                Set_sub (ftv e) (ftv e') && Set_sub (ftv e') (ftv e) &&
                                freeBV e' == Set_dif (freeBV e) (Set_sng x) && 
-                               (isTerm e => isTerm e') && ( isPred e => isPred e' ) &&
+                               (isTerm e <=> isTerm e') && ( isPred e => isPred e' ) &&
                                freeBTV e' == freeBTV e && esize e == esize e' } / [esize e] @-}
 unbind :: Vname -> Vname -> Expr -> Expr
 unbind x y e = subBV x (FV y) e
@@ -415,7 +415,7 @@ unbind x y e = subBV x (FV y) e
                                    Set_sub (fv e) (fv e') && Set_sub (fv e') (fv e) &&
                                    freeBV e' == freeBV e && esize e == esize e' &&
                                    freeBTV e' == Set_dif (freeBTV e) (Set_sng a) &&
-                                   (isTerm e => isTerm e') && ( isPred e => isPred e' ) &&
+                                   (isTerm e <=> isTerm e') && ( isPred e => isPred e' ) &&
                                    ( e == Bc True => e' == Bc True ) } / [esize e] @-}
 unbind_tv :: Vname -> Vname -> Expr -> Expr
 unbind_tv a a' (Bc b)                       = Bc b

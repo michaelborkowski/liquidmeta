@@ -24,30 +24,34 @@ foo18 x = Just x
 -- | Properties of BUILT-IN PRIMITIVES
 -----------------------------------------------------------------------------
 
-{-@ lem_wf_intype_eql :: () 
-      -> { pf:_ | noDefnsInRefns (ConsT 4 Base Empty) (unbind_tvT 1 4 (inType Eql)) 
-               && isWellFormed (ConsT 4 Base Empty) (unbind_tvT 1 4 (inType Eql)) Base } @-}
-lem_wf_intype_eql :: () -> Proof
-lem_wf_intype_eql _ = ()
+{-@ lem_wf_intype_eql :: a':Vname
+      -> { pf:_ | noDefnsInRefns (ConsT a' Base Empty) (unbind_tvT 1 a' (inType Eql)) 
+               && isWellFormed (ConsT a' Base Empty) (unbind_tvT 1 a' (inType Eql)) Base } @-}
+lem_wf_intype_eql :: Vname  -> Proof
+lem_wf_intype_eql a' = ()
 
-{-@ lem_wf_ty'_eql :: ()
-      -> { pf:_ | noDefnsInRefns (Cons (firstBV Eql) (unbind_tvT 1 4 (inType Eql)) (ConsT 4 Base Empty))
-                      (unbindT (firstBV Eql) (firstBV Eql) (unbind_tvT 1 4 (ty' Eql))) 
-               && isWellFormed (Cons (firstBV Eql) (unbind_tvT 1 4 (inType Eql)) (ConsT 4 Base Empty))
-                      (unbindT (firstBV Eql) (firstBV Eql) (unbind_tvT 1 4 (ty' Eql))) Star } @-}
-lem_wf_ty'_eql :: () -> Proof
-lem_wf_ty'_eql _ = () ? lem_wf_intype_eql ()
+{-@ lem_wf_ty'_eql :: a':Vname
+      -> { pf:_ | noDefnsInRefns (Cons (fresh_var (ConsT a' Base Empty)) (unbind_tvT 1 a' (inType Eql)) 
+                                       (ConsT a' Base Empty))
+                      (unbindT (firstBV Eql) (fresh_var (ConsT a' Base Empty)) (unbind_tvT 1 a' (ty' Eql))) 
+               && isWellFormed (Cons (fresh_var (ConsT a' Base Empty)) (unbind_tvT 1 a' (inType Eql)) 
+                                     (ConsT a' Base Empty))
+                      (unbindT (firstBV Eql) (fresh_var (ConsT a' Base Empty)) (unbind_tvT 1 a' (ty' Eql))) Star } @-}
+lem_wf_ty'_eql :: Vname -> Proof
+lem_wf_ty'_eql a' = () ? lem_wf_intype_eql a'
+  where 
+    y = fresh_var (ConsT a' Base Empty)
 
-{-@ lem_wf_ty_inside_eql :: () 
-      -> { pf:_ | noDefnsInRefns (ConsT 4 Base Empty) 
-                      (TFunc (firstBV Eql) (unbind_tvT 1 4 (inType Eql)) (unbind_tvT 1 4 (ty' Eql))) 
-               && isWellFormed (ConsT 4 Base Empty) 
-                      (TFunc (firstBV Eql) (unbind_tvT 1 4 (inType Eql)) 
-                             (unbind_tvT 1 4 (ty' Eql))) Star } @-}
-lem_wf_ty_inside_eql :: () -> Proof
-lem_wf_ty_inside_eql _ = () ? lem_wf_intype_eql () ? lem_wf_ty'_eql ()
+{-@ lem_wf_ty_inside_eql :: a':Vname  
+      -> { pf:_ | noDefnsInRefns (ConsT a' Base Empty) 
+                      (TFunc (firstBV Eql) (unbind_tvT 1 a' (inType Eql)) (unbind_tvT 1 a' (ty' Eql))) 
+               && isWellFormed (ConsT a' Base Empty) 
+                      (TFunc (firstBV Eql) (unbind_tvT 1 a' (inType Eql)) 
+                             (unbind_tvT 1 a' (ty' Eql))) Star } @-}
+lem_wf_ty_inside_eql :: Vname -> Proof
+lem_wf_ty_inside_eql a' = () ? lem_wf_intype_eql a' ? lem_wf_ty'_eql a'
 
 {-@ lem_wf_ty_eql :: ()
       -> { pf:_ | noDefnsInRefns Empty (ty Eql) && isWellFormed Empty (ty Eql) Star } @-}
 lem_wf_ty_eql :: () -> Proof
-lem_wf_ty_eql _ = () ? lem_wf_ty_inside_eql ()
+lem_wf_ty_eql _ = () ? lem_wf_ty_inside_eql (fresh_var Empty)

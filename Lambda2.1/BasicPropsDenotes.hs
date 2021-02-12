@@ -29,6 +29,22 @@ import BasicPropsCSubst
 foo28 x = Just x 
 foo28 :: a -> Maybe a 
 
+{-@ lem_drefn_to_trivial :: b:Basic -> x:RVname -> p:Pred -> v:Value
+        -> ProofOf(Denotes (TRefn b x p) v) -> ProofOf(Denotes (TRefn b x (Bc True)) v) @-}
+lem_drefn_to_trivial :: Basic -> RVname -> Expr -> Expr -> Denotes -> Denotes
+lem_drefn_to_trivial b x p v den_bxp_v = case den_bxp_v of
+    (DRefn _ _ _ _ p_v_b _) -> DRefn b x (Bc True) v p_v_b (Refl (Bc True))
+
+{-@ lem_drefn_in_dfunc_from_trivial :: x:Vname -> b:Basic -> z:RVname -> t:Type -> v:Value
+        -> ProofOf(Denotes (TFunc x (TRefn b z (Bc True)) t) v) -> p:Pred
+        -> ProofOf(Denotes (TFunc x (TRefn b z p) t) v) @-}
+lem_drefn_in_dfunc_from_trivial :: Vname -> Basic -> RVname -> Type -> Expr -> Denotes 
+                                                                    -> Expr -> Denotes
+lem_drefn_in_dfunc_from_trivial x b z t v den_xttt_v p = case den_xttt_v of
+  (DFunc _ _ _ _ p_v_ertxt val_den_func) -> DFunc x (TRefn b z p) t v p_v_ertxt val_den_func'
+    where
+      val_den_func' v_x den_tp_vx = val_den_func v_x (lem_drefn_to_trivial b z p v_x den_tp_vx)
+
   -- formal properties
 
 {-@ lem_change_var_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (fv v) }

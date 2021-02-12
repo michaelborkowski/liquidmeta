@@ -96,6 +96,14 @@ lem_wf_ty' (Eqn n) y  = makeWFType (Cons y (inType (Eqn n)) Empty)
                                    (unbindT (firstBV (Eqn n)) y (ty' (Eqn n))) 
                                    Star ? lem_wf_ty'_eqn n y        
 
+{-@ lem_wf_inside_ty :: a':Vname 
+        -> ProofOf(WFType (ConsT a' Base Empty) 
+                          (unbind_tvT 1 a' (TFunc (firstBV Eql) (inType Eql) (ty' Eql))) Star) @-}
+lem_wf_inside_ty :: Vname -> WFType
+lem_wf_inside_ty a' = makeWFType (ConsT a' Base Empty) 
+                                 (unbind_tvT 1 a' (TFunc (firstBV Eql) (inType Eql) (ty' Eql)))
+                                 Star ? lem_wf_ty_inside_eql a'
+
 {-@ lem_wf_ty :: c:Prim -> ProofOf(WFType Empty (ty c) Star) @-}
 lem_wf_ty :: Prim -> WFType
 lem_wf_ty And      = makeWFType Empty (ty And) Star      ? lem_wf_ty_and ()

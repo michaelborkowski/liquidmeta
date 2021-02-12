@@ -2,6 +2,7 @@
 
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
+{-@ LIQUID "--fuel=4"      @-}
 {-@ LIQUID "--short-names" @-}
 
 module PrimitivesDenotationsEqv where
@@ -32,32 +33,56 @@ import PrimitivesSemantics
 {-@ reflect foo53 @-}
 foo53 x = Just x
 foo53 :: a -> Maybe a
+
+{-@ reflect (ty' Eqv) @-}
+(ty' Eqv) :: Type
+(ty' Eqv) = TFunc 2 (TRefn TBool Z (Bc True)) 
+                 (TRefn TBool Z (App (App (Prim Eqv) (BV 0))
+                                     (App (App (Prim Or)
+                                          (App (App (Prim And) (BV 1)) (BV 2)))
+                                          (App (App (Prim And) (App (Prim Not) (BV 1)))
+                                               (App (Prim Not) (BV 2)))) ))
   
+{-@ reflect t'eqvb @-}
+t'eqvb :: Bool -> Type
+t'eqvb b = TRefn TBool Z (App (App (Prim Eqv) (BV 0))
+                              (App (App (Prim Or)
+                                   (App (App (Prim And) (Bc b)) (BV 2)))
+                                   (App (App (Prim And) (App (Prim Not) (Bc b)))
+                                        (App (Prim Not) (BV 2)))) )
+
 {-@ lem_den_eqv :: ProofOf(Denotes (ty Eqv) (Prim Eqv)) @-}
 lem_den_eqv :: Denotes
-lem_den_eqv = DFunc 1 (TRefn TBool Z (Bc True)) t'
-                    (Prim Eqv) (FTPrm FEmpty Eqv) val_den_func 
-  where
-    val_den_func :: Expr -> Denotes -> ValueDenoted
-    val_den_func v_x den_tx_vx = case v_x of 
-      (Bc True)  -> ValDen (App (Prim Eqv) (Bc True)) (tsubBV 1 (Bc True) t') (Lambda 1 (BV 1)) 
-                      (lem_step_evals (App (Prim Eqv) (Bc True)) (Lambda 1 (BV 1)) 
-                      (EPrim Eqv (Bc True))) den_t't_id
-      (Bc False) -> ValDen (App (Prim Eqv) (Bc False)) (tsubBV 1 (Bc False) t') (Lambda 1 (App (Prim Not) (BV 1))) 
-                      (lem_step_evals (App (Prim Eqv) (Bc False)) (Lambda 1 (App (Prim Not) (BV 1))) 
-                      (EPrim Eqv (Bc False))) den_t'f_nt
-      _     -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool Z (Bc True)) den_tx_vx)
-    t' = TFunc 2 (TRefn TBool Z (Bc True)) (TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
-                   (App (App (Prim Or) (App (App (Prim And) (BV 1)) (BV 2)) )
-                        (App (App (Prim And) (App (Prim Not) (BV 1))) (App (Prim Not) (BV 2))))))
-    t't = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
-                   (App (App (Prim Or) (App (App (Prim And) (Bc True)) (BV 2)) )
-                        (App (App (Prim And) (App (Prim Not) (Bc True))) (App (Prim Not) (BV 2)))))
-    den_t't_id = DFunc 2 (TRefn TBool Z (Bc True)) t't (Lambda 1 (BV 1)) 
-                       (FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) (BV 1) 
-                              (FTBasic TBool) 1 (FTVar1 FEmpty 1 (FTBasic TBool))) val_den_func2
-    val_den_func2 :: Expr -> Denotes -> ValueDenoted
-    val_den_func2 v_x den_tx_vx = case v_x of 
+lem_den_eqv = DFunc 1 (TRefn TBool Z (Bc True)) (ty' Eqv) (Prim Eqv) (FTPrm FEmpty Eqv) val_den_func_eqv 
+ 
+{-@ lem_den_eqv_p :: p:Pred 
+        -> ProofOf(Denotes (TFunc 1 (TRefn TBool Z p) 
+                                    (TFunc 2 (TRefn TBool Z p) (TRefn TBool Z (refn_pred Eqv)))) (Prim Eqv)) @-}
+lem_den_eqv_p :: Expr -> Denotes
+lem_den_eqv_p p = 
+
+{-@ val_den_func_eqv :: v_x:Value -> ProofOf(Denotes (TRefn TBool Z (Bc True)) v_x)
+                                  -> ProofOf(ValueDenoted (App (Prim Eqv) v_x) (tsubBV 1 v_x (ty' Eqv))) @-}
+val_den_func_eqv :: Expr -> Denotes -> ValueDenoted
+val_den_func_eqv v_x den_tx_vx = case v_x of 
+  (Bc True)  -> ValDen (App (Prim Eqv) (Bc True)) (tsubBV 1 (Bc True) (ty' Eqv)) (Lambda 1 (BV 1)) 
+                  (lem_step_evals (App (Prim Eqv) (Bc True)) (Lambda 1 (BV 1)) 
+                  (EPrim Eqv (Bc True))) den_t'eqvt_id
+  (Bc False) -> ValDen (App (Prim Eqv) (Bc False)) (tsubBV 1 (Bc False) (ty' Eqv)) (Lambda 1 (App (Prim Not) (BV 1))) 
+                  (lem_step_evals (App (Prim Eqv) (Bc False)) (Lambda 1 (App (Prim Not) (BV 1))) 
+                  (EPrim Eqv (Bc False))) den_t'eqvf_nt
+  _     -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool Z (Bc True)) den_tx_vx)
+
+{-@ den_t'eqvt_id :: ProofOf(Denotes (tsubBV 1 (Bc True) (ty' Eqv)) (Lambda 1 (BV 1))) @-}
+den_t'eqvt_id :: Denotes
+den_t'eqvt_id = DFunc 2 (TRefn TBool Z (Bc True)) t't (Lambda 1 (BV 1)) 
+                      (FTAbs FEmpty 1 (FTBasic TBool) Base (WFFTBasic FEmpty TBool) (BV 1) 
+                             (FTBasic TBool) 1 (FTVar1 FEmpty 1 (FTBasic TBool))) val_den_func_eqv2
+
+{-@ val_den_func_eqv2 :: v_x:Value -> ProofOf(Denotes (TRefn TBool Z (Bc True)) v_x)
+                           -> ProofOf(ValueDenoted (App (Lambda 1 (BV 1)) v_x) (tsubBV 2 v_X (t'eqvb True))) @-}
+val_den_func_eqv2 :: Expr -> Denotes -> ValueDenoted
+val_den_func_eqv2 v_x den_tx_vx = case v_x of 
       (Bc True)  -> ValDen (App (Lambda 1 (BV 1)) (Bc True)) (tsubBV 2 (Bc True) t't) (Bc True)
                       (lem_step_evals (App (Lambda 1 (BV 1)) (Bc True)) (Bc True) 
                       (EAppAbs 1 (BV 1) (Bc True))) den_t''t_tt
@@ -65,6 +90,7 @@ lem_den_eqv = DFunc 1 (TRefn TBool Z (Bc True)) t'
                       (lem_step_evals (App (Lambda 1 (BV 1)) (Bc False)) (Bc False) 
                       (EAppAbs 1 (BV 1) (Bc False))) den_t''f_ff
       _          -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool Z (Bc True)) den_tx_vx)
+
     t''t = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) 
                    (App (App (Prim Or) (App (App (Prim And) (Bc True)) (Bc True)) )
                         (App (App (Prim And) (App (Prim Not) (Bc True))) (App (Prim Not) (Bc True)))))
@@ -92,9 +118,9 @@ lem_den_eqv = DFunc 1 (TRefn TBool Z (Bc True)) t'
                               (App (Prim Not) (BV 1)) (FTBasic TBool) 1 
                               (FTApp (FCons 1 (FTBasic TBool) FEmpty) (Prim Not) (FTBasic TBool)
                                      (FTBasic TBool) (FTPrm (FCons 1 (FTBasic TBool) FEmpty) Not)
-                                     (FV 1) (FTVar1 FEmpty 1 (FTBasic TBool))))  val_den_func3
-    val_den_func3 :: Expr -> Denotes -> ValueDenoted
-    val_den_func3 v_x den_tx_vx = case v_x of 
+                                     (FV 1) (FTVar1 FEmpty 1 (FTBasic TBool))))  val_den_func_eqv3
+    val_den_func_eqv3 :: Expr -> Denotes -> ValueDenoted
+    val_den_func_eqv3 v_x den_tx_vx = case v_x of 
       (Bc True)  -> ValDen (App (Lambda 1 (App (Prim Not) (BV 1))) (Bc True)) (tsubBV 2 (Bc True) t'f) 
                       (Bc False) (AddStep (App (Lambda 1 (App (Prim Not) (BV 1))) (Bc True)) 
                                           (App (Prim Not) (Bc True)) 
