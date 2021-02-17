@@ -195,7 +195,7 @@ lemma_app_many2 v e e' (AddStep _e e1 s_ee1 _e' p_e1e') = p_ve_ve'
     p_ve1_ve' = lemma_app_many2 v e1 e' p_e1e' 
 
 {-@ lemma_app_both_many :: e:Expr -> v:Value -> ProofOf(EvalsTo e v)
-                             -> e':Expr -> v':Value -> ProofOf(EvalsTo e' v')
+                             -> e':Expr -> v':Expr -> ProofOf(EvalsTo e' v')
                              -> ProofOf(EvalsTo (App e e') (App v v')) @-}
 lemma_app_both_many :: Expr -> Expr -> EvalsTo -> Expr -> Expr -> EvalsTo -> EvalsTo
 lemma_app_both_many e v ev_e_v e' v' ev_e'_v' = ev_ee'_vv'
@@ -552,3 +552,32 @@ lem_evals_val_det e v1 (AddStep _ e1 st_e_e1 _ ev_e1_v1) v2 ev_e_v2 = case (ev_e
   (Refl _v2)                       -> impossible ("by lemma" ? lem_value_stuck e e1 st_e_e1)
   (AddStep _ e2 st_e_e2 _ ev_e2_v2) -> lem_evals_val_det (e1 ? lem_sem_det e e1 st_e_e1 e2 st_e_e2)
                                                          v1 ev_e1_v1 v2 ev_e2_v2
+
+{-@ lem_decompose_evals :: e:Expr -> e':Expr -> v:Value -> ProofOf(EvalsTo e e') 
+                                  -> ProofOf(EvalsTo e v) -> ProofOf(EvalsTo e' v) @-}
+lem_decompose_evals :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo -> EvalsTo
+lem_decompose_evals e e' v ev_e_e' ev_e_v = case ev_e_e' of
+  (Refl _e)                         -> ev_e_v
+  (AddStep _ e1 st_e_e1 _ ev_e1_e') -> case ev_e_v of
+    (Refl _) -> impossible ("by lemma" ? lem_value_stuck v e1 st_e_e1)
+    (AddStep _ e2 st_e_e2 _ ev_e2_v) -> lem_decompose_evals e1 e' v ev_e1_e' ev_e1_v
+      where
+        ev_e1_v = ev_e2_v ? lem_sem_det e e1 st_e_e1 e2 st_e_e2
+
+data CommonEvalsP where
+    CommonEvals :: Expr -> Expr -> CommonEvalsP
+
+{-@ data CommonEvals where
+        BothEv :: e:Expr -> e':Expr -> e'':Expr -> ProofOf(EvalsTo e e'') 
+                         -> ProofOf(EvalsTo e' e'') -> ProofOf(CommonEvals e e') @-}
+
+data CommonEvals where
+    BothEv :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo -> CommonEvals
+
+{-@ lem_common_evals_extend :: e:Expr -> e':Expr -> ProofOf(CommonEvals e e')
+        -> v:Value -> ProofOf(EvalsTo e v) -> ProofOf(EvalsTo e' v) @-}
+lem_common_evals_extend :: Expr -> Expr -> CommonEvals -> Expr -> EvalsTo -> EvalsTo
+lem_common_evals_extend e e' (BothEv _ _ e1 ev_e_e1 ev_e'_e1) v ev_e_v
+  = lemma_evals_trans e' e1 v ev_e'_e1 ev_e1_v
+      where
+        ev_e1_v = lem_decompose_evals e e1 v ev_e_e1 ev_e_v

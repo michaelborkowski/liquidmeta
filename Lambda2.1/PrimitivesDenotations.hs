@@ -25,13 +25,13 @@ import SubtypingFromEntailments
 import BasicPropsCSubst
 import PrimitivesSemantics
 import LemmasTyping
-{-import PrimitivesDenotationsAnd
+import PrimitivesDenotationsAnd
 import PrimitivesDenotationsOr
 import PrimitivesDenotationsNot
 import PrimitivesDenotationsEqv
 import PrimitivesDenotationsLeq
 import PrimitivesDenotationsEq
-import PrimitivesDenotationsEql-}
+import PrimitivesDenotationsEql
 
 {-@ reflect foo58 @-}
 foo58 x = Just x
@@ -75,7 +75,6 @@ lem_den_tyic n = DRefn TInt Z (App (App (Prim Eq) (BV 0)) (Ic n) ? pred_pf)
 {-@ lem_den_ty :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
         -> c:Prim -> ProofOf(Denotes (ctsubst th (ty c)) (Prim c)) @-}
 lem_den_ty :: Env -> CSub -> DenotesEnv -> Prim -> Denotes
-lem_den_ty g th den_g_th c = undefined {-
 lem_den_ty g th den_g_th And      = lem_den_and    ? lem_ctsubst_nofree th (ty And)
 lem_den_ty g th den_g_th Or       = lem_den_or     ? lem_ctsubst_nofree th (ty Or)
 lem_den_ty g th den_g_th Not      = lem_den_not () ? lem_ctsubst_nofree th (ty Not)
@@ -85,7 +84,7 @@ lem_den_ty g th den_g_th (Leqn n) = lem_den_leqn n ? lem_ctsubst_nofree th (ty (
 lem_den_ty g th den_g_th Eq       = lem_den_eq     ? lem_ctsubst_nofree th (ty Eq)
 lem_den_ty g th den_g_th (Eqn n)  = lem_den_eqn  n ? lem_ctsubst_nofree th (ty (Eqn n))
 lem_den_ty g th den_g_th Eql      = lem_den_eql () ? lem_ctsubst_nofree th (ty Eql)
--}
+
 {-@ lem_denote_sound_typ_tprim :: g:Env -> c:Prim 
         ->  th:CSub  -> ProofOf(DenotesEnv g th)
         -> ProofOf(ValueDenoted (csubst th (Prim c)) (ctsubst th (ty c))) @-}
