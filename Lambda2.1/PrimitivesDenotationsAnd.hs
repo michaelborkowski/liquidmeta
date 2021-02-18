@@ -1,8 +1,8 @@
 {-# LANGUAGE GADTs #-}
 
 {-@ LIQUID "--reflection"  @-}
-{-@ LIQUID "--ple"         @-}
-{-@ LIQUID "--fuel=2"      @-}
+{-@ LIQUID "--ple-local"   @-}
+{-@ LIQUID "--fuel=4"      @-}
 {-@ LIQUID "--short-names" @-}
 
 module PrimitivesDenotationsAnd where
@@ -30,10 +30,6 @@ import PrimitivesSemantics
 {-@ reflect foo51 @-}
 foo51 x = Just x
 foo51 :: a -> Maybe a
-
---{-@ reflect t'andb @-}
---t'andb :: Bool -> Type
---t'andb b = TRefn TBool Z (App (App (Prim Eqv) (BV 0)) (App (App (Prim And) (Bc b)) (BV 2)) ) 
 
 {-@ lem_den_and :: ProofOf(Denotes (ty And) (Prim And)) @-}
 lem_den_and :: Denotes
@@ -66,6 +62,7 @@ val_den_func_and v_x den_tx_vx = case v_x of
     val_id    = isValue (Lambda 1 (BV 1))     ? isTerm (Lambda 1 (BV 1))
     er_bool   = erase (TRefn TBool Z (Bc True)) 
 
+{-@ ple den_t'andt_id @-}
 {-@ den_t'andt_id :: ProofOf(Denotes (tsubBV 1 (Bc True) (ty' And)) (Lambda 1 (BV 1))) @-}
 den_t'andt_id :: Denotes
 den_t'andt_id = DFunc 2 (TRefn TBool Z (Bc True)) t'and_t (Lambda 1 (BV 1) ? val_id) 
@@ -89,17 +86,18 @@ den_t'andt_id = DFunc 2 (TRefn TBool Z (Bc True)) t'and_t (Lambda 1 (BV 1) ? val
                 ? lem_erase_tsubBV 1 (Bc True ? val_t) (TRefn TBool Z (refn_pred And))
               === FTFunc (FTBasic TBool) (erase (TRefn TBool Z (refn_pred And))) )
 
+{-@ ple val_den_func_and2 @-}
 {-@ val_den_func_and2 :: v_x:Value -> ProofOf(Denotes (TRefn TBool Z (Bc True)) v_x)
       -> ProofOf(ValueDenoted (App (Lambda 1 (BV 1)) v_x) 
                               (tsubBV 2 v_x (tsubBV 1 (Bc True) (TRefn TBool Z (refn_pred And))))) @-}
 val_den_func_and2 :: Expr -> Denotes -> ValueDenoted
 val_den_func_and2 v_x den_tx_vx = case v_x of 
       (Bc True)  -> ValDen (App (Lambda 1 (BV 1)) (Bc True)) (tsubBV 2 (Bc True) (t'and_t)) (Bc True ? val_t)
-                      (lem_step_evals (App (Lambda 1 (BV 1)) (Bc True)) (Bc True ? val_t) 
-                                      (EAppAbs 1 (BV 1) (Bc True)  ? subtt )) den_t''t_tt 
-      (Bc False) -> ValDen (App (Lambda 1 (BV 1)) (Bc False)) (tsubBV 2 (Bc False) (t'and_t)) (Bc False ? val_f)
-                      (lem_step_evals (App (Lambda 1 (BV 1)) (Bc False)) (Bc False ? val_f) 
-                                      (EAppAbs 1 (BV 1) (Bc False) ? subft)) den_t''f_ff 
+                      (lem_step_evals (App (Lambda 1 (BV 1)) (Bc True)) (Bc True ? subtt) 
+                                      (EAppAbs 1 (BV 1) (Bc True)  {-? subtt-} )) den_t''t_tt 
+      (Bc False) -> ValDen (App (Lambda 1 (BV 1)) (Bc False)) (tsubBV 2 (Bc False) (t'and_t)) (Bc False )
+                      (lem_step_evals (App (Lambda 1 (BV 1)) (Bc False)) (Bc False ? subft) 
+                                      (EAppAbs 1 (BV 1) (Bc False) {-? subft-} )) den_t''f_ff 
       _          -> impossible ("by lemma" ? lem_den_bools v_x (TRefn TBool Z (Bc True) ? er_bool) den_tx_vx)
   where
     t'and_t     = tsubBV 1 (Bc True) (TRefn TBool Z (refn_pred And))
@@ -107,22 +105,20 @@ val_den_func_and2 v_x den_tx_vx = case v_x of
     p''t        = subBV 2 (Bc True ? val_t)  (subBV 1 (Bc True ? val_t) (refn_pred And))
     den_t''f_ff = DRefn TBool Z p''f (Bc False) (FTBC FEmpty False) ev_prt''f_ff
     p''f        = subBV 2 (Bc False ? val_f) (subBV 1 (Bc True ? val_t) (refn_pred And))
-    subtt       = subBV 1 (Bc True  ? val_t) (BV 1) ?  lem_subBV_id 1 (Bc True)  
-                                                   === Bc True  ? lem_value_pred (Bc True)
-    subft       = subBV 1 (Bc False ? val_f) (BV 1) ?  lem_subBV_id 1 (Bc False) 
-                                                   === Bc False ? lem_value_pred (Bc False)
+    subtt       = subBV 1 (Bc True) (BV 1)  ?  lem_subBV_id 1 (Bc True)  
+                                           === Bc True  ? lem_value_pred (Bc True)
+    subft       = subBV 1 (Bc False) (BV 1) ?  lem_subBV_id 1 (Bc False) 
+                                           === Bc False ? lem_value_pred (Bc False)
     val1        = isValue (BV 1) ? isTerm (BV 1)
     val_f       = isValue (Bc False)  ? isTerm (Bc False)
     val_t       = isValue (Bc True)   ? isTerm (Bc True)
     er_bool     = erase (TRefn TBool Z (Bc True)) 
 
-{- @ ple ev_prt''t_tt @-}
 {-@ ev_prt''t_tt :: ProofOf(EvalsTo (subBV 0 (Bc True) (subBV 2 (Bc True)  (subBV 1 (Bc True) (refn_pred And)))) 
                                     (Bc True)) @-}
 ev_prt''t_tt :: EvalsTo
 ev_prt''t_tt = reduce_and_tt True True ? blAnd True True
 
-{- @ ple ev_prt''f_ff @-}
 {-@ ev_prt''f_ff :: ProofOf(EvalsTo (subBV 0 (Bc False) (subBV 2 (Bc False) (subBV 1 (Bc True) (refn_pred And)))) 
                                     (Bc True)) @-}
 ev_prt''f_ff :: EvalsTo
@@ -177,13 +173,11 @@ val_den_func_and3 v_x den_tx_vx = case v_x of
     val_t       = isValue (Bc True)   ? isTerm (Bc True)
     er_bool     = erase (TRefn TBool Z (Bc True)) 
 
-{- @ ple ev_prt''t_tt @-}
 {-@ ev_prt'''t_ff :: ProofOf(EvalsTo (subBV 0 (Bc False) (subBV 2 (Bc True)  (subBV 1 (Bc False) (refn_pred And))))
                                      (Bc True)) @-}
 ev_prt'''t_ff :: EvalsTo
 ev_prt'''t_ff = reduce_and_tt False True ? blAnd False True
 
-{- @ ple ev_prt'''f_ff @-}
 {-@ ev_prt'''f_ff :: ProofOf(EvalsTo (subBV 0 (Bc False) (subBV 2 (Bc False) (subBV 1 (Bc False) (refn_pred And))))
                                      (Bc True)) @-}
 ev_prt'''f_ff :: EvalsTo
