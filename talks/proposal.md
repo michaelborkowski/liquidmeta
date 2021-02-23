@@ -16,7 +16,7 @@
 
 ---
 
-## Why Refinment Types?
+## Why Refinement Types?
 
  * We can express precise preconditions/postconditions on functions. This can reduce runtime/uncaught errors (divide by zero, array bounds)
 
@@ -50,15 +50,15 @@
 
 ## Big Question: Can we put the type system of Liquid Haskell on a more solid theoretical footing?
 	
-#  Problem: Length and complexity of informal metatheory dramatically increases as we move from toy languages to more robust models
+ *  Problem: Length and complexity of informal metatheory dramatically increases as we move from toy languages to more robust models
 
-#  Idea: A formal _mechanized_ proof checked by an automated theorem prover is an ideal way to ensure that we can have confidence in our soundness proof.
+ *  Idea: A formal _mechanized_ proof checked by an automated theorem prover is an ideal way to ensure that we can have confidence in our soundness proof.
 
 ---
 
-## Prior Work: Metatheory
+# Prior Work: Metatheory
 
-## Prior Work: Mechanization
+# Prior Work: Mechanization
 
 ---
 
