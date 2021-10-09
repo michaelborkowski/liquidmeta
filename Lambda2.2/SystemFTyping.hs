@@ -11,7 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SystemFWellFormedness
+import SystemFWellFormedness            (WFFT(..),WFFE(..),isWFFT,makeWFFT)
 
 {-@ reflect foo04 @-}
 foo04 :: a -> Maybe a

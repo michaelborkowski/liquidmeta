@@ -11,38 +11,38 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import Semantics
-import SystemFWellFormedness
-import SystemFTyping
-import WellFormedness
+--import {--} Semantics
+import SystemFWellFormedness            (WFFT(..))
+import SystemFTyping                    (erase_ty,ty,tyic,tybc)
+import WellFormedness                   (WFType(..),WFEnv(..),isWFFunc,isWFPoly)
 import BasicPropsSubstitution
-import BasicPropsEnvironments
-import BasicPropsWellFormedness
-import SystemFLemmasFTyping
-import SystemFLemmasSubstitution
-import Typing
-import BasicPropsCSubst
-import BasicPropsDenotes
-import Entailments
-import LemmasChangeVarWF
-import LemmasWeakenWF
-import LemmasWellFormedness
-import LemmasTyping
-import LemmasSubtyping
-import LemmasChangeVarTyp
-import LemmasWeakenTyp
-import SubstitutionLemmaWF
-import DenotationsSelfify
-import PrimitivesSemantics
-import PrimitivesDenotations
-import DenotationsSoundness
-import LemmasExactness
-import SubstitutionLemmaEnt
-import SubstitutionLemmaTyp
-import LemmasNarrowingEnt
-import LemmasNarrowingTyp
-import LemmasTransitive
-import LemmasSubtypeClosed
+import BasicPropsEnvironments           (concatE,esubFV,echgFTV)
+import BasicPropsWellFormedness         (lem_wffunc_for_wf_tfunc,lem_wfpoly_for_wf_tpoly)
+--import {--} SystemFLemmasFTyping
+--import {--} SystemFLemmasSubstitution
+import Typing                           (HasType(..),Subtype(..),isTAbs,isTAbsT,isTSub,self)
+--import {--} BasicPropsCSubst
+--import {--} BasicPropsDenotes
+--import {--} Entailments
+import LemmasChangeVarWF                (lem_change_var_wf',lem_change_tvar_wf')
+--import {--} LemmasWeakenWF
+--import {--} LemmasWellFormedness             
+import LemmasTyping                     (lem_typing_wf,lem_fv_bound_in_env)
+--import {--} LemmasSubtyping
+import LemmasChangeVarTyp               (lem_change_var_typ,lem_change_tvar_typ)
+--import {--} LemmasWeakenTyp
+--import {--} SubstitutionLemmaWF
+--import {--} DenotationsSelfify
+--import {--} PrimitivesSemantics
+--import {--} PrimitivesDenotations
+--import {--} DenotationsSoundness
+--import {--} LemmasExactness
+--import {--} SubstitutionLemmaEnt
+--import {--} SubstitutionLemmaTyp
+--import {--} LemmasNarrowingEnt
+import LemmasNarrowingTyp               (lem_narrow_typ)
+--import {--} LemmasTransitive
+import LemmasSubtypeClosed              (LowerBoundType(..),lem_typ_lower_bound)
 
 {-@ reflect foo73 @-}
 foo73 x = Just x

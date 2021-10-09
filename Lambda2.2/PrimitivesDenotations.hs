@@ -11,27 +11,27 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import Semantics
-import SystemFWellFormedness
-import SystemFTyping
-import BasicPropsEnvironments
-import BasicPropsSubstitution
-import BasicPropsWellFormedness
-import WellFormedness
-import PrimitivesWFType
-import Typing
-import Entailments
-import SubtypingFromEntailments
-import BasicPropsCSubst
-import PrimitivesSemantics
-import LemmasTyping
-import PrimitivesDenotationsAnd
-import PrimitivesDenotationsOr
-import PrimitivesDenotationsNot
-import PrimitivesDenotationsEqv
-import PrimitivesDenotationsLeq
-import PrimitivesDenotationsEq
-import PrimitivesDenotationsEql
+import Semantics                        (Step(..),EvalsTo(..),delta,deltaT,deltaC,isCompat,isCompatT)
+import SystemFWellFormedness            (WFFT(..),WFFE(..))
+import SystemFTyping                    (HasFType(..),tybc,tyic,ty,erase_ty,ty',firstBV,inType,refn_pred)
+import BasicPropsEnvironments           (lem_erase_tsubBV)
+import BasicPropsSubstitution           (lem_subFV_notin,lem_subBV_notin,lem_tsubFV_unbindT)
+import BasicPropsWellFormedness         (lem_erase_env_wfenv)
+import WellFormedness                   (WFType(..),WFEnv(..))
+import PrimitivesWFType                 (lem_wf_tybc,lem_wf_tyic)
+import Typing                           (self,HasType(..),Entails(..),Denotes(..),DenotesEnv(..),ValueDenoted(..),lem_binds_env_th,isTBC,isTIC)
+--import Entailments
+import SubtypingFromEntailments         (lem_subtype_repetition)
+import BasicPropsCSubst                 (lem_csubst_nofv,lem_ctsubst_nofree,lem_csubst_prim,lem_csubst_app,lem_csubst_appT,lem_csubst_bc,lem_csubst_ic)
+import PrimitivesSemantics              (lemma_eqv_semantics,lemma_eq_semantics,intEq,blIff)
+import LemmasTyping                     (lem_selfify_wf')
+import PrimitivesDenotationsAnd         (lem_den_and)
+import PrimitivesDenotationsOr          (lem_den_or)
+import PrimitivesDenotationsNot         (lem_den_not)
+import PrimitivesDenotationsEqv         (lem_den_eqv)
+import PrimitivesDenotationsLeq         (lem_den_leq,lem_den_leqn)
+import PrimitivesDenotationsEq          (lem_den_eq,lem_den_eqn)
+import PrimitivesDenotationsEql         (lem_den_eql)
 
 {-@ reflect foo58 @-}
 foo58 x = Just x

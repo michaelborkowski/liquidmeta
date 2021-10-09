@@ -11,10 +11,10 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import Semantics
-import SystemFWellFormedness
-import SystemFTyping
-import WellFormedness
+import SystemFWellFormedness            (WFFT(..),isWFFT)
+import SystemFTyping                    (HasFType(..),firstBV,inType,ty',refn_pred,ty,erase_ty,
+                                          noDefnsBaseAppT,checkType,synthType)
+import WellFormedness                   (WFType(..),noDefnsInRefns,isWellFormed)
 
 {-@ reflect foo18 @-}
 foo18 :: a -> Maybe a
@@ -38,7 +38,7 @@ lem_wf_intype_eql a' = ()
                                      (ConsT a' Base Empty))
                       (unbindT (firstBV Eql) (fresh_var (ConsT a' Base Empty)) (unbind_tvT 1 a' (ty' Eql))) Star } @-}
 lem_wf_ty'_eql :: Vname -> Proof
-lem_wf_ty'_eql a' = () ? lem_wf_intype_eql a'
+lem_wf_ty'_eql a' = () -- ? lem_wf_intype_eql a'
   where 
     y = fresh_var (ConsT a' Base Empty)
 
@@ -49,9 +49,9 @@ lem_wf_ty'_eql a' = () ? lem_wf_intype_eql a'
                       (TFunc (firstBV Eql) (unbind_tvT 1 a' (inType Eql)) 
                              (unbind_tvT 1 a' (ty' Eql))) Star } @-}
 lem_wf_ty_inside_eql :: Vname -> Proof
-lem_wf_ty_inside_eql a' = () ? lem_wf_intype_eql a' ? lem_wf_ty'_eql a'
+lem_wf_ty_inside_eql a' = () -- ? lem_wf_intype_eql a' ? lem_wf_ty'_eql a'
 
 {-@ lem_wf_ty_eql :: ()
       -> { pf:_ | noDefnsInRefns Empty (ty Eql) && isWellFormed Empty (ty Eql) Star } @-}
 lem_wf_ty_eql :: () -> Proof
-lem_wf_ty_eql _ = () ? lem_wf_ty_inside_eql (fresh_var Empty)
+lem_wf_ty_eql _ = () -- ? lem_wf_ty_inside_eql (fresh_var Empty)

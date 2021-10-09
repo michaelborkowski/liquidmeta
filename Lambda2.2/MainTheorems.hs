@@ -12,29 +12,17 @@ import qualified Data.Set as S
 
 import Basics
 import Semantics
-import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
 import PrimitivesFTyping
-import PrimitivesWFType
 import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
 import Typing
-import BasicPropsCSubst
-import LemmasWellFormedness
-import LemmasTyping
 import LemmasSubtyping
-import SubstitutionLemmaWF
-import PrimitivesSemantics
-import PrimitivesDenotations
-import DenotationsSoundness
-import LemmasExactness
 import SubstitutionLemmaTyp
 import SubstitutionLemmaTypTV
-import LemmasSubtypeClosed
 import LemmasInvertLambda
-import PrimitivesRefinements
 import PrimitivesDeltaTyping
 
 {-@ reflect foo77 @-}

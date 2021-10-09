@@ -12,40 +12,40 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import Semantics
-import SystemFWellFormedness
-import SystemFTyping
+import Semantics                        (delta,deltaT,isCompat,isCompatT)
+--import SystemFWellFormedness
+import SystemFTyping                    (HasFType(..),firstBV,inType,ty',ty,tybc,tyic,erase_ty,refn_pred)
 import WellFormedness
-import PrimitivesFTyping
-import PrimitivesWFType
+import PrimitivesFTyping                
+import PrimitivesWFType                 ----(lem_wf_inside_ty)
 import BasicPropsSubstitution
-import BasicPropsEnvironments
-import BasicPropsWellFormedness
-import SystemFLemmasFTyping
-import SystemFLemmasSubstitution
+import BasicPropsEnvironments           (esubFV,echgFTV,esubFTV,concatE,lem_empty_concatE)
+import BasicPropsWellFormedness         (lem_wffunc_for_wf_tfunc,lem_wfpoly_for_wf_tpoly)
+--import SystemFLemmasFTyping
+--import SystemFLemmasSubstitution
 import Typing
-import BasicPropsCSubst
-import BasicPropsDenotes
-import Entailments
+--import BasicPropsCSubst
+--import BasicPropsDenotes
+--import Entailments
 import LemmasChangeVarWF
-import LemmasWeakenWF
-import LemmasWellFormedness
-import LemmasTyping
-import LemmasSubtyping
-import LemmasChangeVarTyp
-import LemmasWeakenTyp
+--import LemmasWeakenWF
+import LemmasWellFormedness             (lem_subtype_in_env_wf)
+import LemmasTyping                     (lem_typing_hasftype,lem_typing_wf)
+--import LemmasSubtyping
+--import LemmasChangeVarTyp
+--import LemmasWeakenTyp
 import SubstitutionWFAgain
-import DenotationsSelfify
-import PrimitivesSemantics
-import PrimitivesDenotations
-import DenotationsSoundness
-import LemmasExactness
-import SubstitutionLemmaEnt
-import SubstitutionLemmaTyp
-import SubstitutionLemmaTypTV
+--import DenotationsSelfify
+--import PrimitivesSemantics
+--import PrimitivesDenotations
+--import DenotationsSoundness
+--import LemmasExactness
+--import SubstitutionLemmaEnt
+import SubstitutionLemmaTyp             (lem_subst_sub)
+import SubstitutionLemmaTypTV           (lem_subst_tv_sub)
 import LemmasSubtypeClosed
-import LemmasInvertLambda
-import PrimitivesRefinements
+--import LemmasInvertLambda
+--import PrimitivesRefinements
 
 {-@ reflect foo72 @-}
 foo72 x = Just x

@@ -12,19 +12,20 @@ import qualified Data.Set as S
 
 import Basics
 import Semantics
-import SystemFWellFormedness
-import SystemFTyping
-import WellFormedness
-import PrimitivesFTyping
-import PrimitivesWFTypeAnd
-import PrimitivesWFTypeOr
-import PrimitivesWFTypeNot
-import PrimitivesWFTypeEqv 
-import PrimitivesWFTypeLeq
-import PrimitivesWFTypeLeqn
-import PrimitivesWFTypeEq
-import PrimitivesWFTypeEqn
-import PrimitivesWFTypeEql
+import SystemFWellFormedness            --(WFFT(..),isWFFT)
+import SystemFTyping                    --(HasFType(..),firstBV,inType,ty',refn_pred,ty,erase_ty,
+                                        --  noDefnsBaseAppT,checkType,synthType,tybc,tyic)
+import WellFormedness                   --(WFType(..),noDefnsInRefns,isWellFormed,makeWFType)
+import PrimitivesFTyping                --(isEql)
+import PrimitivesWFTypeAnd              --(lem_wf_intype_and,lem_wf_ty'_and,lem_wf_ty_and)
+import PrimitivesWFTypeOr               --(lem_wf_intype_or,lem_wf_ty'_or,lem_wf_ty_or)
+import PrimitivesWFTypeNot              --(lem_wf_intype_not,lem_wf_ty'_not,lem_wf_ty_not)
+import PrimitivesWFTypeEqv              --(lem_wf_intype_eqv,lem_wf_ty'_eqv,lem_wf_ty_eqv)
+import PrimitivesWFTypeLeq              --(lem_wf_intype_leq,lem_wf_ty'_leq,lem_wf_ty_leq)
+import PrimitivesWFTypeLeqn             --(lem_wf_intype_leqn,lem_wf_ty'_leqn,lem_wf_ty_leqn)
+import PrimitivesWFTypeEq               --(lem_wf_intype_eq,lem_wf_ty'_eq,lem_wf_ty_eq)
+import PrimitivesWFTypeEqn              --(lem_wf_intype_eqn,lem_wf_ty'_eqn,lem_wf_ty_eqn)
+import PrimitivesWFTypeEql              --(lem_wf_ty_inside_eql,lem_wf_ty_eql)
 
 {-@ reflect foo19 @-}
 foo19 :: a -> Maybe a

@@ -11,11 +11,9 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import Semantics
-import SystemFWellFormedness
-import SystemFTyping
-import WellFormedness
-import BasicPropsSubstitution
+import Semantics                        --(delta,deltaT,deltaC,isCompat,isCompatT,isCompatC)
+import SystemFWellFormedness           -- (WFFT(..))
+import SystemFTyping                    --(HasFType(..),erase_ty)--,firstBV,inType,ty',refn_pred,ty,erase_ty)
 
 {-@ reflect foo08 @-}
 foo08 :: a -> Maybe a

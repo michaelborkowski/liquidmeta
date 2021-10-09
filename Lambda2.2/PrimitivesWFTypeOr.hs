@@ -11,10 +11,10 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import Semantics
-import SystemFWellFormedness
-import SystemFTyping
-import WellFormedness
+import SystemFWellFormedness            (WFFT(..))
+import SystemFTyping                    (HasFType(..),firstBV,inType,ty',refn_pred,ty,erase_ty,
+                                          noDefnsBaseAppT,checkType,synthType)
+import WellFormedness                   (WFType(..),noDefnsInRefns,isWellFormed)
 
 {-@ reflect foo10 @-}
 foo10 :: a -> Maybe a
@@ -37,4 +37,4 @@ lem_wf_ty'_or y = ()
 
 {-@ lem_wf_ty_or :: () -> { pf:_ | noDefnsInRefns Empty (ty Or) && isWellFormed Empty (ty Or) Star } @-}
 lem_wf_ty_or :: () -> Proof
-lem_wf_ty_or _ = () ? lem_wf_intype_or () ? lem_wf_ty'_or (firstBV Or)
+lem_wf_ty_or _ = () -- ? lem_wf_intype_or () ? lem_wf_ty'_or (firstBV Or)
