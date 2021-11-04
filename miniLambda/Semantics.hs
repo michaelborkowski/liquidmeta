@@ -61,11 +61,11 @@ data Step where
 {-@ data Step where 
         EPrim :: c:Prim -> { w:Value | isCompat c w } 
                         -> ProofOf( Step (App (Prim c) w) (delta c w) ) 
-      | EApp1 :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
+        EApp1 :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
                    -> e1:Expr -> ProofOf( Step (App e e1) (App e' e1)) 
-      | EApp2 :: e:Expr -> e':Expr -> ProofOf( Step e e' )
+        EApp2 :: e:Expr -> e':Expr -> ProofOf( Step e e' )
                    -> v:Value -> ProofOf( Step (App v e) (App v e')) 
-      | EAppAbs :: x:Vname -> e:Expr -> v:Value  
+        EAppAbs :: x:Vname -> e:Expr -> v:Value  
                    -> ProofOf( Step (App (Lambda x e) v) (subBV x v e))  @-} -- @-}
 
 data EvalsToP where
@@ -76,7 +76,7 @@ data EvalsTo where
     AddStep  :: Expr -> Expr -> Step -> Expr -> EvalsTo -> EvalsTo
 {-@ data EvalsTo where 
         Refl     :: e:Expr -> ProofOf ( EvalsTo e e ) 
-      | AddStep  :: e1:Expr -> e2:Expr -> ProofOf( Step e1 e2 ) -> e3:Expr
+        AddStep  :: e1:Expr -> e2:Expr -> ProofOf( Step e1 e2 ) -> e3:Expr
                  -> ProofOf ( EvalsTo e2 e3 ) -> ProofOf( EvalsTo e1 e3 ) @-} -- @-} 
 
 --------------------------------------------------------------------------

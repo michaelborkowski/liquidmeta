@@ -55,7 +55,7 @@ data SubtypeStar where
 {-@ data SubtypeStar where
         SubRefl :: g:Env -> t:Type -> ProofOf(WFType g t)
                          -> ProofOf(WFEnv g) -> ProofOf(SubtypeStar g t t)
-      | SubStep :: g:Env -> t:Type -> ProofOf(WFType g t)
+        SubStep :: g:Env -> t:Type -> ProofOf(WFType g t)
             -> t':Type -> t'':Type -> ProofOf(Subtype g t t')
             -> ProofOf(SubtypeStar g t' t'') -> ProofOf(WFEnv g) -> ProofOf(SubtypeStar g t t'') @-}
 

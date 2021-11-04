@@ -36,10 +36,10 @@ data WFType where
           -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p)) }
           -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbind x y p) (FTBasic TBool)) 
           -> ProofOf(WFType g (TRefn b x p))
-     |  WFFunc :: g:Env -> x:Vname -> t_x:Type -> ProofOf(WFType g t_x) -> t:Type
+        WFFunc :: g:Env -> x:Vname -> t_x:Type -> ProofOf(WFType g t_x) -> t:Type
           -> { y:Vname | not (in_env y g) && not (Set_mem y (free t)) }
           -> ProofOf(WFType (Cons y t_x g) (unbindT x y t)) -> ProofOf(WFType g (TFunc x t_x t))
-     |  WFExis :: g:Env -> x:Vname -> t_x:Type -> ProofOf(WFType g t_x) -> t:Type 
+        WFExis :: g:Env -> x:Vname -> t_x:Type -> ProofOf(WFType g t_x) -> t:Type 
           -> { y:Vname | not (in_env y g) && not (Set_mem y (free t)) }
           -> ProofOf(WFType (Cons y t_x g) (unbindT x y t)) -> ProofOf(WFType g (TExists x t_x t)) @-}
 
@@ -76,7 +76,7 @@ data WFEnv where
 
 {-@ data WFEnv where
         WFEEmpty :: ProofOf(WFEnv Empty)
-      | WFEBind  :: g:Env -> ProofOf(WFEnv g) -> { x:Vname | not (in_env x g) } -> t:Type 
+        WFEBind  :: g:Env -> ProofOf(WFEnv g) -> { x:Vname | not (in_env x g) } -> t:Type 
                      -> ProofOf(WFType g t) -> ProofOf(WFEnv (Cons x t g))  @-}
 
 ------------------------------------------------------------------------------------------

@@ -149,8 +149,8 @@ data Basic = TBool         -- Bool
 
 {-@ data Type [tsize] where 
         TRefn   :: Basic -> Vname -> Pred -> Type  
-      | TFunc   :: Vname -> Type  -> Type -> Type 
-      | TExists :: Vname -> Type  -> Type -> Type @-} -- @-}
+        TFunc   :: Vname -> Type  -> Type -> Type 
+        TExists :: Vname -> Type  -> Type -> Type @-} -- @-}
 data Type = TRefn   Basic Vname Pred     -- b{x : p}
           | TFunc   Vname Type Type      -- x:t_x -> t
           | TExists Vname Type Type      -- \exists x:t_x. t
@@ -276,7 +276,7 @@ data Env = Empty                         -- type Env = [(Vname, Type) or Vname]
   deriving (Show)
 {-@ data Env where 
         Empty :: Env 
-      | Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } -> Env @-}
+        Cons  :: x:Vname -> t:Type -> { g:Env | not (in_env x g) } -> Env @-}
 
 {-@ measure envsize @-}
 {-@ envsize :: Env -> { n:Int | n >= 0 } @-}
@@ -364,7 +364,7 @@ data FEnv = FEmpty                       -- type FEnv = [(Vname, FType) or Vname
   deriving (Show) 
 {-@ data FEnv where
         FEmpty :: FEnv
-      | FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } -> FEnv @-}
+        FCons  :: x:Vname -> t:FType -> { g:FEnv | not (in_envF x g) } -> FEnv @-}
 
 {-@ measure fenvsize @-}
 {-@ fenvsize :: FEnv -> { n:Int | n >= 0 } @-}
