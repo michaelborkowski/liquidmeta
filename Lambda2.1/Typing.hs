@@ -11,12 +11,10 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
 import WellFormedness
-import SystemFLemmasFTyping
 import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
@@ -31,55 +29,79 @@ foo26 :: a -> Maybe a
 
 -- new version of selfification requires a kind submitted for t
 -- old vers:  selfify p TBool   z e = App (App (Prim And) p) (App (App (Prim Eqv) (BV z)) e)
+{-@ reflect eqlPred @-} 
+{-@ eqlPred :: { t:Type | isTRefn t } -> e:Term
+        -> { p':Pred | self t e Base == push p' t && ftv p' == Set_cup (freeTV t) (ftv e) 
+                                   && isTerm p'   && fv  p' == Set_cup (free t)   (fv e) } @-}
+eqlPred :: Type -> Expr -> Expr
+eqlPred (TRefn b z p) e = App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e
+
 {-@ reflect selfify @-} 
-{-@ selfify :: p:Pred -> b:Basic -> z:Vname -> e:Expr
+{-@ selfify :: p:Pred -> b:Basic -> z:RVname -> e:Term
         -> { p':Pred | fv p' == Set_cup (fv p) (fv e) && 
                        TRefn b z p' == self (TRefn b z p) e Base } @-}
-selfify :: Pred -> Basic -> Vname -> Expr -> Pred
-selfify p b z e = App (App (Prim And) p) 
-                      (App (App (AppT (Prim Eql) (TRefn b 1 (Bc True))) (BV z)) e)
-{-selfify p TBool   z e = App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                              (TRefn TBool   1 (Bc True))) (BV z)) e)
-selfify p TInt    z e = App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                              (TRefn TInt    1 (Bc True))) (BV z)) e)
-selfify p (FTV a) z e = App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                              (TRefn (FTV a) 1 (Bc True))) (BV z)) e)
-selfify p (BTV a) z e = App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                              (TRefn (BTV a) 1 (Bc True))) (BV z)) e)-}
+selfify :: Expr -> Basic -> RVname -> Expr -> Expr
+selfify p b z e = strengthen  (App (App (AppT (Prim Eql) (TRefn b z p)) (BV 0)) e)  p
 
 {-@ reflect self @-}
-{-@ self :: t:Type -> e:Expr -> k:Kind
+{-@ self :: t:Type -> e:Term -> k:Kind
               -> { t':Type | Set_sub (free t') (Set_cup (free t) (fv e)) &&
-                 Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (freeBV e)) && erase t == erase t' } @-}
+                             Set_sub (freeTV t') (Set_cup (freeTV t) (ftv e)) &&
+                             Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (freeBV e)) && 
+                             (isTRefn t => isTRefn t') && (noExists t => noExists t' ) &&
+                             erase t == erase t' && ( (k == Star) => (t == t') ) } @-}
 self :: Type -> Expr -> Kind -> Type
-self (TRefn b z p)     e Base = TRefn b z (App (App (Prim And) p) 
-                                    (App (App (AppT (Prim Eql) (TRefn b 1 (Bc True))) (BV z)) e))
-{-case b of
-  TBool   -> TRefn b z (App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                                  (TRefn b 1 (Bc True))) (BV z)) e))
-  TInt    -> TRefn b z (App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                                  (TRefn b 1 (Bc True))) (BV z)) e))
-  (FTV a) -> TRefn b z (App (App (Prim And) p) (App (App (AppT (Prim Eql) 
-                                                  (TRefn b 1 (Bc True))) (BV z)) e))
-  (BTV a) -> TRefn b z (App (App (Prim And) p) (App (App (AppT (Prim Eql)
-                                                  (TRefn b 1 (Bc True))) (BV z)) e))-}
+self t@(TRefn b z p)   e Base = TRefn b z (strengthen  (App (App (AppT (Prim Eql) t) (BV 0)) e)  
+                                      (p `withProof` lem_refn_is_pred t b z p))
 self (TFunc   z t_z t) e Base = TFunc   z t_z t
 self (TExists z t_z t) e Base = TExists z t_z (self t e Base)
 self (TPoly   a k_a t) e Base = TPoly   a k_a t
 self t                 e Star = t
 
+{-@ lem_subFV_eqlPred :: y:Vname -> v_y:Value -> { t:Type | isTRefn t } -> e:Expr
+        -> { pf:_ | subFV y v_y (eqlPred t e) == eqlPred (tsubFV y v_y t) (subFV y v_y e) } @-}
+lem_subFV_eqlPred :: Vname -> Expr -> Type -> Expr -> Proof
+lem_subFV_eqlPred y v_y t e = () ? lem_subFV_notin y v_y (BV 0)
+
+{-@ lem_tsubFTV_eqlPred :: a:Vname -> { t_a:UserType | isTRefn t_a } -> { t:Type | isTRefn t } -> e:Expr
+        -> { pf:_ | subFTV a t_a (eqlPred t e) == eqlPred (tsubFTV a t_a t) (subFTV a t_a e) } @-}
+lem_tsubFTV_eqlPred :: Vname -> Type -> Type -> Expr -> Proof
+lem_tsubFTV_eqlPred a t_a@(TRefn b' y' q') (TRefn b z p) e = case b of 
+  (FTV a') | a' == a  -> () ? lem_subFTV_notin a t_a (BV 0)
+                            ? lem_subFTV_notin a t_a (Prim Eql)
+                            ? lem_tsubFTV_trefn a t_a (TRefn b z p)
+                            ? toProof ( y' === z )
+  _                   -> ()
+
+{-@ lem_tsubFTV_self :: a:Vname -> t_a:UserType -> t:Type -> e:Term -> k:Kind
+        -> { pf:_ | tsubFTV a t_a (self t e k) == self (tsubFTV a t_a t) (subFTV a t_a e) k } @-}
+lem_tsubFTV_self :: Vname -> Type -> Type -> Expr -> Kind -> Proof
+lem_tsubFTV_self a t_a t@(TRefn b z p)     e Base = case b of
+  (FTV a') | a' == a  -> case t_a of 
+      (TRefn b_a y_a q_a) ->  () {- ? toProof (
+         tsubFTV a t_a (self t e Base) === tsubFTV a t_a (push (eqlPred t e) t) -}
+       ? lem_subFTV_push a t_a (eqlPred t e) t 
+       ? lem_tsubFTV_trefn a t_a t
+--     === push (subFTV a t_a (eqlPred t e)) (tsubFTV a t_a t)
+       ? lem_tsubFTV_eqlPred a t_a t e
+{-     === push (App (App (AppT (Prim Eql) (tsubFTV a t_a t)) (BV z)) (subFTV a t_a e)) (tsubFTV a t_a t)
+     === push (eqlPred (tsubFTV a t_a t) (subFTV a t_a e)) (tsubFTV a t_a t)
+     === self (tsubFTV a t_a t) (subFTV a t_a e) Base )-}
+      (TFunc y t_y t') -> ()
+      (TPoly a1 k1 t') -> ()
+  _                   -> ()
+lem_tsubFTV_self a t_a (TFunc x t_x t)   e Base = ()
+lem_tsubFTV_self a t_a (TExists x t_x t) e Base = () ? lem_tsubFTV_self a t_a t e Base
+lem_tsubFTV_self a t_a (TPoly a' k_a' t) e Base = ()  
+lem_tsubFTV_self a t_a t                 e Star = ()
+
 {-@ lem_tsubBV_self :: z:Vname -> v_z:Value -> t:Type 
-        -> { e:Expr | not (Set_mem z (freeBV e)) } -> k:Kind
+        -> { e:Term | not (Set_mem z (freeBV e)) } -> k:Kind
         -> { pf:_ | tsubBV z v_z (self t e k) == self (tsubBV z v_z t) e k } @-}
 lem_tsubBV_self :: Vname -> Expr -> Type -> Expr -> Kind -> Proof
 lem_tsubBV_self z v_z (TRefn b x p)     e Base 
-  | z == x    = ()
-  | otherwise = ()      ? lem_subBV_notin z v_z (Prim And)
-                        ? lem_subBV_notin z v_z e
-                        ? lem_subBV_notin z v_z (Prim Eql) 
-                        ? lem_subBV_notin z v_z (Bc True)
-                        ? lem_tsubBV_notin z v_z (TRefn b 1 (Bc True)) 
-                        ? lem_subBV_notin z v_z (BV x)
+  | z == 0    = ()
+  | otherwise = () ? lem_subBV_notin z v_z e
 lem_tsubBV_self z v_z (TFunc x t_x t)   e Base = ()
 lem_tsubBV_self z v_z (TExists x t_x t) e Base 
   | z == x    = ()
@@ -87,18 +109,52 @@ lem_tsubBV_self z v_z (TExists x t_x t) e Base
 lem_tsubBV_self z v_z (TPoly a k_a t)   e Base = ()
 lem_tsubBV_self z v_z t                 e Star = ()
 
-{-@ lem_tsubFV_self :: z:Vname -> v_z:Expr -> t:Type -> { x:Vname | x == z } -> k:Kind
-        -> { pf:_ | tsubFV z v_z (self t (FV x) k) == self (tsubFV z v_z t) v_z k } @-}
-lem_tsubFV_self :: Vname -> Expr -> Type -> Vname -> Kind -> Proof
-lem_tsubFV_self z v_z (TRefn b w p)     x Base = case b of
+{-@ lem_tchgFTV_eqlPred :: a:Vname -> a':Vname -> { t:Type | isTRefn t } -> e:Expr
+        -> { pf:_ | chgFTV a a' (eqlPred t e) == 
+                     eqlPred (tchgFTV a a' t) (chgFTV a a' e) } @-}
+lem_tchgFTV_eqlPred :: Vname -> Vname -> Type -> Expr -> Proof
+lem_tchgFTV_eqlPred a a' (TRefn b z p) e = case b of 
+  (FTV a1) | a1 == a  -> () ? lem_chgFTV_notin a a' (BV 0)
+                            ? lem_chgFTV_notin a a' (Prim Eql)
+                            ? lem_tchgFTV_trefn a a' (TRefn b z p)
+  _                   -> ()
+
+{-@ lem_tchgFTV_self :: a:Vname -> a':Vname -> t:Type -> e:Expr -> k:Kind
+        -> { pf:_ | tchgFTV a a' (self t e k) == self (tchgFTV a a' t) (chgFTV a a' e) k } @-}
+lem_tchgFTV_self :: Vname -> Vname -> Type -> Expr -> Kind -> Proof
+lem_tchgFTV_self a a' (TRefn b w p)     e Base = case b of
+  (FTV a1) | a1 == a -> () ? lem_tchgFTV_eqlPred a a' (TRefn b w p) e
+  _                  -> ()
+lem_tchgFTV_self a a' (TFunc   y t_y t) e Base = ()
+lem_tchgFTV_self a a' (TExists y t_y t) e Base = () ? lem_tchgFTV_self a a' t e Base
+lem_tchgFTV_self a a' (TPoly   a1 k1 t) e Base = ()
+lem_tchgFTV_self a a' t                 e Star = ()
+
+{-@ lem_tsubFV_self :: z:Vname -> v_z:Expr -> t:Type -> e:Expr -> k:Kind
+        -> { pf:_ | tsubFV z v_z (self t e k) == self (tsubFV z v_z t) (subFV z v_z e) k } @-}
+lem_tsubFV_self :: Vname -> Expr -> Type -> Expr -> Kind -> Proof
+lem_tsubFV_self z v_z (TRefn b w p)     e Base = case b of
   TBool   -> () 
   TInt    -> () 
   (FTV a) -> ()
   (BTV a) -> ()
-lem_tsubFV_self z v_z (TFunc   y t_y t) x Base = ()
-lem_tsubFV_self z v_z (TExists y t_y t) x Base = () ? lem_tsubFV_self z v_z t x Base
-lem_tsubFV_self z v_z (TPoly   a k_a t) x Base = ()
-lem_tsubFV_self z v_z t                 x Star = ()
+lem_tsubFV_self z v_z (TFunc   y t_y t) e Base = ()
+lem_tsubFV_self z v_z (TExists y t_y t) e Base = () ? lem_tsubFV_self z v_z t e Base
+lem_tsubFV_self z v_z (TPoly   a k_a t) e Base = ()
+lem_tsubFV_self z v_z t                 e Star = ()
+
+{-@ lem_tsubFV_self0 :: z:Vname -> v_z:Expr -> t:Type -> { x:Vname | x == z } -> k:Kind
+        -> { pf:_ | tsubFV z v_z (self t (FV x) k) == self (tsubFV z v_z t) v_z k } @-}
+lem_tsubFV_self0 :: Vname -> Expr -> Type -> Vname -> Kind -> Proof
+lem_tsubFV_self0 z v_z (TRefn b w p)     x Base = case b of
+  TBool   -> () 
+  TInt    -> () 
+  (FTV a) -> ()
+  (BTV a) -> ()
+lem_tsubFV_self0 z v_z (TFunc   y t_y t) x Base = ()
+lem_tsubFV_self0 z v_z (TExists y t_y t) x Base = () ? lem_tsubFV_self0 z v_z t x Base
+lem_tsubFV_self0 z v_z (TPoly   a k_a t) x Base = ()
+lem_tsubFV_self0 z v_z t                 x Star = ()
 
 {-@ lem_tsubFV_self1 :: z:Vname -> z':Vname -> t:Type -> { x:Vname | x == z } -> k:Kind
       -> { pf:_ | tsubFV z (FV z') (self t (FV x) k) == self (tsubFV z (FV z') t) (FV z') k } @-}
@@ -127,27 +183,6 @@ lem_tsubFV_self2 z v (TPoly   a k_a t) x Base = ()
 lem_tsubFV_self2 z v t             x Star = ()
 
 
-{-@ lem_tsubFV_value_self :: b:Basic -> z:Vname -> p:Pred -> { x:Vname | not (Set_mem x (fv p)) }
-        -> v:Value -> { pf:_ | tsubFV x v (self (TRefn b z p) (FV x) Base) 
-                                == TRefn b z (App (App (Prim And) p)
-                                                  (App (App (equals b) (BV z)) v)) } @-}
-lem_tsubFV_value_self :: Basic -> Vname -> Pred -> Vname -> Expr -> Proof
-lem_tsubFV_value_self TBool   z p x v = () ? lem_subFV_notin x v p
-lem_tsubFV_value_self TInt    z p x v = () ? lem_subFV_notin x v p
-lem_tsubFV_value_self (FTV a) z p x v = () ? lem_subFV_notin x v p
-lem_tsubFV_value_self (BTV a) z p x v = () ? lem_subFV_notin x v p
-
-{- @ equals :: b:Basic -> { c:Prim | Set_emp (fv (Prim c)) && Set_emp (freeBV (Prim c)) &&
-                  erase_ty c == FTFunc (FTBasic b) (FTFunc (FTBasic b) (FTBasic TBool)) } @-}
-{-@ reflect equals @-}
-{-@ equals :: b:Basic -> { e:Expr | Set_emp (fv e) && Set_emp (freeBV e) } @-}
-equals :: Basic -> Expr
-equals b = AppT (Prim Eql) (TRefn b 1 (Bc True)) {-
-equals TBool   = Prim Eqv
-equals TInt    = Prim Eq
-equals (FTV a) = AppT (Prim Eql) (TRefn (FTV a) 1 (Bc True))
-equals (BTV a) = AppT (Prim Eql) (TRefn (BTV a) 1 (Bc True)) -}
-
   --- the Typing Judgement
 
 data HasTypeP where
@@ -174,44 +209,44 @@ data HasType where
 
 {-@ data HasType where
         TBC   :: g:Env -> b:Bool -> ProofOf(HasType g (Bc b) (tybc b))
-     |  TIC   :: g:Env -> n:Int -> ProofOf(HasType g (Ic n) (tyic n))
-     |  TVar1 :: g:Env -> { x:Vname | not (in_env x g) } -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+        TIC   :: g:Env -> n:Int -> ProofOf(HasType g (Ic n) (tyic n))
+        TVar1 :: g:Env -> { x:Vname | not (in_env x g) } -> t:Type -> k:Kind -> ProofOf(WFType g t k)
                     -> ProofOf(HasType (Cons x t g) (FV x) (self t (FV x) k))
-     |  TVar2 :: g:Env -> { x:Vname | in_env x g } -> t:Type -> ProofOf(HasType g (FV x) t)
+        TVar2 :: g:Env -> { x:Vname | in_env x g } -> t:Type -> ProofOf(HasType g (FV x) t)
                     -> { y:Vname | y != x && not (in_env y g) && not (Set_mem y (free t)) } -> s:Type
                     -> ProofOf(HasType (Cons y s g) (FV x) t)
-     |  TVar3 :: g:Env -> { x:Vname | in_env x g } -> t:Type -> ProofOf(HasType g (FV x) t)
+        TVar3 :: g:Env -> { x:Vname | in_env x g } -> t:Type -> ProofOf(HasType g (FV x) t)
                     -> { a:Vname | a != x && not (in_env a g) && not (Set_mem a (freeTV t)) } -> k:Kind
                     -> ProofOf(HasType (ConsT a k g) (FV x) t)
-     |  TPrm  :: g:Env -> c:Prim -> ProofOf(HasType g (Prim c) (ty c))
-     |  TAbs  :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind -> ProofOf(WFType g t_x k_x) 
+        TPrm  :: g:Env -> c:Prim -> ProofOf(HasType g (Prim c) (ty c))
+        TAbs  :: g:Env -> x:Vname -> t_x:Type -> k_x:Kind -> ProofOf(WFType g t_x k_x)
                   -> e:Expr -> t:Type 
                   -> { y:Vname | not (in_env y g) && not (Set_mem y (fv e)) && not (Set_mem y (ftv e)) &&
                                                  not (Set_mem y (free t)) && not (Set_mem y (freeTV t)) } 
                   -> ProofOf(HasType (Cons y t_x g) (unbind x y e) (unbindT x y t))
                   -> ProofOf(HasType g (Lambda x e) (TFunc x t_x t))
-     |  TApp  :: g:Env -> e:Expr -> x:Vname -> t_x:Type -> t:Type
+        TApp  :: g:Env -> e:Expr -> x:Vname -> t_x:Type -> t:Type
                   -> ProofOf(HasType g e (TFunc x t_x t)) 
                   -> e':Expr -> ProofOf(HasType g e' t_x) 
                   -> ProofOf(HasType g (App e e') (TExists x t_x t))
-     |  TAbsT :: g:Env -> a:Vname -> k:Kind -> e:Expr -> t:Type -> k_t:Kind
+        TAbsT :: g:Env -> a:Vname -> k:Kind -> e:Expr -> t:Type -> k_t:Kind
                   -> { a':Vname | not (in_env a' g) && not (Set_mem a' (fv e)) && not (Set_mem a' (ftv e)) &&
                                                   not (Set_mem a' (free t)) && not (Set_mem a' (freeTV t)) }
                   -> ProofOf(HasType (ConsT a' k g) (unbind_tv a a' e) (unbind_tvT a a' t))
                   -> ProofOf(WFType  (ConsT a' k g) (unbind_tvT a a' t) k_t)
                   -> ProofOf(HasType g (LambdaT a k e) (TPoly a k t))
-     |  TAppT :: g:Env -> e:Expr -> a:Vname -> k:Kind -> s:Type -> ProofOf(HasType g e (TPoly a k s)) 
-                  -> { t:Type | same_binders t s && same_bindersE t e } -> ProofOf(WFType g t k)
+        TAppT :: g:Env -> e:Expr -> a:Vname -> k:Kind -> s:Type -> ProofOf(HasType g e (TPoly a k s))
+                  -> t:UserType -> ProofOf(WFType g t k)
                   -> ProofOf(HasType g (AppT e t) (tsubBTV a t s))
-     |  TLet  :: g:Env -> e_x:Expr -> t_x:Type -> ProofOf(HasType g e_x t_x)
+        TLet  :: g:Env -> e_x:Expr -> t_x:Type -> ProofOf(HasType g e_x t_x)
                   -> x:Vname -> e:Expr -> t:Type -> k:Kind -> ProofOf(WFType g t k)
                   -> { y:Vname | not (in_env y g) && not (Set_mem y (fv e)) && not (Set_mem y (ftv e)) &&
                                                    not (Set_mem y (free t)) && not (Set_mem y (freeTV t)) }
                   -> ProofOf(HasType (Cons y t_x g) (unbind x y e) (unbindT x y t))
                   -> ProofOf(HasType g (Let x e_x e) t)
-     |  TAnn  :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
+        TAnn  :: g:Env -> e:Expr -> t:UserType -> ProofOf(HasType g e t)
                   -> ProofOf(HasType g (Annot e t) t)
-     |  TSub  :: g:Env -> e:Expr -> s:Type -> ProofOf(HasType g e s) -> t:Type -> k:Kind
+        TSub  :: g:Env -> e:Expr -> s:Type -> ProofOf(HasType g e s) -> t:Type -> k:Kind
                   -> ProofOf(WFType g t k) -> ProofOf(Subtype g s t) 
                   -> ProofOf(HasType g e t) @-} 
 
@@ -232,6 +267,16 @@ typSize (TAppT _ _ _ _ _ p_e_as _ _)           = (typSize p_e_as)  + 1
 typSize (TLet _ _ _ p_ex_b _ _ _ _ _ _ p_e_b') = (typSize p_ex_b)  + (typSize p_e_b')   + 1
 typSize (TAnn _ _ _ p_e_b)                     = (typSize p_e_b)   + 1
 typSize (TSub _ _ _ p_e_s _ _ _ p_s_t)         = (typSize p_e_s)   + (subtypSize p_s_t) + 1
+
+{-@ reflect isTBC @-}
+isTBC :: HasType -> Bool
+isTBC (TBC {}) = True
+isTBC _        = False
+
+{-@ reflect isTIC @-}
+isTIC :: HasType -> Bool
+isTIC (TIC {}) = True
+isTIC _        = False
 
 {-@ reflect isTVar @-}
 isTVar :: HasType -> Bool
@@ -298,7 +343,7 @@ data SubtypeP where
     Subtype :: Env -> Type -> Type -> SubtypeP
 
 data Subtype where
-    SBase :: Env -> Vname -> Basic -> Pred -> Vname -> Pred -> Vname -> Entails -> Subtype
+    SBase :: Env -> RVname -> Basic -> Expr -> RVname -> Expr -> Vname -> Entails -> Subtype
     SFunc :: Env -> Vname -> Type -> Vname -> Type -> Subtype
                -> Type -> Type -> Vname -> Subtype -> Subtype
     SWitn :: Env -> Expr -> Type -> HasType -> Type -> Vname -> Type
@@ -309,26 +354,26 @@ data Subtype where
 -- edited SFunc 5/5/20: was -> { x2:Vname | not (in_Env x2 g) }. x2 is a BV so there's no
 --     possibility for collision with the FV's in the environment g.
 {-@ data Subtype where
-        SBase :: g:Env -> v1:Vname -> b:Basic -> p1:Pred -> v2:Vname -> p2:Pred 
+        SBase :: g:Env -> v1:RVname -> b:Basic -> p1:Pred -> v2:RVname -> p2:Pred 
                  -> { y:Vname | not (in_env y g) && not (Set_mem y (fv p2)) }
-                 -> ProofOf(Entails ( Cons y (TRefn b v1 p1) g) (unbind v2 y p2))
+                 -> ProofOf(Entails ( Cons y (TRefn b v1 p1) g) (unbind 0 y p2))
                  -> ProofOf(Subtype g (TRefn b v1 p1) (TRefn b v2 p2))
-     |  SFunc :: g:Env -> x1:Vname -> s1:Type -> x2:Vname -> s2:Type
+        SFunc :: g:Env -> x1:Vname -> s1:Type -> x2:Vname -> s2:Type
                  -> ProofOf(Subtype g s2 s1) -> t1:Type -> t2:Type
                  -> { y:Vname | not (in_env y g) && not (Set_mem y (free t1))
                                                  && not (Set_mem y (free t2))
                                 && not (Set_mem y (freeTV t1)) && not (Set_mem y (freeTV t2)) }
                  -> ProofOf(Subtype (Cons y s2 g) (unbindT x1 y t1) (unbindT x2 y t2))
                  -> ProofOf(Subtype g (TFunc x1 s1 t1) (TFunc x2 s2 t2))
-     |  SWitn :: g:Env -> e:Value  -> t_x:Type -> ProofOf(HasType g e t_x) 
+        SWitn :: g:Env -> e:Value  -> t_x:Type -> ProofOf(HasType g e t_x)
                  -> t:Type -> x:Vname -> t':Type -> ProofOf(Subtype g t (tsubBV x e t'))
                  -> ProofOf(Subtype g t (TExists x t_x t'))
-     |  SBind :: g:Env -> x:Vname -> t_x:Type -> t:Type -> {t':Type | not Set_mem x (tfreeBV t')} 
+        SBind :: g:Env -> x:Vname -> t_x:Type -> t:Type -> {t':Type | not Set_mem x (tfreeBV t')}
                  -> { y:Vname | not (in_env y g) && not (Set_mem y (free t))
                                                  && not (Set_mem y (free t')) }
                  -> ProofOf(Subtype (Cons y t_x g) (unbindT x y t) t')
                  -> ProofOf(Subtype g (TExists x t_x t) t')
-     |  SPoly :: g:Env -> a1:Vname -> k:Kind -> t1:Type -> a2:Vname -> t2:Type 
+        SPoly :: g:Env -> a1:Vname -> k:Kind -> t1:Type -> { a2:Vname | a1 == a2 } -> t2:Type
                  -> { a:Vname | not (in_env a g) 
                                 && not (Set_mem a (free t1)) && not (Set_mem a (freeTV t1))
                                 && not (Set_mem a (free t2)) && not (Set_mem a (freeTV t2)) }
@@ -344,6 +389,15 @@ subtypSize (SFunc _ _ _ _ _ p_s2_s1 _ _ _ p_t1_t2) = (subtypSize p_s2_s1) + (sub
 subtypSize (SWitn _ _ _ p_e_tx _ _ _ p_t_t')       = (subtypSize p_t_t')  + (typSize p_e_tx)     + 1
 subtypSize (SBind _ _ _ _ _ _ p_t_t')              = (subtypSize p_t_t')  + 1
 subtypSize (SPoly _ _ _ _ _ _ _ p_t1_t2)           = (subtypSize p_t1_t2) + 1 
+
+{-@ measure subtypSize' @-}
+{-@ subtypSize' :: Subtype -> { v:Int | v >= 0 } @-}
+subtypSize' :: Subtype -> Int
+subtypSize' (SBase {})                              = 1
+subtypSize' (SFunc _ _ _ _ _ p_s2_s1 _ _ _ p_t1_t2) = (subtypSize' p_s2_s1) + (subtypSize' p_t1_t2) + 1
+subtypSize' (SWitn _ _ _ p_e_tx _ _ _ p_t_t')       = (subtypSize' p_t_t')  + 1
+subtypSize' (SBind _ _ _ _ _ _ p_t_t')              = (subtypSize' p_t_t')  + 1
+subtypSize' (SPoly _ _ _ _ _ _ _ p_t1_t2)           = (subtypSize' p_t1_t2) + 1 
 
 {-@ reflect isSBase @-}
 isSBase :: Subtype -> Bool
@@ -371,32 +425,6 @@ isSPoly (SPoly {}) = True
 isSPoly _          = False
 
 -------------------------------------------------------------------------
------ | ALPHA EQUIVALENCE for SYSTEM F
--------------------------------------------------------------------------
-
--- | Alpha equivalence in System F. These partition the set of FTypes into equivlance 
--- |     classes. We need a separate formalization of this because our System F has
--- |     no notion of subtypes. Cf Pierce, TAPL, Chapter 23 (Figure 23-1)
-
-data AlphaEqvP where
-    AlphaEqv :: FEnv -> FType -> FType -> AlphaEqvP
-
-data AlphaEqv where
-    AEBasic :: FEnv -> Basic -> AlphaEqv
-    AEFunc  :: FEnv -> FType -> FType -> AlphaEqv -> FType -> FType -> AlphaEqv -> AlphaEqv
-    AEPoly  :: FEnv -> Vname -> Kind -> FType -> Vname -> FType -> Vname -> AlphaEqv -> AlphaEqv
-
-{-@ data AlphaEqv where
-        AEBasic :: g:FEnv -> b:Basic -> ProofOf(AlphaEqv g (FTBasic b) (FTBasic b))
-     |  AEFunc  :: g:FEnv -> s1:FType -> s2:FType -> ProofOf(AlphaEqv g s1 s2) 
-                     -> t1:FType -> t2:FType -> ProofOf(AlphaEqv g t1 t2)
-                     -> ProofOf(AlphaEqv g (FTFunc s1 t1) (FTFunc s2 t2))
-     |  AEPoly  :: g:FEnv -> a1:Vname -> k:Kind -> t1:FType -> a2:Vname -> t2:FType 
-                     -> { a:Vname | not (Set_mem a (bindsF g)) }
-                     -> ProofOf(AlphaEqv (FConsT a k g) (unbindFT a1 a t1) (unbindFT a2 a t2))
-                     -> ProofOf(AlphaEqv g (FTPoly a1 k t1) (FTPoly a2 k t2)) @-} -- @-}
-
--------------------------------------------------------------------------
 ----- | CLOSING SUBSTITUTIONS 
 -------------------------------------------------------------------------
 
@@ -405,25 +433,33 @@ data AlphaEqv where
 --   "well formed" it must be an element of the denotation the corresponding enivornment
 
 data CSub = CEmpty
-            | CCons  Vname Expr CSub
-            | CConsT Vname Type CSub
-  deriving (Show)
+          | CCons  Vname Expr CSub
+          | CConsT Vname Type CSub
+  
 {-@ data CSub  where
         CEmpty :: CSub
-      | CCons  :: x:Vname -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) && 
+        CCons  :: x:Vname -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) &&
                                          Set_emp (freeBV v) && Set_emp (freeBTV v) } 
                           -> { th:CSub | not (in_csubst x th ) } 
                           -> { th':CSub | bindsC th'   == Set_cup (Set_sng x)  (bindsC th) && 
                                           vbindsC th'  == Set_cup (Set_sng x) (vbindsC th) &&
                                           tvbindsC th' == tvbindsC th &&
-                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' } 
-      | CConsT :: a:Vname -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) &&
-                                        Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
+                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' &&
+                                          Set_emp (Set_cap (vbindsC th') (tvbindsC th')) } 
+        CConsT :: a:Vname -> { t:UserType | Set_emp (free t) && Set_emp (freeTV t) &&
+                                            Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
                           -> { th:CSub | not (in_csubst a th) }
                           -> { th':CSub | bindsC th'   == Set_cup (Set_sng a)   (bindsC th) && 
                                           vbindsC th'  == vbindsC th &&
                                           tvbindsC th' == Set_cup (Set_sng a) (tvbindsC th) &&
-                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' } @-}
+                                          Set_cup (vbindsC th') (tvbindsC th') == bindsC th' &&
+                                          Set_emp (Set_cap (vbindsC th') (tvbindsC th')) } @-}
+
+{-@ measure csubstSize @-}
+csubstSize :: CSub -> Int
+csubstSize CEmpty           = 1
+csubstSize (CCons y v_y th) = (csubstSize th) + 1
+csubstSize (CConsT a k  th) = (csubstSize th) + 1
 
 {-@ reflect bindsC @-}
 bindsC :: CSub -> S.Set Vname
@@ -470,40 +506,15 @@ tv_bound_inC a t (CCons  y  v' th) | (a == y)          = False
                                    | otherwise         = tv_bound_inC a t th
 tv_bound_inC a t (CConsT a' t' th) | (a == a')         = (t == t')
                                    | otherwise         = tv_bound_inC a t th
-{-{-@ measure uniqueC @-}
-uniqueC :: CSub -> Bool
-uniqueC CEmpty         = True
-uniqueC (CCons x v th) = (uniqueC th) && not (S.member x (bindsC th))
 
-{-@ lem_env_uniqueC :: th:CSub -> { pf:_ | uniqueC th } @-}
-lem_env_uniqueC :: CSub -> Proof
-lem_env_uniqueC CEmpty         = ()
-lem_env_uniqueC (CCons x v th) = () ? lem_env_uniqueC th-}
-
-{-@ reflect same_binders_cs @-}
-same_binders_cs :: CSub -> Type -> Bool
-same_binders_cs CEmpty          t' = True
-same_binders_cs (CCons  x v th) t' = same_binders_cs th (tsubFV x v t')
-same_binders_cs (CConsT a t th) t' = if same_binders t t' then same_binders_cs th (tsubFTV a t t') else False
---same_binders_cs (CConsT a t th) t' = same_binders t t' && same_binders_cs th (tsubFTV a t t')
-
-{-@ reflect same_binders_csE @-}
-same_binders_csE :: CSub -> Expr -> Bool
-same_binders_csE CEmpty          e = True
-same_binders_csE (CCons  x v th) e = same_binders_csE th (subFV x v e)
-same_binders_csE (CConsT a t th) e = if same_bindersE t e then same_binders_csE th (subFTV a t e)  else False
---same_binders_csE (CConsT a t th) e = same_bindersE t e && same_binders_csE th (subFTV a t e)
-
---{-@ csubst :: th:CSub -> { e:Expr | same_binders_csE th e } -> Expr @-}
 {-@ reflect csubst @-}
-{-@ csubst :: th:CSub -> e:Expr -> Expr @-}
+{-@ csubst :: th:CSub -> e:Expr -> { e':Expr | (isTerm e => isTerm e') && (isPred e => isPred e') } @-}
 csubst :: CSub -> Expr -> Expr
 csubst CEmpty          e = e
 csubst (CCons  x v th) e = csubst th (subFV x v e)
 csubst (CConsT a t th) e = csubst th (subFTV a t e)
 
 -- Idea: ctsubst th t = foldr (\(x,e) t' -> tsubFV x e t') t th 
---{-@ ctsubst :: th:CSub -> { t:Type | same_binders_cs th t } -> Type @-}
 {-@ reflect ctsubst @-}
 {-@ ctsubst :: th:CSub -> t:Type -> Type @-}
 ctsubst :: CSub -> Type -> Type
@@ -512,19 +523,13 @@ ctsubst (CCons  x v  th) t = ctsubst th (tsubFV x v t)
 ctsubst (CConsT a t' th) t = ctsubst th (tsubFTV a t' t)
 
 {-@ reflect csubst_tv @-}
-{-@ csubst_tv :: th:CSub -> { a:Vname | tv_in_csubst a th } -> Type @-}
+{-@ csubst_tv :: th:CSub -> { a:Vname | tv_in_csubst a th } 
+        -> { t':UserType | Set_emp (free t') && Set_emp (freeTV t') &&
+                           Set_emp (tfreeBV t') && Set_emp (tfreeBTV t') }@-}
 csubst_tv :: CSub -> Vname -> Type
 csubst_tv (CCons  x  v  th) a             = csubst_tv th a
 csubst_tv (CConsT a' t' th) a | a' == a   = t'
                               | otherwise = csubst_tv th a
-
-{-@ reflect toBareCS @-}
-{-@ toBareCS :: th:CSub -> { th':CSub | bindsC th'   == bindsC th && vbindsC th'  == vbindsC th &&
-                                        tvbindsC th' == tvbindsC th } @-}
-toBareCS :: CSub -> CSub
-toBareCS CEmpty           = CEmpty
-toBareCS (CCons  x v  th) = CCons  x v           (toBareCS th) 
-toBareCS (CConsT a t' th) = CConsT a (toBare t') (toBareCS th)
 
 {-@ reflect concatCS @-}
 {-@ concatCS :: th:CSub -> { th':CSub | Set_emp (Set_cap (bindsC th) (bindsC th')) }
@@ -542,11 +547,10 @@ concatCS th (CConsT a t th') = CConsT a t (concatCS th th')
                         vbindsC th' == Set_cup (Set_sng y) (Set_dif (vbindsC th) (Set_sng x)) &&
                         tvbindsC th' == tvbindsC th } @-} 
 change_varCS :: CSub -> Vname -> Vname -> CSub
-change_varCS CEmpty            x y = CEmpty
+change_varCS CEmpty            x y              = CEmpty
 change_varCS (CCons  z v_z th) x y | ( x == z ) = CCons  y v_z th
                                    | otherwise  = CCons  z v_z (change_varCS th x y)
-change_varCS (CConsT a t_a th) x y | ( x == a ) = CConsT y t_a th {- impossible -}
-                                   | otherwise  = CConsT a t_a (change_varCS th x y)
+change_varCS (CConsT a t_a th) x y              = CConsT a t_a (change_varCS th x y)
 
 {-@ reflect change_tvarCS @-}
 {-@ change_tvarCS :: th:CSub ->  { a:Vname | tv_in_csubst a th } 
@@ -555,9 +559,8 @@ change_varCS (CConsT a t_a th) x y | ( x == a ) = CConsT y t_a th {- impossible 
                         vbindsC th'  == vbindsC th &&
                         tvbindsC th' == Set_cup (Set_sng a') (Set_dif (tvbindsC th) (Set_sng a)) } @-} 
 change_tvarCS :: CSub -> Vname -> Vname -> CSub
-change_tvarCS CEmpty             a a' = CEmpty
-change_tvarCS (CCons  z  v_z th) a a' | ( a == z )  = CCons  a' v_z th {- impossible -}
-                                      | otherwise   = CCons  z  v_z (change_tvarCS th a a')
+change_tvarCS CEmpty             a a'               = CEmpty
+change_tvarCS (CCons  z  v_z th) a a'               = CCons  z  v_z (change_tvarCS th a a')
 change_tvarCS (CConsT a1 t_a th) a a' | ( a == a1 ) = CConsT a' t_a th
                                       | otherwise   = CConsT a1 t_a (change_tvarCS th a a')
 
@@ -575,15 +578,15 @@ remove_fromCS (CConsT a t_a th) x | ( x == a ) = th
 -------------------------------------------------------------------------
 
 data EntailsP where
-    Entails :: Env -> Pred -> EntailsP
+    Entails :: Env -> Expr -> EntailsP
 
 data Entails where
-    EntPred :: Env -> Pred -> (CSub -> DenotesEnv -> EvalsTo) -> Entails
+    EntPred :: Env -> Expr -> (CSub -> DenotesEnv -> EvalsTo) -> Entails
 
 {-@ data Entails where
         EntPred :: g:Env -> p:Pred 
                    -> (th:CSub -> ProofOf(DenotesEnv g th) 
-                                 -> ProofOf(EvalsTo (csubst th p) (Bc True)) )
+                               -> ProofOf(EvalsTo (csubst th p) (Bc True)) )
                    -> ProofOf(Entails g p) @-} 
 
 -- We say the proposition ValueDenoted e t holds if there exists a value v such that
@@ -603,74 +606,69 @@ data DenotesP where
     Denotes :: Type -> Expr -> DenotesP    -- e \in [[t]]
 
 data Denotes where
-    DRefn :: Basic -> Vname -> Pred -> Expr -> HasFType -> EvalsTo -> Denotes
-    DFunc :: Vname -> Type -> Type -> Expr -> FType -> FType -> AlphaEqv -> HasFType
+    DRefn :: Basic -> RVname -> Expr -> Expr -> HasFType -> EvalsTo -> Denotes
+    DFunc :: Vname -> Type -> Type -> Expr -> HasFType
               -> (Expr -> Denotes -> ValueDenoted) -> Denotes
-    DExis :: Vname -> Type -> Type -> Expr -> FType -> AlphaEqv -> HasFType
+    DExis :: Vname -> Type -> Type -> Expr -> HasFType
               -> Expr -> Denotes -> Denotes -> Denotes
-    DPoly :: Vname -> Kind -> Type -> Expr -> Vname -> FType -> AlphaEqv -> HasFType
+    DPoly :: Vname -> Kind -> Type -> Expr -> HasFType
               -> (Type -> WFType -> ValueDenoted) -> Denotes
 {-@ data Denotes where
-        DRefn :: b:Basic -> x:Vname -> p:Pred -> v:Value  
+        DRefn :: b:Basic -> x:RVname -> p:Pred -> v:Value  
                   -> ProofOf(HasFType FEmpty v (FTBasic b))
-                  -> ProofOf(EvalsTo (subBV x v p) (Bc True)) 
+                  -> ProofOf(EvalsTo (subBV 0 v p) (Bc True)) 
                   -> ProofOf(Denotes (TRefn b x p) v)
-      | DFunc :: x:Vname -> t_x:Type -> t:Type -> v:Value  
-                  -> s_x:FType -> s:FType 
-                  -> ProofOf(AlphaEqv FEmpty (FTFunc s_x s) (erase (TFunc x t_x t)))
-                  -> ProofOf(HasFType FEmpty v (FTFunc s_x s))
+        DFunc :: x:Vname -> t_x:Type -> t:Type -> v:Value
+                  -> ProofOf(HasFType FEmpty v (erase (TFunc x t_x t)))
                   -> ( v_x:Value -> ProofOf(Denotes t_x v_x)
                                  -> ProofOf(ValueDenoted (App v v_x) (tsubBV x v_x t)) ) 
                   -> ProofOf(Denotes (TFunc x t_x t) v)
-      | DExis :: x:Vname -> t_x:Type -> t:Type -> v:Value -> s:FType 
-                  -> ProofOf(AlphaEqv FEmpty s (erase t)) -> ProofOf(HasFType FEmpty v s) 
+        DExis :: x:Vname -> t_x:Type -> t:Type -> v:Value -> ProofOf(HasFType FEmpty v (erase t)) 
                   -> v_x:Value -> ProofOf(Denotes t_x v_x)
                   -> ProofOf(Denotes (tsubBV x v_x t) v)
                   -> ProofOf(Denotes (TExists x t_x t) v)  
-      | DPoly :: a:Vname -> k:Kind -> t:Type -> v:Value -> a0:Vname -> s:FType 
-                  -> ProofOf(AlphaEqv FEmpty (FTPoly a0 k s) (FTPoly a k (erase t)))
-                  -> ProofOf(HasFType FEmpty v (FTPoly a0 k s))
-                  -> ( t_a:Type -> ProofOf(WFType Empty t_a k) 
-                                -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a t)) )
-                  -> ProofOf(Denotes (TPoly a k t) v) @-} -- @-}
--- was:           -> ( { t_a:Type | same_binders t_a t } -> ProofOf(WFType Empty t_a k) 
+        DPoly :: a:Vname -> k:Kind -> t:Type -> v:Value 
+                  -> ProofOf(HasFType FEmpty v (FTPoly a k (erase t)))
+                  -> ( t_a:UserType -> ProofOf(WFType Empty t_a k) 
+                                    -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a t)) )
+                  -> ProofOf(Denotes (TPoly a k t) v) @-} 
 
 
 {-@ get_ftyp_from_den :: t:Type -> v:Value -> ProofOf(Denotes t v)
-              -> (FType,HasFType)<{\s pf -> propOf pf == HasFType FEmpty v s }> @-}
-get_ftyp_from_den :: Type -> Expr -> Denotes -> (FType,HasFType)
-get_ftyp_from_den t v (DRefn b _ _ _ pf_v_b _)         = (FTBasic b,     pf_v_b)
-get_ftyp_from_den t v (DFunc _ _ _ _ s_x s _ pf_v_b _) = (FTFunc s_x s,  pf_v_b)
-get_ftyp_from_den t v (DExis _ _ _ _ s _ pf_v_b _ _ _) = (s,             pf_v_b)
-get_ftyp_from_den t v (DPoly _ k _ _ a0 s _ pf_v_b _)  = (FTPoly a0 k s, pf_v_b)
+              -> ProofOf(HasFType FEmpty v (erase t))  @-}
+get_ftyp_from_den :: Type -> Expr -> Denotes -> HasFType
+get_ftyp_from_den t v (DRefn b _ _ _ pf_v_b _)     = pf_v_b
+get_ftyp_from_den t v (DFunc _ _ _ _ pf_v_b _)     = pf_v_b
+get_ftyp_from_den t v (DExis _ _ _ _ pf_v_b _ _ _) = pf_v_b
+get_ftyp_from_den t v (DPoly _ k _ _ pf_v_b _)     = pf_v_b
 
 {-@ lem_den_nofv :: v:Value -> t:Type -> ProofOf(Denotes t v) 
         -> { pf:_ | Set_emp (fv v) && Set_emp (ftv v) } @-}
 lem_den_nofv :: Expr -> Type -> Denotes -> Proof
-lem_den_nofv v t den_t_v = lem_fv_subset_bindsF FEmpty v bt pf_v_bt
+lem_den_nofv v t den_t_v = lem_fv_subset_bindsF FEmpty v (erase t) pf_v_bt
   where
-    (bt, pf_v_bt) = get_ftyp_from_den t v den_t_v
+    pf_v_bt = get_ftyp_from_den t v den_t_v
 
 {-@ lem_den_nobv :: v:Value -> t:Type -> ProofOf(Denotes t v) 
         -> { pf:_ | Set_emp (freeBV v) && Set_emp (freeBTV v) } @-}
 lem_den_nobv :: Expr -> Type -> Denotes -> Proof
-lem_den_nobv v t den_t_v = lem_freeBV_emptyB FEmpty v bt pf_v_bt
+lem_den_nobv v t den_t_v = lem_freeBV_emptyB FEmpty v (erase t) pf_v_bt
   where
-   (bt, pf_v_bt) = get_ftyp_from_den t v den_t_v
+    pf_v_bt = get_ftyp_from_den t v den_t_v
 
 {-@ get_obj_from_dfunc :: x:Vname -> s:Type -> t:Type -> v:Value 
         -> ProofOf(Denotes (TFunc x s t) v) -> v':Value 
         -> ProofOf(Denotes s v') -> ProofOf(ValueDenoted (App v v') (tsubBV x v' t)) @-}  
 get_obj_from_dfunc :: Vname -> Type -> Type -> Expr -> Denotes 
                                     -> Expr -> Denotes -> ValueDenoted
-get_obj_from_dfunc x s t v (DFunc _ _ _ _ _ _ _ _ prover) v' den_s_v' = prover v' den_s_v' 
+get_obj_from_dfunc x s t v (DFunc _ _ _ _ _ prover) v' den_s_v' = prover v' den_s_v' 
 
 {-@ get_obj_from_dpoly :: a:Vname -> k:Kind -> t:Type -> v:Value -> ProofOf(Denotes (TPoly a k t) v) 
-        -> t_a:Type -> ProofOf(WFType Empty t_a k)
+        -> t_a:UserType -> ProofOf(WFType Empty t_a k)
         -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a t)) @-}
 get_obj_from_dpoly :: Vname -> Kind -> Type -> Expr -> Denotes 
                                     -> Type -> WFType -> ValueDenoted
-get_obj_from_dpoly a k t v (DPoly _ _ _ _ _ _ _ _ prover) t_a p_emp_ta = prover t_a p_emp_ta
+get_obj_from_dpoly a k t v (DPoly _ _ _ _ _ prover) t_a p_emp_ta = prover t_a p_emp_ta
 
 -- Denotations of Environments, [[g]]. There are two cases:
 --   1. [[ Empty ]] = { CEmpty }.
@@ -684,15 +682,15 @@ data DenotesEnv where
     DExtT :: Env -> CSub -> DenotesEnv -> Vname -> Kind -> Type -> WFType -> DenotesEnv
 {-@ data DenotesEnv where 
         DEmp  :: ProofOf(DenotesEnv Empty CEmpty)
-     |  DExt  :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
+        DExt  :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
                  -> { x:Vname | not (in_env x g) } -> t:Type 
                  -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) && Set_emp (freeBV v) && Set_emp (freeBTV v) }
                  -> ProofOf(Denotes (ctsubst th t) v)
-                 -> ProofOf(DenotesEnv (Cons x t g) (CCons x v th)) 
-     |  DExtT :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
+                 -> ProofOf(DenotesEnv (Cons x t g) (CCons x v th))
+        DExtT :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
                    -> { a:Vname | not (in_env a g) } -> k:Kind
-                   -> { t:Type  | Set_emp (free t) && Set_emp (freeTV t) && 
-                                  Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
+                   -> { t:UserType  | Set_emp (free t) && Set_emp (freeTV t) &&
+                                      Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
                    -> ProofOf(WFType Empty t k)
                    -> ProofOf(DenotesEnv (ConsT a k g) (CConsT a t th)) @-}
 

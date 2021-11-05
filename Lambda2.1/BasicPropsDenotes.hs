@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -21,43 +20,108 @@ import BasicPropsEnvironments
 import BasicPropsWellFormedness
 import SystemFLemmasWellFormedness
 import SystemFLemmasFTyping
+import SystemFLemmasFTyping2
 import SystemFLemmasSubstitution
 import Typing
-import SystemFAlphaEquivalence
 import BasicPropsCSubst
 
-{-@ reflect foo29 @-}
-foo29 x = Just x 
-foo29 :: a -> Maybe a 
+{-@ reflect foo28 @-}
+foo28 x = Just x 
+foo28 :: a -> Maybe a 
 
-  -- smart constructors 
-
-{-@ simpleDFunc :: x:Vname -> t_x:Type -> t:Type -> v:Value  
-                  -> ProofOf(HasFType FEmpty v (erase (TFunc x t_x t)))
-                  -> ( v_x:Value -> ProofOf(Denotes t_x v_x)
-                                 -> ProofOf(ValueDenoted (App v v_x) (tsubBV x v_x t)) ) 
-                  -> ProofOf(Denotes (TFunc x t_x t) v) @-}
-simpleDFunc :: Vname -> Type -> Type -> Expr -> HasFType 
-                     -> ( Expr -> Denotes -> ValueDenoted ) -> Denotes
-simpleDFunc x t_x t v p_v_er_txt val_den_func
-  = DFunc x t_x t v (erase t_x) (erase t) eqv_txt_txt p_v_er_txt val_den_func
+{-@ lem_step_in_drefn :: b:Basic -> x:RVname -> q:Pred -> v:Value
+        -> ProofOf(Denotes (TRefn b x q) v)  
+        -> p:Pred -> ProofOf(CommonEvals (subBV 0 v q) (subBV 0 v p))
+        -> ProofOf(Denotes (TRefn b x p) v) @-}
+lem_step_in_drefn :: Basic -> RVname -> Expr -> Expr -> Denotes -> Expr -> CommonEvals -> Denotes
+lem_step_in_drefn b x q v den_bxq_v p evboth_p_q = case den_bxq_v of
+    (DRefn _ _ _ _ p_v_b ev_qv_tt) -> DRefn b x p v p_v_b ev_pv_tt
       where
-        eqv_txt_txt = lem_alpha_refl FEmpty (erase (TFunc x t_x t))
+        ev_pv_tt = lem_common_evals_extend (subBV 0 v q) (subBV 0 v p) evboth_p_q (Bc True) ev_qv_tt
 
-{-@ simpleDPoly :: a:Vname -> k:Kind -> t:Type -> v:Value 
-                  -> ProofOf(HasFType FEmpty v (FTPoly a k (erase t)))
-                  -> ( t_a:Type -> ProofOf(WFType Empty t_a k) 
-                                -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a t)) )
-                  -> ProofOf(Denotes (TPoly a k t) v) @-} 
-simpleDPoly :: Vname -> Kind -> Type -> Expr -> HasFType
-                     -> (Type -> WFType -> ValueDenoted) -> Denotes
-simpleDPoly a k t v p_v_at val_den_func
-  = DPoly a k t v a (erase t) eqv_at_at p_v_at val_den_func
-      where
-        eqv_at_at = lem_alpha_refl FEmpty (erase (TPoly a k t))
+{-@ lem_exch_refn_in_dfunc :: { y:Vname | y /= 0 } -> t_y:Type -> b:Basic -> z:RVname -> q:Pred -> v:Value
+        -> ProofOf(Denotes (TFunc y t_y (TRefn b z q)) v) -> p:Pred 
+        -> ( v_y:Value -> ProofOf(Denotes t_y v_y)  -> v':Value -> ProofOf(Denotes (tsubBV y v_y (TRefn b z q)) v')
+                       -> ProofOf(CommonEvals (subBV 0 v' (subBV y v_y q)) (subBV 0 v' (subBV y v_y p))) )
+        -> ProofOf(Denotes (TFunc y t_y (TRefn b z p)) v) @-}
+lem_exch_refn_in_dfunc :: Vname -> Type -> Basic -> RVname -> Expr -> Expr -> Denotes -> Expr
+                                -> (Expr -> Denotes -> Expr -> Denotes -> CommonEvals) -> Denotes
+lem_exch_refn_in_dfunc y t_y b z q v den_tybzq_v p step_func = case den_tybzq_v of
+  (DFunc _ _ _ _ p_v_tyt val_den_func) -> DFunc y t_y (TRefn b z p) v p_v_tyt val_den_func'
+    where  
+      val_den_func' v_y den_ty_vy = ValDen (App v v_y) (tsubBV y v_y (TRefn b z p)) v'
+                                           ev_vvy_v' den_bzpvy_v'
+        where
+          (ValDen _ _ v' ev_vvy_v' den_bzqvy_v') = val_den_func v_y den_ty_vy
+          cmev_qvyv'_pvyv' = step_func v_y den_ty_vy v' den_bzqvy_v'
+          den_bzpvy_v'     = lem_step_in_drefn b z (subBV y v_y q) v' den_bzqvy_v' 
+                                             (subBV y v_y p) cmev_qvyv'_pvyv' 
+
+{-@ lem_exch_refn_in_dfunc2 :: { x:Vname | x /= 0 } -> t_x:Type -> { y:Vname | y /= x && y /= 0 }
+        -> { t_y:Type | not (Set_mem x (tfreeBV t_y)) } -> b:Basic -> z:RVname -> q:Pred -> v:Value 
+        -> ProofOf(Denotes (TFunc x t_x (TFunc y t_y (TRefn b z q))) v) -> p:Pred
+        -> ( v_x:Value -> ProofOf(Denotes t_x v_x) -> v_y:Value -> ProofOf(Denotes t_y v_y) 
+                       -> v':Value -> ProofOf(Denotes (tsubBV y v_y (tsubBV x v_x (TRefn b z q))) v')
+                       -> ProofOf(CommonEvals (subBV 0 v' (subBV y v_y (subBV x v_x q))) 
+                                               (subBV 0 v' (subBV y v_y (subBV x v_x p)))) )
+        -> ProofOf(Denotes (TFunc x t_x (TFunc y t_y (TRefn b z p))) v) @-}
+lem_exch_refn_in_dfunc2 :: Vname -> Type -> Vname -> Type -> Basic -> RVname 
+                                 -> Expr -> Expr -> Denotes -> Expr 
+                 -> (Expr -> Denotes -> Expr -> Denotes -> Expr -> Denotes -> CommonEvals) -> Denotes    
+lem_exch_refn_in_dfunc2 x t_x y t_y b z q v den_txtybzq_v p step_func = case den_txtybzq_v of
+  (DFunc _ _ _ _ p_v_txtyt val_den_func) -> DFunc x t_x (TFunc y t_y (TRefn b z p)) v 
+                                                  p_v_txtyt val_den_func'
+    where
+      val_den_func' v_x den_tx_vx = ValDen (App v v_x) (tsubBV x v_x (TFunc y t_y (TRefn b z p)))
+                                           v' ev_vvx_v' den_tybzpvx_v'
+        where
+          inner_step_func = step_func v_x den_tx_vx
+          (ValDen _ _ v' ev_vvx_v' den_tybzqvx_v') = val_den_func v_x den_tx_vx
+          den_tybzpvx_v'  = lem_exch_refn_in_dfunc y t_y b z (subBV x v_x q) v' 
+                                                   (den_tybzqvx_v' ? lem_tsubBV_notin x v_x t_y)
+                                                   (subBV x v_x p) inner_step_func
+                                                   ? lem_tsubBV_notin x v_x t_y
+
+{-@ lem_drefn_to_trivial :: b:Basic -> x:RVname -> p:Pred -> v:Value
+        -> ProofOf(Denotes (TRefn b x p) v) -> ProofOf(Denotes (TRefn b x (Bc True)) v) @-}
+lem_drefn_to_trivial :: Basic -> RVname -> Expr -> Expr -> Denotes -> Denotes
+lem_drefn_to_trivial b x p v den_bxp_v = case den_bxp_v of
+    (DRefn _ _ _ _ p_v_b _) -> DRefn b x (Bc True) v p_v_b (Refl (Bc True))
+
+{-@ lem_drefn_in_dfunc_from_trivial :: x:Vname -> b:Basic -> z:RVname -> t:Type -> v:Value
+        -> ProofOf(Denotes (TFunc x (TRefn b z (Bc True)) t) v) -> p:Pred
+        -> ProofOf(Denotes (TFunc x (TRefn b z p) t) v) @-}
+lem_drefn_in_dfunc_from_trivial :: Vname -> Basic -> RVname -> Type -> Expr -> Denotes 
+                                                                    -> Expr -> Denotes
+lem_drefn_in_dfunc_from_trivial x b z t v den_xttt_v p = case den_xttt_v of
+  (DFunc _ _ _ _ p_v_ertxt val_den_func) -> DFunc x (TRefn b z p) t v p_v_ertxt val_den_func'
+    where
+      val_den_func' v_x den_tp_vx = val_den_func v_x (lem_drefn_to_trivial b z p v_x den_tp_vx)
+
+{-@ lem_drefn_in_dfunc_twice :: x:Vname -> { y:Vname | y /= x } -> b:Basic -> z:RVname -> t:Type -> v:Value
+        -> ProofOf(Denotes (TFunc x (TRefn b z (Bc True)) (TFunc y (TRefn b z (Bc True)) t)) v) 
+        -> { p:Pred | Set_emp (tfreeBV (TRefn b z p)) }
+        -> ProofOf(Denotes (TFunc x (TRefn b z p) (TFunc y (TRefn b z p) t)) v) @-}
+lem_drefn_in_dfunc_twice :: Vname -> Vname -> Basic -> RVname -> Type -> Expr -> Denotes 
+                                                                      -> Expr -> Denotes
+lem_drefn_in_dfunc_twice x y b z t v den_xyt_v p = case den_xyt_v of
+  (DFunc _ _ _ _ p_v_erxyt val_den_func) -> DFunc x (TRefn b z p) ypt v p_v_erxyt val_den_func'
+    where
+      ytt                         = TFunc y (TRefn b z (Bc True)) t
+      ypt                         = TFunc y (TRefn b z p) t
+      val_den_func' v_x den_tp_vx = vden_vvx_ypt
+        where
+          {-@ vden_vvx_ytt :: ProofOf(ValueDenoted (App v v_x) 
+                                        (tsubBV x v_x (TFunc y (TRefn b z (Bc True)) t))) @-}
+          vden_vvx_ytt = val_den_func v_x (lem_drefn_to_trivial b z p v_x den_tp_vx)
+          {-@ den_yttvx_v' :: ProofOf(Denotes (tsubBV x v_x (TFunc y (TRefn b z (Bc True)) t)) v') @-}
+          (ValDen _ _ v' ev_vvx_v' den_yttvx_v') = vden_vvx_ytt
+          den_yptvx_v' = lem_drefn_in_dfunc_from_trivial y b z (tsubBV x v_x t) v' den_yttvx_v' 
+                                    p  ? lem_tsubBV_notin x v_x (TRefn b z p) 
+          vden_vvx_ypt = ValDen (App v v_x) (tsubBV x v_x ypt) v' ev_vvx_v' den_yptvx_v'
 
   -- formal properties
-
+ 
 {-@ lem_change_var_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (fv v) }
       -> ProofOf(Denotes (ctsubst th t) v) -> { x:Vname | (v_in_csubst x th) } 
       -> { y:Vname | y == x || ( not (in_csubst y th) && not (Set_mem y (free t))) } 
@@ -73,10 +137,16 @@ lem_change_tvar_denote :: CSub -> Type -> Expr -> Denotes -> Vname -> Vname -> D
 lem_change_tvar_denote th t v den_tht_v a a' = den_tht_v ? lem_change_tvar_in_ctsubst th a a' t
 
 {-@ lem_remove_var_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (fv v) }
-      -> ProofOf(Denotes (ctsubst th t) v) -> { x:Vname | in_csubst x th && not (Set_mem x (free t)) } 
+      -> ProofOf(Denotes (ctsubst th t) v) -> { x:Vname | v_in_csubst x th && not (Set_mem x (free t)) } 
       -> ProofOf(Denotes (ctsubst (remove_fromCS th x) t) v) @-}
 lem_remove_var_denote :: CSub -> Type -> Expr -> Denotes -> Vname -> Denotes
 lem_remove_var_denote th t v den_tht_v x = den_tht_v ? lem_remove_ctsubst th x t
+
+{-@ lem_remove_tvar_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (ftv v) }
+      -> ProofOf(Denotes (ctsubst th t) v) -> { a:Vname | tv_in_csubst a th && not (Set_mem a (freeTV t)) } 
+      -> ProofOf(Denotes (ctsubst (remove_fromCS th a) t) v) @-}
+lem_remove_tvar_denote :: CSub -> Type -> Expr -> Denotes -> Vname -> Denotes
+lem_remove_tvar_denote th t v den_tht_v a = den_tht_v ? lem_remove_tv_ctsubst th a t
 
 {-@ lem_change_var_denote_env :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
       -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) }
@@ -87,25 +157,35 @@ lem_remove_var_denote th t v den_tht_v x = den_tht_v ? lem_remove_ctsubst th x t
 lem_change_var_denote_env :: Env -> Vname -> Type -> Env -> WFEnv -> CSub 
                                  -> DenotesEnv -> Vname -> DenotesEnv
 lem_change_var_denote_env g x t_x Empty            p_env_wf th den_env_th y  
-  = undefined {-= case den_env_th of
-  (DExt env' th' den_env'_th' _x _tx v_x den_th'tx_vx) -> DExt env' th' den_env'_th' y t_x v_x den_th'tx_vx-}
-lem_change_var_denote_env g x_ t_x (Cons z t_z g') p_env_wf th den_env_th y_ 
-  = undefined {- 2 -} {-case den_env_th of
+  = case den_env_th of
+      (DExt env' th' den_env'_th' _x _tx v_x den_th'tx_vx) 
+        -> DExt env' th' den_env'_th' y t_x v_x den_th'tx_vx
+lem_change_var_denote_env g x_ t_x (Cons z t_z g') p_env_wf th den_env_th y_ = case den_env_th of
   (DExt env' th' den_env'_th' _z _tz v_z den_th'tz_vz) -- env' == concatE (Cons x t_x g) g'
     -> DExt (concatE (Cons y t_x g) (esubFV x (FV y) g')) (change_varCS th' x y) den_env'y_th'y
             z (tsubFV x (FV y) t_z) v_z den_th'ytzy_vz
       where
-        (WFEBind _ p_env'_wf _ _ p_env'_tz) = p_env_wf -- tODO remove this
+        (WFEBind _ p_env'_wf _ _ k_z p_env'_tz) = p_env_wf 
         x              = x_ ? lem_binds_env_th (concatE (Cons x_ t_x g) g') th' den_env'_th'
                             ? lem_in_env_concat g g' x_
         y              = y_ ? lem_binds_env_th (concatE (Cons x t_x g) g') th' den_env'_th' 
                             ? lem_in_env_concat g g' y_
                             ? lem_in_env_concat (Cons x t_x g) g' y_
-                            ? lem_free_subset_binds (concatE (Cons x t_x g) g') t_z p_env'_tz 
+                            ? lem_free_subset_binds (concatE (Cons x t_x g) g') t_z k_z p_env'_tz 
         den_env'y_th'y = lem_change_var_denote_env g x t_x g' p_env'_wf th' den_env'_th' y 
-        den_th'ytzy_vz = lem_change_var_denote th' t_z v_z den_th'tz_vz x y-}
-lem_change_var_denote_env g x_ t_x (ConsT a k_a g') p_env_wf th den_env_th y_ 
-  = undefined {- 2 -}
+        den_th'ytzy_vz = lem_change_var_denote th' t_z v_z den_th'tz_vz x y
+lem_change_var_denote_env g x_ t_x (ConsT a k_a g') p_env_wf th den_env_th y_ = case den_env_th of
+  (DExtT env' th' den_env'_th' _a _ka t_a p_emp_ta)
+    -> DExtT (concatE (Cons y t_x g) (esubFV x (FV y) g')) (change_varCS th' x y) den_env'y_th'y
+              a k_a t_a p_emp_ta ? lem_tsubFV_notin x (FV y) t_a
+      where
+        (WFEBindT _ p_env'_wf _ _) = p_env_wf 
+        x              = x_ ? lem_binds_env_th (concatE (Cons x_ t_x g) g') th' den_env'_th'
+                            ? lem_in_env_concat g g' x_
+        y              = y_ ? lem_binds_env_th (concatE (Cons x t_x g) g') th' den_env'_th' 
+                            ? lem_in_env_concat g g' y_
+                            ? lem_in_env_concat (Cons x t_x g) g' y_
+        den_env'y_th'y = lem_change_var_denote_env g x t_x g' p_env'_wf th' den_env'_th' y 
 
 {-@ lem_change_tvar_denote_env :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
       -> { g':Env | not (in_env a g') && Set_emp (Set_cap (binds g) (binds g')) }
@@ -115,9 +195,35 @@ lem_change_var_denote_env g x_ t_x (ConsT a k_a g') p_env_wf th den_env_th y_
       -> ProofOf(DenotesEnv (concatE (ConsT a' k_a g) (echgFTV a a' g')) (change_tvarCS th a a')) @-}
 lem_change_tvar_denote_env :: Env -> Vname -> Kind -> Env -> WFEnv -> CSub 
                                  -> DenotesEnv -> Vname -> DenotesEnv
-lem_change_tvar_denote_env g a k_a Empty            p_env_wf th den_env_th a' = undefined
-lem_change_tvar_denote_env g a k_a (Cons z t_z g')  p_env_wf th den_env_th a' = undefined {- 2 -}
-lem_change_tvar_denote_env g a k_a (ConsT a1 k1 g') p_env_wf th den_env_th a' = undefined {- 2 -}
+lem_change_tvar_denote_env g a k_a Empty            p_env_wf th den_env_th a' = case den_env_th of 
+  (DExtT env' th' den_env'_th' _a _ka t_a p_emp_ta)
+    -> DExtT env' th' den_env'_th' a' k_a t_a p_emp_ta
+lem_change_tvar_denote_env g a_ k_a (Cons z t_z g')  p_env_wf th den_env_th a'_ = case den_env_th of
+  (DExt env' th' den_env'_th' _z _tz v_z den_th'tz_vz)
+    -> DExt (concatE (ConsT a' k_a g) (echgFTV a a' g')) (change_tvarCS th' a a') den_env'a'_th'a'
+            z (tchgFTV a a' t_z) v_z den_th'a'tz_vz
+      where
+        (WFEBind _ p_env'_wf _ _ k_z p_env'_tz) = p_env_wf
+        a                = a_  ? lem_binds_env_th (concatE (ConsT a_ k_a g) g') th' den_env'_th' 
+                               ? lem_in_env_concat g g' a_
+        a'               = a'_ ? lem_binds_env_th (concatE (ConsT a k_a g) g') th' den_env'_th'
+                               ? lem_in_env_concat g g' a'_
+                               ? lem_in_env_concat (ConsT a k_a g) g' a'_
+                               ? lem_free_subset_binds (concatE (ConsT a k_a g) g') t_z k_z p_env'_tz
+        den_env'a'_th'a' = lem_change_tvar_denote_env g a k_a g' p_env'_wf th' den_env'_th' a'
+        den_th'a'tz_vz   = lem_change_tvar_denote th' t_z v_z den_th'tz_vz a a'
+lem_change_tvar_denote_env g a_ k_a (ConsT a1 k1 g') p_env_wf th den_env_th a'_ = case den_env_th of
+  (DExtT env' th' den_env'_th' _a1 _k1 t_a1 p_emp_ta1)
+    -> DExtT (concatE (ConsT a' k_a g) (echgFTV a a' g')) (change_tvarCS th' a a') den_env'a'_th'a'
+             a1 k1 t_a1 p_emp_ta1 ? lem_tchgFTV_notin a a' t_a1
+      where
+        (WFEBindT _ p_env'_wf _ _) = p_env_wf  
+        a                = a_  ? lem_binds_env_th (concatE (ConsT a_ k_a g) g') th' den_env'_th' 
+                               ? lem_in_env_concat g g' a_
+        a'               = a'_ ? lem_binds_env_th (concatE (ConsT a k_a g) g') th' den_env'_th'
+                               ? lem_in_env_concat g g' a'_
+                               ? lem_in_env_concat (ConsT a k_a g) g' a'_
+        den_env'a'_th'a' = lem_change_tvar_denote_env g a k_a g' p_env'_wf th' den_env'_th' a'                       
 
 {-@ lem_remove_var_denote_env :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
        -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) }
@@ -127,29 +233,25 @@ lem_change_tvar_denote_env g a k_a (ConsT a1 k1 g') p_env_wf th den_env_th a' = 
 lem_remove_var_denote_env :: Env -> Vname -> Type -> Env -> WFEnv -> CSub 
                                  -> DenotesEnv -> DenotesEnv
 lem_remove_var_denote_env g x  t_x Empty           p_g'g_wf  th den_env_th = case den_env_th of
-  (DExt env' th' den_env'_th'_ _ _tx v_x den_th'tx_vx) -> den_env'_th'
-            ? toProof ( remove_fromCS (CCons x v_x th') x === th' ) 
-            ? toProof ( CCons x v_x th' === th )
-      where
-        den_env'_th' = den_env'_th'_ ? lem_binds_env_th env' th' den_env'_th'_
-lem_remove_var_denote_env g x_ t_x (Cons z t_z g') p_zg'g_wf th den_env_th 
-  = undefined {- 2 -} {-
-   case den_env_th of
-  (DEmp)                                               -> impossible "th != CEmpty"
+  (DExt env' th' den_env'_th' _ _tx v_x den_th'tx_vx) -> den_env'_th'
+lem_remove_var_denote_env g x_ t_x (Cons z t_z g') p_zg'g_wf th den_env_th = case den_env_th of
   (DExt env' th' den_env'_th' _z _tz v_z den_th'tz_vz) -- env' == concatE (Cons x t_x g) g' 
     -> DExt (concatE g g') (remove_fromCS th' x) den_env''_th'' z t_z v_z den_th''tz_vz
-            ? toProof ( remove_fromCS (CCons z v_z th') x === CCons z v_z (remove_fromCS th' x) )
-            ? toProof ( CCons z v_z th' === th )
       where
-        (WFEBind _ p_g'g_wf _ _ p_g'g_tz) = p_zg'g_wf
+        (WFEBind _ p_g'g_wf _ _ k_z p_g'g_tz) = p_zg'g_wf
         x              = x_ ? lem_binds_env_th (concatE (Cons x_ t_x g) g') th' den_env'_th'
                             ? lem_in_env_concat g g' x_ 
-                            ? lem_in_env_concat g (Cons z t_z g') x_
-                            ? lem_free_bound_in_env (concatE g g') t_z p_g'g_tz x_
+                            ? lem_free_bound_in_env (concatE g g') t_z k_z p_g'g_tz x_
         den_env''_th'' = lem_remove_var_denote_env g x t_x g' p_g'g_wf th' den_env'_th'
-        den_th''tz_vz  = lem_remove_var_denote th' t_z v_z den_th'tz_vz x-}
-lem_remove_var_denote_env g x_ t_x (ConsT a k_a g') p_zg'g_wf th den_env_th
-  = undefined {- 2 -}
+        den_th''tz_vz  = lem_remove_var_denote th' t_z v_z den_th'tz_vz x
+lem_remove_var_denote_env g x_ t_x (ConsT a k_a g') p_zg'g_wf th den_env_th = case den_env_th of
+  (DExtT env' th' den_env'_th' _a _ka t_a p_emp_ta)
+    -> DExtT (concatE g g') (remove_fromCS th' x) den_env''_th'' a k_a t_a p_emp_ta
+      where
+        (WFEBindT _ p_g'g_wf _ _) = p_zg'g_wf
+        x              = x_ ? lem_binds_env_th (concatE (Cons x_ t_x g) g') th' den_env'_th'
+                            ? lem_in_env_concat g g' x_ 
+        den_env''_th'' = lem_remove_var_denote_env g x t_x g' p_g'g_wf th' den_env'_th'
 
 {-@ lem_remove_tvar_denote_env :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
        -> { g':Env | not (in_env a g') && Set_emp (Set_cap (binds g) (binds g')) }
@@ -158,34 +260,23 @@ lem_remove_var_denote_env g x_ t_x (ConsT a k_a g') p_zg'g_wf th den_env_th
        -> ProofOf(DenotesEnv (concatE g g') (remove_fromCS th a )) @-}
 lem_remove_tvar_denote_env :: Env -> Vname -> Kind -> Env -> WFEnv -> CSub 
                                  -> DenotesEnv -> DenotesEnv
-lem_remove_tvar_denote_env g a  k_a Empty           p_g'g_wf  th den_env_th = undefined {- 1 -}
-lem_remove_tvar_denote_env g a  k_a (Cons {})       p_g'g_wf  th den_env_th = undefined {- 1 -}
-lem_remove_tvar_denote_env g a  k_a (ConsT {})      p_g'g_wf  th den_env_th = undefined {- 2 -}
-
-{-@ lem_csubst_hasftype :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t) 
-        -> ProofOf(WFEnv g) -> th:CSub -> ProofOf(DenotesEnv g th) 
-        -> ProofOf(EqvFTyping FEmpty (csubst th e) (erase (ctsubst th t))) @-}
-lem_csubst_hasftype :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub -> DenotesEnv -> EqvFTyping
-lem_csubst_hasftype Empty            e t p_e_t th den_g_th = undefined {- 1 -}
-lem_csubst_hasftype (Cons x t_x g')  e t p_e_t th den_g_th = undefined {- 1 -}
-lem_csubst_hasftype (ConsT a k_a g') e t p_e_t th den_g_th = undefined {- 1 -}
-
--- this is NOT TRUE anymore:
-{-@ lem_csubst_hasbtype' :: g:Env -> e:Expr -> t:Type -> ProofOf(HasFType (erase_env g) e (erase t))
-        -> th:CSub -> ProofOf(DenotesEnv g th) -> ProofOf(HasFType FEmpty (csubst th e) (erase t)) @-} 
-lem_csubst_hasbtype' :: Env -> Expr -> Type -> HasFType -> CSub -> DenotesEnv -> HasFType
-lem_csubst_hasbtype' Empty           e t p_e_t th den_g_th = case den_g_th of 
-  (DEmp)                                           -> p_e_t ? lem_binds_env_th Empty th den_g_th
-lem_csubst_hasbtype' (Cons x t_x g') e t p_e_t th den_g_th 
-  = undefined {- 1 -} {-case den_g_th of
-  (DExt g' th' den_g'_th' _x _tx v_x den_th'tx_vx) -> p_the_t
-    where
-      p_emp_vx_tx = get_ftyp_from_den (ctsubst th' t_x) v_x den_th'tx_vx
-                                      ? lem_erase_ctsubst th' t_x
-      p_g'_vx_tx  = lem_weaken_many_ftyp FEmpty (erase_env g') v_x (erase t_x) p_emp_vx_tx
-                                         ? lem_empty_concatF (erase_env g')
-      p_evx_t     = lem_subst_ftyp (erase_env g') FEmpty x v_x (erase t_x) p_g'_vx_tx -- ? lem_empty_concatE g')
-                                   e (erase t) p_e_t ? lem_erase_tsubFV x v_x t
-      p_the_t     = lem_csubst_hasbtype' g' (subFV x v_x e) (tsubFV x v_x t) p_evx_t th' den_g'_th' -}
-lem_csubst_hasbtype' (ConsT a k_a g') e t p_e_t th den_g_th 
-  = undefined {- 1 -}
+lem_remove_tvar_denote_env g a  k_a Empty           p_g'g_wf  th den_env_th = case den_env_th of 
+  (DExtT env' th' den_env'_th' _ _ t_a p_emp_ta) -> den_env'_th'
+lem_remove_tvar_denote_env g a_ k_a (Cons z t_z g') p_ag'g_wf th den_env_th = case den_env_th of
+  (DExt env' th' den_env'_th' _z _tz v_z den_th'tz_vz) -- env' == concatE (Cons x t_x g) g' 
+    -> DExt (concatE g g') (remove_fromCS th' a) den_env''_th'' z t_z v_z den_th''tz_vz
+      where
+        (WFEBind _ p_g'g_wf _ _ k_z p_g'g_tz) = p_ag'g_wf
+        a              = a_ ? lem_binds_env_th (concatE (ConsT a_ k_a g) g') th' den_env'_th'
+                            ? lem_in_env_concat g g' a_ 
+                            ? lem_free_bound_in_env (concatE g g') t_z k_z p_g'g_tz a_
+        den_env''_th'' = lem_remove_tvar_denote_env g a k_a g' p_g'g_wf th' den_env'_th'
+        den_th''tz_vz  = lem_remove_tvar_denote th' t_z v_z den_th'tz_vz a
+lem_remove_tvar_denote_env g a_ k_a (ConsT a1 k1 g') p_a1g'g_wf th den_env_th = case den_env_th of
+  (DExtT env' th' den_env'_th' _a1 _k1 t_a1 p_emp_ta1)
+    -> DExtT (concatE g g') (remove_fromCS th' a) den_env''_th'' a1 k1 t_a1 p_emp_ta1
+      where
+        (WFEBindT _ p_g'g_wf _ _) = p_a1g'g_wf
+        a              = a_ ? lem_binds_env_th (concatE (ConsT a_ k_a g) g') th' den_env'_th'
+                            ? lem_in_env_concat g g' a_ 
+        den_env''_th'' = lem_remove_tvar_denote_env g a k_a g' p_g'g_wf th' den_env'_th'

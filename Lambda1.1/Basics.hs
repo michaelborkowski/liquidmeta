@@ -178,10 +178,27 @@ tsize (TRefn b v r)         = (esize r) + 1
 tsize (TFunc x t_x t)       = (tsize t_x) + (tsize t) + 1
 tsize (TExists x t_x t)     = (tsize t_x) + (tsize t) + 1
 
+{-@ measure tsize' @-}
+{-@ tsize' :: t:Type -> { v:Int | v > 0 } @-} 
+tsize' :: Type -> Int
+tsize' (TRefn b x p)     = 1
+tsize' (TFunc x t_x t)   = (tsize' t_x) + (tsize' t) + 1
+tsize' (TExists x t_x t) = (tsize' t_x) + (tsize' t) + 1
+
+{-@ reflect isTRefn @-}
+isTRefn :: Type -> Bool
+isTRefn (TRefn {}) = True
+isTRefn _          = False
+
 {-@ reflect isTFunc @-}
 isTFunc :: Type -> Bool
 isTFunc (TFunc {}) = True
 isTFunc _          = False
+
+{-@ reflect isTExists @-}
+isTExists :: Type -> Bool
+isTExists (TExists {}) = True
+isTExists _            = False
 
 -- a trivial type is b{x : Bc True}. Needed to argue that unbind_tvT preserves tsize.
 {-@ reflect isTrivial @-}
@@ -224,7 +241,7 @@ tsubFV x v_x (TExists z t_z t) = TExists z (tsubFV x v_x t_z) (tsubFV x v_x t)
                                Set_sub (free t') (Set_cup (fv v_x) (free t)) &&
                                Set_sub (tfreeBV t') (Set_cup (Set_dif (tfreeBV t) (Set_sng x)) (freeBV v_x)) &&
                                Set_sub (Set_dif (tfreeBV t) (Set_sng x)) (tfreeBV t') &&
-                               ( esize v_x != 1 || tsize t == tsize t' ) } / [tsize t] @-}
+                               ( esize v_x != 1 || tsize t == tsize t' ) && tsize' t == tsize' t' } / [tsize t] @-}
 tsubBV :: Vname -> Expr -> Type -> Type
 tsubBV x v_x (TRefn b y r)     
   | x == y                     = TRefn b y r
@@ -241,7 +258,7 @@ tsubBV x v_x (TExists z t_z t)
                        -> { t':Type | Set_sub (free t) (free t') &&
                                       Set_sub (free t') (Set_cup (Set_sng y) (free t)) &&
                                       tfreeBV t' == Set_dif (tfreeBV t) (Set_sng x) &&
-                                      tsize t == tsize t' } / [tsize t] @-} 
+                                      tsize t == tsize t' && tsize' t == tsize' t' } / [tsize t] @-} 
 unbindT :: Vname -> Vname -> Type -> Type
 unbindT x y t = tsubBV x (FV y) t
 

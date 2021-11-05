@@ -247,7 +247,8 @@ lem_subst_typ g g' x v_x t_x p_vx_tx p_env_wf e t p_e_t@(TSub env_ e_ s p_env_e_
         -> s:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') s)
         -> t:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') t)
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSBase p_s_t }
-        -> ProofOf(Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)) 
+        -> { p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)
+                           && subtypSize' p_s_t == subtypSize' p'_s_t }
            / [subtypSize p_s_t, 0] @-}
 lem_subst_sub_sbase :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> WFType -> Type ->  WFType -> Subtype -> Subtype
@@ -284,7 +285,8 @@ lem_subst_sub_sbase g g' x v_x t_x p_vx_tx p_env_wf s p_env_s t p_env_t
         -> s:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') s)
         -> t:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') t)
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSFunc p_s_t }
-        -> ProofOf(Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)) 
+        -> { p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)
+                           && subtypSize' p_s_t == subtypSize' p'_s_t }
            / [subtypSize p_s_t, 0] @-}
 lem_subst_sub_sfunc :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> WFType -> Type -> WFType -> Subtype -> Subtype
@@ -327,7 +329,8 @@ lem_subst_sub_sfunc g g' x v_x t_x p_vx_tx p_env_wf ty1 p_env_ty1 ty2 p_env_ty2
         -> s:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') s)
         -> t:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') t)
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSWitn p_s_t }
-        -> ProofOf(Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)) 
+        -> { p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)
+                           && subtypSize' p_s_t == subtypSize' p'_s_t }
            / [subtypSize p_s_t, 0] @-}
 lem_subst_sub_switn :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> WFType -> Type -> WFType -> Subtype -> Subtype
@@ -356,7 +359,8 @@ lem_subst_sub_switn g g' x v_x t_x p_vx_tx p_env_wf t p_env_t t2 p_env_t2
         -> s:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') s)
         -> t:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') t)
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSBind p_s_t }
-        -> ProofOf(Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)) 
+        -> { p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)
+                           && subtypSize' p_s_t == subtypSize' p'_s_t }
            / [subtypSize p_s_t, 0] @-}
 lem_subst_sub_sbind :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> WFType -> Type -> WFType -> Subtype -> Subtype
@@ -388,7 +392,8 @@ lem_subst_sub_sbind g g' x v_x t_x p_vx_tx p_env_wf t1 p_env_t1 t' p_env_t'
         -> s:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') s)
         -> t:Type -> ProofOf(WFType (concatE (Cons x t_x g) g') t)
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t }
-        -> ProofOf(Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)) 
+        -> { p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x s) (tsubFV x v_x t)
+                           && subtypSize' p_s_t == subtypSize' p'_s_t }
            / [subtypSize p_s_t, 1] @-}
 lem_subst_sub :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> WFType -> Type -> WFType -> Subtype -> Subtype

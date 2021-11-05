@@ -256,6 +256,14 @@ subtypSize (SFunc _ _ _ _ _ p_s2_s1 _ _ _ p_t1_t2) = (subtypSize p_s2_s1) + (sub
 subtypSize (SWitn _ _ _ p_e_tx _ _ _ p_t_t')       = (subtypSize p_t_t')  + (typSize p_e_tx)     + 1
 subtypSize (SBind _ _ _ _ _ _ p_t_t')              = (subtypSize p_t_t')  + 1
 
+{-@ measure subtypSize' @-}
+{-@ subtypSize' :: Subtype -> { v:Int | v >= 0 } @-}
+subtypSize' :: Subtype -> Int
+subtypSize' (SBase {})                              = 1
+subtypSize' (SFunc _ _ _ _ _ p_s2_s1 _ _ _ p_t1_t2) = (subtypSize' p_s2_s1) + (subtypSize' p_t1_t2) + 1
+subtypSize' (SWitn _ _ _ p_e_tx _ _ _ p_t_t')       = (subtypSize' p_t_t')  + 1
+subtypSize' (SBind _ _ _ _ _ _ p_t_t')              = (subtypSize' p_t_t')  + 1
+
 {-@ reflect isSBase @-}
 isSBase :: Subtype -> Bool
 isSBase (SBase {}) = True

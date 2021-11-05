@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SameBinders
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -39,9 +38,9 @@ foo19 x = Just x
 -- Lemma. Well-Formedness of Constant Types
 {-@ lem_wf_tybc :: g:Env -> b:Bool -> ProofOf(WFType g (tybc b) Base) @-}
 lem_wf_tybc :: Env -> Bool -> WFType
-lem_wf_tybc g b = WFRefn g 1 TBool (WFBase g TBool) pred y pf_pr_bool
+lem_wf_tybc g b = WFRefn g Z TBool (Bc True) (WFBase g TBool (Bc True)) pred y pf_pr_bool
   where
-     pred       = (App (App (Prim Eqv) (BV 1)) (Bc b)) 
+     pred       = (App (App (Prim Eqv) (BV 0)) (Bc b)) 
      y          = (fresh_var g)
      g'         = (FCons y (FTBasic TBool) (erase_env g))
      pf_eqv_v   = FTApp g' (Prim Eqv) (FTBasic TBool) (FTFunc (FTBasic TBool) (FTBasic TBool)) 
@@ -52,9 +51,9 @@ lem_wf_tybc g b = WFRefn g 1 TBool (WFBase g TBool) pred y pf_pr_bool
 
 {-@ lem_wf_tyic :: g:Env -> n:Int -> ProofOf(WFType g (tyic n) Base) @-}
 lem_wf_tyic :: Env -> Int -> WFType
-lem_wf_tyic g n = WFRefn g 1 TInt (WFBase g TInt) pred y pf_pr_bool
+lem_wf_tyic g n = WFRefn g Z TInt (Bc True) (WFBase g TInt (Bc True)) pred y pf_pr_bool
   where
-    pred        = (App (App (Prim Eq) (BV 1)) (Ic n))
+    pred        = (App (App (Prim Eq) (BV 0)) (Ic n))
     y           = fresh_var g
     g'          = (FCons y (FTBasic TInt) (erase_env g))
     pf_eq_v     = FTApp g' (Prim Eq) (FTBasic TInt) (FTFunc (FTBasic TInt) (FTBasic TBool)) 
@@ -96,6 +95,14 @@ lem_wf_ty' Eq       y = makeWFType (Cons y (inType Eq)  Empty) (unbindT (firstBV
 lem_wf_ty' (Eqn n) y  = makeWFType (Cons y (inType (Eqn n)) Empty) 
                                    (unbindT (firstBV (Eqn n)) y (ty' (Eqn n))) 
                                    Star ? lem_wf_ty'_eqn n y        
+
+{-@ lem_wf_inside_ty :: a':Vname 
+        -> ProofOf(WFType (ConsT a' Base Empty) 
+                          (unbind_tvT 1 a' (TFunc (firstBV Eql) (inType Eql) (ty' Eql))) Star) @-}
+lem_wf_inside_ty :: Vname -> WFType
+lem_wf_inside_ty a' = makeWFType (ConsT a' Base Empty) 
+                                 (unbind_tvT 1 a' (TFunc (firstBV Eql) (inType Eql) (ty' Eql)))
+                                 Star ? lem_wf_ty_inside_eql a'
 
 {-@ lem_wf_ty :: c:Prim -> ProofOf(WFType Empty (ty c) Star) @-}
 lem_wf_ty :: Prim -> WFType
