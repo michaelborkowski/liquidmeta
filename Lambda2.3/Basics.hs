@@ -808,19 +808,6 @@ tsubBTV_at j t_a (TPoly   k  t)     = TPoly k  (tsubBTV_at (j+1) t_a t)
 
 
 ---------------------------------------------------------------------------
------ | PROOF PRELIMINARIES
----------------------------------------------------------------------------
-
-{-@ reflect withProof @-}
-{-@ withProof :: x:a -> b -> { v:a | v = x } @-}
-withProof :: a -> b -> a
-withProof x _ = x
-
-{-@ reflect max @-}
-max :: Int -> Int -> Int
-max x y = if x >= y then x else y
-
----------------------------------------------------------------------------
 ----- | SYNTAX, continued
 ---------------------------------------------------------------------------
 
@@ -845,6 +832,10 @@ envsize :: Env -> Int
 envsize Empty         = 0
 envsize (Cons  _ _ g) = envsize g + 1
 envsize (ConsT _ _ g) = envsize g + 1
+
+{-@ reflect max @-}
+max :: Int -> Int -> Int
+max x y = if x >= y then x else y
 
 {-
 {-@ reflect fresh_var @-}
@@ -951,8 +942,8 @@ lem_binds_invariants (ConsT a k_a g) = () ? lem_binds_invariants g
   --- BARE TYPES: i.e. System F types. These still contain type polymorphism and type variables, 
   --    but all the refinements, dependent arrow binders, and existentials have been erased.
 
-data FType = FTBasic Basic               -- b: Bool, Int, FTV a, BTV a
-           | FTFunc FType FType          -- bt -> bt'
+data FType = FTBasic Basic          -- b: Bool, Int, FTV a, BTV a
+           | FTFunc FType FType     -- bt -> bt'
            | FTPoly Kind  FType     -- \forall a:k. bt 
   deriving (Eq, Show)
 
@@ -1099,7 +1090,7 @@ fresh_varF g = maxpListF g
 fresh_var_excludingF :: FEnv -> Vname -> Vname
 fresh_var_excludingF g x = if in_envF x g then maxpListF g
                            else maxpListF (FCons x (FTBasic TBool) g)
- 
+
 {-@ reflect maxpListF @-}
 {-@ maxpListF :: g:FEnv -> { x:Vname | (in_envF x g) => (x < maxpListF g) } @-}
 maxpListF :: FEnv -> Int
@@ -1322,14 +1313,20 @@ tv_bound_inC a t (CConsT a' t' th) | (a == a')         = (t == t')
 {-@ reflect csubst @-}
 csubst :: CSub -> Expr -> Expr
 csubst CEmpty          e = e
-csubst (CCons  x v th) e = csubst th (subFV x v e)
+csubst (CCons  x v th) e = csubst th (subFV  x v e)
 csubst (CConsT a t th) e = csubst th (subFTV a t e)
+
+{-@ reflect cpsubst @-}
+cpsubst :: CSub -> Preds -> Preds
+cpsubst CEmpty          ps = ps
+cpsubst (CCons  x v th) ps = cpsubst th (psubFV  x v ps)
+cpsubst (CConsT a t th) ps = cpsubst th (psubFTV a t ps)
 
 -- Idea: ctsubst th t = foldr (\(x,e) t' -> tsubFV x e t') t th 
 {-@ reflect ctsubst @-}
 ctsubst :: CSub -> Type -> Type
 ctsubst CEmpty           t = t
-ctsubst (CCons  x v  th) t = ctsubst th (tsubFV x v t)
+ctsubst (CCons  x v  th) t = ctsubst th (tsubFV  x v  t)
 ctsubst (CConsT a t' th) t = ctsubst th (tsubFTV a t' t)
 
 -- restore
@@ -1389,15 +1386,28 @@ remove_fromCS (CConsT a t_a th) x | ( x == a ) = th
 ----- | PROPOSITIONS
 ---------------------------------------------------------------------------
 
+{-@ reflect withProof @-}
+{-@ withProof :: x:a -> b -> { v:a | v = x } @-}
+withProof :: a -> b -> a
+withProof x _ = x
+
+type Names = S.Set Vname   -- for cofinite quantification over free names
+
 {-@ measure propOf :: a -> Proposition @-}
 {-@ type ProofOf E = { proofObj:_ | propOf proofObj = E } @-}
 
   --- the Type of all Propositions
 
 data Proposition where
+    -- Local Closure
+    LCExpr  :: Expr  -> Proposition
+    LCPreds :: Preds -> Proposition
+    LCType  :: Type  -> Proposition
+
     -- Operational Semantics
     Step :: Expr -> Expr -> Proposition
     EvalsTo :: Expr -> Expr -> Proposition
+    PEvalsTo :: Preds -> Preds -> Proposition
     AppReduced :: Expr -> Expr -> Proposition
     CommonEvals :: Expr -> Expr -> Proposition
 
@@ -1411,9 +1421,9 @@ data Proposition where
     WFEnv :: Env -> Proposition
     HasType :: Env -> Expr -> Type -> Proposition -- HasType G e t means G |- e : t
     Subtype :: Env -> Type -> Type -> Proposition
-    Entails :: Env -> Expr -> Proposition
-    ValueDenoted :: Expr -> Type -> Proposition
-    Denotes :: Type -> Expr -> Proposition        -- e \in [[t]]
+    Entails :: Env -> Preds -> Proposition
+    VDenotes :: CSub -> Type -> Expr -> Proposition
+    EDenotes :: CSub -> Type -> Expr -> Proposition
     DenotesEnv :: Env -> CSub -> Proposition      -- th \in [[G]]
 
     -- Entailments
