@@ -26,7 +26,7 @@ foo05 x = Just x
 
 data WFType where 
     WFBase :: Env -> Basic -> WFType
-    WFRefn :: Env -> Basic -> WFType -> Preds -> Names -> (Vname -> HasFType) -> WFType
+    WFRefn :: Env -> Basic -> WFType -> Preds -> Names -> (Vname -> PHasFType) -> WFType
     WFVar1 :: Env -> Vname -> Kind -> WFType
     WFVar2 :: Env -> Vname -> Kind -> WFType -> Vname -> Type -> WFType
     WFVar3 :: Env -> Vname -> Kind -> WFType -> Vname -> Kind -> WFType
@@ -44,8 +44,8 @@ data WFType where
                         -> ProofOf(WFType g (TRefn b PEmpty) Base)
         WFRefn :: g:Env -> b:Basic -> ProofOf(WFType g (TRefn b PEmpty) Base) 
           -> ps:Preds -> nms:Names
-          -> ( { y:Vname | not (Set_mem y nms) }
-                 -> ProofOf(HasFType (FCons y (FTBasic b) (erase_env g)) (unbindP y ps) (FTBasic TBool)) )
+          -> ( { y:Vname | NotElem y nms }
+                 -> ProofOf(PHasFType (FCons y (FTBasic b) (erase_env g)) (unbindP y ps)) )
           -> ProofOf(WFType g (TRefn b ps) Base)
         WFVar1 :: g:Env -> { a:Vname | not (in_env a g) } -> k:Kind 
           -> ProofOf(WFType (ConsT a k g) (TRefn (FTV a) PEmpty) k)
@@ -58,13 +58,13 @@ data WFType where
           -> { a':Vname | a' != a && not (in_env a' g) } -> k':Kind 
           -> ProofOf(WFType (ConsT a' k' g) (TRefn (FTV a) PEmpty) k)
         WFFunc :: g:Env -> t_x:Type -> k_x:Kind -> ProofOf(WFType g t_x k_x) -> t:Type -> k:Kind -> nms:Names 
-          -> ({ y:Vname | not (Set_mem y nms) } -> ProofOf(WFType (Cons y t_x g) (unbindT y t) k) )
+          -> ({ y:Vname | NotElem y nms } -> ProofOf(WFType (Cons y t_x g) (unbindT y t) k) )
           -> ProofOf(WFType g (TFunc t_x t) Star)
         WFExis :: g:Env -> t_x:Type -> k_x:Kind -> ProofOf(WFType g t_x k_x) -> t:Type -> k:Kind -> nms:Names 
-          -> ({ y:Vname | not (Set_mem y nms) } -> ProofOf(WFType (Cons y t_x g) (unbindT y t) k) )
+          -> ({ y:Vname | NotElem y nms } -> ProofOf(WFType (Cons y t_x g) (unbindT y t) k) )
           -> ProofOf(WFType g (TExists t_x t) k) 
         WFPoly :: g:Env -> k:Kind -> t:Type -> k_t:Kind -> nms:Names
-          -> ({ a':Vname | not (Set_mem a' nms) } -> ProofOf(WFType (ConsT a' k g) (unbind_tvT a' t) k_t) )
+          -> ({ a':Vname | NotElem a' nms } -> ProofOf(WFType (ConsT a' k g) (unbind_tvT a' t) k_t) )
           -> ProofOf(WFType g (TPoly k t) Star) 
         WFKind :: g:Env -> t:Type -> ProofOf(WFType g t Base) -> ProofOf(WFType g t Star) @-}
 

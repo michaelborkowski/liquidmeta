@@ -11,7 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SystemFWellFormedness            (WFFT(..),WFFE(..),isWFFT,makeWFFT,isMonoF)
+import SystemFWellFormedness            --(WFFT(..),WFFE(..),isWFFT,makeWFFT,isMonoF)
 
 {-@ reflect foo04 @-}
 foo04 :: a -> Maybe a
@@ -38,7 +38,7 @@ data HasFType where
                    -> (Vname -> HasFType) -> HasFType
     FTAnn  :: FEnv -> Expr -> FType -> Type -> HasFType -> HasFType
 
---                  -> { y:Vname | not (in_envF y g) && not (Set_mem y (fv e)) && not (Set_mem y (ftv e)) }
+--                  -> { y:Vname | not (in_envF y g) && NotElem y (fv e)) && NotElem y (ftv e)) }
 {-@ data HasFType where
         FTBC   :: g:FEnv -> b:Bool -> ProofOf(HasFType g (Bc b) (FTBasic TBool))
         FTIC   :: g:FEnv -> n:Int -> ProofOf(HasFType g (Ic n) (FTBasic TInt))
@@ -52,31 +52,30 @@ data HasFType where
                     -> ProofOf(HasFType (FConsT y k g) (FV x) b)
         FTPrm  :: g:FEnv -> c:Prim  -> ProofOf(HasFType g (Prim c) (erase_ty c))
         FTAbs  :: g:FEnv -> b:FType -> k:Kind -> ProofOf(WFFT g b k) -> e:Expr -> b':FType -> nms:Names
-                  -> ( { y:Vname | not (Set_mem y nms) } -> ProofOf(HasFType (FCons y b g) (unbind y e) b') )
+                  -> ( { y:Vname | NotElem y nms } -> ProofOf(HasFType (FCons y b g) (unbind y e) b') )
                   -> ProofOf(HasFType g (Lambda e) (FTFunc b b'))
         FTApp  :: g:FEnv -> e:Expr -> b:FType -> b':FType
                   -> ProofOf(HasFType g e (FTFunc b b')) 
                   -> e':Expr -> ProofOf(HasFType g e' b) 
                   -> ProofOf(HasFType g (App e e') b')
         FTAbsT :: g:FEnv -> k:Kind -> e:Expr -> b:FType -> nms:Names
-                  -> ( { a':Vname | not (Set_mem a' nms) }
+                  -> ( { a':Vname | NotElem a' nms }
                          -> ProofOf(HasFType (FConsT a' k g) (unbind_tv a' e) (unbindFT a' b)) )
                   -> ProofOf(HasFType g (LambdaT k e) (FTPoly k b))
         FTAppT :: g:FEnv -> e:Expr -> k:Kind -> t':FType
                 -> ProofOf(HasFType g e (FTPoly k t')) 
-                -> { rt:UserType | Set_sub (free rt) (vbindsF g) && Set_sub (freeTV rt) (tvbindsF g) }
+                -> { rt:UserType | Set_sub (free rt) (vbindsF g) && 
+                                   Set_sub (freeTV rt) (tvbindsF g) && isLCT rt }
                 -> ProofOf(WFFT g (erase rt) k)
                 -> ProofOf(HasFType g (AppT e rt) (ftsubBV (erase rt) t'))
         FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
                 -> e:Expr -> b':FType -> nms:Names
-                -> ( { y:Vname | not (Set_mem y nms) } -> ProofOf(HasFType (FCons y b g) (unbind y e) b') )
+                -> ( { y:Vname | NotElem y nms } -> ProofOf(HasFType (FCons y b g) (unbind y e) b') )
                 -> ProofOf(HasFType g (Let e_x e) b')
         FTAnn  :: g:FEnv -> e:Expr -> b:FType 
                 -> { t1:Type | (erase t1 == b) && Set_sub (free t1) (vbindsF g) 
-                                               && Set_sub (freeTV t1) (tvbindsF g)  }
+                                               && Set_sub (freeTV t1) (tvbindsF g) && isLCT t1 }
                 -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b) @-}
--- from rt in FTAppT:                Set_emp (tfreeBV rt) && Set_emp (tfreeBTV rt) }
--- from t1 in FTAnn:              && Set_emp (tfreeBV t1) && Set_emp (tfreeBTV t1) }
 
 {- 
 {-@ measure ftypSize @-}
@@ -144,6 +143,16 @@ simpleFTVar g x t = case g of
   (FConsT a k g') -> case (x == a) of
         False        -> FTVar3 g' x t (simpleFTVar g' x t) a k
 
+data PHasFType where
+    PFTEmp  :: FEnv -> PHasFType
+    PFTCons :: FEnv -> Expr -> HasFType -> Preds -> PHasFType -> PHasFType
+
+{-@ data PHasFType where
+        PFTEmp  :: g:FEnv -> ProofOf(PHasFType g PEmpty)
+        PFTCons :: g:FEnv -> p:Expr   -> ProofOf(HasFType g p (FTBasic TBool))
+                          -> ps:Preds -> ProofOf(PHasFType g ps)
+                          -> ProofOf(PHasFType g (PCons p ps)) @-}
+
 -------------------------------------------------------------------------
 ----- | REFINEMENT TYPES of BUILT-IN PRIMITIVES
 -------------------------------------------------------------------------
@@ -184,9 +193,9 @@ refn_pred Eq       = App (App (Prim Eqv) (BV 0))
 refn_pred (Eqn n)  = App (App (Prim Eqv) (BV 0))
                            (App (App (Prim Eq) (Ic n)) (BV 1))
 refn_pred Leql     = App (App (Prim Eqv) (BV 0))
-                           (App (App (AppT (Prim Leql) (TRefn (BTV 3) PEmpty)) (BV 2)) (BV 1))
+                           (App (App (AppT (Prim Leql) (TRefn (BTV 0) PEmpty)) (BV 2)) (BV 1))
 refn_pred Eql      = App (App (Prim Eqv) (BV 0))
-                           (App (App (AppT (Prim Eql)  (TRefn (BTV 3) PEmpty)) (BV 2)) (BV 1))
+                           (App (App (AppT (Prim Eql)  (TRefn (BTV 0) PEmpty)) (BV 2)) (BV 1))
 
 {-@ reflect ty @-} -- Primitive Typing            -- removed: && Set_emp (tfreeBV t)
 {-@ ty :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
@@ -217,9 +226,9 @@ erase_ty (Leqn n) = FTFunc (FTBasic TInt)  (FTBasic TBool)
 erase_ty Eq       = FTFunc (FTBasic TInt)  (FTFunc (FTBasic TInt)  (FTBasic TBool))
 erase_ty (Eqn n)  = FTFunc (FTBasic TInt)  (FTBasic TBool)
 erase_ty Leql     = FTPoly Base (FTFunc (FTBasic (BTV 0))
-                                          (FTFunc (FTBasic (BTV 1)) (FTBasic TBool)))
+                                          (FTFunc (FTBasic (BTV 0)) (FTBasic TBool)))
 erase_ty Eql      = FTPoly Base (FTFunc (FTBasic (BTV 0)) 
-                                          (FTFunc (FTBasic (BTV 1)) (FTBasic TBool)))
+                                          (FTFunc (FTBasic (BTV 0)) (FTBasic TBool)))
 
 {-@ reflect inType @-}
 {-@ inType :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
@@ -247,8 +256,8 @@ ty' Leq      = TFunc (TRefn TInt  PEmpty) (TRefn TBool (PCons (refn_pred Leq) PE
 ty' (Leqn n) =                             TRefn TBool (PCons (refn_pred (Leqn n)) PEmpty)
 ty' Eq       = TFunc (TRefn TInt  PEmpty) (TRefn TBool (PCons (refn_pred Eq)  PEmpty)) 
 ty' (Eqn n)  =                             TRefn TBool (PCons (refn_pred (Eqn n)) PEmpty)
-ty' Leql     = TFunc (TRefn (BTV 1) PEmpty) (TRefn TBool (PCons (refn_pred Leql) PEmpty))
-ty' Eql      = TFunc (TRefn (BTV 1) PEmpty) (TRefn TBool (PCons (refn_pred Eql) PEmpty))
+ty' Leql     = TFunc (TRefn (BTV 0) PEmpty) (TRefn TBool (PCons (refn_pred Leql) PEmpty))
+ty' Eql      = TFunc (TRefn (BTV 0) PEmpty) (TRefn TBool (PCons (refn_pred Eql) PEmpty))
 
 ------------------------------------------------------------
 ---- | Limited Bi-directional TYPE Checking and Synthesis --
@@ -286,15 +295,13 @@ checkType g (App e e') t     = case ( synthType g e' ) of
     _               -> False
 checkType g (AppT e t2) t    = case ( synthType g e ) of
     (Just (FTPoly Base t1))  -> ( t == ftsubBV (erase t2) t1 ) &&
-                                ( isWFFT g (erase t2) Base ) && -- noExists t2 &&
+                                ( isWFFT g (erase t2) Base ) && isLCT t2 && noExists t2 &&
                                 ( S.isSubsetOf (free t2) (vbindsF g) ) &&
-                                ( S.isSubsetOf (freeTV t2) (tvbindsF g) ) -- && 
---                                ( S.null (tfreeBV  t2) ) && ( S.null (tfreeBTV t2) ) 
+                                ( S.isSubsetOf (freeTV t2) (tvbindsF g) )  
     _                        -> False 
 checkType g (Annot e liqt) t = ( checkType g e t ) && ( t == erase liqt ) &&
                                ( S.isSubsetOf (free liqt) (vbindsF g) ) &&
-                               ( S.isSubsetOf (freeTV liqt) (tvbindsF g) ) -- &&
---                               ( S.null (tfreeBV liqt) && S.null (tfreeBTV liqt) )  
+                               ( S.isSubsetOf (freeTV liqt) (tvbindsF g) ) && isLCT liqt
 
 {-@ reflect synthType @-}
 {-@ synthType :: FEnv -> { e:Expr | noDefnsBaseAppT e } 
@@ -312,15 +319,14 @@ synthType g (App e e')      = case ( synthType g e' ) of
         _                     -> Nothing
 synthType g (AppT e t2)     = case ( synthType g e ) of
     (Just (FTPoly Base t1)) -> (case ( isWFFT g (erase t2) Base && S.isSubsetOf (free t2) (vbindsF g) &&
-                                       S.isSubsetOf (freeTV t2) (tvbindsF g) -- && noExists t2 &&
-                                       {-S.null (tfreeBV t2) && S.null (tfreeBTV t2)-} ) of 
-	True                       -> Just (ftsubBV (erase t2) t1)
-        False                      -> Nothing)
+                                       S.isSubsetOf (freeTV t2) (tvbindsF g) && noExists t2 &&
+                                       isLCT t2 ) of 
+	True   -> Just (ftsubBV (erase t2) t1)
+        False  -> Nothing)
     _                       -> Nothing 
 synthType g (Annot e liqt)  = case ( checkType g e (erase liqt) && 
                                 S.isSubsetOf (free liqt) (vbindsF g) &&
-                                S.isSubsetOf (freeTV liqt) (tvbindsF g) ) {-&& 
-                                S.null (tfreeBV liqt) && S.null (tfreeBTV liqt)-} of
+                                S.isSubsetOf (freeTV liqt) (tvbindsF g) && isLCT liqt ) of 
     True  -> Just (erase liqt)
     False -> Nothing
 

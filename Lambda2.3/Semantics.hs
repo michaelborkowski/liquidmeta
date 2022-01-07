@@ -73,13 +73,11 @@ isCompatT _   _                               = False
                      -> { e':Value | Set_emp (fv e') && Set_emp (ftv e') } @-}
 deltaT :: Prim -> Type -> Expr
 deltaT  Eql    t = case (erase t) of
-  (FTBasic b)    -> case b of
-    TBool             -> Prim Eqv
-    TInt              -> Prim Eq
+  (FTBasic TBool)    -> Prim Eqv
+  (FTBasic TInt)     -> Prim Eq
 deltaT  Leql   t = case (erase t) of
-  (FTBasic b)    -> case b of
-    TBool             -> Prim Imp
-    TInt              -> Prim Leq
+  (FTBasic TBool)    -> Prim Imp
+  (FTBasic TInt)     -> Prim Leq
 
 data Step where
     EPrim    :: Prim -> Expr -> Step
@@ -209,32 +207,6 @@ lemma_annot_many e e' t (AddStep _e e1 s_ee1 _e' p_e1e') = p_et_e't
     s_et_e1t  = EAnn e e1 s_ee1 t
     p_e1t_e't = lemma_annot_many e1 e' t p_e1e'
     p_et_e't  = AddStep (Annot e t) (Annot e1 t) s_et_e1t (Annot e' t) p_e1t_e't
-
-
-{-@ data AppReduced where
-        AppRed :: e:Expr -> { v:Expr | isValue v } -> ProofOf(EvalsTo e v) -> e':Expr 
-                         -> { v':Expr | isValue v' } -> ProofOf(EvalsTo e' v') 
-                         -> ProofOf(AppReduced e e') @-}
-data AppReduced where
-    AppRed :: Expr -> Expr -> EvalsTo -> Expr -> Expr -> EvalsTo -> AppReduced
-
-{-@ lemma_evals_app_value :: e:Expr -> e':Expr -> { v:Expr | isValue v } 
-        -> ProofOf(EvalsTo (App e e') v)
-        -> ProofOf(AppReduced e e') @-}
-lemma_evals_app_value :: Expr -> Expr -> Expr -> EvalsTo -> AppReduced
-lemma_evals_app_value e e' v (Refl _v) = impossible "App not a value"
-lemma_evals_app_value e e' v (AddStep _ee' eee st_ee'_eee _v ev_eee_v)
-  = case st_ee'_eee of 
-      (EPrim c w)                 -> AppRed e (Prim c) (Refl (Prim c)) e' w (Refl w)
-      (EApp1 _e e1 st_e_e1 _e')   -> AppRed e v1 ev_e_v1 e' v2 ev_e'_v2
-        where
-          (AppRed _ v1 ev_e1_v1 _ v2 ev_e'_v2) = lemma_evals_app_value e1 e' v ev_eee_v
-          ev_e_v1                              = AddStep e e1 st_e_e1 v1 ev_e1_v1
-      (EApp2 _e' e2 st_e'_e2 _e)  -> AppRed e e (Refl e) e' v2 ev_e'_v2
-        where
-          (AppRed _ _ _ _e2 v2 ev_e2_v2)       = lemma_evals_app_value e e2 v ev_eee_v
-          ev_e'_v2                             = AddStep e' e2 st_e'_e2 v2 ev_e2_v2
-      (EAppAbs e'' w)             -> AppRed e e (Refl e) e' e' (Refl e')
 
 --------------------------------------------------------------------------
 ----- | Basic LEMMAS of the OPERATIONAL SEMANTICS (Small Step)
@@ -400,3 +372,19 @@ lem_common_evals_extend e e' (BothEv _ _ e1 ev_e_e1 ev_e'_e1) v ev_e_v
   = lemma_evals_trans e' e1 v ev_e'_e1 ev_e1_v
       where
         ev_e1_v = lem_decompose_evals e e1 v ev_e_e1 ev_e_v
+
+--------------------------------------------------------------------------------
+--- | Predicate Semantics (Big Step)
+--------------------------------------------------------------------------------
+
+-- PE-Emp    PEmp => PEmp
+-- PE-Cons   PCons p ps => ps'  if p ~>* Bc True and ps => ps'
+
+data PEvalsTrue where
+    PEEmp   :: PEvalsTrue
+    PECons  :: Expr -> EvalsTo -> Preds -> PEvalsTrue -> PEvalsTrue
+
+{-@ data PEvalsTrue where
+        PEEmp   :: ProofOf(PEvalsTrue PEmpty)
+        PECons  :: p:Expr -> ProofOf(EvalsTo p (Bc True)) -> ps:Preds -> ProofOf(PEvalsTrue ps)
+                     -> ProofOf(PEvalsTrue (PCons p ps)) @-}

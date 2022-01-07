@@ -48,7 +48,7 @@ data WFFT where
         WFFTFunc  :: g:FEnv -> t1:FType -> k1:Kind -> ProofOf(WFFT g t1 k1) -> t2:FType -> k2:Kind
           -> ProofOf(WFFT g t2 k2) -> ProofOf(WFFT g (FTFunc t1 t2) Star)   
         WFFTPoly  :: g:FEnv -> k:Kind -> t:FType -> k_t:Kind  -> nms:Names 
-          -> ( { a:Vname | not (Set_mem a nms) } -> ProofOf(WFFT (FConsT a k g) (unbindFT a t) k_t) )
+          -> ( { a:Vname | NotElem a nms } -> ProofOf(WFFT (FConsT a k g) (unbindFT a t) k_t) )
           -> ProofOf(WFFT g (FTPoly k t) Star)   
         WFFTKind  :: g:FEnv -> t:FType -> ProofOf(WFFT g t Base) -> ProofOf(WFFT g t Star) @-} 
 
@@ -64,9 +64,9 @@ wfftypSize (WFFTFV1 _ _ _)                        = 1
 wfftypSize (WFFTFV2 _ _ _ p_g_a _ _)              = (wfftypSize p_g_a)  + 1
 wfftypSize (WFFTFV3 _ _ _ p_g_a _ _)              = (wfftypSize p_g_a)  + 1
 wfftypSize (WFFTFunc g t1 _ p_g_t1 t2 k2 p_g_t2)  = (wfftypSize p_g_t1) + (wfftypSize p_g_t2) + 1
-wfftypSize (WFFTPoly _ _ _ _ _ _ p_a'g_t)         = (wfftypSize p_a'g_t) + 1
-wfftypSize (WFFTKind _ _ p_g_t)                   = (wfftypSize p_g_t)  + 1
--}
+wfftypSize (WFFTPoly _ _ _t _ nms mk_p_a'g_t)     = 
+--  = (wfftypSize (mk_p_a'g_t (fresh nms))) + 1
+wfftypSize (WFFTKind _ _ p_g_t)                   = (wfftypSize p_g_t)  + 1-}
 
 {-@ reflect isWFFTFunc @-}
 isWFFTFunc :: WFFT -> Bool
