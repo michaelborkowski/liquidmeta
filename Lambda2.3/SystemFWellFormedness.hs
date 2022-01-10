@@ -104,7 +104,7 @@ data WFFE where
 ----------------------------------------------------------------------------
 -- | AUTOMATED INFERENCE of SYSTEM F WELL-FORMEDNESS JUDGMENTS
 ----------------------------------------------------------------------------
-
+{-
 {-@ reflect isMonoF @-}
 isMonoF :: FType -> Bool
 isMonoF (FTBasic b)    = True
@@ -140,3 +140,4 @@ makeWFFT g (FTFunc t_x t) Star = WFFTFunc g t_x Star (makeWFFT g t_x Star) t Sta
                                           (makeWFFT g t Star)
 makeWFFT g (FTFunc t_x t) _    = impossible ""
 makeWFFT g (FTPoly   k t) _    = impossible ""
+-}

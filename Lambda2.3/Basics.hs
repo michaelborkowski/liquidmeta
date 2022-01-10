@@ -622,7 +622,7 @@ isLCT_at j_x j_a (TPoly   k   t) =                         isLCT_at j_x (j_a+1) 
                        -> { t':Type | Set_sub (free t') (Set_cup (Set_sng y) (free t)) &&
                                       Set_sub (freeTV t') (freeTV t) &&
                                       Set_sub (free t) (free t') && Set_sub (freeTV t) (freeTV t') &&
-                                      tsize t == tsize t' } / [tsize t] @-} 
+                                      (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
 unbindT :: Vname -> Type -> Type
 unbindT y t = openT_at 0 y t
 
@@ -631,7 +631,7 @@ unbindT y t = openT_at 0 y t
                         -> { t':Type | Set_sub (free t') (Set_cup (Set_sng y) (free t)) &&
                                        Set_sub (free t) (free t') &&
                                        Set_sub (freeTV t') (freeTV t) && Set_sub (freeTV t) (freeTV t') &&
-                                       tsize t == tsize t' } / [tsize t] @-} 
+                                       (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
 openT_at :: Index -> Vname -> Type -> Type
 openT_at j y (TRefn b ps)    = TRefn b (openP_at (j+1) y ps)
 openT_at j y (TFunc   t_z t) = TFunc   (openT_at j y t_z) (openT_at (j+1) y t)
@@ -643,7 +643,7 @@ openT_at j y (TPoly   k   t) = TPoly k (openT_at j y t)   -- not j+1
                        -> { t':Type | Set_sub (freeTV t') (Set_cup (Set_sng a') (freeTV t)) &&
                                       Set_sub (free t') (free t) &&
                                       Set_sub (freeTV t) (freeTV t') && Set_sub (free t) (free t') &&
-                                      tsize t == tsize t' } / [tsize t] @-} 
+                                      (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
 unbind_tvT :: Vname -> Type -> Type
 unbind_tvT a' t = open_tvT_at 0 a' t
 
@@ -652,7 +652,7 @@ unbind_tvT a' t = open_tvT_at 0 a' t
                        -> { t':Type | Set_sub (freeTV t') (Set_cup (Set_sng a') (freeTV t)) &&
                                       Set_sub (free t') (free t) &&
                                       Set_sub (freeTV t) (freeTV t') && Set_sub (free t) (free t') &&
-                                      tsize t == tsize t' } / [tsize t] @-} 
+                                      (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
 open_tvT_at :: Index -> Vname -> Type -> Type
 open_tvT_at j a' (TRefn b  ps)     = case b of 
   (BTV i) | i == j  -> TRefn (FTV a') (open_tvP_at j a' ps) -- not j+1
@@ -1313,6 +1313,12 @@ type Names = [Vname]   -- for cofinite quantification over free names
 {-@ predicate Elem  X Ys   = Set_mem X (listElts Ys)                           @-}
 {-@ predicate NotElem X Ys = not (Elem X Ys)                                   @-}
 
+{-@ unionEnv :: ys:Names -> zs:Env -> { xs:Names | IsCupEnv xs ys zs } @-}
+unionEnv :: Names -> Env -> Names
+unionEnv xs Empty         = xs
+unionEnv xs (Cons  x t g) = x : (unionEnv xs g)
+unionEnv xs (ConsT a k g) = a : (unionEnv xs g)
+
 {-@ unionFEnv :: ys:Names -> zs:FEnv -> { xs:Names | IsCupFEnv xs ys zs } @-}
 unionFEnv :: Names -> FEnv -> Names
 unionFEnv xs FEmpty         = xs
@@ -1369,6 +1375,7 @@ lem_above_max_nms_env _ []     Empty         = ()
 lem_above_max_nms_env x []     (Cons  y t g) = lem_above_max_nms_env x [] g
 lem_above_max_nms_env x []     (ConsT a k g) = lem_above_max_nms_env x [] g
 lem_above_max_nms_env x (_:ys) g             = lem_above_max_nms_env x ys g
+
 
 {-@ reflect fresh_varF @-}
 {-@ fresh_varF :: xs:Names -> g:FEnv -> { x:Vname | not (in_envF x g) && NotElem x xs } @-}

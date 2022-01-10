@@ -169,7 +169,8 @@ tyic :: Int -> Type
 tyic n     = TRefn TInt  (PCons (App (App (Prim Eq)  (BV 0)) (Ic n))     PEmpty)
 
 {-@ reflect refn_pred @-}
-{-@ refn_pred :: c:Prim  -> { p:Expr | noDefnsBaseAppT p && Set_emp (fv p) } @-}
+{-@ refn_pred :: c:Prim  -> { p:Expr | Set_emp (fv p) && Set_emp (ftv p) } @-}
+{- @ refn_pred :: c:Prim  -> { p:Expr | noDefnsBaseAppT p && Set_emp (fv p) } @-}
 refn_pred :: Prim -> Expr
 refn_pred And      = App (App (Prim Eqv) (BV 0)) 
                                (App (App (Prim And) (BV 2)) (BV 1)) 
@@ -214,7 +215,7 @@ ty Leql     = TPoly Base (TFunc (inType Leql) (ty' Leql))
 ty Eql      = TPoly Base (TFunc (inType Eql)  (ty' Eql))
 
 {-@ reflect erase_ty @-}
-{-@ erase_ty :: c:Prim -> { t:FType | Set_emp (ffreeTV t) && t == erase (ty c) } @-}
+{-@ erase_ty :: c:Prim -> { t:FType | Set_emp (ffreeTV t) && t == erase (ty c) && isLCFT t } @-}
 erase_ty :: Prim -> FType
 erase_ty And      = FTFunc (FTBasic TBool) (FTFunc (FTBasic TBool) (FTBasic TBool))
 erase_ty Or       = FTFunc (FTBasic TBool) (FTFunc (FTBasic TBool) (FTBasic TBool))
@@ -268,6 +269,15 @@ ty' Eql      = TFunc (TRefn (BTV 0) PEmpty) (TRefn TBool (PCons (refn_pred Eql) 
 --    These consist of constants, primitives, variables, function application, and
 --    simplepolymorphic type application. 
 
+{-
+type Types = [Type]
+type Kinds = [Kind]
+
+{-@ reflect getType @-}
+getType :: Types -> Int 
+-}
+
+{-
 {-@ reflect noDefnsBaseAppT @-}
 noDefnsBaseAppT :: Expr -> Bool
 noDefnsBaseAppT (Bc _)          = True
@@ -302,7 +312,7 @@ checkType g (AppT e t2) t    = case ( synthType g e ) of
 checkType g (Annot e liqt) t = ( checkType g e t ) && ( t == erase liqt ) &&
                                ( S.isSubsetOf (free liqt) (vbindsF g) ) &&
                                ( S.isSubsetOf (freeTV liqt) (tvbindsF g) ) && isLCT liqt
-
+-}{-
 {-@ reflect synthType @-}
 {-@ synthType :: FEnv -> { e:Expr | noDefnsBaseAppT e } 
         -> Maybe FType / [esize e] @-}
@@ -370,3 +380,24 @@ makeHasFType g (AppT e rt) t    = case (synthType g e) of
 makeHasFType g (Annot e liqt) t = FTAnn g e t liqt pf_e_t
   where
     pf_e_t = makeHasFType g e t
+-}
+
+{-
+{-@ reflect allNoDefnsBaseAppT @-}
+allNoDefnsBaseAppT :: Preds -> Bool
+allNoDefnsBaseAppT PEmpty       = True
+allNoDefnsBaseAppT (PCons p ps) = noDefnsBaseAppT p && allNoDefnsBaseAppT ps
+
+{-@ reflect checkPreds @-}
+{-@ checkPreds :: FEnv -> { ps:Preds | allNoDefnsBaseAppT ps } -> Bool / [predsize ps] @-}
+checkPreds :: FEnv -> Preds -> Bool
+checkPreds g PEmpty       = True
+checkPreds g (PCons p ps) = checkType g p (FTBasic TBool) && checkPreds g ps
+
+{-@ makePHasFType :: g:FEnv -> { ps:Preds | allNoDefnsBaseAppT ps && checkPreds g ps } 
+       	-> ProofOf(PHasFType g ps) / [predsize ps] @-}
+makePHasFType :: FEnv -> Preds -> PHasFType 
+makePHasFType g PEmpty       = PFTEmp  g
+makePHasFType g (PCons p ps) = PFTCons g p (makeHasFType g p (FTBasic TBool))
+                                       ps (makePHasFType g ps)
+-}

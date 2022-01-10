@@ -85,19 +85,23 @@ lem_erase_tsubBV x e (TFunc   z t_z t) = () ? lem_erase_tsubBV x e t_z
                                             ? lem_erase_tsubBV x e t
 lem_erase_tsubBV x e (TExists z t_z t) = () ? lem_erase_tsubBV x e t
 lem_erase_tsubBV x e (TPoly   a k   t) = () ? lem_erase_tsubBV x e t
+-}
 
+{-@ lem_erase_unbind_tvT :: a':Vname -> t:Type 
+	-> { pf:_ | erase (unbind_tvT a' t) == unbindFT a' (erase t) } @-}
+lem_erase_unbind_tvT :: Vname -> Type -> Proof
+lem_erase_unbind_tvT a' t = lem_erase_open_tvT_at 0 a' t
 
-{-@ lem_erase_unbind_tvT :: a:Vname -> a':Vname -> t:Type 
-        -> { pf:_ | erase (unbind_tvT a a' t) == unbindFT a a' (erase t) } @-}
-lem_erase_unbind_tvT :: Vname -> Vname -> Type -> Proof
-lem_erase_unbind_tvT a a' (TRefn   b   z p) = case b of
+{-@ lem_erase_open_tvT_at :: j:Index -> a:Vname -> t:Type 
+        -> { pf:_ | erase (open_tvT_at j a t) == openFT_at j a (erase t) } @-}
+lem_erase_open_tvT_at :: Index -> Vname -> Type -> Proof
+lem_erase_open_tvT_at j a (TRefn   b  ps) = case b of
   (BTV a') -> () 
   _        -> ()
-lem_erase_unbind_tvT a a' (TFunc   z t_z t) = () ? lem_erase_unbind_tvT a a' t_z
-                                                 ? lem_erase_unbind_tvT a a' t
-lem_erase_unbind_tvT a a' (TExists z t_z t) = () ? lem_erase_unbind_tvT a a' t
-lem_erase_unbind_tvT a a' (TPoly   a1 k1 t) = () ? lem_erase_unbind_tvT a a' t
--}
+lem_erase_open_tvT_at j a (TFunc   t_z t) = () ? lem_erase_open_tvT_at j a t_z
+                                               ? lem_erase_open_tvT_at j a t
+lem_erase_open_tvT_at j a (TExists t_z t) = () ? lem_erase_open_tvT_at j a t
+lem_erase_open_tvT_at j a (TPoly    k1 t) = () ? lem_erase_open_tvT_at (j+1) a t
 
 {-@ lem_erase_push :: ps:Preds -> t:UserType -> { pf:_ | erase (push ps t) == erase t } @-}
 lem_erase_push :: Preds -> Type -> Proof
@@ -498,8 +502,6 @@ lem_fv_subset_bindsF g e t (FTPrm _g c)      = ()
 lem_fv_subset_bindsF g e t p_e_t@(FTAbs _g t_y _ _ e' t' nms mk_p_e'_t')  
     = () ? lem_fv_subset_bindsF (FCons y' t_y g) (unbind y' e') t' (mk_p_e'_t' y')
          ? lem_fv_bound_in_fenv g                e              t  p_e_t           y'
---         ? toProof ( S.isSubsetOf (fv (unbind y' e'))  (vbindsF (FCons y' t_y g))  && S.isSubsetOf (vbindsF g)  (bindsF g) )
---         ? toProof ( S.isSubsetOf (ftv (unbind y' e')) (tvbindsF (FCons y' t_y g)) && S.isSubsetOf (tvbindsF g) (bindsF g) )
         where 
           y' = fresh_varF nms g
 lem_fv_subset_bindsF g e t (FTApp _g e1 t_y t' p_e1_tyt' e2 p_e2_ty) 
@@ -525,8 +527,6 @@ lem_fv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t)
     = () ? lem_fv_subset_bindsF g e' t p_e'_t 
          ? toProof ( S.isSubsetOf (free ann_t)   (vbindsF g)  && S.isSubsetOf (vbindsF g)  (bindsF g) )
          ? toProof ( S.isSubsetOf (freeTV ann_t) (tvbindsF g) && S.isSubsetOf (tvbindsF g) (bindsF g) )
-
--- lem_ftv_subset_bindsF was deleted: its predicate folded into the above
 
 {-
        
