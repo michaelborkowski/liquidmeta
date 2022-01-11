@@ -14,9 +14,9 @@ import Basics
 import LocalClosure
 import SystemFWellFormedness
 import SystemFTyping
-import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
+import WellFormedness
 
 {-@ reflect foo21 @-}
 foo21 :: a -> Maybe a
@@ -257,7 +257,7 @@ lem_kindfortv_tvboundin (Cons x t_x g)  a k
 lem_kindfortv_tvboundin (ConsT a' k' g) a k
   | a == a'   = ()
   | otherwise = () ? lem_kindfortv_tvboundin g a k
-
+-}
  -- SYSTEM F VERSIONS
 
 {-@ lem_wfftfunc_for_wf_ftfunc :: g:FEnv -> t_x:FType -> t:FType -> k:Kind 
@@ -265,7 +265,6 @@ lem_kindfortv_tvboundin (ConsT a' k' g) a k
         -> { p_g_txt': WFFT | propOf p_g_txt' == WFFT g (FTFunc t_x t) Star && isWFFTFunc p_g_txt' } @-}
 lem_wfftfunc_for_wf_ftfunc :: FEnv -> FType -> FType -> Kind -> WFFT -> WFFT
 lem_wfftfunc_for_wf_ftfunc g t_x t k p_g_txt@(WFFTFunc {})           = case k of 
-  Base -> impossible ("by lemma" ? lem_wf_ftfunc_star g t_x t p_g_txt)
   Star -> p_g_txt
 lem_wfftfunc_for_wf_ftfunc g t_x t k (WFFTKind _g _ext p_g_txt_base) 
   = impossible ("by lemma" ? lem_wf_ftfunc_star g t_x t p_g_txt_base)
@@ -281,31 +280,29 @@ lem_wf_ftfunc_star g t_x t (WFFTFunc {}) = ()
 lem_wf_ftfunc_star g t_x t (WFFTPoly {}) = ()
 lem_wf_ftfunc_star g t_x t (WFFTKind _g txt p_g_txt_base) = ()
 
-{-@ lem_wfftpoly_for_wf_ftpoly :: g:FEnv -> a:Vname -> k:Kind -> t:FType 
-        -> { p_g_at : WFFT | propOf p_g_at  == WFFT g (FTPoly a k t) Star }
-        -> { p_g_at': WFFT | propOf p_g_at' == WFFT g (FTPoly a k t) Star && isWFFTPoly p_g_at' } @-}
-lem_wfftpoly_for_wf_ftpoly :: FEnv -> Vname -> Kind -> FType -> WFFT -> WFFT
-lem_wfftpoly_for_wf_ftpoly g a k t p_g_at@(WFFTPoly {})           = p_g_at
-lem_wfftpoly_for_wf_ftpoly g a k t (WFFTKind _g _at p_g_at_base) 
-  = impossible ("by lemma" ? lem_wf_ftpoly_star g a k t p_g_at_base)
+{-@ lem_wfftpoly_for_wf_ftpoly :: g:FEnv -> k:Kind -> t:FType 
+        -> { p_g_at : WFFT | propOf p_g_at  == WFFT g (FTPoly k t) Star }
+        -> { p_g_at': WFFT | propOf p_g_at' == WFFT g (FTPoly k t) Star && isWFFTPoly p_g_at' } @-}
+lem_wfftpoly_for_wf_ftpoly :: FEnv -> Kind -> FType -> WFFT -> WFFT
+lem_wfftpoly_for_wf_ftpoly g k t p_g_at@(WFFTPoly {})           = p_g_at
+lem_wfftpoly_for_wf_ftpoly g k t (WFFTKind _g _at p_g_at_base) 
+  = impossible ("by lemma" ? lem_wf_ftpoly_star g k t p_g_at_base)
 
-{-@ lem_wf_ftpoly_star :: g:FEnv -> a:Vname -> k:Kind -> t:FType
-        -> ProofOf(WFFT g (FTPoly a k t) Base) -> { pf:_ | false } @-}
-lem_wf_ftpoly_star :: FEnv -> Vname -> Kind -> FType -> WFFT -> Proof
-lem_wf_ftpoly_star g a k t (WFFTBasic {}) = ()
-lem_wf_ftpoly_star g a k t (WFFTFV1 {}) = ()
-lem_wf_ftpoly_star g a k t (WFFTFV2 {}) = ()
-lem_wf_ftpoly_star g a k t (WFFTFV3 {}) = ()
-lem_wf_ftpoly_star g a k t (WFFTFunc {}) = ()
-lem_wf_ftpoly_star g a k t (WFFTPoly {}) = ()
-lem_wf_ftpoly_star g a k t (WFFTKind {}) = ()
-
--}
+{-@ lem_wf_ftpoly_star :: g:FEnv -> k:Kind -> t:FType
+        -> ProofOf(WFFT g (FTPoly k t) Base) -> { pf:_ | false } @-}
+lem_wf_ftpoly_star :: FEnv -> Kind -> FType -> WFFT -> Proof
+lem_wf_ftpoly_star g k t (WFFTBasic {}) = ()
+lem_wf_ftpoly_star g k t (WFFTFV1 {}) = ()
+lem_wf_ftpoly_star g k t (WFFTFV2 {}) = ()
+lem_wf_ftpoly_star g k t (WFFTFV3 {}) = ()
+lem_wf_ftpoly_star g k t (WFFTFunc {}) = ()
+lem_wf_ftpoly_star g k t (WFFTPoly {}) = ()
+lem_wf_ftpoly_star g k t (WFFTKind {}) = ()
 
 ------------------------------------------------------------------------------------------
 -- | LEMMAS relating REFINEMENT ERASURE and WELL FORMEDNESS notions
 ------------------------------------------------------------------------------------------
-
+{-
 {-@ lem_strengthen_wffe :: g:FEnv -> { x:Vname | not (in_envF x g) } -> t_x:FType 
         -> { g':FEnv | not (in_envF x g') && Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> ProofOf(WFFE (concatF (FCons x t_x g) g')) -> ProofOf(WFFE (concatF g g')) @-}
@@ -324,6 +321,7 @@ lem_strengthen_wffe g x t_x (FConsT a k_a g') p_env_wf = p_gg'a_wf
     (WFFBindT _env' p_env'_wf  _ _) = p_env_wf
     p_gg'_wf  = lem_strengthen_wffe g x t_x g' p_env'_wf
     p_gg'a_wf = WFFBindT (concatF g g') p_gg'_wf a k_a
+-}
 
 {-@ lem_strengthen_wfft :: g:FEnv -> { x:Vname | not (in_envF x g) } -> t_x:FType 
         -> { g':FEnv | not (in_envF x g') && Set_emp (Set_cap (bindsF g) (bindsF g')) }
@@ -341,7 +339,8 @@ lem_strengthen_wfft g x t_x g' _ _ (WFFTFV2 _ a k p_g_a y t)
   = case g' of
       (FEmpty)            -> p_g_a
       (FCons z t_z g'')   -> WFFTFV2 (concatF g g'') a k 
-                               (lem_strengthen_wfft g x t_x g'' (FTBasic (FTV a)) k p_g_a) y t
+                               (lem_strengthen_wfft g x t_x g'' (FTBasic (FTV a)) k p_g_a) 
+                               (y ? lem_binds_cons_concatF g g'' x t_x) t
       (FConsT a' k' g'')  -> impossible ""
 lem_strengthen_wfft g x t_x g' _ _ (WFFTFV3 _ a k p_g_a a' k') 
   = case g' of

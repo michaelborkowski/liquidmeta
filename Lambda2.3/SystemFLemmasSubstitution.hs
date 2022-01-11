@@ -156,23 +156,24 @@ lem_subst_ftyp g g' x v_x t_x p_vx_tx e t (FTAnn env_ e' t_ liqt p_env_e'_t)
         -> { a:Vname | (not (in_envF a g)) && not (in_envF a g') } 
         -> { t_a:UserType | Set_sub (free t_a) (vbindsF  g) && Set_sub (freeTV t_a) (tvbindsF g) &&
                             isLCT t_a }   -> k_a:Kind
-        -> ProofOf(WFFT g (erase t_a) k_a) -> e:Expr -> t:FType 
+        -> ProofOf(WFFT g (erase t_a) k_a) -> ProofOf(WFFE (concatF (FConsT a k_a g) g')) 
+        -> e:Expr -> t:FType 
         -> {p_e_t:HasFType | propOf p_e_t == HasFType (concatF (FConsT a k_a g) g') e t}
         -> ProofOf(HasFType (concatF g (fesubFV a (erase t_a) g')) 
                             (subFTV a t_a e) (ftsubFV a (erase t_a) t)) / [esize e, fenvsize g'] @-}
-lem_subst_tv_ftyp :: FEnv -> FEnv -> Vname -> Type -> Kind -> WFFT
+lem_subst_tv_ftyp :: FEnv -> FEnv -> Vname -> Type -> Kind -> WFFT -> WFFE
         -> Expr -> FType -> HasFType -> HasFType
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTBC _env b) 
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTBC _env b) 
   = FTBC (concatF g (fesubFV a (erase t_a) g')) b ? lem_in_fenv_fesub g' a (erase t_a) a
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTIC _env n)
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTIC _env n)
   = FTIC (concatF g (fesubFV a (erase t_a) g')) n ? lem_in_fenv_fesub g' a (erase t_a) a
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTVar1 _env z _t)
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTVar1 _env z _t)
   = case g' of
       (FEmpty)         -> impossible "a <> z"
       (FCons _z _ g'') -> FTVar1 (concatF g (fesubFV a (erase t_a) g'')) 
                                  (z ? lem_in_env_concatF (FConsT a k_a g) g'' z
                                     {-? lem_in_env_concatF g g'' z-}) (ftsubFV a (erase t_a) t)
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTVar2 _env z _t p_z_t w t_w)
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTVar2 _env z _t p_z_t w t_w)
   = case g' of
       (FEmpty)           -> impossible "a <> w"
       (FCons _w _tw g'') -> case ( a == z ) of
@@ -188,17 +189,17 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTVar2 _env z _t p_z_t w t_w)
                              ? lem_in_env_concatF g g'' w) (ftsubFV a (erase t_a) t_w)
           where
             p_z_tta = lem_subst_tv_ftyp g g'' a t_a k_a p_g_ta e t p_z_t
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t p_env_z_t@(FTVar3 _env z _t p_z_t a1_ k1)
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t p_env_z_t@(FTVar3 _env z _t p_z_t a1_ k1)
   = case g' of             -- g'' = Empty so x = w and p_z_t :: HasFType(g (FV z) t)
       (FEmpty)              -> {-case ( a == z ) of
             (True)  -> impossible ("by lemma" ? lem_fv_subset_bindsF (FConsT a k_a g) (FV z) t p_env_z_t)
 --            (True)  -> impossible ("by lemma" ? lem_ftvar_v_in_env (FConsT a k_a g) z t p_env_z_t)
             (False) ->-} case ( a == a1_ ) of 
             (True)  -> p_z_t ? lem_ftsubFV_notin a (erase t_a) t
-                                           {-      (t ? lem_ffreeTV_bound_in_fenv g t Star p_g_t a)-}
---          where
- --           (WFFBindT _ pf_wf_g _ _) = pf_wf_env
-  --          p_g_t = lem_ftyping_wfft g e t p_z_t pf_wf_g
+                                                 (t ? lem_ffreeTV_bound_in_fenv g t Star p_g_t a)
+          where
+            (WFFBindT _ pf_wf_g _ _) = pf_wf_env
+            p_g_t = lem_ftyping_wfft g e t p_z_t pf_wf_g
       (FConsT _a1 _k1 g'')  -> case ( a == z ) of
         (True)  -> impossible ("by lemma" ? lem_fv_subset_bindsF (concatF (FConsT a k_a g) g'') (FV z) t p_z_t)
 --        (True)  -> impossible ("by lemma" ? lem_ftvar_v_in_env (concatF (FConsT a k_a g) g'')                                                                                     z t p_z_t)
@@ -207,14 +208,15 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t p_env_z_t@(FTVar3 _env z _t p_z_t a1
                              ? lem_in_env_concatF (FConsT a k_a g) g'' z) 
                           (ftsubFV a (erase t_a) t) p_z_tta a1 k1
           where
+            (WFEBindT _g'g p_g'g_wf _ _) = pf_wf_env
             a1 = a1_ ? lem_in_env_concatF g g'' a1_
 --                     ? lem_in_env_concatF (FConsT a k_a g) g'' a1_
-            p_z_tta = lem_subst_tv_ftyp g g'' a t_a k_a p_g_ta e t p_z_t
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTPrm _env c) 
+            p_z_tta = lem_subst_tv_ftyp g g'' a t_a k_a p_g_ta p_g'g_wf e t p_z_t
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTPrm _env c) 
   = FTPrm (concatF g (fesubFV a (erase t_a) g')) c 
           ? lem_in_fenv_fesub g' a (erase t_a) a
           ? lem_ftsubFV_notin a  (erase t_a) (erase_ty c)
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTAbs env_ t_z k_z p_env_tz e' t' nms mk_p_yenv_e'_t')
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTAbs env_ t_z k_z p_env_tz e' t' nms mk_p_yenv_e'_t')
  = undefined {-
   = FTAbs (concatF g (fesubFV a (erase t_a) g')) z (ftsubFV a (erase t_a) t_z) k_z p_g'g_tz 
           (subFTV a t_a e') (ftsubFV a (erase t_a) t') y p_yg'g_e'ta_t'
@@ -227,7 +229,7 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTAbs env_ t_z k_z p_env_tz e' t' n
                                         (unbind z y e') t' p_yenv_e'_t' 
                                         ? lem_commute_subFTV_unbind a t_a z y e'
 -}
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTApp env_ e' t_z t' p_env_e'_tzt' e_z p_env_ez_tz)
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTApp env_ e' t_z t' p_env_e'_tzt' e_z p_env_ez_tz)
  = undefined {-
   = FTApp (concatF g (fesubFV a (erase t_a) g')) (subFTV a t_a e') (ftsubFV a (erase t_a) t_z) 
           (ftsubFV a (erase t_a) t') p_g'g_e'ta_tzt' (subFTV a t_a e_z) p_g'g_ezta_tz
@@ -235,7 +237,7 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTApp env_ e' t_z t' p_env_e'_tzt' 
         p_g'g_e'ta_tzt' = lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e' (FTFunc t_z t') p_env_e'_tzt'
         p_g'g_ezta_tz   = lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e_z t_z p_env_ez_tz
 -}
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t p_e_t@(FTAbsT env k' e' t' nms mk_p_a'env_e'_t')
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t p_e_t@(FTAbsT env k' e' t' nms mk_p_a'env_e'_t')
  = undefined {-
   = FTAbsT (concatF g (fesubFV a (erase t_a) g')) a' k' (subFTV a t_a e') 
            (ftsubFV a (erase t_a) t') a'' p_a''g'g_e'_t'
@@ -251,7 +253,7 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t p_e_t@(FTAbsT env k' e' t' nms mk_p_
                             ? lem_commute_ftsubFV_unbindFT a (erase t_a
                                   ? lem_ffreeBV_empty g (erase t_a) k_a p_g_ta) a' a'' t'
 -}
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTAppT env_ e' k' t' p_env_e'_a't' liqt p_env_er_liqt)
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTAppT env_ e' k' t' p_env_e'_a't' liqt p_env_er_liqt)
  = undefined {-
   = FTAppT (concatF g (fesubFV a (erase t_a) g')) (subFTV a t_a e') a' k' 
            (ftsubFV a (erase t_a) t') p_g'g_e'_a't' 
@@ -264,7 +266,7 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTAppT env_ e' k' t' p_env_e'_a't' 
                                   ? lem_ffreeBV_empty g (erase t_a) k_a p_g_ta) 
                                   a' (erase liqt) t'
 -}
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTLet env_ e_z t_z p_env_ez_tz e' t_ nms mk_p_yenv_e'_t)
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTLet env_ e_z t_z p_env_ez_tz e' t_ nms mk_p_yenv_e'_t)
  = undefined {-
   = FTLet (concatF g (fesubFV a (erase t_a) g')) (subFTV a t_a e_z) (ftsubFV a (erase t_a) t_z) 
           p_g'g_ezta_tz z (subFTV a t_a e') (ftsubFV a (erase t_a) t) y p_yg'g_e'ta_t
@@ -278,7 +280,7 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTLet env_ e_z t_z p_env_ez_tz e' t
                                            (unbind z y e') t p_yenv_e'_t 
                                            ? lem_commute_subFTV_unbind a t_a z y e' 
 -}
-lem_subst_tv_ftyp g g' a t_a k_a p_g_ta e t (FTAnn env_ e' t_ liqt p_env_e'_t)
+lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_env_wf e t (FTAnn env_ e' t_ liqt p_env_e'_t)
  = undefined {-
   = FTAnn (concatF g (fesubFV a (erase t_a) g')) (subFTV a t_a e') (ftsubFV a (erase t_a) t) 
           liqt' p_g'g_e'_t

@@ -8,8 +8,8 @@
  - [X] (05) SystemFWellFormedness.hs
  - [X] (06) SystemFTyping.hs
  - [X] (08) PrimitivesFTyping.hs
- - [X] (12) PrimitivesWFType.hs
- - [X] (15) SystemFLemmasWeaken.hs
+ - [X] (13) PrimitivesWFType.hs
+ - [X] (16) SystemFLemmasWeaken.hs
 
 ## Partial Modules - Preliminary Passes
 
@@ -21,14 +21,14 @@
 
  - [ ] (10) CheckSynth.hs
  - [ ] (11) WellFormedness.hs
- - [ ] (13) BasicPropsWellFormedness.hs
- - [ ] (14) SystemFLemmasWellFormed.hs
- - [ ] (16) SystemFLemmasSubstitution.hs
- - [ ] (17) SystemFSoundness.hs
- - [ ] (18) Typing.hs
- - [ ] (19) BasicPropsCSubst.hs
- - [ ] (20) BasicPropsDenotes.hs
- - [ ] (21)
+ - [ ] (12) SynthWellFormed.hs
+ - [ ] (14) BasicPropsWellFormedness.hs
+ - [ ] (15) SystemFLemmasWellFormed.hs
+ - [ ] (17) SystemFLemmasSubstitution.hs
+ - [ ] (18) SystemFSoundness.hs
+ - [ ] (19) Typing.hs
+ - [ ] (20) BasicPropsCSubst.hs
+ - [ ] (21) BasicPropsDenotes.hs
  - [ ] (22)
  - [ ] (23)
  - [ ] (24)
@@ -41,9 +41,10 @@
  - [ ] (31)
  - [ ] (32)
  - [ ] (33)
- - [ ] (34) LemmasWeakenTyp.hs
- - [ ] (35) LemmasWeakenTypTV.hs
- - [ ] (36) LemmasSubtyping.hs
+ - [ ] (34)
+ - [ ] (35) LemmasWeakenTyp.hs
+ - [ ] (36) LemmasWeakenTypTV.hs
+ - [ ] (37) LemmasSubtyping.hs
  - [ ] 
  - [ ] 
  - [ ] 
