@@ -55,19 +55,6 @@ data WFFT where
   -- cofinite quanitification over names in WFFTPoly replaces
   --        -> { a':Vname | not (in_envF a' g) && not (Set_mem a' (ffreeTV t)) }
 
-{- unclear how to define a measure with cofinite quantification -- maybe can use just ftsize?
-{-@ measure wfftypSize @-}
-{-@ wfftypSize :: WFFT -> { v:Int | v >= 0 } @-}
-wfftypSize :: WFFT -> Int
-wfftypSize (WFFTBasic g b)                        = 1
-wfftypSize (WFFTFV1 _ _ _)                        = 1
-wfftypSize (WFFTFV2 _ _ _ p_g_a _ _)              = (wfftypSize p_g_a)  + 1
-wfftypSize (WFFTFV3 _ _ _ p_g_a _ _)              = (wfftypSize p_g_a)  + 1
-wfftypSize (WFFTFunc g t1 _ p_g_t1 t2 k2 p_g_t2)  = (wfftypSize p_g_t1) + (wfftypSize p_g_t2) + 1
-wfftypSize (WFFTPoly _ _ _t _ nms mk_p_a'g_t)     = 
---  = (wfftypSize (mk_p_a'g_t (fresh nms))) + 1
-wfftypSize (WFFTKind _ _ p_g_t)                   = (wfftypSize p_g_t)  + 1-}
-
 {-@ reflect isWFFTFunc @-}
 isWFFTFunc :: WFFT -> Bool
 isWFFTFunc (WFFTFunc {}) = True
@@ -104,30 +91,87 @@ data WFFE where
 ----------------------------------------------------------------------------
 -- | AUTOMATED INFERENCE of SYSTEM F WELL-FORMEDNESS JUDGMENTS
 ----------------------------------------------------------------------------
-{-
-{-@ reflect isMonoF @-}
-isMonoF :: FType -> Bool
-isMonoF (FTBasic b)    = True
-isMonoF (FTFunc t_x t) = isMonoF t_x && isMonoF t
-isMonoF (FTPoly k   t) = False
+
+{-@ reflect shiftAtAbove @-}
+{-@ shiftAtAbove :: Index -> FType -> FType @-}
+shiftAtAbove :: Index -> FType -> FType
+shiftAtAbove j (FTBasic b) = case b of
+  (BTV i) | i >= j -> FTBasic (BTV (i+1))
+  _                -> FTBasic b
+shiftAtAbove j (FTFunc t_x t) = FTFunc (shiftAtAbove j t_x) (shiftAtAbove j t)
+shiftAtAbove j (FTPoly k   t) = FTPoly k (shiftAtAbove (j+1) t)
+
+data AnonEnv = AEmpty
+             | ACons  Index FType AnonEnv
+             | AConsT Index Kind  AnonEnv
+
+{-@ reflect aBind @-}
+aBind :: FType -> AnonEnv -> AnonEnv
+aBind t AEmpty           = ACons  0     t  AEmpty
+aBind t (ACons  i t' ae) = ACons  (i+1) t' (aBind t ae)
+aBind t (AConsT i k  ae) = AConsT i     k  (aBind t ae)
+
+{-@ reflect aBindT @-}
+aBindT :: Kind -> AnonEnv -> AnonEnv
+aBindT k AEmpty           = AConsT 0     k                   AEmpty
+aBindT k (ACons  i t' ae) = ACons  i     (shiftAtAbove 0 t') (aBindT k ae)
+aBindT k (AConsT i k' ae) = AConsT (i+1) k'                  (aBindT k ae)
+
+{-@ reflect bound_inAE @-}
+{-@ bound_inAE :: Index -> FType -> AnonEnv -> Bool @-}
+bound_inAE :: Index -> FType -> AnonEnv -> Bool
+bound_inAE i t AEmpty                         = False
+bound_inAE i t (ACons  i' t' ae) | (i == i')  = (t == t')
+                                 | otherwise  = bound_inAE i t ae
+bound_inAE i t (AConsT j' k' ae)              = bound_inAE i t ae
+
+{-@ reflect tv_bound_inAE @-}
+{-@ tv_bound_inAE :: Index -> Kind -> AnonEnv -> Bool @-}
+tv_bound_inAE :: Index -> Kind -> AnonEnv -> Bool
+tv_bound_inAE j k AEmpty                         = False
+tv_bound_inAE j k (ACons  i' t' ae)              = tv_bound_inAE j k ae
+tv_bound_inAE j k (AConsT j' k' ae) | (j == j')  = (k == k')
+                                    | otherwise  = tv_bound_inAE j k ae
 
 {-@ reflect isWFFT @-}
-{-@ isWFFT :: g:FEnv -> { t:FType | isMonoF t } -> Kind -> Bool  / [ftsize t] @-}
-isWFFT :: FEnv -> FType -> Kind -> Bool
-isWFFT g (FTBasic b) k      = case b of
+{-@ isWFFT :: g:FEnv -> AnonEnv -> t:FType -> Kind -> Bool  / [ftsize t] @-}
+isWFFT :: FEnv -> AnonEnv -> FType -> Kind -> Bool
+isWFFT g ae (FTBasic b) k      = case b of
     TBool    -> True
     TInt     -> True
-    (BTV a)  -> False
-    (FTV a) | tv_bound_inF a Base g -> True
-            | tv_bound_inF a Star g -> k == Star
-            | otherwise            -> False  
-isWFFT g (FTFunc  t_x t) k  = k == Star && isWFFT g t_x Star 
-                                        && isWFFT g t   Star
+    (BTV i) | tv_bound_inAE i Base ae -> True
+            | tv_bound_inAE i Star ae -> k == Star
+            | otherwise               -> False
+    (FTV a) | tv_bound_inF  a Base g  -> True
+            | tv_bound_inF  a Star g  -> k == Star
+            | otherwise               -> False
+isWFFT g ae (FTFunc  t_x t) k  = k == Star && isWFFT g ae             t_x Star
+                                           && isWFFT g ae             t   Star
+isWFFT g ae (FTPoly   k' t) k  = k == Star && isWFFT g (aBindT k' ae) t   Star
 
-{-@ makeWFFT :: g:FEnv -> { t:FType | isMonoF t && Set_sub (ffreeTV t) (bindsF g) }
-                       -> { k:Kind  | isWFFT g t k } -> ProofOf(WFFT g t k) / [ftsize t, ksize k] @-}
+{-@ lem_isWFFT_unbindFT :: g:FEnv -> ae:AnonEnv -> i:Index -> k':Kind -> t:FType
+        -> { k:Kind | isWFFT g (AConsT i k' ae) t k }
+        -> { a:Vname | not (in_envF a g) && not (Set_mem a (ffreeTV t)) }
+        -> { pf:_ | isWFFT (FConsT a k' g) ae (openFT_at i a t) k } @-}
+lem_isWFFT_unbindFT :: FEnv -> AnonEnv -> Index -> Kind -> FType -> Kind -> Vname -> Proof
+lem_isWFFT_unbindFT g ae i k' (FTBasic b) k a  = case b of
+    TBool    -> ()
+    TInt     -> ()
+    (BTV j)  | j == i && k' == Base -> ()
+             | j == i && k' == Star -> ()
+             | not (j == i) && tv_bound_inAE  j  Base ae -> ()
+             | otherwise                                 -> ()
+    (FTV a') | a == a'                                   -> ()
+             | not (a == a') && tv_bound_inF  a' Base g  -> ()
+             | otherwise                                 -> ()
+lem_isWFFT_unbindFT g ae i k' (FTFunc t_x t) k a  = () ? lem_isWFFT_unbindFT g ae i k' t_x k a
+                                                       ? lem_isWFFT_unbindFT g ae i k' t   k a
+lem_isWFFT_unbindFT g ae i k' (FTPoly k1 t)  k a  = () ? lem_isWFFT_unbindFT g (aBindT k1 ae) (i+1) k' t k a
+
+{-@ makeWFFT :: g:FEnv -> { t:FType | Set_sub (ffreeTV t) (bindsF g) }
+                       -> { k:Kind  | isWFFT g AEmpty t k } -> ProofOf(WFFT g t k) / [ftsize t, ksize k] @-}
 makeWFFT :: FEnv -> FType -> Kind -> WFFT
-makeWFFT g (FTBasic b) Base    = case b of 
+makeWFFT g (FTBasic b) Base    = case b of
   TBool    -> WFFTBasic g TBool
   TInt     -> WFFTBasic g TInt
   (FTV a)  -> simpleWFFTFV g a Base
@@ -136,8 +180,11 @@ makeWFFT g (FTBasic b) Star    = case b of
   TInt                            -> WFFTKind g (FTBasic b) (makeWFFT g (FTBasic b) Base)
   (FTV a) | tv_bound_inF a Base g -> WFFTKind g (FTBasic b) (simpleWFFTFV g a Base)
           | tv_bound_inF a Star g -> simpleWFFTFV g a Star
-makeWFFT g (FTFunc t_x t) Star = WFFTFunc g t_x Star (makeWFFT g t_x Star) t Star 
+makeWFFT g (FTFunc t_x t) Star = WFFTFunc g t_x Star (makeWFFT g t_x Star) t Star
                                           (makeWFFT g t Star)
-makeWFFT g (FTFunc t_x t) _    = impossible ""
-makeWFFT g (FTPoly   k t) _    = impossible ""
--}
+makeWFFT g (FTPoly k   t) Star = WFFTPoly g k t Star nms mk_wf_t
+  where
+    {-@ mk_wf_t :: { a:Vname | NotElem a nms } -> ProofOf(WFFT (FConsT a k g) (unbindFT a t) Star) @-}
+    mk_wf_t a = makeWFFT (FConsT a k g) (unbindFT a t)
+                         (Star ? lem_isWFFT_unbindFT g AEmpty 0 k t Star a)
+    nms = unionFEnv [] g

@@ -19,6 +19,22 @@ import SystemFTyping                    --(HasFType(..),erase_ty)--,firstBV,inTy
 foo08 :: a -> Maybe a
 foo08 x = Just x
 
+-- | Well Formedness of System F PRIMITIVES
+
+{-@ lem_wfft_erase_ty :: g:FEnv -> c:Prim -> ProofOf(WFFT g (erase_ty c) Star) @-}
+lem_wfft_erase_ty :: FEnv -> Prim -> WFFT
+lem_wfft_erase_ty g And      = makeWFFT g (erase_ty And) Star
+lem_wfft_erase_ty g Or       = makeWFFT g (erase_ty Or) Star
+lem_wfft_erase_ty g Not      = makeWFFT g (erase_ty Not) Star
+lem_wfft_erase_ty g Imp      = makeWFFT g (erase_ty Imp) Star
+lem_wfft_erase_ty g Eqv      = makeWFFT g (erase_ty Eqv) Star
+lem_wfft_erase_ty g Leq      = makeWFFT g (erase_ty Leq) Star
+lem_wfft_erase_ty g (Leqn n) = makeWFFT g (erase_ty (Leqn n)) Star
+lem_wfft_erase_ty g Eq       = makeWFFT g (erase_ty Eq) Star
+lem_wfft_erase_ty g (Eqn n)  = makeWFFT g (erase_ty (Eqn n)) Star
+lem_wfft_erase_ty g Leql     = makeWFFT g (erase_ty Leql) Star
+lem_wfft_erase_ty g Eql      = makeWFFT g (erase_ty Eql) Star
+
 -----------------------------------------------------------------------------
 -- | (System F) TYPES of DELTA (of Applications of Primitives)
 -----------------------------------------------------------------------------

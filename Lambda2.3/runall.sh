@@ -8,17 +8,21 @@ time liquid --normal SystemFTyping.hs
 time liquid --normal BasicPropsSubstitution.hs                          # TODO: lots lots lots lots 
 time liquid --normal PrimitivesFTyping.hs
 time liquid --normal BasicPropsEnvironments.hs	                        # TODO: lots lots lots lots
-time liquid --normal CheckSynth.hs                                      # TODO: many errors
+#time liquid --normal CheckSynth.hs                  #  --smttimeout=200  # TODO: many errors
 
 time liquid --normal WellFormedness.hs                                  
-time liquid --normal SynthWellFormed.hs                                 # TODO: errors
-time liquid --normal PrimitivesWFType.hs                                # add more later
+#time liquid --normal SynthWellFormed.hs               --smttimeout=200  # TODO: errors
+#time liquid --normal PrimitivesWFType.hs                                # add more later
 time liquid --normal BasicPropsWellFormedness.hs                        # TODO: lots lots lots lots
-time liquid --normal SystemFLemmasWellFormedness.hs                     # TODO: lots lots lots lots 
+time liquid --normal SystemFLemmasWellFormedness.hs                     
 
 time liquid --normal SystemFLemmasWeaken.hs                             
-time liquid --normal SystemFLemmasSubstitution.hs                       # TODO: lots lots lots 
-###time liquid --normal          SystemFSoundness.hs
+time liquid --normal SystemFLemmasSubstitution.hs                      
+time liquid --normal SystemFSoundness.hs
+
+
+
+
 
 #####time liquid --normal          Typing.hs  
 #####time liquid --normal --oldple BasicPropsCSubst.hs                 

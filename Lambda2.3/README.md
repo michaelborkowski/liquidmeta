@@ -10,6 +10,8 @@
  - [X] (08) PrimitivesFTyping.hs
  - [X] (13) PrimitivesWFType.hs
  - [X] (16) SystemFLemmasWeaken.hs
+ - [X] (17) SystemFLemmasSubstitution.hs
+ - [X] (18) SystemFSoundness.hs
 
 ## Partial Modules - Preliminary Passes
 
@@ -24,8 +26,6 @@
  - [ ] (12) SynthWellFormed.hs
  - [ ] (14) BasicPropsWellFormedness.hs
  - [ ] (15) SystemFLemmasWellFormed.hs
- - [ ] (17) SystemFLemmasSubstitution.hs
- - [ ] (18) SystemFSoundness.hs
  - [ ] (19) Typing.hs
  - [ ] (20) BasicPropsCSubst.hs
  - [ ] (21) BasicPropsDenotes.hs

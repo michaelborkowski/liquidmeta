@@ -199,7 +199,7 @@ refn_pred Eql      = App (App (Prim Eqv) (BV 0))
                            (App (App (AppT (Prim Eql)  (TRefn (BTV 0) PEmpty)) (BV 2)) (BV 1))
 
 {-@ reflect ty @-} -- Primitive Typing            -- removed: && Set_emp (tfreeBV t)
-{-@ ty :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
+{-@ ty :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) && erase t == erase_ty c } @-}
 --                                 && noDefnsBaseAppTInRefns Empty t && isWellFormed Empty t Star } @-}
 ty :: Prim -> Type
 ty And      = TFunc (inType And)      (ty' And)

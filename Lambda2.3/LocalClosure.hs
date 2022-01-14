@@ -13,111 +13,9 @@ import qualified Data.Set as S
 import Basics
 
 --------------------------------------------------------------------------------
------ | JUDGMENTS : Local Closure of Locally Nameless Terms
+----- | Local Closure of Locally Nameless Terms
 --------------------------------------------------------------------------------
-{-
-data LCExpr where
-    LCBC   :: Bool  -> LCExpr
-    LCIC   :: Int   -> LCExpr
-    LCVar  :: Vname -> LCExpr
-    LCPrm  :: Prim  -> LCExpr
-    LCAbs  :: Expr  -> Names  -> (Vname -> LCExpr) -> LCExpr
-    LCApp  :: Expr  -> LCExpr -> Expr -> LCExpr -> LCExpr
-    LCAbsT :: Kind  -> Expr   -> Names -> (Vname -> LCExpr) -> LCExpr
-    LCAppT :: Expr  -> LCExpr -> Type -> LCType -> LCExpr
-    LCLet  :: Expr  -> LCExpr -> Expr -> Names -> (Vname -> LCExpr) -> LCExpr
-    LCAnn  :: Expr  -> LCExpr -> Type -> LCType -> LCExpr
 
-{-@ data LCExpr where 
-        LCBC   :: b:Bool  -> ProofOf(LCExpr (Bc b))
-        LCIC   :: n:Int   -> ProofOf(LCExpr (Ic n))
-        LCVar  :: x:Vname -> ProofOf(LCExpr (FV x))
-        LCPrm  :: c:Prim  -> ProofOf(LCExpr (Prim c))
-        LCAbs  :: e:Expr  -> nms:Names 
-                    -> ( { y:Vname | NotElem y nms } -> ProofOf(LCExpr (unbind y e)) )
-                    -> ProofOf(LCExpr (Lambda e))
-        LCApp  :: e:Expr  -> ProofOf(LCExpr e) -> e':Expr -> ProofOf(LCExpr e') 
-                    -> ProofOf(LCExpr (App e e'))
-        LCAbsT :: k:Kind  -> e:Expr -> nms:Names 
-                    -> ( { a:Vname | NotElem a nms } -> ProofOf(LCExpr (unbind_tv a e)) )
-                    -> ProofOf(LCExpr (LambdaT k e))
-        LCAppT :: e:Expr  -> ProofOf(LCExpr e) -> t:UserType -> ProofOf(LCType t)
-                    -> ProofOf(LCExpr (AppT e t))
-        LCLet  :: e_x:Expr -> ProofOf(LCExpr e_x) -> e:Expr -> nms:Names
-                    -> ( { y:Vname | NotElem y nms } -> ProofOf(LCExpr (unbind y e)) )
-                    -> ProofOf(LCExpr (Let e_x e))
-        LCAnn  :: e:Expr  -> ProofOf(LCExpr e) -> t:Type -> ProofOf(LCType t)
-                    -> ProofOf(LCExpr (Annot e t)) @-}
-
-data LCPreds where
-    LCPEmp  :: LCPreds
-    LCPCons :: Expr -> LCExpr -> Preds -> LCPreds -> LCPreds
-
-{-@ data LCPreds where
-        LCPEmp  :: ProofOf(LCPreds PEmpty)
-        LCPCons :: p:Expr -> ProofOf(LCExpr p) -> ps:Preds -> ProofOf(LCPreds ps)
-                    -> ProofOf(LCPreds (PCons p ps)) @-}
-
-data LCType where 
-    LCRefn :: Basic -> Preds -> Names -> (Vname -> LCPreds) -> LCType
-    LCFunc :: Type  -> LCType -> Type -> Names -> (Vname -> LCType) -> LCType
-    LCExis :: Type  -> LCType -> Type -> Names -> (Vname -> LCType) -> LCType
-    LCPoly :: Kind  -> Type  -> Names -> (Vname -> LCType) -> LCType
-
-{-@ data LCType where
-        LCRefn :: { b:Basic | not (isBTV b) } -> ps:Preds -> nms:Names
-                    -> ( { y:Vname | NotElem y nms } -> ProofOf(LCPreds (unbindP y ps)) )
-                    -> ProofOf(LCType (TRefn b ps))
-        LCFunc :: t_x:Type -> ProofOf(LCType t_x) -> t:Type -> nms:Names
-                    -> ( { y:Vname | NotElem y nms } -> ProofOf(LCType (unbindT y t)) )
-                    -> ProofOf(LCType (TFunc t_x t))
-        LCExis :: t_x:Type -> ProofOf(LCType t_x) -> t:Type -> nms:Names
-                    -> ( { y:Vname | NotElem y nms } -> ProofOf(LCType (unbindT y t)) )
-                    -> ProofOf(LCType (TExists t_x t))
-        LCPoly :: k:Kind -> t:Type -> nms:Names
-                    -> ( { a:Vname | NotElem a nms } -> ProofOf(LCType (unbind_tvT a t)) )
-                    -> ProofOf(LCType (TPoly k t)) @-}
-
-data EBody where
-    EBOpen :: Expr -> Names -> (Vname -> LCExpr) -> EBody
-
-{-@ data EBody where
-        EBOpen :: e:Expr -> nms:Names 
-                         -> ({ x:Vname | NotElem x nms } -> ProofOf(LCExpr (unbind x e)) )
-                         -> ProofOf(EBody e) @-}
-
-data EBodyTV where
-    EBOpenTV :: Expr -> Names -> (Vname -> LCExpr) -> EBodyTV
-
-{-@ data EBodyTV where
-        EBOpenTV :: e:Expr -> nms:Names 
-                           -> ({ a:Vname | NotElem a nms } -> ProofOf(LCExpr (unbind_tv a e)) ) 
-                           -> ProofOf(EBodyTV e) @-}
- 
-data PBody where
-    PBOpen :: Preds -> Names -> (Vname -> LCPreds) -> PBody
-
-{-@ data PBody where
-        PBOpen :: ps:Preds -> nms:Names 
-                           -> ({ x:Vname | NotElem x nms } -> ProofOf(LCPreds (unbindP x ps)) )
-                           -> ProofOf(PBody ps) @-}
-
-data TBody where
-    TBOpen :: Type -> Names -> (Vname -> LCType) -> TBody
-
-{-@ data TBody where
-        TBOpen :: t:Type -> nms:Names 
-                         -> ({ x:Vname | NotElem x nms } -> ProofOf(LCType (unbindT x t)) )
-                         -> ProofOf(TBody t) @-}
-
-data TBodyTV where
-    TBOpenTV :: Type -> Names -> (Vname -> LCType) -> TBodyTV
-
-{-@ data TBodyTV where
-        TBOpenTV :: t:Type -> nms:Names 
-                           -> ({ a:Vname | NotElem a nms } -> ProofOf(LCType (unbind_tvT a t)) )
-                           -> ProofOf(TBodyTV t) @-}
--}
 --isLC_at j k e => isLC_at (j-1) k (open_at j y e)
 
 {-@ lem_islc_at_weaken :: j:Index -> k:Index -> { j':Index | j <= j' } -> { k':Index | k <= k' }
@@ -254,96 +152,105 @@ lem_islct_at_tsubFTV j k a t_a (TPoly   k'  t) = () ? lem_islct_at_tsubFTV j (k+
   -- Local Closure of Expressions
 
 -- In particular, isLC (unbind y e) => isLC_at 1 0 e
-{-@ lem_islc_at_open_at :: j:Index -> k:Index -> y:Vname
+{-@ lem_islc_at_after_open_at :: j:Index -> k:Index -> y:Vname
         -> { e:Expr | isLC_at j k (open_at j y e) } -> { pf:_ | isLC_at (j+1) k e } / [esize e] @-}
-lem_islc_at_open_at :: Index -> Vname -> Vname -> Expr -> Proof
-lem_islc_at_open_at j k y (Bc _)         = ()
-lem_islc_at_open_at j k y (Ic _)         = ()
-lem_islc_at_open_at j k y (Prim _)       = ()
-lem_islc_at_open_at j k y (FV _)         = ()
-lem_islc_at_open_at j k y (BV i)
+lem_islc_at_after_open_at :: Index -> Index -> Vname -> Expr -> Proof
+lem_islc_at_after_open_at j k y (Bc _)         = ()
+lem_islc_at_after_open_at j k y (Ic _)         = ()
+lem_islc_at_after_open_at j k y (Prim _)       = ()
+lem_islc_at_after_open_at j k y (FV _)         = ()
+lem_islc_at_after_open_at j k y (BV i)
   | i == j     = ()
   | otherwise  = ()
-lem_islc_at_open_at j k y (Lambda e)     = () ? lem_islc_at_open_at (j+1) k y e
-lem_islc_at_open_at j k y (App e e')     = () ? lem_islc_at_open_at j k y e
-                                              ? lem_islc_at_open_at j k y e'
-lem_islc_at_open_at j k y (LambdaT k' e) = () ? lem_islc_at_open_at j (k+1) y e
-lem_islc_at_open_at j k y (AppT e t)     = () ? lem_islc_at_open_at j k y e
-                                              ? lem_islct_at_openT_at j k y t
-lem_islc_at_open_at j k y (Let ex e)     = () ? lem_islc_at_open_at j k y ex
-                                              ? lem_islc_at_open_at (j+1) k y e
-lem_islc_at_open_at j k y (Annot e t)    = () ? lem_islc_at_open_at j k y e 
-                                              ? lem_islct_at_openT_at j k y t
+lem_islc_at_after_open_at j k y (Lambda e)     = () ? lem_islc_at_after_open_at (j+1) k y e
+lem_islc_at_after_open_at j k y (App e e')     = () ? lem_islc_at_after_open_at j k y e
+                                                    ? lem_islc_at_after_open_at j k y e'
+lem_islc_at_after_open_at j k y (LambdaT k' e) = () ? lem_islc_at_after_open_at j (k+1) y e
+lem_islc_at_after_open_at j k y (AppT e t)     = () ? lem_islc_at_after_open_at j k y e
+                                                    ? lem_islct_at_after_openT_at j k y t
+lem_islc_at_after_open_at j k y (Let ex e)     = () ? lem_islc_at_after_open_at j k y ex
+                                                    ? lem_islc_at_after_open_at (j+1) k y e
+lem_islc_at_after_open_at j k y (Annot e t)    = () ? lem_islc_at_after_open_at j k y e 
+                                                    ? lem_islct_at_after_openT_at j k y t
 
 -- In particular, isLC (unbind_tv a e) => isLC_at 0 1 e
-{-@ lem_islc_at_open_tv_at :: j:Index -> k:Index -> a:Vname
+{-@ lem_islc_at_after_open_tv_at :: j:Index -> k:Index -> a:Vname
         -> { e:Expr | isLC_at j k (open_tv_at k a e) } -> { pf:_ | isLC_at j (k+1) e } / [esize e] @-}
-lem_islc_at_open_tv_at :: Index -> Vname -> Vname -> Expr -> Proof
-lem_islc_at_open_tv_at j k a (Bc _)         = ()
-lem_islc_at_open_tv_at j k a (Ic _)         = ()
-lem_islc_at_open_tv_at j k a (Prim _)       = ()
-lem_islc_at_open_tv_at j k a (FV _)         = ()
-lem_islc_at_open_tv_at j k a (BV i)         = ()
-lem_islc_at_open_tv_at j k a (Lambda e)     = () ? lem_islc_at_open_tv_at (j+1) k a e
-lem_islc_at_open_tv_at j k a (App e e')     = () ? lem_islc_at_open_tv_at j k a e
-                                                 ? lem_islc_at_open_tv_at j k a e'
-lem_islc_at_open_tv_at j k a (LambdaT k' e) = () ? lem_islc_at_open_tv_at j (k+1) a e
-lem_islc_at_open_tv_at j k a (AppT e t)     = () ? lem_islc_at_open_tv_at j k a e
-                                                 ? lem_islct_at_open_tvT_at j k a t
-lem_islc_at_open_tv_at j k a (Let ex e)     = () ? lem_islc_at_open_tv_at j k a ex
-                                                 ? lem_islc_at_open_tv_at (j+1) k a e
-lem_islc_at_open_tv_at j k a (Annot e t)    = () ? lem_islc_at_open_tv_at j k a e 
-                                                 ? lem_islct_at_open_tvT_at j k a t
+lem_islc_at_after_open_tv_at :: Index -> Index -> Vname -> Expr -> Proof
+lem_islc_at_after_open_tv_at j k a (Bc _)         = ()
+lem_islc_at_after_open_tv_at j k a (Ic _)         = ()
+lem_islc_at_after_open_tv_at j k a (Prim _)       = ()
+lem_islc_at_after_open_tv_at j k a (FV _)         = ()
+lem_islc_at_after_open_tv_at j k a (BV i)         = ()
+lem_islc_at_after_open_tv_at j k a (Lambda e)     = () ? lem_islc_at_after_open_tv_at (j+1) k a e
+lem_islc_at_after_open_tv_at j k a (App e e')     = () ? lem_islc_at_after_open_tv_at j k a e
+                                                       ? lem_islc_at_after_open_tv_at j k a e'
+lem_islc_at_after_open_tv_at j k a (LambdaT k' e) = () ? lem_islc_at_after_open_tv_at j (k+1) a e
+lem_islc_at_after_open_tv_at j k a (AppT e t)     = () ? lem_islc_at_after_open_tv_at j k a e
+                                                       ? lem_islct_at_after_open_tvT_at j k a t
+lem_islc_at_after_open_tv_at j k a (Let ex e)     = () ? lem_islc_at_after_open_tv_at j k a ex
+                                                       ? lem_islc_at_after_open_tv_at (j+1) k a e
+lem_islc_at_after_open_tv_at j k a (Annot e t)    = () ? lem_islc_at_after_open_tv_at j k a e 
+                                                       ? lem_islct_at_after_open_tvT_at j k a t
 
   -- Local Closure of Predicates
 
-{-@ lem_islcp_at_openP_at :: j:Index -> k:Index -> y:Vname
+{-@ lem_islcp_at_after_openP_at :: j:Index -> k:Index -> y:Vname
         -> { ps:Preds | isLCP_at j k (openP_at j y ps) } -> { pf:_ | isLCP_at (j+1) k ps } 
          / [predsize ps] @-}
-lem_islcp_at_openP_at :: Index -> Vname -> Vname -> Preds -> Proof
-lem_islcp_at_openP_at j k y PEmpty       = ()
-lem_islcp_at_openP_at j k y (PCons p ps) = () ? lem_islc_at_open_at   j k y p
-                                              ? lem_islcp_at_openP_at j k y ps
+lem_islcp_at_after_openP_at :: Index -> Index -> Vname -> Preds -> Proof
+lem_islcp_at_after_openP_at j k y PEmpty       = ()
+lem_islcp_at_after_openP_at j k y (PCons p ps) = () ? lem_islc_at_after_open_at   j k y p
+                                                    ? lem_islcp_at_after_openP_at j k y ps
 
 {-@ lem_islcp_at_open_tvP_at :: j:Index -> k:Index -> a:Vname
         -> { ps:Preds | isLCP_at j k (open_tvP_at k a ps) } -> { pf:_ | isLCP_at j (k+1) ps } 
          / [predsize ps] @-}
-lem_islcp_at_open_tvP_at :: Index -> Vname -> Vname -> Preds -> Proof
+lem_islcp_at_open_tvP_at :: Index -> Index -> Vname -> Preds -> Proof
 lem_islcp_at_open_tvP_at j k a PEmpty       = ()
-lem_islcp_at_open_tvP_at j k a (PCons p ps) = () ? lem_islc_at_open_tv_at   j k a p
+lem_islcp_at_open_tvP_at j k a (PCons p ps) = () ? lem_islc_at_after_open_tv_at   j k a p
                                                  ? lem_islcp_at_open_tvP_at j k a ps
 
 
-{-@ lem_islct_at_openT_at :: j:Index -> k:Index -> y:Vname
+{-@ lem_islct_at_after_openT_at :: j:Index -> k:Index -> y:Vname
         -> { t:Type | isLCT_at j k (openT_at j y t) } -> { pf:_ | isLCT_at (j+1) k t } 
          / [tsize t] @-}
-lem_islct_at_openT_at :: Index -> Vname -> Vname -> Type -> Proof
-lem_islct_at_openT_at j k y (TRefn   b ps)  = case b of
-  (BTV i) -> () ? lem_islcp_at_openP_at (j+1) k y ps
-  _       -> () ? lem_islcp_at_openP_at (j+1) k y ps
-lem_islct_at_openT_at j k y (TFunc   t_x t) = () ? lem_islct_at_openT_at j k y t_x
-                                                 ? lem_islct_at_openT_at (j+1) k y t
-lem_islct_at_openT_at j k y (TExists t_x t) = () ? lem_islct_at_openT_at j k y t_x
-                                                 ? lem_islct_at_openT_at (j+1) k y t
-lem_islct_at_openT_at j k y (TPoly   k'  t) = () ? lem_islct_at_openT_at j (k+1) y t
+lem_islct_at_after_openT_at :: Index -> Index -> Vname -> Type -> Proof
+lem_islct_at_after_openT_at j k y (TRefn   b ps)  = case b of
+  (BTV i) -> () ? lem_islcp_at_after_openP_at (j+1) k y ps
+  _       -> () ? lem_islcp_at_after_openP_at (j+1) k y ps
+lem_islct_at_after_openT_at j k y (TFunc   t_x t) = () ? lem_islct_at_after_openT_at j k y t_x
+                                                       ? lem_islct_at_after_openT_at (j+1) k y t
+lem_islct_at_after_openT_at j k y (TExists t_x t) = () ? lem_islct_at_after_openT_at j k y t_x
+                                                       ? lem_islct_at_after_openT_at (j+1) k y t
+lem_islct_at_after_openT_at j k y (TPoly   k'  t) = () ? lem_islct_at_after_openT_at j (k+1) y t
 
-{-@ lem_islct_at_open_tvT_at :: j:Index -> k:Index -> a:Vname
+{-@ lem_islct_at_after_open_tvT_at :: j:Index -> k:Index -> a:Vname
         -> { t:Type | isLCT_at j k (open_tvT_at k a t) } -> { pf:_ | isLCT_at j (k+1) t } 
          / [tsize t] @-}
-lem_islct_at_open_tvT_at :: Index -> Vname -> Vname -> Type -> Proof
-lem_islct_at_open_tvT_at j k a (TRefn   b ps)  = case b of
+lem_islct_at_after_open_tvT_at :: Index -> Index -> Vname -> Type -> Proof
+lem_islct_at_after_open_tvT_at j k a (TRefn   b ps)  = case b of
   (BTV i) | i == j    -> () ? lem_islcp_at_open_tvP_at (j+1) k a ps
           | otherwise -> () ? lem_islcp_at_open_tvP_at (j+1) k a ps
   _                   -> () ? lem_islcp_at_open_tvP_at (j+1) k a ps
-lem_islct_at_open_tvT_at j k a (TFunc   t_x t) = () ? lem_islct_at_open_tvT_at j     k a t_x
-                                                    ? lem_islct_at_open_tvT_at (j+1) k a t
-lem_islct_at_open_tvT_at j k a (TExists t_x t) = () ? lem_islct_at_open_tvT_at j     k a t_x
-                                                    ? lem_islct_at_open_tvT_at (j+1) k a t
-lem_islct_at_open_tvT_at j k a (TPoly   k'  t) = () ? lem_islct_at_open_tvT_at j (k+1) a t
+lem_islct_at_after_open_tvT_at j k a (TFunc   t_x t) = () ? lem_islct_at_after_open_tvT_at j     k a t_x
+                                                          ? lem_islct_at_after_open_tvT_at (j+1) k a t
+lem_islct_at_after_open_tvT_at j k a (TExists t_x t) = () ? lem_islct_at_after_open_tvT_at j     k a t_x
+                                                          ? lem_islct_at_after_open_tvT_at (j+1) k a t
+lem_islct_at_after_open_tvT_at j k a (TPoly   k'  t) = () ? lem_islct_at_after_open_tvT_at j (k+1) a t
 
-{-  Facts about unbindFT and openFT_at:
---                                       ffreeBV t' == Set_dif (ffreeBV t) (Set_sng a) &&
+  -- | System F Version
+{-@ lem_islcft_at_after_openFT_at :: j:Index -> a:Vname
+        -> { t:FType | isLCFT_at j (openFT_at j a t) } -> { pf:_ | isLCFT_at (j+1) t } / [ftsize t] @-}
+lem_islcft_at_after_openFT_at :: Index -> Vname -> FType -> Proof
+lem_islcft_at_after_openFT_at j a (FTBasic   b)  = case b of
+  (BTV i) | i == j    -> () 
+  _                   -> () 
+lem_islcft_at_after_openFT_at j a (FTFunc t_x t) = () ? lem_islcft_at_after_openFT_at j     a t_x
+                                                      ? lem_islcft_at_after_openFT_at j     a t
+lem_islcft_at_after_openFT_at j a (FTPoly k'  t) = () ? lem_islcft_at_after_openFT_at (j+1) a t
 
+{-
 {-@ lem_erase_freeBV :: t:Type -> { pf:_ | Set_sub (ffreeBV (erase t)) (tfreeBTV t) } @-}
 lem_erase_freeBV :: Type -> Proof
 lem_erase_freeBV (TRefn   b   z p) = ()

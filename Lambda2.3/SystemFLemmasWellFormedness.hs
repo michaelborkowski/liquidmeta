@@ -32,28 +32,6 @@ foo22 :: a -> Maybe a
 -- Consequences of the System F Well-Formedness Judgments -
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 
-{-
-{-@ lem_weaken_wffe :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
-      -> ProofOf(WFFE (concatF g g')) 
-      -> { x:Vname | not (in_envF x g) &&  not (in_envF x g') }
-      -> t_x:FType -> k_x:Kind -> ProofOf(WFFT g t_x k_x)
-      -> ProofOf(WFFE (concatF (FCons x t_x g)  g')) @-}
-lem_weaken_wffe :: FEnv -> FEnv -> WFFE -> Vname -> FType -> Kind -> WFFT -> WFFE
-lem_weaken_wffe g FEmpty           p_env_wf x t_x k_x p_g_tx 
-  = WFFBind g p_env_wf x t_x k_x p_g_tx
-lem_weaken_wffe g (FCons z t_z g') p_env_wf x t_x k_x p_g_tx = case p_env_wf of
-  (WFFBind env' p_env'_wf _z _tz k_z p_env'_tz)  -> WFFBind env'' p_env''_wf z t_z k_z p_env''_tz
-    where
-      env''      = concatF (FCons x t_x g) g'
-      p_env''_wf = lem_weaken_wffe g g' p_env'_wf x t_x k_x p_g_tx
-      p_env''_tz = lem_weaken_wfft g g' t_z k_z p_env'_tz x t_x
-lem_weaken_wffe g (FConsT a  k g') p_env_wf x t_x k_x p_g_tx = case p_env_wf of
-  (WFFBindT env' p_env'_wf _a _k)                -> WFFBindT env'' p_env''_wf a k
-    where
-      env''      = concatF (FCons x t_x g) g'
-      p_env''_wf = lem_weaken_wffe g g' p_env'_wf x t_x k_x p_g_tx
--}
-
 {-@ lem_weaken_wfft :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
       -> t:FType -> k:Kind -> { p_t_wf:WFFT | propOf p_t_wf == WFFT (concatF g g') t k }
       -> { x:Vname | not (in_envF x g) && not (in_envF x g') } -> t_x:FType
@@ -65,17 +43,20 @@ lem_weaken_wfft g g' t k p_t_wf@(WFFTBasic gg b) x t_x
 lem_weaken_wfft g g' t k_t pf_t_wf@(WFFTFV1 gg a' k') x t_x = case g' of
   FEmpty               -> WFFTFV2 g a' k' pf_t_wf 
                             (x ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf x) t_x
-  (FConsT _a' _k' g'') -> WFFTFV1 (concatF (FCons x t_x g) g'') a' k'
+  (FConsT _a' _k' g'') -> WFFTFV1 (concatF (FCons x t_x g) g'')   a' k'
+--                            (a' ? lem_in_env_concatF g g'' a') k'
 lem_weaken_wfft g g' t k_t pf_t_wf@(WFFTFV2 gg a' k' pf_gg_a' z t_z) x t_x = case g' of
-  FEmpty             -> WFFTFV2 g {-(FCons z t_z gg)-} a' k_t pf_t_wf 
+  FEmpty             -> WFFTFV2 g a' k_t pf_t_wf 
                             (x ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf x) t_x 
   (FCons _z _tz g'') -> WFFTFV2 (concatF (FCons x t_x g) g'') a' k' 
-                          (lem_weaken_wfft g g'' (FTBasic (FTV a')) k' pf_gg_a' x t_x) z t_z 
+                            (lem_weaken_wfft g g'' (FTBasic (FTV a')) k' pf_gg_a' x t_x)  z t_z
+--                            (z ? lem_in_env_concatF g g'' z) t_z  
 lem_weaken_wfft g g' t k_t pf_t_wf@(WFFTFV3 gg a k pf_gg_a a' k') x t_x = case g' of
-  FEmpty               -> WFFTFV2 g {-(FConsT a' k' gg)-} a k_t pf_t_wf 
+  FEmpty               -> WFFTFV2 g a k_t pf_t_wf 
                             (x ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf x) t_x 
   (FConsT _a' _k' g'') -> WFFTFV3 (concatF (FCons x t_x g) g'') a k
-                            (lem_weaken_wfft g g'' (FTBasic (FTV a)) k pf_gg_a x t_x) a' k'
+                            (lem_weaken_wfft g g'' (FTBasic (FTV a)) k pf_gg_a x t_x)   a' k'
+--                            (a' ? lem_in_env_concatF g g'' a') k' 
 lem_weaken_wfft g g' _ _ (WFFTFunc _ t1 k1 p_gg_t1 t2 k2 p_gg_t2) x t_x
   = WFFTFunc (concatF (FCons x t_x g) g') t1 k1 (lem_weaken_wfft g g' t1 k1 p_gg_t1 x t_x)
                                           t2 k2 (lem_weaken_wfft g g' t2 k2 p_gg_t2 x t_x)
@@ -101,17 +82,20 @@ lem_weaken_tv_wfft g g' t k_t p_t_wf@(WFFTBasic gg b) a k
 lem_weaken_tv_wfft g g' t k_t pf_t_wf@(WFFTFV1 gg a' k') a k = case g' of
   FEmpty               -> WFFTFV3 g a' k_t pf_t_wf 
                             (a ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf a) k
-  (FConsT _a' _k' g'') -> WFFTFV1 (concatF (FConsT a k g) g'') a' k'
+  (FConsT _a' _k' g'') -> WFFTFV1 (concatF (FConsT a k g) g'')  a' k'
+--                            (a' ? lem_in_env_concatF g g'' a') k'
 lem_weaken_tv_wfft g g' t k_t pf_t_wf@(WFFTFV2 gg a' k' pf_gg_a' z t_z)   a k = case g' of
   FEmpty             -> WFFTFV3 g a' k_t pf_t_wf 
                             (a ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf a) k
   (FCons _z _tz g'') -> WFFTFV2 (concatF (FConsT a k g) g'') a' k' 
-                            (lem_weaken_tv_wfft g g'' (FTBasic (FTV a')) k' pf_gg_a' a k) z t_z 
+                            (lem_weaken_tv_wfft g g'' (FTBasic (FTV a')) k' pf_gg_a' a k)  z t_z
+--                            (z ? lem_in_env_concatF g g'' z) t_z
 lem_weaken_tv_wfft g g' t k_t pf_t_wf@(WFFTFV3 gg a' k' pf_gg_a' a'' k'') a k = case g' of
   FEmpty               -> WFFTFV3 g a' k_t pf_t_wf 
                             (a ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf a) k
   (FConsT _a' _k' g'') -> WFFTFV3 (concatF (FConsT a k g) g'') a' k'
-                            (lem_weaken_tv_wfft g g'' (FTBasic (FTV a')) k' pf_gg_a' a k) a'' k''
+                            (lem_weaken_tv_wfft g g'' (FTBasic (FTV a')) k' pf_gg_a' a k)   a'' k''
+--                            (a'' ? lem_in_env_concatF g g'' a'') k''
 lem_weaken_tv_wfft g g' _ _ (WFFTFunc _ t1 k1 p_gg_t1 t2 k2 p_gg_t2) a k
   = WFFTFunc (concatF (FConsT a k g) g') t1 k1 (lem_weaken_tv_wfft g g' t1 k1 p_gg_t1 a k)
                                          t2 k2 (lem_weaken_tv_wfft g g' t2 k2 p_gg_t2 a k)
@@ -149,7 +133,8 @@ lem_weaken_many_wfft g (FConsT a k_a g') t k p_g_t
         -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> t_a:FType -> k_a:Kind 
         -> ProofOf(WFFT g t_a k_a) -> t:FType -> k:Kind 
         -> { p_env_t:WFFT | propOf p_env_t == WFFT (concatF (FConsT a k_a g) g') t k }
-        -> ProofOf(WFFT (concatF g (fesubFV a t_a g')) (ftsubFV a t_a t) k) / [ ] @-}
+        -> ProofOf(WFFT (concatF g (fesubFV a t_a g')) (ftsubFV a t_a t) k) 
+         / [ftsize t, fenvsize g', ksize k] @-}
 lem_subst_tv_wfft :: FEnv -> FEnv -> Vname -> FType -> Kind -> WFFT 
                           -> FType -> Kind -> WFFT -> WFFT
 lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t k (WFFTBasic _env b) -- _env = g'; a:k_a; g
@@ -158,8 +143,7 @@ lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t k (WFFTFV1 _env a' k')
   = case g' of
       FEmpty             -> pf_g_ta
       (FConsT _a _k g'') -> WFFTFV1 (concatF g (fesubFV a t_a g'')) 
-                                    (a' {-? lem_in_env_concatF (FConsT a k_a g) g'' a'-}
-                                        ? lem_in_env_concatF g g'' a') k
+                                    (a' ? lem_in_env_concatF g g'' a') k
 lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t k p_g_t@(WFFTFV2 _env a'_ k' pf_env_a' w_ t_w)
   = case g' of
       (FEmpty)           -> impossible "" 
@@ -168,22 +152,16 @@ lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t k p_g_t@(WFFTFV2 _env a'_ k' pf_env_a
           (Base, Star) -> WFFTKind (concatF g (fesubFV a t_a g')) t_a p_env''_ta
             where
               p_env''_ta = lem_weaken_many_wfft g (fesubFV a t_a g') t_a k_a pf_g_ta 
-          (Star, Base) -> impossible "" {- ("by lemma" ? lem_kind_for_tvF g g' a k_a
-                                                 ? lem_wf_ftv_kindF (concatF (FConsT a k_a g) g') a k p_g_t) -}
+          (Star, Base) -> impossible ("by lemma" ? lem_kind_for_tvF g g' a k_a
+                                           ? lem_wf_ftv_kindF (concatF (FConsT a k_a g) g') a k p_g_t) 
           _            -> lem_weaken_many_wfft g (fesubFV a t_a g') t_a k_a pf_g_ta
         (False) -> WFFTFV2 (concatF g (fesubFV a t_a g'')) a' k' p_gg''_a' w (ftsubFV a t_a t_w)
           where
-            a'          = a'_ -- ? lem_in_fenv_fesub  g''             a t_a a'_  -- need ???
-                              -- ? lem_in_env_concatF g                g''  a'_  -- need ???
-                           --   ? lem_in_env_concatF (FConsT a k_a g) g''  a'_
-                           --   ? lem_in_env_concatF g (fesubFV a t_a g'') a'_
-            w           = w_  ? lem_in_fenv_fesub  g''            a t_a w_
-                           --   ? lem_in_env_concatF (FConsT a k_a g) g'' w_
-                           -----   ? lem_in_env_concatF g g'' w_
+            a'          = a'_ -- ? lem_in_env_concatF g                g''  a'_  -- need ???
+            w           = w_  ----- ? lem_in_env_concatF g g'' w_
             p_gg''_a'   = lem_subst_tv_wfft g g'' a t_a k_a pf_g_ta (FTBasic (FTV a')) k' pf_env_a'  
       (FConsT _ _ g'')   -> impossible "" 
-lem_subst_tv_wfft g g' a t_a k_a pf_g_ta {-p_env_wf-} t k p_g_t@(WFFTFV3 _env a'_ k' pf_env_a' a1_ k1)
- = undefined {-
+lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t k p_g_t@(WFFTFV3 _env a'_ k' pf_env_a' a1_ k1)
   = case g' of
       (FEmpty)           -> pf_env_a'
       (FConsT _a1 _k1 g'') -> case ( a == a'_ ) of
@@ -192,68 +170,34 @@ lem_subst_tv_wfft g g' a t_a k_a pf_g_ta {-p_env_wf-} t k p_g_t@(WFFTFV3 _env a'
             where
               p_env''_ta = lem_weaken_many_wfft g (fesubFV a t_a g') t_a k_a pf_g_ta 
           (Star, Base) -> impossible ("by lemma" ? lem_kind_for_tvF g g' a k_a
-                                                 ? lem_wf_ftv_kindF (concatF (FConsT a k_a g) g') a k p_g_t)
+                                           ? lem_wf_ftv_kindF (concatF (FConsT a k_a g) g') a k p_g_t)
           _            -> lem_weaken_many_wfft g (fesubFV a t_a g') t_a k_a pf_g_ta
         (False) -> WFFTFV3 (concatF g (fesubFV a t_a g'')) a' k' p_gg''_a' a1 k1 
           where
-            a'          = a'_ ? lem_in_fenv_fesub  g''             a t_a a'_
-                              ? lem_in_env_concatF g                g''  a'_
-                              ? lem_in_env_concatF (FConsT a k_a g) g''  a'_
-                              ? lem_in_env_concatF g (fesubFV a t_a g'') a'_
-            a1          = a1_ ? lem_in_fenv_fesub  g''            a t_a a1_
-                              ? lem_in_env_concatF (FConsT a k_a g) g'' a1_
-                              ? lem_in_env_concatF g g'' a1_
+            a'          = a'_ ---- ? lem_in_env_concatF g                g''  a'_
+            a1          = a1_ ---- ? lem_in_env_concatF g g'' a1_
             p_gg''_a'   = lem_subst_tv_wfft g g'' a t_a k_a pf_g_ta (FTBasic (FTV a')) k' pf_env_a'  
--}
-lem_subst_tv_wfft g g' a t_a k_a pf_g_ta {-p_env_wf-} t k (WFFTFunc _env t1 k1 p_env_t1 t2 k2 p_env_t2)
- = undefined {-
+lem_subst_tv_wfft g g' a t_a k_a pf_g_ta  t k (WFFTFunc _env t1 k1 p_env_t1 t2 k2 p_env_t2)
   = WFFTFunc (concatF g (fesubFV a t_a g')) (ftsubFV a t_a t1) k1 p_g'g_t1ta 
                                             (ftsubFV a t_a t2) k2 p_g'g_t2ta
       where
         p_g'g_t1ta = lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t1 k1 p_env_t1
         p_g'g_t2ta = lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t2 k2 p_env_t2  
--}
-lem_subst_tv_wfft g g' a t_a k_a p_g_ta {-p_env_wf-} t k (WFFTPoly _env k' t' k_t' nms mk_p_a''env_t')
- = undefined {-
-  = WFFTPoly (concatF g (fesubFV a t_a g')) a' k' (ftsubFV a t_a t') k_t' a'' p_a''g'g_t'ta
+lem_subst_tv_wfft g g' a t_a k_a p_g_ta  t k (WFFTPoly _env k' t' k_t' nms  mk_p_a'env_t')
+  = WFFTPoly (concatF g (fesubFV a t_a g')) k' (ftsubFV a t_a t') k_t' nms' mk_p_a'g'g_t'ta
       where
-        a''           = a''_ ? lem_in_fenv_fesub  g' a t_a a''_ 
-                             ? lem_in_env_concatF g  g' a''_
-                             ? lem_in_env_concatF (FConsT a k_a g) g' a''_
-                             ? lem_ffreeTV_bound_in_fenv g t_a k_a p_g_ta a''_
-        p_a''g'g_t'ta = lem_subst_tv_wfft g (FConsT a'' k' g') a t_a k_a p_g_ta (unbindFT a' a'' t') k_t'
-                         (p_a''env_t' ? lem_commute_ftsubFV_unbindFT a 
-                                            (t_a ? lem_ffreeBV_empty g t_a k_a p_g_ta) a' a'' t')
--}
-lem_subst_tv_wfft g g' a t_a k_a pf_g_ta {-p_env_wf-} t k (WFFTKind _env _t pf_env_t_base) 
- = undefined {-
+        {-@ mk_p_a'g'g_t'ta :: { a':Vname | NotElem a' nms' }
+                -> ProofOf(WFFT (FConsT a' k' (concatF g (fesubFV a t_a g'))) 
+                                (unbindFT a' (ftsubFV a t_a t')) k_t') @-}
+        mk_p_a'g'g_t'ta a' = lem_subst_tv_wfft g (FConsT a' k' g') a t_a k_a p_g_ta 
+                                               (unbindFT a' t') k_t' (mk_p_a'env_t' a')
+                                               ? lem_commute_ftsubFV_unbindFT a 
+                                                   (t_a ? lem_wfft_islcft g t_a k_a p_g_ta) a' t'
+        nms'               = a:(unionFEnv nms (concatF g g'))
+lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t k (WFFTKind _env _t pf_env_t_base) 
   = WFFTKind (concatF g (fesubFV a t_a g')) (ftsubFV a t_a t) p_gg'_tta_base
       where
         p_gg'_tta_base = lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t Base pf_env_t_base
--}
-
-{-
-{-@ lem_subst_tv_wffe :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
-        -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> t_a:FType -> k_a:Kind
-        -> ProofOf(WFFT g t_a k_a) -> ProofOf(WFFE (concatF (FConsT a k_a g) g'))
-        -> ProofOf(WFFE (concatF g (fesubFV a t_a g'))) / [fenvsize g'] @-}
-lem_subst_tv_wffe :: FEnv -> FEnv -> Vname -> FType -> Kind -> WFFT -> WFFE -> WFFE
-lem_subst_tv_wffe g FEmpty              a t_a k_a pf_g_ta p_env_wf  = case p_env_wf of
-    (WFFBind  _g p_g_wf _ _ _ _) -> p_g_wf
-    (WFFBindT _g p_g_wf _ _)    -> p_g_wf
-lem_subst_tv_wffe g (FCons x t_x g')    a t_a k_a pf_g_ta p_env_wf  = case p_env_wf of
-    (WFFBind  env' p_env'_wf _x _tx k_x p_env'_tx)
-         -> WFFBind env'' p_env''_wf x (ftsubFV a t_a t_x) k_x p_env''_txta
-        where
-          env''        = concatF g (fesubFV a t_a g')
-          p_env''_wf   = lem_subst_tv_wffe g g' a t_a k_a pf_g_ta p_env'_wf
-          p_env''_txta = lem_subst_tv_wfft g g' a t_a k_a pf_g_ta t_x k_x p_env'_tx
-lem_subst_tv_wffe g (FConsT a1 k_a1 g') a t_a k_a pf_g_ta p_env_wf  = case p_env_wf of
-    (WFFBindT env' p_env'_wf _a1 _ka1) -> WFFBindT env'' p_env''_wf a1 k_a1
-        where
-          env''        = concatF g (fesubFV a t_a g')
-          p_env''_wf   = lem_subst_tv_wffe g g' a t_a k_a pf_g_ta p_env'_wf
--}
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
 -- Consequences of the System F Typing Judgments -
@@ -287,10 +231,7 @@ lem_ftyping_wfft g e t (FTVar3 g' x _t p_g'_x_t a k) p_wf_g
           where 
             p_g_t' = lem_ftyping_wfft g' e t p_g'_x_t p_g'
             p_g_t  = lem_weaken_tv_wfft g' FEmpty t Star p_g_t' a k
-lem_ftyping_wfft g e t (FTPrm _g c) p_wf_g 
-    = lem_weaken_many_wfft FEmpty g (erase_ty c) Star pf_emp_tyc ? lem_empty_concatF g
-        where
-          pf_emp_tyc = undefined -- lem_erase_wftype Empty (ty c) Star (lem_wf_ty c) TODO TODO
+lem_ftyping_wfft g e t (FTPrm _g c) p_wf_g  = lem_wfft_erase_ty g c
 lem_ftyping_wfft g e t (FTAbs _g t_x k_x pf_g_tx e' t' nms mk_pf_e'_t') pf_wf_g
     = WFFTFunc g t_x k_x pf_g_tx t' Star pf_g_t'
         where
@@ -313,15 +254,16 @@ lem_ftyping_wfft g e t (FTAbsT _g k e' t' nms mk_pf_a'g_e'_t') pf_wf_g
             where
               pf_wf_a'g   = WFFBindT g pf_wf_g a' k
           nms'            = unionFEnv nms g
-lem_ftyping_wfft g e t (FTAppT _g e' k t' pf_e'_at' liqt pf_g_erliqt) pf_wf_g
-    = if (k_t' == Star) then pf_g_t'liqt else WFFTKind g t pf_g_t'liqt
+lem_ftyping_wfft g e t p_e_t@(FTAppT _g e' k t' pf_e'_at' liqt pf_g_erliqt) pf_wf_g
+   = if (k_t' == Star) then pf_g_t'liqt else WFFTKind g t pf_g_t'liqt
        where
          pf_g_at'    = lem_ftyping_wfft g e' (FTPoly k t') pf_e'_at' pf_wf_g
          (WFFTPoly _ _k _t' k_t' nms mk_pf_a'g_t') = lem_wfftpoly_for_wf_ftpoly g k t' pf_g_at'
          a'          = fresh_varF nms g
          pf_g_t'liqt = lem_subst_tv_wfft g FEmpty a' (erase liqt) k 
                                       pf_g_erliqt (unbindFT a' t') k_t' (mk_pf_a'g_t' a')
---                                      ? lem_ftsubFV_unbindFT a a' (erase liqt) t'
+                                      ? lem_ftsubFV_unbindFT a' (erase liqt) (t'
+                                      ? lem_ffreeTV_bound_in_fenv g (FTPoly k t') Star pf_g_at' a')
 lem_ftyping_wfft g e t (FTLet _g e_x t_x p_ex_tx e' _t nms mk_p_e'_t) p_wf_g  
     = lem_strengthen_wfft g y t_x FEmpty t Star pf_yg_t
         where 

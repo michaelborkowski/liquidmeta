@@ -13,7 +13,6 @@ import qualified Data.Set as S
 import Basics
 import SystemFWellFormedness
 import SystemFTyping
---import WellFormedness
 import BasicPropsSubstitution
 
 {-@ reflect foo20 @-}
@@ -76,7 +75,7 @@ lem_erase_tsubFV x v (TFunc   t_z t) = () ? lem_erase_tsubFV x v t_z
 lem_erase_tsubFV x v (TExists t_z t) = () ? lem_erase_tsubFV x v t
 lem_erase_tsubFV x v (TPoly   k   t) = () ? lem_erase_tsubFV x v t
 
-{-
+{- unneeded? postcondition of unbindT/openT_at now; make postcond of tsubBV too!
 {-@ lem_erase_tsubBV :: x:Vname -> e:Expr -> t:Type 
                                 -> { pf:_ | erase (tsubBV x e t) == erase t } @-}
 lem_erase_tsubBV :: Vname -> Expr -> Type -> Proof
@@ -447,7 +446,7 @@ lem_wfftvar_tv_in_env env a k (WFFTKind g _a p_g_a_base)
 -}
 
 -----------------------------------------------------------------------------------------
------ | Properties of JUDGEMENTS : the Bare-Typing Relation and Well-Formedness of Types
+----- | TECHNICAL LEMMAS relating to FREE VARIABLES and SYSTEM F judgments
 -----------------------------------------------------------------------------------------
 
 -- Lemma. All free variables in a (bare) typed expression are bound in the (bare) environment
@@ -528,43 +527,15 @@ lem_fv_subset_bindsF g e t (FTAnn _g e' _t ann_t p_e'_t)
          ? toProof ( S.isSubsetOf (free ann_t)   (vbindsF g)  && S.isSubsetOf (vbindsF g)  (bindsF g) )
          ? toProof ( S.isSubsetOf (freeTV ann_t) (tvbindsF g) && S.isSubsetOf (tvbindsF g) (bindsF g) )
 
-{-
-       
-{-@ lem_free_bound_in_env :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
-                -> { x:Vname | not (in_env x g) }
-                -> { pf:_ | not (Set_mem x (free t)) && not (Set_mem x (freeTV t)) } @-}
-lem_free_bound_in_env :: Env -> Type -> Kind -> WFType -> Vname -> Proof
-lem_free_bound_in_env g t k (WFBase _ b tt) x = case t of
-  (TRefn _ _ _) -> () ? lem_trivial_nofv tt
-lem_free_bound_in_env g t k (WFRefn _g z b tt p_g_b p z' p_z'_p_bl) x = case t of
-  (TRefn _ _ _) -> case ( x == z' ) of
-        (True)  -> () ? lem_free_bound_in_env g (TRefn b Z tt) Base p_g_b x
-        (False) -> () ? lem_fv_bound_in_fenv (FCons z' (FTBasic b) (erase_env g)) 
-                                             (unbind 0 z' p) (FTBasic TBool) p_z'_p_bl x
-                      ? lem_free_bound_in_env g (TRefn b Z tt) Base p_g_b x
-lem_free_bound_in_env g t k (WFVar1 g' a tt _k) x = case t of
-  (TRefn b _ _) -> case b of
-    (FTV _) ->  () ? lem_trivial_nofv tt
-lem_free_bound_in_env g t k (WFVar2 g' a _ _k p_a_k y t') x = () ? lem_free_bound_in_env g' t k p_a_k x
-lem_free_bound_in_env g t k (WFVar3 g' a _ _k p_a_k a' k') x = case t of
-  (TRefn b _ _) -> case b of 
-    (FTV _) -> () ? lem_free_bound_in_env g' t k p_a_k x
-lem_free_bound_in_env g t k (WFFunc _g y t_y k_y p_ty_wf t' k' y' p_y'_t'_wf) x = case t of
-  (TFunc _ _ _) -> case ( x == y' ) of
-        (True)  -> () ? lem_free_bound_in_env g t_y k_y p_ty_wf x
-        (False) -> () ? lem_free_bound_in_env g t_y k_y p_ty_wf x
-                      ? lem_free_bound_in_env (Cons y' t_y g) (unbindT y y' t') k' p_y'_t'_wf x
-lem_free_bound_in_env g t k (WFExis _g y t_y k_y p_ty_wf t' k' y' p_y'_t'_wf) x = case t of
-  (TExists _ _ _) -> case ( x == y' ) of 
-        (True)  -> () ? lem_free_bound_in_env g t_y k_y p_ty_wf x
-        (False) -> () ? lem_free_bound_in_env g t_y k_y p_ty_wf x
-                      ? lem_free_bound_in_env (Cons y' t_y g) (unbindT y y' t') k' p_y'_t'_wf x
-lem_free_bound_in_env g t k (WFPoly _g a k' t' k_t' a' p_a'_t'_kt') x = case t of
-  (TPoly _ _ _) -> case ( x == a' ) of
-        (True)  -> ()
-        (False) -> () ? lem_free_bound_in_env (ConsT a' k' g) (unbind_tvT a a' t') k_t' p_a'_t'_kt' x
-lem_free_bound_in_env g t k (WFKind _g _t p_t_B) x = () ? lem_free_bound_in_env g t Base p_t_B x
-
+{-@ lem_fvp_bound_in_fenv :: g:FEnv -> ps:Preds -> ProofOf(PHasFType g ps)
+        -> { x:Vname | not (in_envF x g) }
+        -> { pf:_ | not (Set_mem x (fvP ps)) && not (Set_mem x (ftvP ps)) } / [predsize ps] @-}
+lem_fvp_bound_in_fenv :: FEnv -> Preds -> PHasFType -> Vname -> Proof
+lem_fvp_bound_in_fenv g ps (PFTEmp  _) x      = ()
+lem_fvp_bound_in_fenv g ps (PFTCons _ p pf_p_bl ps' pf_ps'_bl) x      
+    = () ? lem_fv_bound_in_fenv  g p (FTBasic TBool) pf_p_bl x
+         ? lem_fvp_bound_in_fenv g ps' pf_ps'_bl x
+{-       
 {-@ lem_free_subset_binds :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
                   -> { pf:_ | Set_sub (Set_cup (free t) (freeTV t)) (binds g) &&
                               Set_sub (free t) (vbinds g) && Set_sub (freeTV t) (tvbinds g) } @-}
@@ -613,7 +584,6 @@ lem_truncate_wfenv g (ConsT a k g') p_ag'g_wf = lem_truncate_wfenv g g' p_g'g_wf
     (WFEBindT _ p_g'g_wf _ _) = p_ag'g_wf
 -}
 
-   ----- SYSTEM F VERSIONS
 {-@ lem_ffreeTV_bound_in_fenv :: g:FEnv -> t:FType -> k:Kind -> ProofOf(WFFT g t k)
                 -> { a:Vname | not (in_envF a g) }
                 -> { pf:_ | not (Set_mem a (ffreeTV t)) } / [ftsize t, fenvsize g, ksize k] @-}

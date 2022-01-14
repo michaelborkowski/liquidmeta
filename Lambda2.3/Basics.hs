@@ -354,9 +354,9 @@ data Preds = PEmpty                         -- type Preds = [Expr]
 
 {-@ lazy predsize @-}
 {-@ measure predsize @-}
-{-@ predsize :: Preds -> { n:Int | n >= 0 } @-}
+{-@ predsize :: ps:Preds -> { n:Int | n >= 0 && (not (ps == PEmpty) => n > 0) } @-}
 predsize :: Preds -> Int
-predsize PEmpty       = 1
+predsize PEmpty       = 0
 predsize (PCons p ps) = predsize ps + esize p + 1
 
 {-@ reflect fvP @-}
@@ -622,7 +622,8 @@ isLCT_at j_x j_a (TPoly   k   t) =                         isLCT_at j_x (j_a+1) 
                        -> { t':Type | Set_sub (free t') (Set_cup (Set_sng y) (free t)) &&
                                       Set_sub (freeTV t') (freeTV t) &&
                                       Set_sub (free t) (free t') && Set_sub (freeTV t) (freeTV t') &&
-                                      (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
+                                      (noExists t => noExists t') && tsize t == tsize t' && 
+                                      erase t == erase t' } / [tsize t] @-} 
 unbindT :: Vname -> Type -> Type
 unbindT y t = openT_at 0 y t
 
@@ -631,7 +632,8 @@ unbindT y t = openT_at 0 y t
                         -> { t':Type | Set_sub (free t') (Set_cup (Set_sng y) (free t)) &&
                                        Set_sub (free t) (free t') &&
                                        Set_sub (freeTV t') (freeTV t) && Set_sub (freeTV t) (freeTV t') &&
-                                       (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
+                                       (noExists t => noExists t') && tsize t == tsize t' &&
+                                       erase t == erase t' } / [tsize t] @-} 
 openT_at :: Index -> Vname -> Type -> Type
 openT_at j y (TRefn b ps)    = TRefn b (openP_at (j+1) y ps)
 openT_at j y (TFunc   t_z t) = TFunc   (openT_at j y t_z) (openT_at (j+1) y t)

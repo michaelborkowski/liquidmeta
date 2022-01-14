@@ -22,22 +22,22 @@ import WellFormedness
 foo21 :: a -> Maybe a
 foo21 x = Just x
 
-{-
+{-@ lem_btv_not_wf :: g:Env -> a:Vname -> ps:Preds -> k:Kind
+                        -> ProofOf(WFType g (TRefn (BTV a) ps) k) -> { pf:_ | false } @-}
+lem_btv_not_wf :: Env -> Vname -> Preds -> Kind -> WFType -> Proof
+lem_btv_not_wf g a ps k (WFBase {}) = ()
+lem_btv_not_wf g a ps k (WFRefn _ _ pf_g_b _ _ _) 
+  = () ? lem_btv_not_wf g a PEmpty Base pf_g_b
+lem_btv_not_wf g a ps k (WFVar1 {}) = ()
+lem_btv_not_wf g a ps k (WFVar2 {}) = ()
+lem_btv_not_wf g a ps k (WFVar3 {}) = ()
+lem_btv_not_wf g a ps k (WFFunc {}) = ()
+lem_btv_not_wf g a ps k (WFExis {}) = ()
+lem_btv_not_wf g a ps k (WFPoly {}) = ()
+lem_btv_not_wf g a ps k (WFKind _ _ pf_g_t_base) 
+  = () ? lem_btv_not_wf g a ps Base pf_g_t_base
 
-{-@ lem_btv_not_wf :: g:Env -> a:Vname -> x:RVname -> p:Pred -> k:Kind
-                        -> ProofOf(WFType g (TRefn (BTV a) x p) k) -> { pf:_ | false } @-}
-lem_btv_not_wf :: Env -> Vname -> RVname -> Expr -> Kind -> WFType -> Proof
-lem_btv_not_wf g a x p k (WFBase {}) = ()
-lem_btv_not_wf g a x p k (WFRefn _ _ _ tt pf_g_b _ _ _) 
-  = () ? lem_btv_not_wf g a Z tt Base pf_g_b
-lem_btv_not_wf g a x p k (WFVar1 {}) = ()
-lem_btv_not_wf g a x p k (WFVar2 {}) = ()
-lem_btv_not_wf g a x p k (WFVar3 {}) = ()
-lem_btv_not_wf g a x p k (WFFunc {}) = ()
-lem_btv_not_wf g a x p k (WFExis {}) = ()
-lem_btv_not_wf g a x p k (WFPoly {}) = ()
-lem_btv_not_wf g a x p k (WFKind _ _ pf_g_t_base) 
-  = () ? lem_btv_not_wf g a x p Base pf_g_t_base
+{-
 
 {-@ lem_wf_refn_kind :: g:Env -> a:Vname -> z:RVname -> p:Pred -> k:Kind 
        -> ProofOf(WFType g (TRefn (FTV a) z p) k)
@@ -70,6 +70,7 @@ lem_kind_for_tv :: Env -> Env -> Vname -> Kind -> Proof
 lem_kind_for_tv g Empty            a k_a = ()
 lem_kind_for_tv g (Cons  x t_x g') a k_a = () ? lem_kind_for_tv g g' a k_a
 lem_kind_for_tv g (ConsT a' k' g') a k_a = () ? lem_kind_for_tv g g' a k_a
+-}
 
 {-@ lem_wf_ftv_kindF :: g:FEnv -> a:Vname -> k:Kind -> ProofOf(WFFT g (FTBasic (FTV a)) k)
        -> { pf:_ | k == Star || kind_for_tvF a g == Base } @-}
@@ -90,6 +91,7 @@ lem_kind_for_tvF g FEmpty            a k_a = ()
 lem_kind_for_tvF g (FCons  x t_x g') a k_a = () ? lem_kind_for_tvF g g' a k_a
 lem_kind_for_tvF g (FConsT a' k' g') a k_a = () ? lem_kind_for_tvF g g' a k_a
 
+{-
 {-@ lem_ftyp_trivial_for_wf_trefn :: g:Env -> b:Basic -> x:RVname -> p:Pred -> k:Kind
         -> { p_g_t : WFType | propOf p_g_t  == WFType g (TRefn b x p) k }
         -> (Pred, WFType)<{\tt p_g_tt -> isTrivial tt && propOf p_g_tt == WFType g (TRefn b Z tt) k}> @-}
@@ -364,45 +366,46 @@ lem_strengthen_wfft g x t_x g' _ _ (WFFTPoly _ k t k_t nms mk_pf_a'g'xg_t)
 lem_strengthen_wfft g x t_x g' _ _ (WFFTKind _ t pf_t_base)
   = WFFTKind (concatF g g') t (lem_strengthen_wfft g x t_x g' t Base pf_t_base)
 
-{-
 {-@ lem_erase_wftype :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
-                              -> ProofOf(WFFT (erase_env g) (erase t) k) @-}
+        -> ProofOf(WFFT (erase_env g) (erase t) k) / [tsize t, envsize g, ksize k] @-}
 lem_erase_wftype :: Env -> Type -> Kind -> WFType -> WFFT
-lem_erase_wftype _ _ _ (WFBase g b _)                = WFFTBasic (erase_env g) b
-lem_erase_wftype _ t k pf_g_t@(WFRefn g x b tt pf_g_b p y pf_yg_p)  
+lem_erase_wftype _ _ _ (WFBase g b)                = WFFTBasic (erase_env g) b
+lem_erase_wftype _ t k pf_g_t@(WFRefn g b pf_g_b p nms mk_pf_yg_p)  
   = case b of
-      (FTV a)  -> lem_erase_wftype g (TRefn (FTV a) Z tt) Base pf_g_b
-      (BTV a)  -> impossible ("by lemma" ? lem_btv_not_wf g a x p k pf_g_t)
+      (FTV a)  -> lem_erase_wftype g (TRefn (FTV a) PEmpty) Base pf_g_b
+      (BTV a)  -> impossible ("by lemma" ? lem_btv_not_wf g a p k pf_g_t)
       TBool    -> WFFTBasic (erase_env g) TBool
       TInt     -> WFFTBasic (erase_env g) TInt
-lem_erase_wftype _ t _ (WFVar1 g a _ k)              = WFFTFV1 (erase_env g) a k
-lem_erase_wftype _ t _ (WFVar2 g a tt k pf_g_a y t_y)
-  = WFFTFV2 (erase_env g) a k (lem_erase_wftype g (TRefn (FTV a) Z tt) k pf_g_a) 
-            y (erase t_y)
-lem_erase_wftype _ t _ (WFVar3 g a tt k pf_g_a a' k')
-  = WFFTFV3 (erase_env g) a k (lem_erase_wftype g (TRefn (FTV a) Z tt) k pf_g_a) a' k'
-lem_erase_wftype _ _ _ (WFFunc g x t_x k_x pf_g_tx t k y pf_yg_t)
+lem_erase_wftype _ t _ (WFVar1 g a k)              = WFFTFV1 (erase_env g) a k
+lem_erase_wftype _ t _ (WFVar2 g a k pf_g_a y t_y)
+  = WFFTFV2 (erase_env g) a k (lem_erase_wftype g (TRefn (FTV a) PEmpty) k pf_g_a) y (erase t_y)
+lem_erase_wftype _ t _ (WFVar3 g a k pf_g_a a' k')
+  = WFFTFV3 (erase_env g) a k (lem_erase_wftype g (TRefn (FTV a) PEmpty) k pf_g_a) a' k'
+lem_erase_wftype _ _ _ (WFFunc g t_x k_x pf_g_tx t k nms mk_pf_yg_t)
   = WFFTFunc (erase_env g) (erase t_x) k_x (lem_erase_wftype g t_x k_x pf_g_tx)
                            (erase t) k pf_erase_g_t
       where
+        y             = fresh_var nms g
+        pf_erase_yg_t = lem_erase_wftype (Cons y t_x g) (unbindT y t) k (mk_pf_yg_t y) 
         pf_erase_g_t  = lem_strengthen_wfft (erase_env g) y (erase t_x) FEmpty
-                            (erase t) k (pf_erase_yg_t ? lem_erase_tsubBV x (FV y) t)
-        pf_erase_yg_t = lem_erase_wftype (Cons y t_x g) (unbindT x y t) k 
-                            pf_yg_t ? lem_erase_tsubBV x (FV y) t
-lem_erase_wftype _ _ _ (WFExis g x t_x k_x p_g_tx t k y pf_yg_t)
-  = lem_strengthen_wfft (erase_env g) y (erase t_x) FEmpty
-                        (erase t ? lem_erase_tsubBV x (FV y) t) k pf_erase_yg_t
+                                            (erase t) k pf_erase_yg_t
+lem_erase_wftype _ _ _ (WFExis g t_x k_x p_g_tx t k nms mk_pf_yg_t)
+  = lem_strengthen_wfft (erase_env g) y (erase t_x) FEmpty (erase t) k pf_erase_yg_t
       where
-        pf_erase_yg_t = lem_erase_wftype (Cons y t_x g) (unbindT x y t) k pf_yg_t
-lem_erase_wftype _ _ _ (WFPoly g a k t k_t a' pf_a'g_t)
-  = WFFTPoly (erase_env g) a k (erase t) k_t a' 
-             (lem_erase_wftype (ConsT a' k g) 
-                       (unbind_tvT a a' t ? lem_erase_unbind_tvT a a' t
-                                          ? lem_erase_freeTV t) 
-                       k_t pf_a'g_t)
+        y             = fresh_var nms g
+        pf_erase_yg_t = lem_erase_wftype (Cons y t_x g) (unbindT y t) k (mk_pf_yg_t y)
+lem_erase_wftype _ _ _ (WFPoly g k t k_t nms mk_pf_ag_t)
+  = WFFTPoly (erase_env g) k (erase t) k_t nms' mk_pf_ag_ert
+      where 
+        {-@ mk_pf_ag_ert :: { a:Vname | NotElem a nms' }
+              -> ProofOf(WFFT (FConsT a k (erase_env g)) (unbindFT a (erase t)) k_t) @-}
+        mk_pf_ag_ert a = lem_erase_wftype (ConsT a k g) (unbind_tvT a t ? lem_erase_unbind_tvT a t)
+                                          k_t (mk_pf_ag_t a)
+        nms'           = unionFEnv nms (erase_env g)
 lem_erase_wftype _ _ _ (WFKind g t pf_t_base) 
   = WFFTKind (erase_env g) (erase t) (lem_erase_wftype g t Base pf_t_base)
 
+{-
 {-@ lem_erase_env_wfenv :: g:Env -> ProofOf(WFEnv g) -> ProofOf(WFFE (erase_env g)) @-}
 lem_erase_env_wfenv :: Env -> WFEnv -> WFFE
 lem_erase_env_wfenv _ WFEEmpty                         = WFFEmpty
@@ -413,6 +416,50 @@ lem_erase_env_wfenv _ (WFEBindT g pf_g_wf a k)
   = WFFBindT (erase_env g) (lem_erase_env_wfenv g pf_g_wf) a k
         
 -}   
+-------------------------------------------------------------------------------------------
+-- | TECHNICAL LEMMAS relating to FREE VARIABLES and WELL FORMEDNESS judgments
+-------------------------------------------------------------------------------------------
+
+{-@ lem_free_bound_in_env :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> { x:Vname | not (in_env x g) }
+            -> { pf:_ | not (Set_mem x (free t)) && not (Set_mem x (freeTV t)) } 
+             / [tsize t, envsize g, ksize k] @-}
+lem_free_bound_in_env :: Env -> Type -> Kind -> WFType -> Vname -> Proof
+lem_free_bound_in_env g t k (WFBase _ _) x = case t of 
+  (TRefn b _) -> case b of
+    TBool -> () 
+    TInt  -> ()
+lem_free_bound_in_env g t k (WFRefn _g b p_g_b p nms mk_p_z_p_bl) x = case t of
+  (TRefn _ _) -> () ? lem_fvp_bound_in_fenv (FCons z (FTBasic b) (erase_env g))
+                                            (unbindP z p) (mk_p_z_p_bl z) x
+                    ? lem_free_bound_in_env g (TRefn b PEmpty) Base p_g_b x
+      where
+        z = fresh_var_excludingF nms (erase_env g) x 
+lem_free_bound_in_env g t k (WFVar1 g' a  _k) x = case t of
+  (TRefn b _) -> case b of
+    (FTV _) -> () 
+lem_free_bound_in_env g t k (WFVar2 g' a _k p_a_k y t') x = case t of 
+  (TRefn b _) -> case b of
+    (FTV _) -> () ? lem_free_bound_in_env g' t k p_a_k x
+lem_free_bound_in_env g t k (WFVar3 g' a _k p_a_k a' k') x = case t of
+  (TRefn b _) -> case b of
+    (FTV _) -> () ? lem_free_bound_in_env g' t k p_a_k x
+lem_free_bound_in_env g t k (WFFunc _g t_y k_y p_ty_wf t' k' nms mk_p_y_t'_wf) x = case t of
+  (TFunc _ _) -> () ? lem_free_bound_in_env g t_y k_y p_ty_wf x
+                    ? lem_free_bound_in_env (Cons y t_y g) (unbindT y t') k' (mk_p_y_t'_wf y) x
+      where
+        y = fresh_var_excluding nms g x 
+lem_free_bound_in_env g t k (WFExis _g t_y k_y p_ty_wf t' k' nms mk_p_y_t'_wf) x = case t of
+  (TExists _ _) -> () ? lem_free_bound_in_env g t_y k_y p_ty_wf x
+                      ? lem_free_bound_in_env (Cons y t_y g) (unbindT y t') k' (mk_p_y_t'_wf y) x
+      where
+        y = fresh_var_excluding nms g x 
+lem_free_bound_in_env g t k (WFPoly _g k' t' k_t' nms mk_p_a_t'_kt') x = case t of
+  (TPoly _ _) -> () ? lem_free_bound_in_env (ConsT a k' g) (unbind_tvT a t') k_t' (mk_p_a_t'_kt' a) x
+      where
+        a = fresh_var_excluding nms g x 
+lem_free_bound_in_env g t k (WFKind _g _t p_t_B) x = () ? lem_free_bound_in_env g t Base p_t_B x
+
 -------------------------------------------------------------------------------------------
 -- | TECHNICAL LEMMAS relating to the abscence of dangling BOUND VARIABLES without a binder
 -------------------------------------------------------------------------------------------
@@ -456,7 +503,7 @@ lem_ftyp_islc g e t (FTVar3 g' x _ p_x_t a k) = case e of
 lem_ftyp_islc g e t (FTPrm _g c)   = case e of
   (Prim _) -> ()
 lem_ftyp_islc g e t (FTAbs _g t_x k_x p_g_tx e' t' nms mk_p_yg_e'_t') = case e of
-  (Lambda _) -> () ? lem_islc_at_open_at 0 0 y 
+  (Lambda _) -> () ? lem_islc_at_after_open_at 0 0 y 
                          (e' ? lem_ftyp_islc (FCons y t_x g) (unbind y e') t' (mk_p_yg_e'_t' y))
     where
       y = fresh_varF nms g
@@ -464,7 +511,7 @@ lem_ftyp_islc g e t (FTApp _g e' t_x t' p_e'_txt' e_x p_ex_tx) = case e of
   (App _ _) -> () ? lem_ftyp_islc g e' (FTFunc t_x t') p_e'_txt'
                   ? lem_ftyp_islc g e_x t_x p_ex_tx
 lem_ftyp_islc g e t (FTAbsT _g k e' t' nms mk_p_e'_t') = case e of 
-  (LambdaT {}) -> () ? lem_islc_at_open_tv_at 0 0 a
+  (LambdaT {}) -> () ? lem_islc_at_after_open_tv_at 0 0 a
                            (e' ? lem_ftyp_islc (FConsT a k g) (unbind_tv a e') (unbindFT a t') (mk_p_e'_t' a))
     where
       a = fresh_varF nms g
@@ -472,12 +519,30 @@ lem_ftyp_islc g e t (FTAppT _g e' k t' p_e_at' liqt p_g_ert) = case e of
   (AppT _ _)   -> () ? lem_ftyp_islc g e' (FTPoly k t') p_e_at'
 lem_ftyp_islc g e t (FTLet _g e_x t_x p_ex_tx e' t' nms mk_p_yg_e'_t') = case e of
   (Let {}) -> () ? lem_ftyp_islc g e_x t_x p_ex_tx
-                 ? lem_islc_at_open_at 0 0 y 
+                 ? lem_islc_at_after_open_at 0 0 y 
                        (e' ? lem_ftyp_islc (FCons y t_x g) (unbind y e') t' (mk_p_yg_e'_t' y))
     where
       y = fresh_varF nms g
 lem_ftyp_islc g e t (FTAnn _g e' _t t1 p_e'_t) = case e of
   (Annot _ _)  -> () ? lem_ftyp_islc g e' t p_e'_t
+
+{-@ lem_wfft_islcft :: g:FEnv -> t:FType -> k:Kind -> { p_g_t:WFFT | propOf p_g_t == WFFT g t k }
+                              -> { pf:Proof | isLCFT t } / [ftsize t, ksize k] @-}
+lem_wfft_islcft :: FEnv -> FType -> Kind -> WFFT -> Proof
+lem_wfft_islcft g t k (WFFTBasic _g b) = () 
+lem_wfft_islcft g t k (WFFTFV1 _ a _k) = ()
+lem_wfft_islcft g t k (WFFTFV2 _ a _k _ _ _) = ()
+lem_wfft_islcft g t k (WFFTFV3 _ a _k _ _ _) = ()
+lem_wfft_islcft g t k (WFFTFunc _g t_x k_x p_g_tx t' k' p_g_t') 
+  = () ? lem_wfft_islcft g t_x k_x p_g_tx 
+       ? lem_wfft_islcft g t'  k'  p_g_t' 
+lem_wfft_islcft g t k (WFFTPoly _g k_a t' k_t' nms mk_p_ag_t') 
+  = () ? lem_islcft_at_after_openFT_at 0 a  
+             (t' ? lem_wfft_islcft (FConsT a k_a g) (unbindFT a t') k_t' (mk_p_ag_t' a))
+      where
+        a = fresh_varF nms g
+lem_wfft_islcft g t k (WFFTKind _g _t p_g_t_base) 
+  = () ? lem_wfft_islcft g t Base p_g_t_base 
 
 {-
 {-@ lem_tfreeBV_empty :: g:Env -> t:Type -> k:Kind -> { p_g_t:WFType | propOf p_g_t == WFType g t k }
@@ -515,22 +580,4 @@ lem_tfreeBV_empty g t k (WFPoly _g a k_a t' k_t' a' p_a'g_t') = case t of
                                                                  (unbind_tvT a a' t') k_t' p_a'g_t')
 lem_tfreeBV_empty g t k (WFKind _g _t p_g_t_base) 
   = () ? lem_tfreeBV_empty g t Base p_g_t_base 
--}
-
-{-
-{-@ lem_ffreeBV_empty :: g:FEnv -> t:FType -> k:Kind -> { p_g_t:WFFT | propOf p_g_t == WFFT g t k }
-        -> { pf:Proof | Set_emp (ffreeBV t) } / [wfftypSize p_g_t] @-}
-lem_ffreeBV_empty :: FEnv -> FType -> Kind -> WFFT -> Proof
-lem_ffreeBV_empty g t k (WFFTBasic _g b) = () 
-lem_ffreeBV_empty g t k p_g_t@(WFFTFV1 _ a _k) = ()
-lem_ffreeBV_empty g t k p_g_t@(WFFTFV2 _ a _k _ _ _) = ()
-lem_ffreeBV_empty g t k p_g_t@(WFFTFV3 _ a _k _ _ _) = ()
-lem_ffreeBV_empty g t k (WFFTFunc _g t_x k_x p_g_tx t' k' p_g_t') 
-  = ()  ? lem_ffreeBV_empty g t_x k_x p_g_tx 
-        ? lem_ffreeBV_empty g t'  k'  p_g_t' 
-lem_ffreeBV_empty g t k (WFFTPoly _g a k_a t' k_t' a' p_a'g_t') 
-  = ()  ? lem_ffreeBV_unbindFT_empty a a' (t' ? lem_ffreeBV_empty (FConsT a' k_a g) 
-                                                                 (unbindFT a a' t') k_t' p_a'g_t')
-lem_ffreeBV_empty g t k (WFFTKind _g _t p_g_t_base) 
-  = () ? lem_ffreeBV_empty g t Base p_g_t_base 
 -}

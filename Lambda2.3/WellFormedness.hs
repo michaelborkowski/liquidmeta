@@ -43,7 +43,7 @@ data WFType where
         WFBase :: g:Env -> { b:Basic | b == TBool || b == TInt } 
                         -> ProofOf(WFType g (TRefn b PEmpty) Base)
         WFRefn :: g:Env -> b:Basic -> ProofOf(WFType g (TRefn b PEmpty) Base) 
-          -> ps:Preds -> nms:Names
+          -> { ps:Preds | not (ps == PEmpty) } -> nms:Names
           -> ( { y:Vname | NotElem y nms }
                  -> ProofOf(PHasFType (FCons y (FTBasic b) (erase_env g)) (unbindP y ps)) )
           -> ProofOf(WFType g (TRefn b ps) Base)
