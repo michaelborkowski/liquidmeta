@@ -56,6 +56,7 @@ lem_concat_shift_tv :: Env -> Vname -> Kind -> Env -> Proof
 lem_concat_shift_tv g a k_a Empty           = () 
 lem_concat_shift_tv g a k_a (Cons z t_z g') = () ? lem_concat_shift_tv g a k_a g' 
 lem_concat_shift_tv g a k_a (ConsT a' k g') = () ? lem_concat_shift_tv g a k_a g'
+-}
 
 --             && (not (in_env x (concatE g g')) <=> (not (in_env x g) && not (in_env x g'))) } @- }
 {-@ lem_in_env_concat :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
@@ -64,7 +65,6 @@ lem_in_env_concat :: Env -> Env -> Vname -> Proof
 lem_in_env_concat g Empty          x = ()
 lem_in_env_concat g (Cons  y s g') x = () ? lem_in_env_concat g g' x 
 lem_in_env_concat g (ConsT a k g') x = () ? lem_in_env_concat g g' x
--}
 
 {-@ lem_erase_tsubFV :: x:Vname -> v:Value -> t:Type 
                                 -> { pf:_ | erase (tsubFV x v t) == erase t } @-}

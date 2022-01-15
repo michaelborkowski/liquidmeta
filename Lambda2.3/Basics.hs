@@ -351,6 +351,11 @@ subBTV_at j t_a (Annot e t)                  = Annot     (subBTV_at j t_a e) (ts
 data Preds = PEmpty                         -- type Preds = [Expr]	
            | PCons  Expr Preds
   deriving Eq
+{-@ data Preds where 
+        PEmpty :: Preds
+        PCons  :: p:Expr -> ps:Preds 
+                         -> { ps':Preds | Set_sub (fvP ps') (Set_cup (fv p) (fvP ps)) &&
+                                          Set_sub (ftvP ps') (Set_cup (ftv p) (ftvP ps)) } @-}
 
 {-@ lazy predsize @-}
 {-@ measure predsize @-}

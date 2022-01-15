@@ -167,3 +167,27 @@ lem_weaken_tv_ftyp g g' e t p_e_t@(FTLet env e_y t_y p_ey_ty e' t' nms mk_p_y_e'
 lem_weaken_tv_ftyp g g' e t (FTAnn _ e' _t liqt p_e'_t) a k 
     = FTAnn (concatF (FConsT a k g) g') e' t (liqt ? lem_binds_consT_concatF g g' a k)
             (lem_weaken_tv_ftyp g g' e' t p_e'_t a k)
+
+{-@ lem_weaken_pftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
+        -> ps:Preds -> ProofOf(PHasFType (concatF g g') ps)
+        -> { x:Vname | not (in_envF x g) && not (in_envF x g') } -> t_x:FType
+        -> ProofOf(PHasFType (concatF (FCons x t_x g) g') ps) / [predsize ps] @-}
+lem_weaken_pftyp :: FEnv -> FEnv -> Preds -> PHasFType ->  Vname -> FType -> PHasFType
+lem_weaken_pftyp g g' ps (PFTEmp _) x t_x = PFTEmp (concatF (FCons x t_x g) g')
+lem_weaken_pftyp g g' ps (PFTCons _ p pf_p_bl ps' pf_ps'_bl) x t_x 
+  = PFTCons (concatF (FCons x t_x g) g') p pf'_p_bl ps' pf'_ps'_bl
+      where
+        pf'_p_bl   = lem_weaken_ftyp  g g' p (FTBasic TBool) pf_p_bl x t_x
+        pf'_ps'_bl = lem_weaken_pftyp g g' ps'             pf_ps'_bl x t_x  
+
+{-@ lem_weaken_tv_pftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
+        -> ps:Preds -> ProofOf(PHasFType (concatF g g') ps)
+        -> { a:Vname | not (in_envF a g) && not (in_envF a g') } -> k:Kind
+        -> ProofOf(PHasFType (concatF (FConsT a k g) g') ps) / [predsize ps] @-}
+lem_weaken_tv_pftyp :: FEnv -> FEnv -> Preds -> PHasFType -> Vname -> Kind -> PHasFType
+lem_weaken_tv_pftyp g g' ps (PFTEmp _) a k = PFTEmp (concatF (FConsT a k g) g')
+lem_weaken_tv_pftyp g g' ps (PFTCons _ p pf_p_bl ps' pf_ps'_bl) a k 
+  = PFTCons (concatF (FConsT a k g) g') p pf'_p_bl ps' pf'_ps'_bl
+      where
+        pf'_p_bl   = lem_weaken_tv_ftyp  g g' p (FTBasic TBool) pf_p_bl a k
+        pf'_ps'_bl = lem_weaken_tv_pftyp g g' ps'             pf_ps'_bl a k 

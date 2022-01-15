@@ -13,28 +13,22 @@ time liquid --normal BasicPropsEnvironments.hs	                        # TODO: l
 time liquid --normal WellFormedness.hs                                  
 #time liquid --normal SynthWellFormed.hs               --smttimeout=200  # TODO: errors
 #time liquid --normal PrimitivesWFType.hs                                # add more later
-time liquid --normal BasicPropsWellFormedness.hs                        # TODO: lots lots lots lots
+time liquid --normal BasicPropsWellFormedness.hs                         # TODO: lots lots lots lots
 time liquid --normal SystemFLemmasWellFormedness.hs                     
 
 time liquid --normal SystemFLemmasWeaken.hs                             
 time liquid --normal SystemFLemmasSubstitution.hs                      
 time liquid --normal SystemFSoundness.hs
+time liquid --normal Typing.hs                                          # TODO: lots lots lots
 
-
-
-
-
-#####time liquid --normal          Typing.hs  
 #####time liquid --normal --oldple BasicPropsCSubst.hs                 
 #####time liquid --normal --oldple BasicPropsDenotes.hs                        
 #####time liquid --normal --oldple BasicPropsEraseTyping.hs		
 #####time liquid --normal          PrimitivesSemantics.hs
 
-#####time liquid --normal --oldple LemmasChangeVarWF.hs
-#####time liquid --normal --oldple LemmasChangeVarWFEnv.hs
 #####time liquid --normal --oldple LemmasChangeVarEnt.hs
-#####time liquid --normal --oldple LemmasWeakenWF.hs
-#####time liquid --normal --oldple LemmasWeakenWFTV.hs
+time liquid --normal LemmasWeakenWF.hs
+time liquid --normal LemmasWeakenWFTV.hs
 
 #####time liquid --normal --oldple LemmasWeakenEnt.hs
 #####time liquid --normal --oldple LemmasWellFormedness.hs

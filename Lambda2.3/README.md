@@ -8,40 +8,40 @@
  - [X] (05) SystemFWellFormedness.hs
  - [X] (06) SystemFTyping.hs
  - [X] (08) PrimitivesFTyping.hs
- - [X] (13) PrimitivesWFType.hs
+ - [X] (15) SystemFLemmasWellFormed.hs
  - [X] (16) SystemFLemmasWeaken.hs
  - [X] (17) SystemFLemmasSubstitution.hs
  - [X] (18) SystemFSoundness.hs
+ - [X] (24) LemmasWeakenWF.hs
+ - [X] (25) LEmmasWeakenWF.hs
 
 ## Partial Modules - Preliminary Passes
 
  - [ ] (02) LocalClosure.hs
  - [ ] (07) BasicPropsSubstitution.hs
  - [ ] (09) BasicPropsEnvironments.hs
+ - [ ] (14) BasicPropsWellFormedness.hs
+ - [ ] (11) WellFormedness.hs
+ - [ ] (19) Typing.hs
 
 ## Modules Todo
 
  - [ ] (10) CheckSynth.hs
- - [ ] (11) WellFormedness.hs
  - [ ] (12) SynthWellFormed.hs
- - [ ] (14) BasicPropsWellFormedness.hs
- - [ ] (15) SystemFLemmasWellFormed.hs
- - [ ] (19) Typing.hs
+ - [ ] (13) PrimitivesWFType.hs
  - [ ] (20) BasicPropsCSubst.hs
  - [ ] (21) BasicPropsDenotes.hs
- - [ ] (22)
- - [ ] (23)
- - [ ] (24)
- - [ ] (25)
- - [ ] (26)
+ - [ ] (22) BasicPropsEraseTyping.hs
+ - [ ] (23) PrimitivesSemantics.hs
+ - [ ] (26) LemmasWeakenEnt.hs
  - [ ] (27)
  - [ ] (28)
  - [ ] (29)
  - [ ] (30)
- - [ ] (31)
- - [ ] (32)
+ - [ ] (31) SubstitutionLemmasWF.hs
+ - [ ] (32) SubstitutionLemmasWFTV.hs
  - [ ] (33)
- - [ ] (34)
+ - [ ] (34) SubstitutionWFAgain.hs
  - [ ] (35) LemmasWeakenTyp.hs
  - [ ] (36) LemmasWeakenTypTV.hs
  - [ ] (37) LemmasSubtyping.hs
