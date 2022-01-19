@@ -13,7 +13,8 @@
  - [X] (17) SystemFLemmasSubstitution.hs
  - [X] (18) SystemFSoundness.hs
  - [X] (24) LemmasWeakenWF.hs
- - [X] (25) LEmmasWeakenWF.hs
+ - [X] (25) LemmasWeakenWF.hs
+ - [X] (26) LemmasWeakenEnt.hs
 
 ## Partial Modules - Preliminary Passes
 
@@ -33,7 +34,6 @@
  - [ ] (21) BasicPropsDenotes.hs
  - [ ] (22) BasicPropsEraseTyping.hs
  - [ ] (23) PrimitivesSemantics.hs
- - [ ] (26) LemmasWeakenEnt.hs
  - [ ] (27)
  - [ ] (28)
  - [ ] (29)

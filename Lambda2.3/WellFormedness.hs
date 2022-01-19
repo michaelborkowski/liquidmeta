@@ -68,21 +68,6 @@ data WFType where
           -> ProofOf(WFType g (TPoly k t) Star) 
         WFKind :: g:Env -> t:Type -> ProofOf(WFType g t Base) -> ProofOf(WFType g t Star) @-}
 
-{-
-{-@ measure wftypSize @-}
-{-@ wftypSize :: WFType -> { v:Int | v > 0 } @-}
-wftypSize :: WFType -> Int
-wftypSize (WFBase _ _ _)                          = 1
-wftypSize (WFRefn g x b _ p_g_b p y p_yg_p_bl)    = (wftypSize p_g_b)  + 1
-wftypSize (WFVar1 _ _ _ _)                        = 1
-wftypSize (WFVar2 _ _ _ _ p_g_a _ _)              = (wftypSize p_g_a)  + 1
-wftypSize (WFVar3 _ _ _ _ p_g_a _ _)              = (wftypSize p_g_a)  + 1
-wftypSize (WFFunc g x t_x _ p_g_tx _ t y p_yg_t)  = (wftypSize p_g_tx) + (wftypSize p_yg_t) + 1
-wftypSize (WFExis g x t_x _ p_g_tx _ t y p_yg_t)  = (wftypSize p_g_tx) + (wftypSize p_yg_t) + 1
-wftypSize (WFPoly _ _ _ _ _ _ p_a'g_t)            = (wftypSize p_a'g_t) + 1
-wftypSize (WFKind _ _ p_g_t)                      = (wftypSize p_g_t)  + 1
--}
-
 {-@ reflect isWFBase @-}
 isWFBase :: WFType -> Bool
 isWFBase (WFBase {}) = True

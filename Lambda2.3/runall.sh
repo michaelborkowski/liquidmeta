@@ -20,9 +20,9 @@ time liquid --normal SystemFLemmasWeaken.hs
 time liquid --normal SystemFLemmasSubstitution.hs                      
 time liquid --normal SystemFSoundness.hs
 time liquid --normal Typing.hs                                          # TODO: lots lots lots
+time liquid --normal BasicPropsCSubst.hs                                # TODO: lots lots lots lots 
 
-#####time liquid --normal --oldple BasicPropsCSubst.hs                 
-#####time liquid --normal --oldple BasicPropsDenotes.hs                        
+time liquid --normal BasicPropsDenotes.hs                               # TODO: lots lots lots
 #####time liquid --normal --oldple BasicPropsEraseTyping.hs		
 #####time liquid --normal          PrimitivesSemantics.hs
 
@@ -30,7 +30,7 @@ time liquid --normal Typing.hs                                          # TODO: 
 time liquid --normal LemmasWeakenWF.hs
 time liquid --normal LemmasWeakenWFTV.hs
 
-#####time liquid --normal --oldple LemmasWeakenEnt.hs
+time liquid --normal LemmasWeakenEnt.hs
 #####time liquid --normal --oldple LemmasWellFormedness.hs
 #####time liquid --normal --oldple Implications.hs 
 #####time liquid --normal --oldple Entailments.hs                    

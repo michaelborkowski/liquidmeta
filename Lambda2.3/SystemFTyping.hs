@@ -77,25 +77,6 @@ data HasFType where
                                                && Set_sub (freeTV t1) (tvbindsF g) && isLCT t1 }
                 -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b) @-}
 
-{- 
-{-@ measure ftypSize @-}
-{-@ ftypSize :: HasFType -> { v:Int | v >= 0 } @-}
-ftypSize :: HasFType -> Int
-ftypSize (FTBC {})                           = 1
-ftypSize (FTIC {})                           = 1
-ftypSize (FTVar1 {})                         = 1
-ftypSize (FTVar2 _ _ _ p_x_b _ _)            = (ftypSize p_x_b)   + 1
-ftypSize (FTVar3 _ _ _ p_x_b _ _)            = (ftypSize p_x_b)   + 1
-ftypSize (FTPrm {})                          = 1
-ftypSize (FTAbs _ _ _ _ _ _ _ _ p_e_b')      = (ftypSize p_e_b')  + 1
-ftypSize (FTApp _ _ _ _ p_e_bb' _ p_e'_b)    = (ftypSize p_e_bb') + (ftypSize p_e'_b) + 1
-ftypSize (FTAbsT _ _ _ _ _ _ p_e_b)          = (ftypSize p_e_b)  + 1
-ftypSize (FTAppT _ _ _ _ _ p_e_at' _ _)      = (ftypSize p_e_at') + 1
-ftypSize (FTLet _ _ _ p_ex_b _ _ _ _ p_e_b') = (ftypSize p_ex_b)  + (ftypSize p_e_b') + 1
-ftypSize (FTAnn _ _ _ _ p_e_b)               = (ftypSize p_e_b)   + 1
-ftypSize (FTConj _ _ p_e_b _ p_e'_b)         = (ftypSize p_e_b)   + (ftypSize p_e'_b) + 1
--}
-
 {-@ reflect isFTVar @-}
 isFTVar :: HasFType -> Bool
 isFTVar (FTVar1 {}) = True
@@ -198,8 +179,8 @@ refn_pred Leql     = App (App (Prim Eqv) (BV 0))
 refn_pred Eql      = App (App (Prim Eqv) (BV 0))
                            (App (App (AppT (Prim Eql)  (TRefn (BTV 0) PEmpty)) (BV 2)) (BV 1))
 
-{-@ reflect ty @-} -- Primitive Typing            -- removed: && Set_emp (tfreeBV t)
-{-@ ty :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) && erase t == erase_ty c } @-}
+{-@ reflect ty @-} -- Primitive Typing            -- removed: && Set_emp (tfreeBV t)  -
+{-@ ty :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 --                                 && noDefnsBaseAppTInRefns Empty t && isWellFormed Empty t Star } @-}
 ty :: Prim -> Type
 ty And      = TFunc (inType And)      (ty' And)

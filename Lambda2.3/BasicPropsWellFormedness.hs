@@ -460,6 +460,54 @@ lem_free_bound_in_env g t k (WFPoly _g k' t' k_t' nms mk_p_a_t'_kt') x = case t 
         a = fresh_var_excluding nms g x 
 lem_free_bound_in_env g t k (WFKind _g _t p_t_B) x = () ? lem_free_bound_in_env g t Base p_t_B x
 
+{-@ lem_free_subset_binds :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
+            -> { pf:_ | Set_sub (free t) (binds g) && Set_sub (freeTV t) (binds g) &&
+                        Set_sub (free t) (vbinds g) && Set_sub (freeTV t) (tvbinds g) } 
+             / [tsize t, envsize g, ksize k] @-}
+lem_free_subset_binds :: Env -> Type -> Kind -> WFType -> Proof
+lem_free_subset_binds g t k (WFBase _ _) = case t of
+  (TRefn b _) -> case b of
+    TBool -> () 
+    TInt  -> () 
+lem_free_subset_binds g t k p_t_k@(WFRefn _g b p_g_b p nms mk_p_z_p_bl) = case t of
+  (TRefn _ _) -> () ? lem_fvp_subset_bindsF (FCons z (FTBasic b) (erase_env g))
+                                            (unbindP z p) (mk_p_z_p_bl z)
+                    ? lem_free_subset_binds g (TRefn b PEmpty) Base p_g_b
+                    ? lem_free_bound_in_env g t k p_t_k z
+    where
+      z = fresh_varF nms (erase_env g)
+lem_free_subset_binds g t k (WFVar1 g' a _k) = case t of
+  (TRefn b _) -> case b of
+    (FTV _) -> () 
+lem_free_subset_binds g t k (WFVar2 g' a _k p_a_k y t')  
+  = () ? lem_free_subset_binds g' t k p_a_k
+lem_free_subset_binds g t k (WFVar3 g' a _k p_a_k a' k') 
+  = () ? lem_free_subset_binds g' t k p_a_k
+lem_free_subset_binds g t k p_t_k@(WFFunc _g t_y k_y p_ty_wf t' k' nms mk_p_y_t'_wf) = case t of
+  (TFunc _ _) -> () ? lem_free_subset_binds g t_y k_y p_ty_wf
+                    ? lem_free_subset_binds (Cons y t_y g) (unbindT y t') k' (mk_p_y_t'_wf y)
+                    ? lem_free_bound_in_env g t k p_t_k y
+    where
+      y = fresh_var nms g
+lem_free_subset_binds g t k p_t_k@(WFExis _g t_y k_y p_ty_wf t' k' nms mk_p_y_t'_wf) = case t of
+  (TExists _ _) -> () ? lem_free_subset_binds g t_y k_y p_ty_wf
+                      ? lem_free_subset_binds (Cons y t_y g) (unbindT y t') k' (mk_p_y_t'_wf y)
+                      ? lem_free_bound_in_env g t k p_t_k y
+    where
+      y = fresh_var nms g
+lem_free_subset_binds g t k p_t_k@(WFPoly _g k' t' k_t' nms mk_p_a_t'_kt') = case t of
+  (TPoly _ _) -> () ? lem_free_subset_binds (ConsT a k' g) (unbind_tvT a t') 
+                                            k_t' (mk_p_a_t'_kt' a)
+                    ? lem_free_bound_in_env g t k p_t_k a
+    where
+      a = fresh_var nms g
+lem_free_subset_binds g t k (WFKind _g _t p_t_B) = () ? lem_free_subset_binds g t Base p_t_B
+
+{-@ lem_closed_free_empty :: t:Type -> k:Kind -> ProofOf(WFType Empty t k)
+            -> { pf:_ | Set_emp (free t) && Set_emp (freeTV t) } @-}
+lem_closed_free_empty :: Type -> Kind -> WFType -> Proof
+lem_closed_free_empty t k p_emp_t = lem_free_subset_binds Empty t k p_emp_t
+
 -------------------------------------------------------------------------------------------
 -- | TECHNICAL LEMMAS relating to the abscence of dangling BOUND VARIABLES without a binder
 -------------------------------------------------------------------------------------------
@@ -478,13 +526,6 @@ lem_freeBTV_unbind_tv_empty a a' e = toProof ( S.empty === freeBTV (unbind_tv a 
 lem_tfreeBTV_unbind_tvT_empty :: Vname -> Vname -> Type -> Proof
 lem_tfreeBTV_unbind_tvT_empty a a' t = toProof ( S.empty === tfreeBTV (unbind_tvT a a' t)
                                       === S.difference (tfreeBTV t) (S.singleton a) )
-
-{-@ lem_ffreeBV_unbindFT_empty :: a:Vname -> a':Vname 
-        -> { t:FType | Set_emp (ffreeBV (unbindFT a a' t)) }
-        -> { pf:_ | Set_emp (ffreeBV t) || ffreeBV t == Set_sng a } @-}
-lem_ffreeBV_unbindFT_empty :: Vname -> Vname -> FType -> Proof
-lem_ffreeBV_unbindFT_empty a a' t = toProof ( S.empty === ffreeBV (unbindFT a a' t)
-                                      === S.difference (ffreeBV t) (S.singleton a) )
 -}
 
 {-@ lem_ftyp_islc :: g:FEnv -> e:Expr -> t:FType -> ProofOf(HasFType g e t)

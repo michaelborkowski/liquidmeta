@@ -36,12 +36,6 @@ lem_psubFTV_strengthen :: Vname -> Type -> Preds -> Preds -> Proof
 lem_psubFTV_strengthen a t_a PEmpty       rs = ()
 lem_psubFTV_strengthen a t_a (PCons p ps) rs = () ? lem_psubFTV_strengthen a t_a ps rs
 
-{-@ lem_pchgFTV_strengthen :: a:Vname -> a':Vname -> ps:Preds -> rs:Preds
-        -> { pf:_ | pchgFTV a a' (strengthen ps rs) == strengthen (pchgFTV a a' ps) (pchgFTV a a' rs) } @-}
-lem_pchgFTV_strengthen :: Vname -> Vname -> Preds -> Preds -> Proof
-lem_pchgFTV_strengthen a a' PEmpty       rs = ()
-lem_pchgFTV_strengthen a a' (PCons p ps) rs = () ? lem_pchgFTV_strengthen a a' ps rs
-
 {-@ lem_openP_at_strengthen :: j:Index -> y:Vname -> ps:Preds -> rs:Preds
         -> { pf:_ | openP_at j y (strengthen ps rs) == strengthen (openP_at j y ps) (openP_at j y rs) } @-}
 lem_openP_at_strengthen :: Index -> Vname -> Preds -> Preds -> Proof

@@ -248,32 +248,6 @@ subFTV a t_a (AppT e t)                = AppT  (subFTV a t_a e) (tsubFTV a t_a t
 subFTV a t_a (Let   e1 e2)             = Let   (subFTV a t_a e1) (subFTV a t_a e2)
 subFTV a t_a (Annot e t)               = Annot (subFTV a t_a e) (tsubFTV a t_a t) 
 
---                            (not (Set_mem a (ftv e))) => not (Set_mem a (ftv e')) &&
---  may need to restore these later:
---                               Set_sub (ftv e)  (Set_cup (Set_sng a) (ftv e')) &&
---                             ( isLC e' => isLC e ) &&
---  must restore these in another form
---                             ( isLC e => isLC e' ) &&
-{-@ reflect chgFTV @-}
-{-@ chgFTV :: a:Vname -> a':Vname -> e:Expr
-                  -> { e':Expr | (Set_mem a (ftv e) || e == e') &&
-                               Set_sub (ftv e') (Set_cup (Set_sng a') (Set_dif (ftv e) (Set_sng a))) &&
-                             ( a != a'  => not (Set_mem a (ftv e'))) &&
-                             ( e == Bc True => e' == Bc True ) && 
-                               fv e == fv e' && (isValue e => isValue e') } / [esize e] @-}
-chgFTV :: Vname -> Vname -> Expr -> Expr
-chgFTV a a' (Bc b)                = Bc b
-chgFTV a a' (Ic n)                    = Ic n
-chgFTV a a' (Prim p)                  = Prim p
-chgFTV a a' (BV i)                    = BV i
-chgFTV a a' (FV y)                    = FV y
-chgFTV a a' (Lambda   e)              = Lambda    (chgFTV a a' e)
-chgFTV a a' (App e e')                = App   (chgFTV a a' e)  (chgFTV a a' e')
-chgFTV a a' (LambdaT    k e)          = LambdaT   k (chgFTV a a' e)
-chgFTV a a' (AppT e bt)               = AppT  (chgFTV a a' e) (tchgFTV a a' bt)
-chgFTV a a' (Let   e1 e2)             = Let   (chgFTV a a' e1) (chgFTV a a' e2)
-chgFTV a a' (Annot e t)               = Annot (chgFTV a a' e) (tchgFTV a a' t) 
-
 -- may need to restore these later:
 --                               Set_sub (fv e) (fv e') && 
 --                               Set_sub (ftv e) (ftv e') && 
@@ -465,18 +439,6 @@ psubFTV :: Vname -> Type -> Preds -> Preds
 psubFTV a t_a PEmpty       = PEmpty
 psubFTV a t_a (PCons p ps) = PCons (subFTV a t_a p) (psubFTV a t_a ps)
 
--- move elsewhere
---                              ( isLCP ps => isLCP ps' ) &&
-{-@ reflect pchgFTV @-}
-{-@ pchgFTV :: a:Vname -> a':Vname -> ps:Preds
-                   -> { ps':Preds | (Set_mem a (ftvP ps) || ps == ps') &&
-                                Set_sub (ftvP ps') (Set_cup (Set_sng a') (Set_dif (ftvP ps) (Set_sng a))) &&
-                              ( a != a'  => not (Set_mem a (ftvP ps'))) &&
-                                fvP ps == fvP ps' } / [predsize ps] @-}
-pchgFTV :: Vname -> Vname -> Preds -> Preds  
-pchgFTV a a' PEmpty       = PEmpty
-pchgFTV a a' (PCons p ps) = PCons (chgFTV a a' p) (pchgFTV a a' ps)
-
 {-@ reflect psubBV @-} -- unbind opens (BV 0) to v in ps
 {-@ psubBV :: v:Value -> ps:Preds
                  -> { ps':Preds | Set_sub (fvP ps') (Set_cup (fvP ps) (fv v)) &&
@@ -560,6 +522,13 @@ noExists (TFunc  t_x t)   = noExists t_x && noExists t
 noExists (TExists  t_x t) = False
 noExists (TPoly  k   t)   = noExists t
 
+{-@ reflect isMono @-}
+{-@ isMono :: UserType -> Bool @-}
+isMono :: Type -> Bool
+isMono (TRefn _ _)    = True
+isMono (TFunc t_x t)  = isMono t_x && isMono t
+isMono (TPoly _ _)    = False
+
 {-@ lazy tsize @-}
 {-@ measure tsize @-}
 {-@ tsize :: t:Type -> { v:Int | v >= 0 } @-} 
@@ -568,6 +537,14 @@ tsize (TRefn b   r)         = (predsize r) + 1
 tsize (TFunc   t_x t)       = (tsize t_x) + (tsize t) + 1
 tsize (TExists   t_x t)     = (tsize t_x) + (tsize t) + 1
 tsize (TPoly   k   t)       = (tsize t)   + 1
+
+{-@ measure polysize @-}
+{-@ polysize :: t:Type -> { v:Int | v >= 0 } @-}
+polysize :: Type -> Int
+polysize (TRefn b   r)         = 0
+polysize (TFunc   t_x t)       = (polysize t_x) + (polysize t)
+polysize (TExists   t_x t)     = (polysize t_x) + (polysize t) 
+polysize (TPoly   k   t)       = (polysize t)   + 1
 
 {-@ reflect isTRefn @-}
 isTRefn :: Type -> Bool
@@ -734,23 +711,6 @@ tsubFTV a t_a (TRefn b   r)        = case b of
 tsubFTV a t_a (TFunc     t_z t)    = TFunc      (tsubFTV a t_a t_z) (tsubFTV a t_a t)
 tsubFTV a t_a (TExists   t_z t)    = TExists    (tsubFTV a t_a t_z) (tsubFTV a t_a t)
 tsubFTV a t_a (TPoly      k  t)    = TPoly      k                   (tsubFTV a t_a t)
-
---                        ( not (Set_mem a (freeTV t)) => not (Set_mem a (freeTV t')) ) } / [tsize t] @- }
---                               ( noExists t => noExists t' ) } / [tsize t] @-}
---  try without:
---                               Set_sub (freeTV t) (Set_cup (Set_sng a) (freeTV t')) &&
-{-@ reflect tchgFTV @-}
-{-@ tchgFTV :: a:Vname -> a':Vname -> t:Type
-                -> { t':Type | (Set_mem a (freeTV t) || t == t') && (free t' == free t) && 
-                               Set_sub (freeTV t') (Set_cup (Set_sng a') (Set_dif (freeTV t) (Set_sng a))) &&
-                               ( a != a' => not (Set_mem a (freeTV t')) ) } / [tsize t] @-}
-tchgFTV :: Vname -> Vname -> Type -> Type
-tchgFTV a a' (TRefn b   r)      = case b of
-  (FTV a1) | a == a1 -> TRefn (FTV a')   (pchgFTV a a' r)
-  _                  -> TRefn b          (pchgFTV a a' r)
-tchgFTV a a' (TFunc      t_x t) = TFunc     (tchgFTV a a' t_x) (tchgFTV a a' t)
-tchgFTV a a' (TExists    t_x t) = TExists   (tchgFTV a a' t_x) (tchgFTV a a' t)
-tchgFTV a a' (TPoly      k   t) = TPoly      k                 (tchgFTV a a' t)
 
 -- may need to restore later:
 --                               Set_sub (free t) (free t') &&
@@ -1161,8 +1121,8 @@ lem_erase_freeTV (TPoly    k' t) = () ? lem_erase_freeTV t
 
 data CSub = CEmpty
           | CCons  Vname Expr CSub
-          | CConsT Vname Type CSub
-  
+          | CConsT Vname Type CSub   -- NB: the exclusion of existentials here simplifies the
+                                     --       definition of denotations in Typing.hs
 --        CCons  :: x:Vname -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) &&
 --                                         Set_emp (freeBV v) && Set_emp (freeBTV v) } 
 --        CConsT :: a:Vname -> { t:UserType | Set_emp (free t) && Set_emp (freeTV t) &&
@@ -1267,36 +1227,11 @@ csubst_tv (CConsT a' t' th) a | a' == a   = t'
 
 {-@ reflect concatCS @-}
 {-@ concatCS :: th:CSub -> { th':CSub | Set_emp (Set_cap (bindsC th) (bindsC th')) }
-                          -> { thC:CSub | bindsC thC == Set_cup (bindsC th) (bindsC th') } @-}
+                        -> { thC:CSub | bindsC thC == Set_cup (bindsC th) (bindsC th') } @-}
 concatCS :: CSub -> CSub -> CSub
 concatCS th CEmpty           = th
 concatCS th (CCons  x v th') = CCons x v (concatCS th th')
 concatCS th (CConsT a t th') = CConsT a t (concatCS th th')
-
-
-{-@ reflect change_varCS @-}
-{-@ change_varCS :: th:CSub ->  { x:Vname | v_in_csubst x th } 
-        -> { y:Vname | y == x || not (in_csubst y th) } 
-        -> { th':CSub | bindsC th'  == Set_cup (Set_sng y) (Set_dif  (bindsC th) (Set_sng x)) &&
-                        vbindsC th' == Set_cup (Set_sng y) (Set_dif (vbindsC th) (Set_sng x)) &&
-                        tvbindsC th' == tvbindsC th } @-} 
-change_varCS :: CSub -> Vname -> Vname -> CSub
-change_varCS CEmpty            x y              = CEmpty
-change_varCS (CCons  z v_z th) x y | ( x == z ) = CCons  y v_z th
-                                   | otherwise  = CCons  z v_z (change_varCS th x y)
-change_varCS (CConsT a t_a th) x y              = CConsT a t_a (change_varCS th x y)
-
-{-@ reflect change_tvarCS @-}
-{-@ change_tvarCS :: th:CSub ->  { a:Vname | tv_in_csubst a th } 
-        -> { a':Vname | a' == a || not (in_csubst a' th) } 
-        -> { th':CSub | bindsC th'   == Set_cup (Set_sng a') (Set_dif   (bindsC th) (Set_sng a)) &&
-                        vbindsC th'  == vbindsC th &&
-                        tvbindsC th' == Set_cup (Set_sng a') (Set_dif (tvbindsC th) (Set_sng a)) } @-} 
-change_tvarCS :: CSub -> Vname -> Vname -> CSub
-change_tvarCS CEmpty             a a'               = CEmpty
-change_tvarCS (CCons  z  v_z th) a a'               = CCons  z  v_z (change_tvarCS th a a')
-change_tvarCS (CConsT a1 t_a th) a a' | ( a == a1 ) = CConsT a' t_a th
-                                      | otherwise   = CConsT a1 t_a (change_tvarCS th a a')
 
 {-@ reflect remove_fromCS @-}
 {-@ remove_fromCS :: th:CSub -> { x:Vname | in_csubst x th}
@@ -1316,9 +1251,10 @@ type Names = [Vname]   -- for cofinite quantification over free names
 {-@ predicate IsCup     X Y Z  = listElts X = Set_cup (listElts Y) (listElts Z) @-}
 {-@ predicate IsCupEnv  X Y Z  = listElts X = Set_cup (listElts Y) (binds Z)    @-}
 {-@ predicate IsCupFEnv X Y Z  = listElts X = Set_cup (listElts Y) (bindsF Z)   @-}
+{-@ predicate IsCupCSub X Y Z  = listElts X = Set_cup (listElts Y) (bindsC Z)   @-}
 {- @ predicate IsDel X Y Z  = listElts X = Set_dif (listElts Y) (Set_sng Z)     @-}
-{-@ predicate Elem  X Ys   = Set_mem X (listElts Ys)                           @-}
-{-@ predicate NotElem X Ys = not (Elem X Ys)                                   @-}
+{-@ predicate Elem  X Ys   = Set_mem X (listElts Ys)                            @-}
+{-@ predicate NotElem X Ys = not (Elem X Ys)                                    @-}
 
 {-@ unionEnv :: ys:Names -> zs:Env -> { xs:Names | IsCupEnv xs ys zs } @-}
 unionEnv :: Names -> Env -> Names
@@ -1331,6 +1267,12 @@ unionFEnv :: Names -> FEnv -> Names
 unionFEnv xs FEmpty         = xs
 unionFEnv xs (FCons  x t g) = x : (unionFEnv xs g)
 unionFEnv xs (FConsT a k g) = a : (unionFEnv xs g)
+
+{-@ unionCSub :: ys:Names -> zs:CSub -> { xs:Names | IsCupCSub xs ys zs } @-}
+unionCSub :: Names -> CSub -> Names
+unionCSub xs CEmpty          = xs
+unionCSub xs (CCons  x v th) = x : (unionCSub xs th)
+unionCSub xs (CConsT a t th) = a : (unionCSub xs th)
 
 
 {-@ reflect fresh @-}
@@ -1415,6 +1357,31 @@ lem_above_max_nms_fenv x []     (FCons  y t g) = lem_above_max_nms_fenv x [] g
 lem_above_max_nms_fenv x []     (FConsT a k g) = lem_above_max_nms_fenv x [] g
 lem_above_max_nms_fenv x (_:ys) g              = lem_above_max_nms_fenv x ys g
 
+{-
+{-@ reflect fresh_varC @-}
+{-@ fresh_varC :: xs:Names -> th:CSub -> { x:Vname | not (in_csubst x th) && NotElem x xs } @-}
+fresh_varC :: Names -> CSub -> Vname
+fresh_varC xs th = n `withProof` lem_above_max_nms_csub n xs th
+  where
+    n    = 1 + max_nms_csub xs th
+
+{-@ reflect max_nms_csub @-}
+{-@ max_nms_csub :: Names -> CSub -> { x:Vname | x >= 0 } @-}
+max_nms_csub :: Names -> CSub -> Vname 
+max_nms_csub ([])   CEmpty          = 0
+max_nms_csub ([])   (CCons  x v th) = if (x > max_nms_csub [] th) then x else (max_nms_csub [] th)
+max_nms_csub ([])   (CConsT a t th) = if (a > max_nms_csub [] th) then a else (max_nms_csub [] th)
+max_nms_csub (x:xs) th              = if (x > max_nms_csub xs th) then x else (max_nms_csub xs th)
+
+{-@ reflect lem_above_max_nms_csub @-}
+{-@ lem_above_max_nms_csub :: x:Vname -> xs:Names -> { th:CSub | x > max_nms_csub xs th } 
+                                      -> { pf:_ | NotElem x xs && not (in_csubst x th) } @-}
+lem_above_max_nms_csub :: Vname -> Names -> CSub -> Proof
+lem_above_max_nms_csub _ []     CEmpty          = ()
+lem_above_max_nms_csub x []     (CCons  y v th) = lem_above_max_nms_csub x [] th
+lem_above_max_nms_csub x []     (CConsT a t th) = lem_above_max_nms_csub x [] th
+lem_above_max_nms_csub x (_:ys) th              = lem_above_max_nms_csub x ys th
+-}
 ---------------------------------------------------------------------------
 ----- | PROPOSITIONS
 ---------------------------------------------------------------------------
@@ -1458,8 +1425,8 @@ data Proposition where
     HasType :: Env -> Expr -> Type -> Proposition -- HasType G e t means G |- e : t
     Subtype :: Env -> Type -> Type -> Proposition
     Entails :: Env -> Preds -> Proposition
-    VDenotes :: CSub -> Type -> Expr -> Proposition
-    EDenotes :: CSub -> Type -> Expr -> Proposition
+    VDenotes :: Type -> Expr -> Proposition
+    EDenotes :: Type -> Expr -> Proposition
     DenotesEnv :: Env -> CSub -> Proposition      -- th \in [[G]]
 
     -- Entailments
