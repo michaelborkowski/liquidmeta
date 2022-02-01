@@ -113,9 +113,9 @@ lem_tchgFTV_ty a a' Eql      = ()
 {-@ lem_typing_wf :: g:Env -> e:Expr -> t:Type -> { p_e_t:HasType | propOf p_e_t == HasType g e t }
                       -> ProofOf(WFEnv g) -> ProofOf(WFType g t Star) / [esize e, envsize g] @-} 
 lem_typing_wf :: Env -> Expr -> Type -> HasType -> WFEnv -> WFType
-lem_typing_wf g e t (TBC _g b) p_wf_g  = WFKind g t (lem_wf_tybc g b)
-lem_typing_wf g e t (TIC _g n) p_wf_g  = WFKind g t (lem_wf_tyic g n)
-lem_typing_wf g e t (TVar1 _g' x t' k' p_g'_t') p_wf_g -- x:t',g |- (FV x) : t == self(t', x)
+lem_typing_wf g e t (TBC _ _g b) p_wf_g  = WFKind g t (lem_wf_tybc g b)
+lem_typing_wf g e t (TIC _ _g n) p_wf_g  = WFKind g t (lem_wf_tyic g n)
+lem_typing_wf g e t (TVar1 _ _g' x t' k' p_g'_t') p_wf_g -- x:t',g |- (FV x) : t == self(t', x)
     = case p_wf_g of
         (WFEEmpty)                           -> impossible "surely"
         (WFEBind g' p_g' _x _t' _  _p_g'_t') -> case k' of 
@@ -133,22 +133,22 @@ lem_typing_wf g e t (TVar1 _g' x t' k' p_g'_t') p_wf_g -- x:t',g |- (FV x) : t =
               p_g_t'     = lem_weaken_wf g' Empty t' k' p_g'_t' x t'
               p_g_selft' = lem_selfify_wf g t' k' p_g_t'  (FV x) p_x_t'
         (WFEBindT g' p_g' a k_a)            -> impossible ""
-lem_typing_wf g e t (TVar2 g' x _t p_g'_x_t y s) p_wf_g
+lem_typing_wf g e t (TVar2 _ g' x _t p_g'_x_t y s) p_wf_g
     = case p_wf_g of
         (WFEEmpty)                         -> impossible "Surely"
         (WFEBind g' p_g' _y _s k_y p_g'_s) -> lem_weaken_wf g' Empty t Star p_g'_t y s
           where 
             p_g'_t = lem_typing_wf g' e t p_g'_x_t p_g'
         (WFEBindT g' p_g' a k_a)           -> impossible ""
-lem_typing_wf g e t (TVar3 g' x _t p_g'_x_t a k_a) p_wf_g 
+lem_typing_wf g e t (TVar3 _ g' x _t p_g'_x_t a k_a) p_wf_g 
     = case p_wf_g of
         (WFEEmpty)                         -> impossible "Surely"
         (WFEBind g' p_g' _y _s k_y p_g'_s) -> impossible ""
         (WFEBindT g' p_g' _a _ka)          -> lem_weaken_tv_wf g' Empty  t Star
                                               (lem_typing_wf g' e t p_g'_x_t p_g') a k_a  
-lem_typing_wf g e t (TPrm _g c) p_wf_g 
+lem_typing_wf g e t (TPrm _ _g c) p_wf_g 
     = lem_weaken_many_wf Empty g (ty c) Star (lem_wf_ty c)  ? lem_empty_concatE g
-lem_typing_wf g e t (TAbs _g t_x k_x p_tx_wf e' t' nms mk_p_e'_t') p_wf_g
+lem_typing_wf g e t (TAbs _ _g t_x k_x p_tx_wf e' t' nms mk_p_e'_t') p_wf_g
     = WFFunc g t_x k_x p_tx_wf t' Star nms' mk_yg_t'
         where
           {-@ mk_yg_t' :: { y:Vname | NotElem y nms' }
@@ -156,13 +156,13 @@ lem_typing_wf g e t (TAbs _g t_x k_x p_tx_wf e' t' nms mk_p_e'_t') p_wf_g
           mk_yg_t' y = lem_typing_wf (Cons y t_x g) (unbind y e') (unbindT y t') (mk_p_e'_t' y)
                                      (WFEBind g p_wf_g y t_x k_x p_tx_wf)
           nms' = unionEnv nms g
-lem_typing_wf g e t (TApp _g e1 t_x t' p_e1_txt' e2 p_e2_tx) p_wf_g
+lem_typing_wf g e t (TApp _ _g e1 t_x t' p_e1_txt' e2 p_e2_tx) p_wf_g
     = if k' == Base then WFKind g t p_g_ext' else p_g_ext'
         where
           p_g_txt' = lem_typing_wf g e1 (TFunc t_x t') p_e1_txt' p_wf_g
           (WFFunc _ _ k_x p_g_tx _ k' nms mk_p_yg_t') = lem_wffunc_for_wf_tfunc g t_x t' Star p_g_txt'
           p_g_ext' = WFExis g t_x k_x p_g_tx t' k' nms mk_p_yg_t'
-lem_typing_wf g e t (TAbsT _g k e' t' nms mk_p_a'g_e'_t') p_wf_g 
+lem_typing_wf g e t (TAbsT _ _g k e' t' nms mk_p_a'g_e'_t') p_wf_g 
     = WFPoly g k t' Star nms' mk_p_a'g_t' 
         where
 --          p_wf_er_g = lem_erase_env_wfenv g p_wf_g
@@ -174,7 +174,7 @@ lem_typing_wf g e t (TAbsT _g k e' t' nms mk_p_a'g_e'_t') p_wf_g
               p_wf_a'g   = WFEBindT g p_wf_g a' k
           nms'           = unionEnv nms g
 --  = WFPoly g k t' k_t' a' p_a'g_t'
-lem_typing_wf g e t (TAppT _g e' k s p_e'_as t' p_g_t') p_wf_g 
+lem_typing_wf g e t (TAppT _ _g e' k s p_e'_as t' p_g_t') p_wf_g 
   = if k_s == Star then p_g_st' else WFKind g (tsubBTV t' s) p_g_st'
       where
         p_g_as    = lem_typing_wf g e' (TPoly k s) p_e'_as p_wf_g
@@ -185,13 +185,13 @@ lem_typing_wf g e t (TAppT _g e' k s p_e'_as t' p_g_t') p_wf_g
         p_g_st'   = lem_subst_tv_wf g Empty a' t' k p_g_t' p_wf_a'g (unbind_tvT a' s) k_s 
                                     (mk_p_a'g_s a') ? lem_tsubFTV_unbind_tvT a' t' 
                                         (s ? lem_free_bound_in_env g (TPoly k s) Star p_g_as a')
-lem_typing_wf g e t (TLet _g e_x t_x p_ex_tx e' _t k p_g_t nms mk_p_e'_t) p_wf_g 
+lem_typing_wf g e t (TLet _ _g e_x t_x p_ex_tx e' _t k p_g_t nms mk_p_e'_t) p_wf_g 
     = case k of 
         Base -> WFKind g t p_g_t
         Star -> p_g_t 
-lem_typing_wf g e t (TAnn _g e' _t p_e'_t) p_wf_g
+lem_typing_wf g e t (TAnn _ _g e' _t p_e'_t) p_wf_g
     = lem_typing_wf g e' t p_e'_t p_wf_g
-lem_typing_wf g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_wf_g 
+lem_typing_wf g e t (TSub _ _g _e s p_e_s _t k p_g_t p_s_t) p_wf_g 
     = case k of 
         Base -> WFKind g t p_g_t 
         Star -> p_g_t
