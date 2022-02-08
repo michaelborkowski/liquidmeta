@@ -18,6 +18,11 @@ lem_strengthen_empty :: Preds -> Proof
 lem_strengthen_empty PEmpty       = ()
 lem_strengthen_empty (PCons p ps) = () ? lem_strengthen_empty ps
 
+{-@ lem_strengthen_one :: p:Expr -> ps:Preds 
+        -> { pf:_ | strengthen (PCons p PEmpty) ps == PCons p ps } @-}
+lem_strengthen_one :: Expr -> Preds -> Proof
+lem_strengthen_one p ps = ()
+
 {-@ lem_strengthen_assoc :: ps:Preds -> qs:Preds -> rs:Preds
         -> { pf:_ | strengthen ps (strengthen qs rs) == strengthen (strengthen ps qs) rs } @-}
 lem_strengthen_assoc :: Preds -> Preds -> Preds -> Proof

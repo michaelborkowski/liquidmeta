@@ -24,13 +24,19 @@ import BasicPropsEnvironments
 ----- | JUDGEMENTS : the Typing Relation and the Subtyping Relation
 -----------------------------------------------------------------------------
 
-{-@ reflect eqlPred @-} 
-{-@ eqlPred :: { t:Type | isTRefn t } -> e:Expr
+--                       Set_sub (ftv p') (Set_cup (freeTV t) (ftv e))  &&
+{-@ reflect eqlPred @-}               -- new definition avoids dealing with ps inside eqlPred
+{-@ eqlPred :: { t:Type | isTRefn t } -> e:Expr   
         -> { p':Expr | self t e Base == push (PCons p' PEmpty) t &&
-                       ftv p' == Set_cup (freeTV t) (ftv e)  &&
-                       fv  p' == Set_cup (free t)   (fv e) } @-}
+                                fv  p' ==                   (fv  e) } @-}
 eqlPred :: Type -> Expr -> Expr
-eqlPred (TRefn b ps) e = App (App (AppT (Prim Eql) (shiftT_at 0 (TRefn b ps))) (BV 0)) e
+eqlPred (TRefn b ps) e = App (App (AppT (Prim Eql) (TRefn b PEmpty)) (BV 0)) e
+
+{-@ lem_eqlPred_islc_at :: { b:Basic | isLCT_at 1 0 (TRefn b PEmpty) } 
+        -> ps:Preds -> { e:Expr | isLC e }
+        -> { pf:_ | isLC_at 1 0 (eqlPred (TRefn b ps) e) } @-}
+lem_eqlPred_islc_at :: Basic -> Preds -> Expr -> Proof
+lem_eqlPred_islc_at b ps e = () ? lem_islc_at_weaken 0 0 1 0 e
 
 {-
 {-@ reflect selfify @-} 
@@ -41,15 +47,12 @@ selfify :: Preds -> Basic -> Expr -> Preds
 selfify ps b e = PCons  (App (App (AppT (Prim Eql) (TRefn b ps)) (BV 0)) e)  ps
 -}
 
--- The self function unforuntately requies a shift up in deBruijn indices 
---   because the type `b{ps}` is being lifted over a binder and cons'ed onto the predicate
---   The naive    b{ ((BV 0) `= [b{ps}]` e):ps }   is incorrect, rather it must be 
---   b{ ((BV 0) `= [shiftAA 0 b{ps}]` e):ps }
+--                             Set_sub (freeTV t') (Set_cup (freeTV t) (ftv e)) &&
 {-@ reflect self @-} -- Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (freeBV e)) && 
 {-@ self :: t:Type -> e:Expr -> k:Kind
               -> { t':Type | Set_sub (free t') (Set_cup (free t) (fv e)) &&
-                             Set_sub (freeTV t') (Set_cup (freeTV t) (ftv e)) &&
                              (isTRefn t => isTRefn t') && (noExists t => noExists t' ) &&
+                             tdepth t == tdepth t' &&
                              erase t == erase t' && ( (k == Star) => (t == t') ) } @-}
 self :: Type -> Expr -> Kind -> Type
 --self t@(TRefn b ps)   e Base = TRefn b (PCons  (App (App (AppT (Prim Eql) t) (BV 0)) e)  ps)
@@ -58,6 +61,26 @@ self (TFunc    t_z t) e Base = TFunc   t_z t
 self (TExists  t_z t) e Base = TExists t_z (self t e Base)
 self (TPoly    k_a t) e Base = TPoly   k_a t
 self t                e Star = t
+
+{-@ lem_self_islct :: { t:Type | isLCT t } -> { e:Expr | isLC e } -> k:Kind
+                          -> { pf:_ | isLCT (self t e k) } @-}
+lem_self_islct :: Type -> Expr -> Kind -> Proof
+lem_self_islct t e k = lem_self_islct_at 0 t e k
+
+{-@ lem_self_islct_at :: j:Index -> { t:Type | isLCT_at j 0 t } -> { e:Expr | isLC e } 
+                          -> k:Kind -> { pf:_ | isLCT_at j 0 (self t e k) } @-}
+lem_self_islct_at :: Index -> Type -> Expr -> Kind -> Proof
+lem_self_islct_at j t@(TRefn b ps)   e Base = case b of
+  (BTV i) -> impossible ""
+  _       -> () ? lem_eqlPred_islc_at b ps e
+                ? lem_islc_at_weaken 0 0 (j+1) 0 e
+                ? lem_islc_at_weaken 1 0 (j+1) 0 (eqlPred (TRefn b ps) e)
+  -- TRefn b (PCons  (eqlPred (TRefn b ps) e)  ps)
+lem_self_islct_at j (TFunc    t_z t) e Base = ()
+lem_self_islct_at j (TExists  t_z t) e Base = lem_self_islct_at (j+1) t e Base
+lem_self_islct_at j (TPoly    k_a t) e Base = ()
+lem_self_islct_at j t                e Star = ()
+
 
 {-@ lem_unbindT_self :: y:Vname -> t:Type -> { e:Expr | isLC e } -> k:Kind
         -> { pf:_ | unbindT y (self t e k) == self (unbindT y t) e k } @-}
@@ -68,22 +91,62 @@ lem_unbindT_self y t e k = lem_openT_at_self 0 y t e k
         -> { pf:_ | openT_at j y (self t e k) == self (openT_at j y t) e k } @-}
 lem_openT_at_self :: Index -> Vname -> Type -> Expr -> Kind -> Proof
 lem_openT_at_self j y (TRefn b ps)    e Base = lem_open_at_lc_at (j+1) y 0 0 e
-                                             ? lem_openT_at_shiftT_at j y 0 (TRefn b ps)
+--                                             ? lem_openT_at_shiftT_at j y 0 (TRefn b ps)
 lem_openT_at_self j y (TFunc t_x t)   e Base = ()
 lem_openT_at_self j y (TExists t_x t) e Base = lem_openT_at_self (j+1) y t e Base
 lem_openT_at_self j y (TPoly k_a t)   e Base = ()
 lem_openT_at_self j y t               e Star = ()
 
-{-@ lem_open_at_eqlPred :: y:Vname -> b:Basic -> { ps:Preds | isLCT (TRefn b ps) } 
+{-@ lem_open_at_eqlPred :: y:Vname -> b:Basic -> ps:Preds 
         -> { e:Expr | isLC e } -> { pf:_ | open_at 0 y (eqlPred (TRefn b ps) e) 
-                   == App (App (AppT (Prim Eql) (TRefn b ps)) (FV y)) e } @-}
+                   == App (App (AppT (Prim Eql) (TRefn b PEmpty)) (FV y)) e } @-}
 lem_open_at_eqlPred ::  Vname -> Basic -> Preds -> Expr -> Proof
-lem_open_at_eqlPred y b ps e = undefined {-() ? lem_islct_at_shiftT_at 0 0 (TRefn b ps) 0
-                                  ? lem_open_at_lc_at 0 y 0 0 e
-                                  ? lem_openT_at_lct_at 0 y 0 0 (shiftT_at 0 (TRefn b ps))
+lem_open_at_eqlPred y b ps e = () ? lem_open_at_lc_at 0 y 0 0 e
                                   ? toProof (unbind y (Prim Eql) === Prim Eql)
-                                  ? lem_openT_at_shiftT_at 0 y 0 (TRefn b ps)
-                                  ? toProof (unbind y (BV 0) === FV y)-}
+                                  ? toProof (unbind y (BV 0) === FV y) 
+
+{-@ lem_tsubFV_self :: z:Vname -> v_z:Expr -> t:Type -> e:Expr -> k:Kind
+        -> { pf:_ | tsubFV z v_z (self t e k) == self (tsubFV z v_z t) (subFV z v_z e) k } @-}
+lem_tsubFV_self :: Vname -> Expr -> Type -> Expr -> Kind -> Proof
+lem_tsubFV_self z v_z (TRefn b ps)     e Base = case b of
+  TBool   -> () 
+  TInt    -> () 
+  (FTV a) -> ()
+  (BTV a) -> ()
+lem_tsubFV_self z v_z (TFunc    t_y t) e Base = ()
+lem_tsubFV_self z v_z (TExists  t_y t) e Base = () ? lem_tsubFV_self z v_z t e Base
+lem_tsubFV_self z v_z (TPoly    k_a t) e Base = ()
+lem_tsubFV_self z v_z t                e Star = ()
+
+{-@ lem_tsubFV_self2 :: z:Vname -> v:Value -> t:Type -> { x:Vname | x != z } -> k:Kind
+        -> { pf:_ | tsubFV z v (self t (FV x) k) == self (tsubFV z v t) (FV x) k } @-}
+lem_tsubFV_self2 :: Vname -> Expr -> Type -> Vname -> Kind -> Proof
+lem_tsubFV_self2 z v (TRefn b  ps)   x Base = case b of
+  TBool   -> ()
+  TInt    -> ()
+  (FTV a) -> ()
+  (BTV a) -> ()
+lem_tsubFV_self2 z v (TFunc   t_y t) x Base = ()
+lem_tsubFV_self2 z v (TExists t_y t) x Base = () ? lem_tsubFV_self2 z v t x Base
+lem_tsubFV_self2 z v (TPoly   k_a t) x Base = ()
+lem_tsubFV_self2 z v t               x Star = ()
+
+{-@ lem_tsubBV_self :: v_z:Value -> t:Type  -> { e:Expr | isLC e } -> k:Kind
+        -> { pf:_ | tsubBV v_z (self t e k) == self (tsubBV v_z t) e k } @-}
+lem_tsubBV_self :: Expr -> Type -> Expr -> Kind -> Proof
+lem_tsubBV_self v_z t e k = lem_tsubBV_at_self 0 v_z t e k
+
+{-@ lem_tsubBV_at_self :: j:Index -> v_z:Value -> t:Type -> { e:Expr | isLC e } -> k:Kind
+        -> { pf:_ | tsubBV_at j v_z (self t e k) == self (tsubBV_at j v_z t) e k } @-}
+lem_tsubBV_at_self :: Index -> Expr -> Type -> Expr -> Kind -> Proof
+lem_tsubBV_at_self j v_z (TRefn b ps)     e Base 
+              = lem_subBV_at_lc_at (j+1) v_z 0 0 e
+lem_tsubBV_at_self j v_z (TFunc t_x t)   e Base = ()
+lem_tsubBV_at_self j v_z (TExists t_x t) e Base 
+              = lem_tsubBV_at_self (j+1) v_z t e Base
+lem_tsubBV_at_self j v_z (TPoly k_a t)   e Base = ()
+lem_tsubBV_at_self j v_z t               e Star = ()
+
 {-
 {-@ lem_subFV_eqlPred :: y:Vname -> v_y:Value -> { t:Type | isTRefn t } -> e:Expr
         -> { pf:_ | subFV y v_y (eqlPred t e) == eqlPred (tsubFV y v_y t) (subFV y v_y e) } @-}
@@ -122,37 +185,6 @@ lem_tsubFTV_self a t_a (TExists   t_x t) e Base = () ? lem_tsubFTV_self a t_a t 
 lem_tsubFTV_self a t_a (TPoly    k_a' t) e Base = ()  
 lem_tsubFTV_self a t_a t                 e Star = ()
 
-{-@ lem_tsubBV_self :: v_z:Value -> t:Type 
-        -> { e:Expr | isLC e } -> k:Kind
-        -> { pf:_ | tsubBV v_z (self t e k) == self (tsubBV v_z t) e k } @-}
-lem_tsubBV_self :: Expr -> Type -> Expr -> Kind -> Proof
-lem_tsubBV_self v_z t e k = lem_tsubBV_at_self 0 v_z t e k
-
-{-@ lem_tsubBV_at_self :: j:Index -> v_z:Value -> t:Type
-        -> { e:Expr | isLC e } -> k:Kind
-        -> { pf:_ | tsubBV_at j v_z (self t e k) == self (tsubBV_at j v_z t) e k } @-}
-lem_tsubBV_at_self :: Index -> Expr -> Type -> Expr -> Kind -> Proof
-lem_tsubBV_at_self j v_z (TRefn b ps)     e Base 
-              = lem_subBV_at_notin (j+1) z v_z e
-lem_tsubBV_at_self j v_z (TFunc t_x t)   e Base = ()
-lem_tsubBV_at_self j v_z (TExists t_x t) e Base 
-              = lem_tsubBV_at_self (j+1) v_z t e Base
-lem_tsubBV_at_self j v_z (TPoly k_a t)   e Base = ()
-lem_tsubBV_at_self j v_z t               e Star = ()
-
-{-@ lem_tsubFV_self :: z:Vname -> v_z:Expr -> t:Type -> e:Expr -> k:Kind
-        -> { pf:_ | tsubFV z v_z (self t e k) == self (tsubFV z v_z t) (subFV z v_z e) k } @-}
-lem_tsubFV_self :: Vname -> Expr -> Type -> Expr -> Kind -> Proof
-lem_tsubFV_self z v_z (TRefn b ps)     e Base = case b of
-  TBool   -> () 
-  TInt    -> () 
-  (FTV a) -> ()
-  (BTV a) -> ()
-lem_tsubFV_self z v_z (TFunc    t_y t) e Base = ()
-lem_tsubFV_self z v_z (TExists  t_y t) e Base = () ? lem_tsubFV_self z v_z t e Base
-lem_tsubFV_self z v_z (TPoly    k_a t) e Base = ()
-lem_tsubFV_self z v_z t                e Star = ()
-
 {-@ lem_tsubFV_self0 :: z:Vname -> v_z:Expr -> t:Type -> { x:Vname | x == z } -> k:Kind
         -> { pf:_ | tsubFV z v_z (self t (FV x) k) == self (tsubFV z v_z t) v_z k } @-}
 lem_tsubFV_self0 :: Vname -> Expr -> Type -> Vname -> Kind -> Proof
@@ -178,20 +210,8 @@ lem_tsubFV_self1 z z' (TFunc    t_y t) x Base = ()
 lem_tsubFV_self1 z z' (TExists  t_y t) x Base = () ? lem_tsubFV_self1 z z' t x Base
 lem_tsubFV_self1 z z' (TPoly    k_a t) x Base = ()
 lem_tsubFV_self1 z z' t                x Star = ()
-
-{-@ lem_tsubFV_self2 :: z:Vname -> v:Value -> t:Type -> { x:Vname | x != z } -> k:Kind
-        -> { pf:_ | tsubFV z v (self t (FV x) k) == self (tsubFV z v t) (FV x) k } @-}
-lem_tsubFV_self2 :: Vname -> Expr -> Type -> Vname -> Kind -> Proof
-lem_tsubFV_self2 z v (TRefn b  ps)   x Base = case b of
-  TBool   -> ()
-  TInt    -> ()
-  (FTV a) -> ()
-  (BTV a) -> ()
-lem_tsubFV_self2 z v (TFunc   t_y t) x Base = ()
-lem_tsubFV_self2 z v (TExists t_y t) x Base = () ? lem_tsubFV_self2 z v t x Base
-lem_tsubFV_self2 z v (TPoly   k_a t) x Base = ()
-lem_tsubFV_self2 z v t               x Star = ()
 -}
+
 
   --- | the Typing Judgement  --  Due to cofinite quantification, we need to explicity annotate
   ---                               the judgment size in order to define a termination metric.
@@ -225,7 +245,7 @@ data HasType where
         TVar1 :: g:Env -> { x:Vname | not (in_env x g) } 
                     -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
                     -> { pf:HasType | propOf pf == HasType (Cons x t g) (FV x) (self t (FV x) k) &&
-                                      sizeOf pf == 0 }
+                                      sizeOf pf == tdepth t }
         TVar2 :: n:Nat -> g:Env -> { x:Vname | in_env x g } -> t:Type -> ProofOfN n (HasType g (FV x) t)
                     -> { y:Vname | y != x && not (in_env y g) } -> s:Type
                     -> { pf:HasType | propOf pf == HasType (Cons y s g) (FV x) t &&
@@ -274,17 +294,17 @@ data HasType where
 typSize :: HasType -> Int
 typSize (TBC _ _)                               = 0
 typSize (TIC _ _)                               = 0
-typSize (TVar1 _ _ _ _ _)                       = 0
-typSize (TVar2 n _ _ _ p_x_b _ _)                 = n   + 1
-typSize (TVar3 n _ _ _ p_x_b _ _)                 = n   + 1
+typSize (TVar1 _ _ t _ _)                       = tdepth t
+typSize (TVar2 n _ _ _ p_x_b _ _)               = n   + 1
+typSize (TVar3 n _ _ _ p_x_b _ _)               = n   + 1
 typSize (TPrm _ _)                              = 0
-typSize (TAbs n _ _ _ _ _ _ _ p_e_b')             = n   + 1
-typSize (TApp n _ _ _ _ p_e_bb' _ p_e'_b)         = n   + 1
-typSize (TAbsT n _ _ _ _ _ p_e_t)                 = n   + 1
-typSize (TAppT n _ _ _ _ p_e_as _ _)              = n   + 1
-typSize (TLet n _ _ p_ex_b _ _ _ _ _ _ p_e_b')    = n   + 1
-typSize (TAnn n _ _ _ p_e_b)                      = n   + 1
-typSize (TSub n _ _ _ p_e_s _ _ _ p_s_t)          = n   + 1
+typSize (TAbs n _ _ _ _ _ _ _ p_e_b')           = n   + 1
+typSize (TApp n _ _ _ _ p_e_bb' _ p_e'_b)       = n   + 1
+typSize (TAbsT n _ _ _ _ _ p_e_t)               = n   + 1
+typSize (TAppT n _ _ _ _ p_e_as _ _)            = n   + 1
+typSize (TLet n _ _ p_ex_b _ _ _ _ _ _ p_e_b')  = n   + 1
+typSize (TAnn n _ _ _ p_e_b)                    = n   + 1
+typSize (TSub n _ _ _ p_e_s _ _ _ p_s_t)        = n   + 1
 
 {-@ reflect isTBC @-}
 isTBC :: HasType -> Bool
@@ -438,6 +458,11 @@ isSPoly _          = False
 data Implies where
     IRefl   :: Env -> Preds -> Implies 
     ITrans  :: Env -> Preds -> Preds -> Preds -> Implies -> Implies -> Implies
+    IConj   :: Env -> Preds -> Preds -> Preds -> Implies -> Implies -> Implies
+    ICons1  :: Env -> Expr  -> Preds -> Implies
+    ICons2  :: Env -> Expr  -> Preds -> Implies
+    IRepeat :: Env -> Expr  -> Preds -> Implies
+
     IWeak   :: Env -> Env -> Preds -> Preds -> Implies -> Vname -> Type -> Implies 
     IWeakTV :: Env -> Env -> Preds -> Preds -> Implies -> Vname -> Kind -> Implies 
     ISub    :: Env -> Env -> Vname -> Expr -> Type -> HasType -> Preds -> Preds -> Implies -> Implies 
@@ -447,6 +472,13 @@ data Implies where
         IRefl   :: g:Env -> ps:Preds -> ProofOf(Implies g ps ps)  
         ITrans  :: g:Env -> ps:Preds -> qs:Preds -> rs:Preds
             -> ProofOf(Implies g ps qs) -> ProofOf(Implies g qs rs) -> ProofOf(Implies g ps rs)
+        IConj   :: g:Env -> ps:Preds -> qs:Preds -> rs:Preds 
+            -> ProofOf(Implies g ps qs) -> ProofOf(Implies g ps rs)
+            -> ProofOf(Implies g ps (strengthen qs rs))
+        ICons1  :: g:Env -> p:Expr   -> ps:Preds -> ProofOf(Implies g (PCons p ps) (PCons p PEmpty))
+        ICons2  :: g:Env -> p:Expr   -> ps:Preds -> ProofOf(Implies g (PCons p ps) ps)
+        IRepeat :: g:Env -> p:Expr   -> ps:Preds -> ProofOf(Implies g (PCons p ps) (PCons p (PCons p ps)))
+
         IWeak   :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
             -> ps:Preds -> qs:Preds  -> ProofOf(Implies (concatE g g') ps qs)
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> t_x:Type 

@@ -259,8 +259,9 @@ lem_islcft_at_after_openFT_at j a (FTFunc t_x t) = () ? lem_islcft_at_after_open
                                                       ? lem_islcft_at_after_openFT_at j     a t
 lem_islcft_at_after_openFT_at j a (FTPoly k'  t) = () ? lem_islcft_at_after_openFT_at (j+1) a t
 
+{-
 ---------------------------------------------------------------------------------
------ | Commutative Laws for OPENING and SHIFTING
+----- | Commutative Laws for OPENING and deBRUIJN INDEX SHIFTING
 ---------------------------------------------------------------------------------
 
 {-@ lem_open_at_shift_at :: j:Index -> y:Vname -> { k:Index | j >= k } -> e:Expr
@@ -337,3 +338,4 @@ lem_islct_at_shiftT_at j_x j_a (TFunc   t_x t) k = lem_islct_at_shiftT_at j_x j_
 lem_islct_at_shiftT_at j_x j_a (TExists t_x t) k = lem_islct_at_shiftT_at j_x j_a t_x k
                                                  ? lem_islct_at_shiftT_at (j_x+1) j_a t (k+1) 
 lem_islct_at_shiftT_at j_x j_a (TPoly   k'  t) k = lem_islct_at_shiftT_at j_x (j_a+1) t k
+-}

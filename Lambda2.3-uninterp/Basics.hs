@@ -511,8 +511,8 @@ data Type where
     TPoly   ::          Kind   -> Type -> Type     -- \forall a:k. t
   deriving Eq
 
-
-  -- This would also avoid issues of deBruijn index shifting in type variable substitution (in defining push)
+  -- This would also avoid issues of deBruijn index shifting 
+  --   in type variable substitution (in defining push)
 {-@ type UserType = { t:Type | noExists t } @-}
 
 {-@ reflect noExists @-}
@@ -537,6 +537,14 @@ tsize (TRefn b   r)         = (predsize r) + 1
 tsize (TFunc   t_x t)       = (tsize t_x) + (tsize t) + 1
 tsize (TExists   t_x t)     = (tsize t_x) + (tsize t) + 1
 tsize (TPoly   k   t)       = (tsize t)   + 1
+
+{-@ measure tdepth @-}   -- modified for extra wiggle room
+{-@ tdepth :: t:Type -> { v:Int | v >= 0 } @-} 
+tdepth :: Type -> Int
+tdepth (TRefn b   r)         = 0
+tdepth (TFunc   t_x t)       = (max (tdepth t_x) (tdepth t)) + 1
+tdepth (TExists   t_x t)     = (max (tdepth t_x) (tdepth t)) + 2
+tdepth (TPoly   k   t)       = (tdepth t)   + 1
 
 {-@ measure polysize @-}
 {-@ polysize :: t:Type -> { v:Int | v >= 0 } @-}
@@ -604,7 +612,8 @@ isLCT_at j_x j_a (TPoly   k   t) =                         isLCT_at j_x (j_a+1) 
                        -> { t':Type | Set_sub (free t') (Set_cup (Set_sng y) (free t)) &&
                                       Set_sub (freeTV t') (freeTV t) &&
                                       Set_sub (free t) (free t') && Set_sub (freeTV t) (freeTV t') &&
-                                      (noExists t => noExists t') && tsize t == tsize t' && 
+                                      (noExists t => noExists t') && tsize t == tsize t' &&
+                                      tdepth t == tdepth t' && 
                                       erase t == erase t' } / [tsize t] @-} 
 unbindT :: Vname -> Type -> Type
 unbindT y t = openT_at 0 y t
@@ -615,6 +624,7 @@ unbindT y t = openT_at 0 y t
                                        Set_sub (free t) (free t') &&
                                        Set_sub (freeTV t') (freeTV t) && Set_sub (freeTV t) (freeTV t') &&
                                        (noExists t => noExists t') && tsize t == tsize t' &&
+                                       tdepth t == tdepth t' && 
                                        erase t == erase t' } / [tsize t] @-} 
 openT_at :: Index -> Vname -> Type -> Type
 openT_at j y (TRefn b ps)    = TRefn b (openP_at (j+1) y ps)
@@ -627,6 +637,7 @@ openT_at j y (TPoly   k   t) = TPoly k (openT_at j y t)   -- not j+1
                        -> { t':Type | Set_sub (freeTV t') (Set_cup (Set_sng a') (freeTV t)) &&
                                       Set_sub (free t') (free t) &&
                                       Set_sub (freeTV t) (freeTV t') && Set_sub (free t) (free t') &&
+                                      tdepth t == tdepth t' && 
                                       (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
 unbind_tvT :: Vname -> Type -> Type
 unbind_tvT a' t = open_tvT_at 0 a' t
@@ -636,6 +647,7 @@ unbind_tvT a' t = open_tvT_at 0 a' t
                        -> { t':Type | Set_sub (freeTV t') (Set_cup (Set_sng a') (freeTV t)) &&
                                       Set_sub (free t') (free t) &&
                                       Set_sub (freeTV t) (freeTV t') && Set_sub (free t) (free t') &&
+                                      tdepth t == tdepth t' && 
                                       (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
 open_tvT_at :: Index -> Vname -> Type -> Type
 open_tvT_at j a' (TRefn b  ps)     = case b of 
@@ -687,6 +699,7 @@ push p (TPoly     k   t) = TPoly     k   t
                 ( Set_sub (free t') (Set_cup (fv e) (Set_dif (free t) (Set_sng x))) ) &&
                   Set_sub (freeTV t') (Set_cup (ftv e) (freeTV t)) &&
                 ( (not (Set_mem x (fv e))) => not (Set_mem x (free t')) ) &&
+                  tdepth t == tdepth t' &&
                 ( noExists t => noExists t' ) } / [tsize t] @-}
 tsubFV :: Vname -> Expr -> Type -> Type
 tsubFV x v_x (TRefn  b r)     = TRefn b   (psubFV x v_x r)
@@ -724,6 +737,7 @@ tsubFTV a t_a (TPoly      k  t)    = TPoly      k                   (tsubFTV a t
 {-@ tsubBV :: v_x:Value -> t:Type  
                 -> { t':Type | Set_sub (free t') (Set_cup (fv v_x) (free t)) &&
                                Set_sub (freeTV t') (Set_cup (ftv v_x) (freeTV t)) &&
+                               erase t == erase t' && tdepth t == tdepth t' &&
                                ( esize v_x != 1 || tsize t == tsize t' ) } / [tsize t] @-}
 tsubBV :: Expr -> Type -> Type
 tsubBV v_x t = tsubBV_at 0 v_x t
@@ -732,6 +746,7 @@ tsubBV v_x t = tsubBV_at 0 v_x t
 {-@ tsubBV_at :: j:Index -> v_x:Value -> t:Type  
                 -> { t':Type | Set_sub (free t') (Set_cup (fv v_x) (free t)) &&
                                Set_sub (freeTV t') (Set_cup (ftv v_x) (freeTV t)) &&
+                               erase t == erase t' && tdepth t == tdepth t' &&
                                ( esize v_x != 1 || tsize t == tsize t' ) } / [tsize t] @-}
 tsubBV_at :: Index -> Expr -> Type -> Type
 tsubBV_at j v_x (TRefn b ps)    = TRefn b (psubBV_at (j+1) v_x ps)  
@@ -1111,6 +1126,7 @@ lem_erase_freeTV (TFunc   t_z t) = () ? lem_erase_freeTV t_z
 lem_erase_freeTV (TExists t_z t) = () ? lem_erase_freeTV t
 lem_erase_freeTV (TPoly    k' t) = () ? lem_erase_freeTV t
 
+{-
 ---------------------------------------------------------------------------
 ----- | deBRUIJN INDEX SHIFTING (AT or ABOVE a threshold)
 ---------------------------------------------------------------------------
@@ -1147,7 +1163,7 @@ shiftT_at j (TRefn   b ps)  = TRefn b (shiftP_at (j+1) ps)
 shiftT_at j (TFunc   t_x t) = TFunc   (shiftT_at j t_x) (shiftT_at (j+1) t)
 shiftT_at j (TExists t_x t) = TExists (shiftT_at j t_x) (shiftT_at (j+1) t)
 shiftT_at j (TPoly   k   t) = TPoly k (shiftT_at j t)
-
+-}
 
 ---------------------------------------------------------------------------
 ----- | NAME SETS and FRESH NAMES

@@ -90,22 +90,21 @@ lem_kind_for_tvF g FEmpty            a k_a = ()
 lem_kind_for_tvF g (FCons  x t_x g') a k_a = () ? lem_kind_for_tvF g g' a k_a
 lem_kind_for_tvF g (FConsT a' k' g') a k_a = () ? lem_kind_for_tvF g g' a k_a
 
-{-
-{-@ lem_ftyp_trivial_for_wf_trefn :: g:Env -> b:Basic -> x:RVname -> p:Pred -> k:Kind
-        -> { p_g_t : WFType | propOf p_g_t  == WFType g (TRefn b x p) k }
-        -> (Pred, WFType)<{\tt p_g_tt -> isTrivial tt && propOf p_g_tt == WFType g (TRefn b Z tt) k}> @-}
-lem_ftyp_trivial_for_wf_trefn :: Env -> Basic -> RVname -> Expr -> Kind -> WFType -> (Expr, WFType)
-lem_ftyp_trivial_for_wf_trefn g b x p k p_g_t@(WFBase _g _b tt) = (tt, p_g_t)
-lem_ftyp_trivial_for_wf_trefn g b x p k p_g_t@(WFRefn _ _ _ tt p_g_tt _p y pf_yg_p_bl)    
-      = (tt, p_g_tt)
-lem_ftyp_trivial_for_wf_trefn g b x p k p_g_t@(WFVar1 g' a tt _k) = (tt, p_g_t)
-lem_ftyp_trivial_for_wf_trefn g b x p k p_g_t@(WFVar2 _ _ tt _ p_g_a _ _) = (tt, p_g_t)
-lem_ftyp_trivial_for_wf_trefn g b x p k p_g_t@(WFVar3 _ _ tt _ p_g_a _ _) = (tt, p_g_t)
-lem_ftyp_trivial_for_wf_trefn g b x p k (WFKind _g _t p_g_t_base) 
-      = (tt, WFKind g (TRefn b Z tt) p_g_tt)
+{-@ lem_wf_pempty_for_wf_trefn :: g:Env -> b:Basic -> ps:Preds -> k:Kind
+        -> { p_g_t : WFType | propOf p_g_t  == WFType g (TRefn b ps) k }
+        -> { p_g_t': WFType | propOf p_g_t' == WFType g (TRefn b PEmpty) k} @-}
+lem_wf_pempty_for_wf_trefn :: Env -> Basic -> Preds -> Kind -> WFType -> WFType
+lem_wf_pempty_for_wf_trefn g b ps k p_g_t@(WFBase _g _b)              = p_g_t
+lem_wf_pempty_for_wf_trefn g b ps k p_g_t@(WFRefn _ _ p_g_tt _p _ _)  = p_g_tt
+lem_wf_pempty_for_wf_trefn g b ps k p_g_t@(WFVar1 g' a _k)            = p_g_t
+lem_wf_pempty_for_wf_trefn g b ps k p_g_t@(WFVar2 _ _ _ p_g_a _ _)    = p_g_t
+lem_wf_pempty_for_wf_trefn g b ps k p_g_t@(WFVar3 _ _ _ p_g_a _ _)    = p_g_t
+lem_wf_pempty_for_wf_trefn g b ps k (WFKind _g _t p_g_t_base) 
+    = WFKind g (TRefn b PEmpty) p_g_t'
           where
-            (tt, p_g_tt) = lem_ftyp_trivial_for_wf_trefn g b x p Base p_g_t_base
+            p_g_t' = lem_wf_pempty_for_wf_trefn g b ps Base p_g_t_base
 
+{-
 {-@ lem_ftyp_for_wf_trefn :: g:Env -> b:Basic -> x:RVname -> p:Pred -> k:Kind
         -> { p_g_t : WFType | propOf p_g_t  == WFType g (TRefn b x p) k }
         -> (Vname,HasFType)<{\y pf_p_bl -> not (in_env y g) && not (Set_mem y (fv p)) && 
@@ -176,22 +175,24 @@ lem_wf_tfunc_star g t_x t (WFExis {}) = ()
 lem_wf_tfunc_star g t_x t (WFPoly {}) = ()
 lem_wf_tfunc_star g t_x t (WFKind _g txt p_g_txt_base) = ()
 
-{-
 -- Given G |-w \exists x:t_x. t : k, we can produce a proof tree ending in WFExis
-{-@ lem_wfexis_for_wf_texists :: g:Env -> x:Vname -> t_x:Type -> t:Type -> k:Kind
-        -> { p_g_ex_t : WFType | propOf p_g_ex_t  == WFType g (TExists x t_x t) k }
-        -> { p_g_ex_t': WFType | propOf p_g_ex_t' == WFType g (TExists x t_x t) k && isWFExis p_g_ex_t' } @-}
-lem_wfexis_for_wf_texists :: Env -> Vname -> Type -> Type -> Kind -> WFType -> WFType
-lem_wfexis_for_wf_texists g x t_x t k p_g_ex_t@(WFExis {})           = p_g_ex_t
-lem_wfexis_for_wf_texists g x t_x t k (WFKind _g _ext p_g_ex_t_base) = p_g_ex_t_star
-  where
-    (WFExis _ _ _ k_x p_g_tx _ k_t y p_yg_t_kt) = p_g_ex_t_base
-    {-@ p_yg_t_star :: { pf:WFType | propOf pf == WFType (Cons y t_x g) (unbindT x y t) Star } @-}
-    p_yg_t_star = case k_t of 
-      Base -> WFKind (Cons y t_x g) (unbindT x y t) p_yg_t_kt
-      Star -> p_yg_t_kt
-    p_g_ex_t_star = WFExis g x t_x k_x p_g_tx t Star y p_yg_t_star
--}
+{-@ lem_wfexis_for_wf_texists :: g:Env -> t_x:Type -> t:Type -> k:Kind
+        -> { p_g_ex_t : WFType | propOf p_g_ex_t  == WFType g (TExists t_x t) k }
+        -> { p_g_ex_t': WFType | propOf p_g_ex_t' == WFType g (TExists t_x t) k && isWFExis p_g_ex_t' } @-}
+lem_wfexis_for_wf_texists :: Env -> Type -> Type -> Kind -> WFType -> WFType
+lem_wfexis_for_wf_texists g t_x t k p_g_ex_t@(WFExis {})           = p_g_ex_t
+lem_wfexis_for_wf_texists g t_x t k (WFKind _g _ext p_g_ex_t_base) 
+  = WFExis g t_x k_x p_g_tx t Star nms' mk_p_yg_t_star
+      where
+        {-@ mk_p_yg_t_star :: { y:Vname | NotElem y nms' }
+              -> { pf:WFType | propOf pf == WFType (Cons y t_x g) (unbindT y t) Star } @-}
+        mk_p_yg_t_star y = case k_t of 
+            Base -> WFKind (Cons y t_x g) (unbindT y t) (mk_p_yg_t_kt y)
+            Star -> mk_p_yg_t_kt y
+        (WFExis _ _ k_x p_g_tx _ k_t nms mk_p_yg_t_kt) = p_g_ex_t_base
+        nms'          = unionEnv nms g
+--    p_g_ex_t_star = WFExis g t_x k_x p_g_tx t Star nms' mk_p_yg_t_star
+
 {-@ lem_wfpoly_for_wf_tpoly :: g:Env -> k:Kind -> t:Type 
       -> { p_g_at : WFType | propOf p_g_at  == WFType g (TPoly k t) Star }
       -> { p_g_at': WFType | propOf p_g_at' == WFType g (TPoly k t) Star && isWFPoly p_g_at' } @-}
@@ -226,41 +227,6 @@ lem_wf_usertype_base_trefn g t_a (WFFunc {}) = impossible ""
 lem_wf_usertype_base_trefn g t_a (WFExis {}) = impossible ""
 lem_wf_usertype_base_trefn g t_a (WFPoly {}) = impossible ""
 lem_wf_usertype_base_trefn g t_a (WFKind {}) = impossible ""
-
-{-@ lem_strengthen_tv_bound_in :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
-        -> a:Vname -> k:Kind -> { x:Vname | not (in_env x g) && not (in_env x g') } 
-        -> { t_x:Type | tv_bound_in a k (concatE (Cons x t_x g) g') } 
-        -> { pf:_ | tv_bound_in a k (concatE g g') } @-}
-lem_strengthen_tv_bound_in :: Env -> Env -> Vname -> Kind -> Vname -> Type -> Proof
-lem_strengthen_tv_bound_in g Empty            a k x t_x = ()
-lem_strengthen_tv_bound_in g (Cons z t_z g')  a k x t_x 
-              = () ? lem_strengthen_tv_bound_in g g' a k x t_x
-lem_strengthen_tv_bound_in g (ConsT a' k' g') a k x t_x 
-  | a == a'   = ()
-  | otherwise = () ? lem_strengthen_tv_bound_in g g' a k x t_x
-
-{-@ lem_strengthen_tv_tv_bound_in :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
-        -> a:Vname -> k:Kind -> { a':Vname | not (in_env a' g) && not (in_env a' g') && not (a == a')} 
-        -> { k':Kind | tv_bound_in a k (concatE (ConsT a' k' g) g') } 
-        -> { pf:_ | tv_bound_in a k (concatE g g') } @-}
-lem_strengthen_tv_tv_bound_in :: Env -> Env -> Vname -> Kind -> Vname -> Kind -> Proof
-lem_strengthen_tv_tv_bound_in g Empty            a k a' k' = ()
-lem_strengthen_tv_tv_bound_in g (Cons z t_z g')  a k a' k' 
-              = () ? lem_strengthen_tv_tv_bound_in g g' a k a' k'
-lem_strengthen_tv_tv_bound_in g (ConsT a1 k1 g') a k a' k' 
-  | a == a1   = ()
-  | otherwise = () ? lem_strengthen_tv_tv_bound_in g g' a k a' k'
-
-{-@ lem_kindfortv_tvboundin :: g:Env -> { a:Vname | Set_mem a (tvbinds g) } -> { k:Kind | kind_for_tv a g == k}
-        -> { pf:_ | tv_bound_in a k g } @-}
-lem_kindfortv_tvboundin :: Env -> Vname -> Kind -> Proof
-lem_kindfortv_tvboundin Empty           a k = impossible ""
-lem_kindfortv_tvboundin (Cons x t_x g)  a k 
-  | a == x    = impossible ""
-  | otherwise = () ? lem_kindfortv_tvboundin g a k
-lem_kindfortv_tvboundin (ConsT a' k' g) a k
-  | a == a'   = ()
-  | otherwise = () ? lem_kindfortv_tvboundin g a k
 -}
  -- SYSTEM F VERSIONS
 
@@ -395,6 +361,17 @@ lem_erase_env_wfenv _ (WFEBind g pf_g_wf x t k p_g_t)
             x (erase t) k (lem_erase_wftype g t k p_g_t)
 lem_erase_env_wfenv _ (WFEBindT g pf_g_wf a k)
   = WFFBindT (erase_env g) (lem_erase_env_wfenv g pf_g_wf) a k
+
+{-@ lem_truncate_wfenv :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+        -> ProofOf(WFEnv (concatE g g')) -> ProofOf(WFEnv g) @-}
+lem_truncate_wfenv :: Env -> Env -> WFEnv -> WFEnv
+lem_truncate_wfenv g Empty          p_g_wf    = p_g_wf          
+lem_truncate_wfenv g (Cons x v g')  p_xg'g_wf = lem_truncate_wfenv g g' p_g'g_wf
+  where
+    (WFEBind _ p_g'g_wf _ _ _ _) = p_xg'g_wf 
+lem_truncate_wfenv g (ConsT a k g') p_ag'g_wf = lem_truncate_wfenv g g' p_g'g_wf
+  where
+    (WFEBindT _ p_g'g_wf _ _) = p_ag'g_wf
         
 -------------------------------------------------------------------------------------------
 -- | TECHNICAL LEMMAS relating to FREE VARIABLES and WELL FORMEDNESS judgments

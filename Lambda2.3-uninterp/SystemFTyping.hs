@@ -140,13 +140,14 @@ data PHasFType where
 {-@ reflect tybc @-} -- Refined Constant Typing
 {-@ tybc :: b:Bool -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 tybc :: Bool -> Type
-tybc True  = TRefn TBool (PCons (App (App (Prim Eqv) (BV 0)) (Bc True))  PEmpty)
-tybc False = TRefn TBool (PCons (App (App (Prim Eqv) (BV 0)) (Bc False)) PEmpty)
+tybc b  = TRefn TBool (PCons (App (App (AppT (Prim Eql) (TRefn TBool PEmpty)) 
+                                       (BV 0)) (Bc b))  PEmpty)
 
 {-@ reflect tyic @-}
 {-@ tyic :: n:Int -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 tyic :: Int -> Type
-tyic n     = TRefn TInt  (PCons (App (App (Prim Eq)  (BV 0)) (Ic n))     PEmpty)
+tyic n  = TRefn TInt  (PCons (App (App (AppT (Prim Eql) (TRefn TInt  PEmpty))
+                                       (BV 0)) (Ic n))  PEmpty)
 
 {-@ reflect refn_pred @-}
 {-@ refn_pred :: c:Prim  -> { p:Expr | Set_emp (fv p) && Set_emp (ftv p) } @-}

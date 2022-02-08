@@ -75,17 +75,6 @@ lem_erase_tsubFV x v (TFunc   t_z t) = () ? lem_erase_tsubFV x v t_z
 lem_erase_tsubFV x v (TExists t_z t) = () ? lem_erase_tsubFV x v t
 lem_erase_tsubFV x v (TPoly   k   t) = () ? lem_erase_tsubFV x v t
 
-{- unneeded? postcondition of unbindT/openT_at now; make postcond of tsubBV too!
-{-@ lem_erase_tsubBV :: x:Vname -> e:Expr -> t:Type 
-                                -> { pf:_ | erase (tsubBV x e t) == erase t } @-}
-lem_erase_tsubBV :: Vname -> Expr -> Type -> Proof
-lem_erase_tsubBV x e (TRefn   b   z p) = ()
-lem_erase_tsubBV x e (TFunc   z t_z t) = () ? lem_erase_tsubBV x e t_z
-                                            ? lem_erase_tsubBV x e t
-lem_erase_tsubBV x e (TExists z t_z t) = () ? lem_erase_tsubBV x e t
-lem_erase_tsubBV x e (TPoly   a k   t) = () ? lem_erase_tsubBV x e t
--}
-
 {-@ lem_erase_unbind_tvT :: a':Vname -> t:Type 
 	-> { pf:_ | erase (unbind_tvT a' t) == unbindFT a' (erase t) } @-}
 lem_erase_unbind_tvT :: Vname -> Type -> Proof
@@ -119,19 +108,21 @@ lem_erase_tsubFTV a t_a (TFunc    t_z t) = () ? lem_erase_tsubFTV a t_a t_z
 lem_erase_tsubFTV a t_a (TExists  t_z t) = () ? lem_erase_tsubFTV a t_a t
 lem_erase_tsubFTV a t_a (TPoly     k' t) = () ? lem_erase_tsubFTV a t_a t
 
-{-
-{-@ lem_erase_tsubBTV :: a:Vname -> t_a:UserType -> t:Type
-        -> { pf:_ | erase (tsubBTV a t_a t) == ftsubBV a (erase t_a) (erase t) } @-}
-lem_erase_tsubBTV :: Vname -> Type -> Type -> Proof
-lem_erase_tsubBTV a t_a (TRefn   b   z p) = case b of
-  (BTV a') | a == a' -> () ? lem_erase_push (subBTV a t_a p) t_a 
-  _                  -> ()
-lem_erase_tsubBTV a t_a (TFunc   z t_z t) = () ? lem_erase_tsubBTV a t_a t_z
-                                               ? lem_erase_tsubBTV a t_a t
-lem_erase_tsubBTV a t_a (TExists z t_z t) = () ? lem_erase_tsubBTV a t_a t
-lem_erase_tsubBTV a t_a (TPoly   a' k' t) = () ? lem_erase_tsubBTV a t_a t
+{-@ lem_erase_tsubBTV :: t_a:UserType -> t:Type
+        -> { pf:_ | erase (tsubBTV t_a t) == ftsubBV (erase t_a) (erase t) } @-}
+lem_erase_tsubBTV :: Type -> Type -> Proof
+lem_erase_tsubBTV t_a t = lem_erase_tsubBTV_at 0 t_a t
 
--}
+{-@ lem_erase_tsubBTV_at :: j:Index -> t_a:UserType -> t:Type
+        -> { pf:_ | erase (tsubBTV_at j t_a t) == ftsubBV_at j (erase t_a) (erase t) } @-}
+lem_erase_tsubBTV_at :: Index -> Type -> Type -> Proof
+lem_erase_tsubBTV_at j t_a (TRefn   b   p) = case b of
+  (BTV i) | i == j -> () ? lem_erase_push (psubBTV_at j t_a p) t_a 
+  _                -> ()
+lem_erase_tsubBTV_at j t_a (TFunc   t_z t) = () ? lem_erase_tsubBTV_at j t_a t_z
+                                                ? lem_erase_tsubBTV_at j t_a t
+lem_erase_tsubBTV_at j t_a (TExists t_z t) = () ? lem_erase_tsubBTV_at j t_a t
+lem_erase_tsubBTV_at j t_a (TPoly    k' t) = () ? lem_erase_tsubBTV_at (j+1) t_a t
 
 {-@ reflect concatF @-}
 {-@ concatF :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) } 
