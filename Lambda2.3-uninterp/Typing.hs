@@ -147,6 +147,30 @@ lem_tsubBV_at_self j v_z (TExists t_x t) e Base
 lem_tsubBV_at_self j v_z (TPoly k_a t)   e Base = ()
 lem_tsubBV_at_self j v_z t               e Star = ()
 
+{-@ lem_tsubFTV_self :: a:Vname -> t_a:UserType -> t:Type -> e:Expr -> k:Kind
+        -> { pf:_ | tsubFTV a t_a (self t e k) == self (tsubFTV a t_a t) (subFTV a t_a e) k } @-}
+lem_tsubFTV_self :: Vname -> Type -> Type -> Expr -> Kind -> Proof
+lem_tsubFTV_self a t_a t@(TRefn b ps)    e Base = case b of
+  (FTV a') | a' == a  -> {- -} undefined {- case t_a of 
+      (TRefn b_a  qs_a) ->  () {- ? toProof (
+         tsubFTV a t_a (self t e Base) === tsubFTV a t_a (push (eqlPred t e) t) -}
+       ? lem_subFTV_push a t_a (eqlPred t e) t 
+       ? lem_tsubFTV_trefn a t_a t
+--     === push (subFTV a t_a (eqlPred t e)) (tsubFTV a t_a t)
+       ? lem_tsubFTV_eqlPred a t_a t e
+{-     === push (App (App (AppT (Prim Eql) (tsubFTV a t_a t)) (BV z)) (subFTV a t_a e)) (tsubFTV a t_a t)
+     === push (eqlPred (tsubFTV a t_a t) (subFTV a t_a e)) (tsubFTV a t_a t)
+     === self (tsubFTV a t_a t) (subFTV a t_a e) Base )-}
+      (TFunc   t_y t')  -> ()
+      (TExists t_y t')  -> ()
+      (TPoly   k1 t')   -> () 
+-}
+  _                   -> ()
+lem_tsubFTV_self a t_a (TFunc   t_x t)   e Base = ()
+lem_tsubFTV_self a t_a (TExists   t_x t) e Base = () ? lem_tsubFTV_self a t_a t e Base
+lem_tsubFTV_self a t_a (TPoly    k_a' t) e Base = ()  
+lem_tsubFTV_self a t_a t                 e Star = ()
+
 {-
 {-@ lem_subFV_eqlPred :: y:Vname -> v_y:Value -> { t:Type | isTRefn t } -> e:Expr
         -> { pf:_ | subFV y v_y (eqlPred t e) == eqlPred (tsubFV y v_y t) (subFV y v_y e) } @-}
@@ -161,29 +185,6 @@ lem_tsubFTV_eqlPred a t_a@(TRefn b' qs') (TRefn b ps) e = case b of
                             ? lem_subFTV_notin a t_a (Prim Eql)
                             ? lem_tsubFTV_trefn a t_a (TRefn b ps)
   _                   -> ()
-
-{-@ lem_tsubFTV_self :: a:Vname -> t_a:UserType -> t:Type -> e:Term -> k:Kind
-        -> { pf:_ | tsubFTV a t_a (self t e k) == self (tsubFTV a t_a t) (subFTV a t_a e) k } @-}
-lem_tsubFTV_self :: Vname -> Type -> Type -> Expr -> Kind -> Proof
-lem_tsubFTV_self a t_a t@(TRefn b ps)    e Base = case b of
-  (FTV a') | a' == a  -> case t_a of 
-      (TRefn b_a  qs_a) ->  () {- ? toProof (
-         tsubFTV a t_a (self t e Base) === tsubFTV a t_a (push (eqlPred t e) t) -}
-       ? lem_subFTV_push a t_a (eqlPred t e) t 
-       ? lem_tsubFTV_trefn a t_a t
---     === push (subFTV a t_a (eqlPred t e)) (tsubFTV a t_a t)
-       ? lem_tsubFTV_eqlPred a t_a t e
-{-     === push (App (App (AppT (Prim Eql) (tsubFTV a t_a t)) (BV z)) (subFTV a t_a e)) (tsubFTV a t_a t)
-     === push (eqlPred (tsubFTV a t_a t) (subFTV a t_a e)) (tsubFTV a t_a t)
-     === self (tsubFTV a t_a t) (subFTV a t_a e) Base )-}
-      (TFunc   t_y t')  -> ()
-      (TExists t_y t')  -> ()
-      (TPoly   k1 t')   -> ()
-  _                   -> ()
-lem_tsubFTV_self a t_a (TFunc   t_x t)   e Base = ()
-lem_tsubFTV_self a t_a (TExists   t_x t) e Base = () ? lem_tsubFTV_self a t_a t e Base
-lem_tsubFTV_self a t_a (TPoly    k_a' t) e Base = ()  
-lem_tsubFTV_self a t_a t                 e Star = ()
 
 {-@ lem_tsubFV_self0 :: z:Vname -> v_z:Expr -> t:Type -> { x:Vname | x == z } -> k:Kind
         -> { pf:_ | tsubFV z v_z (self t (FV x) k) == self (tsubFV z v_z t) v_z k } @-}
@@ -467,6 +468,7 @@ data Implies where
     IWeakTV :: Env -> Env -> Preds -> Preds -> Implies -> Vname -> Kind -> Implies 
     ISub    :: Env -> Env -> Vname -> Expr -> Type -> HasType -> Preds -> Preds -> Implies -> Implies 
     ISubTV  :: Env -> Env -> Vname -> Type -> Kind -> WFType  -> Preds -> Preds -> Implies -> Implies 
+    IStren  :: Vname -> Basic -> Preds -> Env -> Preds -> Preds -> Implies -> Implies
 
 {-@ data Implies where 
         IRefl   :: g:Env -> ps:Preds -> ProofOf(Implies g ps ps)  
@@ -497,4 +499,9 @@ data Implies where
             -> k_a:Kind -> ProofOf(WFType g t_a k_a)   -> ps:Preds -> qs:Preds
             -> ProofOf(Implies (concatE (ConsT a k_a g) g') ps qs)
             -> ProofOf(Implies (concatE g (esubFTV a t_a g')) (psubFTV a t_a ps) (psubFTV a t_a qs)) 
+        IStren  :: y:Vname -> b':Basic -> qs:Preds -> { g:Env | not (in_env y g) }
+            -> p1s:Preds -> p2s:Preds 
+            -> ProofOf(Implies (Cons y (TRefn b' qs)     g) p1s p2s)
+            -> ProofOf(Implies (Cons y (TRefn b' PEmpty) g) 
+                               (strengthen p1s (unbindP y qs)) (strengthen p2s (unbindP y qs)))
 @-} 

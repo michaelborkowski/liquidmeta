@@ -676,7 +676,7 @@ open_tvT_at j a' (TPoly   k  t)    = TPoly k  (open_tvT_at (j+1) a' t)
 {-@ push ::  p:Preds -> t:UserType 
                 -> { t':UserType | Set_sub (free t') (Set_cup (free t) (fvP p)) && 
                                    Set_sub (freeTV t') (Set_cup (freeTV t) (ftvP p)) && 
-                                 ( p != PEmpty || t == t' ) &&
+                                 ( p != PEmpty || t == t' ) && tdepth t == tdepth t' && 
                                  ( erase t' == erase t ) } @-}  
 push :: Preds -> Type -> Type
 push p (TRefn   b     r) = TRefn   b     (strengthen p r)
@@ -717,6 +717,7 @@ tsubFV x v_x (TPoly  k   t)   = TPoly    k                  (tsubFV x v_x t)
                 ( Set_sub (freeTV t') (Set_cup (freeTV t_a) (Set_dif (freeTV t) (Set_sng a))) ) &&
                   Set_sub (free t') (Set_cup (free t_a) (free t)) && 
                 ( (not (Set_mem a (freeTV t_a))) => not (Set_mem a (freeTV t')) ) &&
+                  tdepth t' <= tdepth t_a + tdepth t &&
                 ( noExists t => noExists t' ) } / [tsize t] @-} 
 tsubFTV :: Vname -> Type -> Type -> Type
 tsubFTV a t_a (TRefn b   r)        = case b of
@@ -925,6 +926,15 @@ ffreeTV (FTBasic b)      = case b of
   _                          -> S.empty
 ffreeTV (FTFunc t_x t)   = S.union (ffreeTV t_x) (ffreeTV t) 
 ffreeTV (FTPoly   k t)   = ffreeTV t
+
+{-@ reflect ffreeTVList @-}
+{-@ ffreeTVList :: t:FType -> { xs:Names | listElts xs == ffreeTV t } @-}
+ffreeTVList :: FType -> Names
+ffreeTVList (FTBasic b)     = case b of
+  (FTV a)                       -> [a]
+  _                             -> []
+ffreeTVList (FTFunc t_x t)  = union (ffreeTVList t_x)  (ffreeTVList t)
+ffreeTVList (FTPoly   k t)  = ffreeTVList t
 
 {-@ reflect isLCFT @-}
 isLCFT :: FType -> Bool
@@ -1174,10 +1184,12 @@ type Names = [Vname]   -- for cofinite quantification over free names
 {-@ predicate IsCup     X Y Z  = listElts X = Set_cup (listElts Y) (listElts Z) @-}
 {-@ predicate IsCupEnv  X Y Z  = listElts X = Set_cup (listElts Y) (binds Z)    @-}
 {-@ predicate IsCupFEnv X Y Z  = listElts X = Set_cup (listElts Y) (bindsF Z)   @-}
-{- @ predicate IsDel X Y Z  = listElts X = Set_dif (listElts Y) (Set_sng Z)     @-}
+{- @ predicate IsCupFTs X Y Z W = listElts X = Set_cup (listElts Y) (Set_cup (ffreeTV Z) (ffreeTV W)) @-}
+{-  predicate IsDel X Y Z  = listElts X = Set_dif (listElts Y) (Set_sng Z)     @-}
 {-@ predicate Elem  X Ys   = Set_mem X (listElts Ys)                            @-}
 {-@ predicate NotElem X Ys = not (Elem X Ys)                                    @-}
 
+{-@ reflect union @-}
 {-@ union :: ys:Names -> zs:Names -> { xs:Names | IsCup xs ys zs } @-}
 union :: Names -> Names -> Names
 union xs []         = xs
@@ -1276,6 +1288,46 @@ lem_above_max_nms_fenv _ []     FEmpty         = ()
 lem_above_max_nms_fenv x []     (FCons  y t g) = lem_above_max_nms_fenv x [] g
 lem_above_max_nms_fenv x []     (FConsT a k g) = lem_above_max_nms_fenv x [] g
 lem_above_max_nms_fenv x (_:ys) g              = lem_above_max_nms_fenv x ys g
+
+
+{-@ reflect fresh_varFTs @-}
+{-@ fresh_varFTs :: xs:Names -> g:Env -> t1:FType -> t2:FType 
+        -> { x:Vname | not (Set_mem x (ffreeTV t1)) && not (Set_mem x (ffreeTV t2)) && 
+                       not (in_env x g)             && NotElem x xs } @-}
+fresh_varFTs :: Names -> Env -> FType -> FType -> Vname
+fresh_varFTs xs g t1 t2 
+  = n `withProof` lem_above_max_nms_ftypes n xs (ffreeTVList t1) (ffreeTVList t2) g
+      where
+        n    = 1 + max_nms_ftypes xs (ffreeTVList t1) (ffreeTVList t2) g
+
+{-@ reflect max_nms_ftypes @-}
+{-@ max_nms_ftypes :: Names -> Names -> Names -> Env -> { x:Vname | x >= 0 } @-}
+max_nms_ftypes :: Names -> Names -> Names -> Env -> Vname 
+max_nms_ftypes ([])   ([])   ([])   Empty         = 0
+max_nms_ftypes ([])   ([])   ([])   (Cons  x t g) 
+  = if (x > max_nms_ftypes [] [] [] g) then x else (max_nms_ftypes [] [] [] g)
+max_nms_ftypes ([])   ([])   ([])   (ConsT a k g)
+  = if (a > max_nms_ftypes [] [] [] g) then a else (max_nms_ftypes [] [] [] g)
+max_nms_ftypes ([])   ([])   (z:zs) g 
+  = if (z > max_nms_ftypes [] [] zs g) then z else (max_nms_ftypes [] [] zs g)
+max_nms_ftypes ([])   (y:ys) zs     g 
+  = if (y > max_nms_ftypes [] ys zs g) then y else (max_nms_ftypes [] ys zs g)
+max_nms_ftypes (x:xs) ys     zs     g 
+  = if (x > max_nms_ftypes xs ys zs g) then x else (max_nms_ftypes xs ys zs g)
+
+{-@ reflect lem_above_max_nms_ftypes @-}
+{-@ lem_above_max_nms_ftypes :: x:Vname -> xs:Names -> ys:Names -> zs:Names
+        -> { g:Env | x > max_nms_ftypes xs ys zs g } 
+        -> { pf:_ | NotElem x xs && NotElem x ys && NotElem x zs && not (in_env x g) } @-}
+lem_above_max_nms_ftypes :: Vname -> Names -> Names -> Names -> Env -> Proof
+lem_above_max_nms_ftypes _ []     []     []     Empty         = ()
+lem_above_max_nms_ftypes x []     []     []     (Cons  y t g) 
+  = lem_above_max_nms_ftypes x [] [] [] g
+lem_above_max_nms_ftypes x []     []     []     (ConsT a k g) 
+  = lem_above_max_nms_ftypes x [] [] [] g
+lem_above_max_nms_ftypes x []     []     (_:zs) g = lem_above_max_nms_ftypes x [] [] zs g
+lem_above_max_nms_ftypes x []     (_:ys) zs     g = lem_above_max_nms_ftypes x [] ys zs g
+lem_above_max_nms_ftypes x (_:xs) ys     zs     g = lem_above_max_nms_ftypes x xs ys zs g
 
 ---------------------------------------------------------------------------
 ----- | PROPOSITIONS

@@ -150,9 +150,9 @@ lemma_preservation e t (FTAppT FEmpty (LambdaT k1 e2) k s p_e1_as rt p_emp_er_rt
       where
         (FTAbsT _ _ _ _ nms mk_p_e2_s) = p_e1_as
         p_as_star   = lem_ftyping_wfft FEmpty (LambdaT k1 e2) (FTPoly k s) p_e1_as WFFEmpty
-        p_wf_a'k    = WFFBindT FEmpty WFFEmpty a k
+--        p_wf_a'k    = WFFBindT FEmpty WFFEmpty a k
         p_e2rt_srt  = lem_subst_tv_ftyp FEmpty FEmpty a rt k p_emp_er_rt
-                                  p_wf_a'k (unbind_tv a e2) (unbindFT a s) (mk_p_e2_s a)
+                                  WFFEmpty {-p_wf_a'k-} (unbind_tv a e2) (unbindFT a s) (mk_p_e2_s a)
                                   ? lem_subFTV_unbind_tv a rt (e2
                                         ? lem_fv_bound_in_fenv FEmpty (LambdaT k1 e2) (FTPoly k s) p_e1_as a)
                                   ? lem_ftsubFV_unbindFT a (erase rt) (s  
