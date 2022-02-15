@@ -463,7 +463,7 @@ data Implies where
     ICons1  :: Env -> Expr  -> Preds -> Implies
     ICons2  :: Env -> Expr  -> Preds -> Implies
     IRepeat :: Env -> Expr  -> Preds -> Implies
-
+    INarrow :: Env -> Env -> Vname -> Type -> Type -> Subtype -> Preds -> Preds -> Implies -> Implies
     IWeak   :: Env -> Env -> Preds -> Preds -> Implies -> Vname -> Type -> Implies 
     IWeakTV :: Env -> Env -> Preds -> Preds -> Implies -> Vname -> Kind -> Implies 
     ISub    :: Env -> Env -> Vname -> Expr -> Type -> HasType -> Preds -> Preds -> Implies -> Implies 
@@ -480,7 +480,11 @@ data Implies where
         ICons1  :: g:Env -> p:Expr   -> ps:Preds -> ProofOf(Implies g (PCons p ps) (PCons p PEmpty))
         ICons2  :: g:Env -> p:Expr   -> ps:Preds -> ProofOf(Implies g (PCons p ps) ps)
         IRepeat :: g:Env -> p:Expr   -> ps:Preds -> ProofOf(Implies g (PCons p ps) (PCons p (PCons p ps)))
-
+        INarrow :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
+            -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type -> t_x:Type
+            -> ProofOf(Subtype g s_x t_x) -> ps:Preds -> qs:Preds
+            -> ProofOf(Implies (concatE (Cons x t_x g) g') ps qs) 
+            -> ProofOf(Implies (concatE (Cons x s_x g) g') ps qs) 
         IWeak   :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
             -> ps:Preds -> qs:Preds  -> ProofOf(Implies (concatE g g') ps qs)
             -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> t_x:Type 
