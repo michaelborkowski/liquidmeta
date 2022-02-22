@@ -14,9 +14,9 @@ import Basics
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
-import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
+import WellFormedness
 import BasicPropsWellFormedness
 import SystemFLemmasSubstitution
 import Typing
@@ -35,7 +35,7 @@ import LemmasExactness
         -> ProofOf(WFEnv g ) -> e:Expr -> t:Type 
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTVar1 p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x s_x g) g') e t &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + sizeOf p_sx_tx + tdepth s_x + 2 } @-}
+                             sizeOf p'_e_t <= sizeOf p_e_t + sizeOf p_sx_tx + 1 } @-}
 lem_narrow_typ_tvar1 :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_narrow_typ_tvar1 g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t p_e_t@(TVar1 _env z t' k' p_env_t')
@@ -61,6 +61,10 @@ lem_narrow_typ_tvar1 g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t p_e_t@(TVar1 
           n           = max (typSize p_z_self_sx) (subtypSize p_xg_sx_tx')
           p_z_tx      = TSub n (Cons x s_x g) (FV z) (self s_x (FV z) k') p_z_self_sx 
                              (self t_x (FV z) k') k' p_xsxg_t p_xg_sx_tx'
+                             ? toProof ( subtypSize p_xg_sx_tx' =<= subtypSize p_sx_tx + 1)
+                             ? toProof ( typSize p_z_self_sx === tdepth s_x 
+                                       ? lem_subtypSize_lb g s_x t_x p_sx_tx
+                                     =<= subtypSize p_sx_tx )
       (Cons _z _ g'')  -> TVar1 (concatE (Cons x s_x g) g'')  
                                 (z ? lem_in_env_concat g g'' z) t' k' p_env'_t'
         where
@@ -73,7 +77,7 @@ lem_narrow_typ_tvar1 g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t p_e_t@(TVar1 
         -> ProofOf(WFEnv  g ) -> e:Expr -> t:Type 
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (Cons x t_x g) g') e t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x s_x g) g') e t &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + sizeOf p_sx_tx + tdepth s_x + 2 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + sizeOf p_sx_tx + 1 }
          / [typSize p_e_t, 1] @-}
 lem_narrow_typ :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -92,7 +96,7 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e _t (TVar2 n env' z_ t
                         ? lem_in_env_concat (Cons x t_x g) g'' z_
             w      = w_ ? lem_in_env_concat g g'' w_
             p'_z_t = lem_narrow_typ g g'' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf (FV z) t p_z_t
-            n'     = n + subtypSize p_sx_tx + tdepth s_x + 2
+            n'     = n + subtypSize p_sx_tx + 1
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t (TVar3 n env_ z_ _t p_z_t a_ k_a) 
   = case g' of 
         (Empty)            -> impossible "x <> a"
@@ -102,7 +106,7 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t (TVar3 n env_ z_ _t
                         ? lem_in_env_concat (Cons x t_x g) g'' z_
             a      = a_ ? lem_in_env_concat g g'' a_
             p'_z_t = lem_narrow_typ g g'' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf (FV z) t p_z_t
-            n'     = n + subtypSize p_sx_tx + tdepth s_x + 2
+            n'     = n + subtypSize p_sx_tx + 1
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t (TPrm _en c) 
   = TPrm (concatE (Cons x s_x g) g') c 
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t 
@@ -112,12 +116,12 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t
         {-@ mk_p_yenv'_e'_t' :: { y:Vname | NotElem y nms' }
               -> { pf:HasType | propOf pf == HasType (Cons y t_z (concatE (Cons x s_x g) g'))
                                                      (unbind y e') (unbindT y t') &&
-                                sizeOf pf <= n + subtypSize p_sx_tx + tdepth s_x + 2 } @-}
+                                sizeOf pf <= n + subtypSize p_sx_tx + 1 } @-}
         mk_p_yenv'_e'_t' y = lem_narrow_typ g (Cons y t_z g') x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf
                                          (unbind y e') (unbindT y t') (mk_p_yenv_e'_t' y)
         p_env'_tz          = lem_narrow_wf g g' x s_x t_x p_sx_tx t_z k_z p_env_tz
         nms'               = unionEnv nms (concatE (Cons x s_x g) g')
-        n'                 = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'                 = n + subtypSize p_sx_tx + 1
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t 
                (TApp n env_ e' t_z t' p_env_e'_tzt' e_z p_env_ez_tz) 
   = TApp n' (concatE (Cons x s_x g) g') e' t_z t' p_env'_e'_tzt' e_z p_env'_ez_tz
@@ -126,7 +130,7 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t
                                         e' (TFunc t_z t') p_env_e'_tzt'
         p_env'_ez_tz   = lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
                                         e_z t_z p_env_ez_tz
-        n'             = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'             = n + subtypSize p_sx_tx + 1
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t 
                (TAbsT n env k e' t' nms mk_p_aenv_e'_t')
   = TAbsT n' (concatE (Cons x s_x g) g') k e' t' nms' mk_p_aenv'_e'_t'
@@ -134,11 +138,11 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t
         {-@ mk_p_aenv'_e'_t' :: { a:Vname | NotElem a nms' }
               -> { pf:HasType | propOf pf == HasType (ConsT a k (concatE (Cons x s_x g) g'))
                                                      (unbind_tv a e') (unbind_tvT a t') &&
-                                sizeOf pf <= n + subtypSize p_sx_tx + tdepth s_x + 2 } @-}
+                                sizeOf pf <= n + subtypSize p_sx_tx + 1 } @-}
         mk_p_aenv'_e'_t' a = lem_narrow_typ g (ConsT a k g') x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf
                                         (unbind_tv a e') (unbind_tvT a t') (mk_p_aenv_e'_t' a)
         nms'               = unionEnv nms (concatE (Cons x s_x g) g')
-        n'                 = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'                 = n + subtypSize p_sx_tx + 1
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t 
                (TAppT n env e' k s p_e'_as t' p_env_t') 
   = TAppT n' (concatE (Cons x s_x g) g') e' k s p_env'_e'_as t' p_env'_t'
@@ -146,7 +150,7 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t
         p_env'_e'_as = lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf
                                       e' (TPoly k s) p_e'_as
         p_env'_t'    = lem_narrow_wf g g' x s_x t_x p_sx_tx t' k p_env_t'
-        n'           = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'           = n + subtypSize p_sx_tx + 1
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t 
                (TLet n env_ e_z t_z p_env_ez_tz e' t_ k p_env_t nms mk_p_yenv_e'_t) 
   = TLet n' (concatE (Cons x s_x g) g') e_z t_z p_env'_ez_tz e' t k p_env'_t nms' mk_p_yenv'_e'_t
@@ -154,19 +158,19 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t
         {-@ mk_p_yenv'_e'_t :: { y:Vname | NotElem y nms' }
               -> { pf:HasType | propOf pf == HasType (Cons y t_z (concatE (Cons x s_x g) g'))
                                                      (unbind y e') (unbindT y t) &&
-                                sizeOf pf <= n + subtypSize p_sx_tx + tdepth s_x + 2 } @-}
+                                sizeOf pf <= n + subtypSize p_sx_tx + 1 } @-}
         mk_p_yenv'_e'_t y = lem_narrow_typ g (Cons y t_z g') x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf
                                            (unbind y e') (unbindT y t) (mk_p_yenv_e'_t y)
         p_env'_ez_tz      = lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
                                            e_z t_z p_env_ez_tz
         p_env'_t          = lem_narrow_wf g g' x s_x t_x p_sx_tx t k p_env_t
         nms'              = unionEnv nms (concatE (Cons x s_x g) g')
-        n'                = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'                = n + subtypSize p_sx_tx + 1
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t (TAnn n env_ e' t_ p_env_e'_t) 
   = TAnn n' (concatE (Cons x s_x g) g') e' t p_env'_e'_t
       where
         p_env'_e'_t = lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e' t p_env_e'_t
-        n'          = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'          = n + subtypSize p_sx_tx + 1
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t 
                (TSub n env_ e_ s p_env_e_s t_ k p_env_t p_env_s_t) 
   = TSub n' (concatE (Cons x s_x g) g') e s p_env'_e_s t k p_env'_t p_env'_s_t
@@ -175,7 +179,7 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t
         p_env'_t   = lem_narrow_wf  g g' x s_x t_x p_sx_tx t k p_env_t
         p_env'_s_t = lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
                                     s {-Star p_env_s-} t {-k p_env_t-} p_env_s_t 
-        n'         = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'         = n + subtypSize p_sx_tx + 1
 
 {-@ lem_narrow_sub_sbase :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
@@ -184,7 +188,7 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSBase p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) &&
-                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + tdepth s_x + 2 }
+                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + 1 }
          / [ subtypSize p_s_t, 0] @-}
 --                              && subtypSize' p_s_t == subtypSize' p'_s_t } / [subtypSize p_s_t, 0] @-}
 lem_narrow_sub_sbase :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
@@ -207,7 +211,7 @@ lem_narrow_sub_sbase g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf s {-k_s p_env_s-}
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSFunc p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) &&
-                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + tdepth s_x + 2 }
+                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + 1 }
          / [ subtypSize p_s_t, 0] @-}
 lem_narrow_sub_sfunc :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
@@ -218,14 +222,14 @@ lem_narrow_sub_sfunc g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf ty1 {-ky1 p_env_t
         {-@ mk_p_yenv'_t1_t2 :: { y:Vname | NotElem y nms' }
               -> { pf:Subtype | propOf pf == Subtype (Cons y s2 (concatE (Cons x s_x g) g'))
                                                      (unbindT y t1) (unbindT y t2) &&
-                                sizeOf pf <= n + subtypSize p_sx_tx + tdepth s_x + 2 } @-}
+                                sizeOf pf <= n + subtypSize p_sx_tx + 1 } @-}
         mk_p_yenv'_t1_t2 y = lem_narrow_sub g (Cons y s2 g') x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf
                                        (unbindT y t1) {-k_t1 p_yenv_t1 -}
                                        (unbindT y t2) {-k_t2 p_yenv_t2 -} (mk_p_yenv_t1_t2 y)
         p_env'_s2_s1  = lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
                                        s2 {-k_s2 p_env_s2-} s1 {-k_s1 p_env_s1-} p_s2_s1
         nms'               = unionEnv nms (concatE (Cons x s_x g) g')
-        n'                 = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'                 = n + subtypSize p_sx_tx + 1
 
 {-@ lem_narrow_sub_switn :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
@@ -234,7 +238,7 @@ lem_narrow_sub_sfunc g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf ty1 {-ky1 p_env_t
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSWitn p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) &&
-                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + tdepth s_x + 2 }
+                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + 1 }
          / [ subtypSize p_s_t, 0] @-}
 lem_narrow_sub_switn :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
@@ -246,7 +250,7 @@ lem_narrow_sub_switn g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t {-k p_env_t-} t
                                        v_z t_z p_env_vz_tz
         p_env'_t_t'vz = lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t {-k p_env_t-}
                                        (tsubBV v_z t') {-k' p_env_t'vz-} p_env_t_t'vz  
-        n'            = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'            = n + subtypSize p_sx_tx + 1
 
 {-@ lem_narrow_sub_sbind :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
@@ -255,7 +259,7 @@ lem_narrow_sub_switn g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t {-k p_env_t-} t
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSBind p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) &&
-                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + tdepth s_x + 2 }
+                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + 1 }
          / [ subtypSize p_s_t, 0] @-}
 lem_narrow_sub_sbind :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
@@ -266,11 +270,11 @@ lem_narrow_sub_sbind g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 {-k1 p_env_t1-
         {-@ mk_p_wenv'_t_t' :: { y:Vname | NotElem y nms' }
               -> { pf:Subtype | propOf pf == Subtype (Cons y t_z (concatE (Cons x s_x g) g'))
                                                      (unbindT y t) t' &&
-                                sizeOf pf <= n + subtypSize p_sx_tx + tdepth s_x + 2 } @-}
+                                sizeOf pf <= n + subtypSize p_sx_tx + 1 } @-}
         mk_p_wenv'_t_t' w = lem_narrow_sub g (Cons w t_z g') x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf
                                 (unbindT w t) {-k p_wenv_t-} t' {-k' p_wenv_t'-} (mk_p_wenv_t_t' w)
         nms'               = unionEnv nms (concatE (Cons x s_x g) g')
-        n'                 = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'                 = n + subtypSize p_sx_tx + 1
 
 {-@ lem_narrow_sub_spoly :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
@@ -279,7 +283,7 @@ lem_narrow_sub_sbind g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 {-k1 p_env_t1-
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSPoly p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) &&
-                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + tdepth s_x + 2 }
+                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + 1 }
          / [ subtypSize p_s_t, 0] @-}
 lem_narrow_sub_spoly :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
@@ -290,12 +294,12 @@ lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 {-k1 p_env_t1-
         {-@ mk_p_env'_t1'_t2' :: { a:Vname | NotElem a nms' }
               -> { pf:Subtype | propOf pf == Subtype (ConsT a k (concatE (Cons x s_x g) g'))
                                                      (unbind_tvT a t1') (unbind_tvT a t2') &&
-                                sizeOf pf <= n + subtypSize p_sx_tx + tdepth s_x + 2 } @-}
+                                sizeOf pf <= n + subtypSize p_sx_tx + 1 } @-}
         mk_p_env'_t1'_t2' a = lem_narrow_sub g (ConsT a k g') x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
                                   (unbind_tvT a t1') {-k_t1' p_aenv_t1'-} 
                                   (unbind_tvT a t2') {-k_t2' p_aenv_t2'-} (mk_p_env_t1'_t2' a)
         nms'               = unionEnv nms (concatE (Cons x s_x g) g')
-        n'                 = n + subtypSize p_sx_tx + tdepth s_x + 2
+        n'                 = n + subtypSize p_sx_tx + 1
 
 {-@ lem_narrow_sub :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> s_x:Type
@@ -304,7 +308,7 @@ lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 {-k1 p_env_t1-
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) &&
-                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + tdepth s_x + 2 }
+                              sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + 1 }
          / [ subtypSize p_s_t, 1] @-}
 lem_narrow_sub :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype

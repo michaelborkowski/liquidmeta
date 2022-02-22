@@ -39,7 +39,7 @@ import LemmasExactness
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (ConsT a k_a g) g') e t && isTVar1 p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tvar1 :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -61,7 +61,7 @@ lem_subst_tv_typ_tvar1 g g' a t_a k_a p_g_ta p_g_wf e t (TVar1 _env z t' k' p_en
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTVar2 p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tvar2 :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -88,7 +88,7 @@ lem_subst_tv_typ_tvar2 g g' a t_a k_a p_g_ta p_g_wf e t p_env_z_t@(TVar2 n env_ 
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTVar3 p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tvar3 :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -121,7 +121,7 @@ lem_subst_tv_typ_tvar3 g g' a t_a k_a p_g_ta p_g_wf e t p_env_z_t@(TVar3 n env_ 
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTAbs p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tabs :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -135,7 +135,7 @@ lem_subst_tv_typ_tabs g g' a t_a k_a p_g_ta p_g_wf e t
               -> { pf:HasType | propOf pf ==
                       HasType (Cons y (tsubFTV a t_a t_z) (concatE g (esubFTV a t_a g')))
                               (unbind y (subFTV a t_a e')) (unbindT y (tsubFTV a t_a t')) &&
-                                sizeOf pf <= n + tdepth t_a + 1 } @-}
+                                sizeOf pf <= n + 2 * tdepth t_a + 0 } @-}
         mk_p_yg'g_e'ta_t'ta y = lem_subst_tv_typ g (Cons y t_z g') a t_a k_a p_g_ta p_g_wf
                                          (unbind y e') (unbindT y t') (mk_p_yenv_e'_t' y)
                                          ? lem_commute_subFTV_unbind   a
@@ -143,7 +143,7 @@ lem_subst_tv_typ_tabs g g' a t_a k_a p_g_ta p_g_wf e t
                                          ? lem_commute_tsubFTV_unbindT a
                                                (t_a ? lem_wftype_islct g t_a k_a p_g_ta) y t'
         nms'                  = unionEnv nms (concatE (ConsT a k_a g) g')
-        n'                    = n + tdepth t_a + 1
+        n'                    = n + 2 * tdepth t_a + 0
 
 {-@ lem_subst_tv_typ_tapp :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -152,7 +152,7 @@ lem_subst_tv_typ_tabs g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTApp p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tapp :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -173,7 +173,7 @@ lem_subst_tv_typ_tapp g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTAbsT p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tabst :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -186,7 +186,7 @@ lem_subst_tv_typ_tabst g g' a t_a k_a p_g_ta p_g_wf e t
               -> { pf:HasType | propOf pf ==
                       HasType (ConsT a' k (concatE g (esubFTV a t_a g')))
                               (unbind_tv a' (subFTV a t_a e')) (unbind_tvT a' (tsubFTV a t_a t')) &&
-                                sizeOf pf <= n + tdepth t_a + 1 } @-}
+                                sizeOf pf <= n + 2 * tdepth t_a + 0 } @-}
         mk_p_a'env'_e'_t' a' = lem_subst_tv_typ g (ConsT (a' ? lem_in_env_concat g g' a') k g')
                                  a t_a k_a p_g_ta p_g_wf
                                  (unbind_tv a' e') (unbind_tvT a' t') (mk_p_a'env_e'_t' a')
@@ -195,7 +195,7 @@ lem_subst_tv_typ_tabst g g' a t_a k_a p_g_ta p_g_wf e t
                                  ? lem_commute_tsubFTV_unbind_tvT a
                                      (t_a ? lem_wftype_islct g t_a k_a p_g_ta) a' t'
         nms'                 = unionEnv nms (concatE (ConsT a k_a g) g')
-        n'                   = n + tdepth t_a + 1
+        n'                   = n + 2 * tdepth t_a + 0
           
 {-@ lem_subst_tv_typ_tappt :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -204,7 +204,7 @@ lem_subst_tv_typ_tabst g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTAppT p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tappt :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -213,10 +213,11 @@ lem_subst_tv_typ_tappt g g' a t_a k_a p_g_ta p_g_wf e t
   = TAppT n' (concatE g (esubFTV a t_a g')) (subFTV a t_a e') k1 (tsubFTV a t_a s) p_env'_e'_a1s
           (tsubFTV a t_a t') p_env'_t'
           ? lem_commute_tsubFTV_tsubBTV t' a (t_a ? lem_wftype_islct g t_a k_a p_g_ta) s
+          ? toProof ( tdepth (tsubFTV a t_a (tsubBTV t' s)) <= tdepth t_a + tdepth (tsubBTV t' s) )
       where
         p_env'_e'_a1s = lem_subst_tv_typ g g' a t_a k_a p_g_ta p_g_wf e' (TPoly k1 s) p_e'_a1s
         p_env'_t'     = lem_subst_tv_wf' g g' a t_a k_a p_g_ta p_g_wf t' k1 p_env_t'
-        n'            = n + tdepth t_a + 1
+        n'            = n + 2 * tdepth t_a + 0
 
 {-@ lem_subst_tv_typ_tlet :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -225,7 +226,7 @@ lem_subst_tv_typ_tappt g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTLet p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tlet :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -238,7 +239,7 @@ lem_subst_tv_typ_tlet g g' a t_a k_a p_g_ta p_g_wf e t
               -> { pf:HasType | propOf pf ==
                       HasType (Cons y (tsubFTV a t_a t_z) (concatE g (esubFTV a t_a g')))
                               (unbind y (subFTV a t_a e')) (unbindT y (tsubFTV a t_a t)) &&
-                                sizeOf pf <= n + tdepth t_a + 1 } @-}
+                                sizeOf pf <= n + 2 * tdepth t_a + 0 } @-}
         mk_p_yg'g_e'ta_tta y = lem_subst_tv_typ g (Cons (y ? lem_in_env_concat g g' y) t_z g')
                                          a t_a k_a p_g_ta p_g_wf
                                          (unbind y e') (unbindT y t) (mk_p_yenv_e'_t y)
@@ -249,7 +250,7 @@ lem_subst_tv_typ_tlet g g' a t_a k_a p_g_ta p_g_wf e t
         p_g'g_ezta_tzta      = lem_subst_tv_typ g g' a t_a k_a p_g_ta p_g_wf e_z t_z p_env_ez_tz
         p_g'g_t'ta           = lem_subst_tv_wf' g g' a t_a k_a p_g_ta p_g_wf t k p_env_t
         nms'                 = unionEnv nms (concatE (ConsT a k_a g) g')
-        n'                   = n + tdepth t_a + 1
+        n'                   = n + 2 * tdepth t_a + 0
 
 {-@ lem_subst_tv_typ_tsub :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -258,7 +259,7 @@ lem_subst_tv_typ_tlet g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTSub p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tsub :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -270,7 +271,7 @@ lem_subst_tv_typ_tsub g g' a t_a k_a p_g_ta p_g_wf e t
         p_g'g_e_s  = lem_subst_tv_typ g g' a t_a k_a p_g_ta p_g_wf e s p_env_e_s
         p_g'g_t    = lem_subst_tv_wf' g g' a t_a k_a p_g_ta p_g_wf t k p_env_t
         p_g'g_s_t  = lem_subst_tv_sub g g' a t_a k_a p_g_ta p_g_wf s {-Star p_env_s-} t {-k p_env_t-} p_env_s_t
-        n'         = n + tdepth t_a + 1
+        n'         = n + 2 * tdepth t_a + 0
 
 {-@ lem_subst_tv_typ :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -279,7 +280,7 @@ lem_subst_tv_typ_tsub g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) &&
-                             sizeOf p'_e_t <= sizeOf p_e_t + tdepth t_a + 1 }
+                             sizeOf p'_e_t <= sizeOf p_e_t + 2 * tdepth t_a + 0 }
          / [sizeOf p_e_t, 1] @-}
 lem_subst_tv_typ :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
@@ -323,7 +324,7 @@ lem_subst_tv_typ g g' a t_a k_a p_g_ta p_g_wf e t p_e_t@(TSub {})
       -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a (TRefn b' qs) g')) 
                                                     (tsubFTV a (TRefn b' qs) (TRefn (FTV a) p1))
                                                     (tsubFTV a (TRefn b' qs) (TRefn (FTV a) p2)) &&
-                           sizeOf p'_s_t <= sizeOf p_s_t + 1 } @-} -- / [subtypSize p_s_t, 0] @- }
+                           sizeOf p'_s_t <= sizeOf p_s_t + 0 } @-} -- / [subtypSize p_s_t, 0] @- }
 lem_subst_tv_sub_sbase_ftv :: Env -> Env -> Vname -> Basic -> Preds -> Kind -> WFType -> WFEnv
       -> Preds {-> Kind -> WFType-} -> Preds {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_subst_tv_sub_sbase_ftv g g' a b' qs k_a p_g_ta p_g_wf p1 {-k_s p_env_s-} p2 {-k_t p_env_t -}
@@ -361,7 +362,7 @@ lem_subst_tv_sub_sbase_ftv g g' a b' qs k_a p_g_ta p_g_wf p1 {-k_s p_env_s-} p2 
         -> { p_s_t:Subtype | propOf p_s_t  == Subtype (concatE (ConsT a k_a g) g') s t && isSBase p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) &&
-                             sizeOf p'_s_t <= sizeOf p_s_t + tdepth t_a + 1 } / [subtypSize p_s_t, 0] @-}
+                             sizeOf p'_s_t <= sizeOf p_s_t + 2 * tdepth t_a + 0 } / [subtypSize p_s_t, 0] @-}
 lem_subst_tv_sub_sbase :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_subst_tv_sub_sbase g g' a t_a k_a p_g_ta p_g_wf s {-k_s p_env_s-} t {-k_t p_env_t -}
@@ -406,7 +407,7 @@ lem_subst_tv_sub_sbase g g' a t_a k_a p_g_ta p_g_wf s {-k_s p_env_s-} t {-k_t p_
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t && isSFunc p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) &&
-                             sizeOf p'_s_t <= sizeOf p_s_t + tdepth t_a + 1 } / [subtypSize p_s_t, 0] @-}
+                             sizeOf p'_s_t <= sizeOf p_s_t + 2 * tdepth t_a + 0 } / [subtypSize p_s_t, 0] @-}
 lem_subst_tv_sub_sfunc :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_subst_tv_sub_sfunc g g' a t_a k_a p_g_ta p_g_wf ty1 {-ky1 p_env_ty1-} ty2 {-ky2 p_env_ty2-}
@@ -418,7 +419,7 @@ lem_subst_tv_sub_sfunc g g' a t_a k_a p_g_ta p_g_wf ty1 {-ky1 p_env_ty1-} ty2 {-
               -> { pf:Subtype | propOf pf ==
                       Subtype (Cons y (tsubFTV a t_a s2) (concatE g (esubFTV a t_a g')))
                               (unbindT y (tsubFTV a t_a t1)) (unbindT y (tsubFTV a t_a t2)) &&
-                                sizeOf pf <= n + tdepth t_a + 1 } @-}
+                                sizeOf pf <= n + 2 * tdepth t_a + 0 } @-}
         mk_p_yg'g_t1ta_t2ta y = lem_subst_tv_sub g (Cons y s2 g') a t_a k_a p_g_ta p_g_wf
                                             (unbindT y t1) {-k_t1 p_yenv_t1 -}
                                             (unbindT y t2) {-k_t2 p_yenv_t2 -} (mk_p_yenv_t1_t2 y)
@@ -429,7 +430,7 @@ lem_subst_tv_sub_sfunc g g' a t_a k_a p_g_ta p_g_wf ty1 {-ky1 p_env_ty1-} ty2 {-
         p_s2ta_s1ta      = lem_subst_tv_sub g g' a t_a k_a p_g_ta p_g_wf 
                                             s2 {-k_s2 p_env_s2-} s1 {-k_s1 p_env_s1-} p_s2_s1 
         nms'             = a:(unionEnv nms (concatE g g'))
-        n'               = n + tdepth t_a + 1
+        n'               = n + 2 * tdepth t_a + 0
 
 {-@ lem_subst_tv_sub_switn :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -438,7 +439,7 @@ lem_subst_tv_sub_sfunc g g' a t_a k_a p_g_ta p_g_wf ty1 {-ky1 p_env_ty1-} ty2 {-
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t && isSWitn p_s_t}
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) &&
-                             sizeOf p'_s_t <= sizeOf p_s_t + tdepth t_a + 1 } / [subtypSize p_s_t, 0] @-}
+                             sizeOf p'_s_t <= sizeOf p_s_t + 2 * tdepth t_a + 0 } / [subtypSize p_s_t, 0] @-}
 lem_subst_tv_sub_switn :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_subst_tv_sub_switn g g' a t_a k_a p_g_ta p_g_wf t {-k p_env_t-} t2 {-k2 p_env_t2-}
@@ -451,7 +452,7 @@ lem_subst_tv_sub_switn g g' a t_a k_a p_g_ta p_g_wf t {-k p_env_t-} t2 {-k2 p_en
                               (tsubBV v_z t') {-k' p_env_t'vz-} p_env_t_t'vz
                               ? lem_commute_tsubFTV_tsubBV v_z a 
                                     (t_a ? lem_wftype_islct g t_a k_a p_g_ta) t'
-        n'               = n + tdepth t_a + 1
+        n'               = n + 2 * tdepth t_a + 0
 
 {-@ lem_subst_tv_sub_sbind :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -460,7 +461,7 @@ lem_subst_tv_sub_switn g g' a t_a k_a p_g_ta p_g_wf t {-k p_env_t-} t2 {-k2 p_en
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t && isSBind p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) &&
-                             sizeOf p'_s_t <= sizeOf p_s_t + tdepth t_a + 1 } / [subtypSize p_s_t, 0] @-}
+                             sizeOf p'_s_t <= sizeOf p_s_t + 2 * tdepth t_a + 0 } / [subtypSize p_s_t, 0] @-}
 lem_subst_tv_sub_sbind :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_subst_tv_sub_sbind g g' a t_a k_a p_g_ta p_g_wf t1 {-k1 p_env_t1-} t' {-k' p_env_t'-}
@@ -474,14 +475,14 @@ lem_subst_tv_sub_sbind g g' a t_a k_a p_g_ta p_g_wf t1 {-k1 p_env_t1-} t' {-k' p
               -> { pf:Subtype | propOf pf ==
                       Subtype (Cons w (tsubFTV a t_a t_z) (concatE g (esubFTV a t_a g')))
                               (unbindT w (tsubFTV a t_a t)) (tsubFTV a t_a t') &&
-                                sizeOf pf <= n + tdepth t_a + 1 } @-}
+                                sizeOf pf <= n + 2 * tdepth t_a + 0 } @-}
         mk_p_wenv'_tta_t'ta w = lem_subst_tv_sub g (Cons w t_z g') a t_a k_a p_g_ta p_g_wf
                                          (unbindT w t) {-k p_wenv_t-} t' {-k' p_wenv_t'-} 
                                          (mk_p_wenv_t_t' w)
                                          ? lem_commute_tsubFTV_unbindT a
                                              (t_a ? lem_wftype_islct g t_a k_a p_g_ta) w t
         nms'                  = a:(unionEnv nms (concatE g g'))
-        n'                    = n + tdepth t_a + 1
+        n'                    = n + 2 * tdepth t_a + 0
 
 {-@ lem_subst_tv_sub_spoly :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -490,7 +491,7 @@ lem_subst_tv_sub_sbind g g' a t_a k_a p_g_ta p_g_wf t1 {-k1 p_env_t1-} t' {-k' p
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t && isSPoly p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) &&
-                             sizeOf p'_s_t <= sizeOf p_s_t + tdepth t_a + 1 } / [subtypSize p_s_t, 0] @-}
+                             sizeOf p'_s_t <= sizeOf p_s_t + 2 * tdepth t_a + 0 } / [subtypSize p_s_t, 0] @-}
 lem_subst_tv_sub_spoly :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type {-> Kind -> WFTypr-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_g_wf t1 {-k1 p_env_t1-} t2 {-k2 p_env_t2 -}
@@ -502,7 +503,7 @@ lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_g_wf t1 {-k1 p_env_t1-} t2 {-k2 p
               -> { pf:Subtype | propOf pf ==
                       Subtype (ConsT a1 k' (concatE g (esubFTV a t_a g')))
                               (unbind_tvT a1 (tsubFTV a t_a t1')) (unbind_tvT a1 (tsubFTV a t_a t2')) &&
-                                sizeOf pf <= n + tdepth t_a + 1 } @-}
+                                sizeOf pf <= n + 2 * tdepth t_a + 0 } @-}
         mk_p_a1g'g_t1'ta_t2'ta a1 = lem_subst_tv_sub g (ConsT a1 k' g') a t_a k_a p_g_ta p_g_wf
                                       (unbind_tvT a1 t1') {-k_t1' p_a1'env_t1'-}
                                       (unbind_tvT a1 t2') {-k_t2' p_a1'env_t2'-} (mk_p_a1env_t1'_t2' a1)
@@ -511,7 +512,7 @@ lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_g_wf t1 {-k1 p_env_t1-} t2 {-k2 p
                                       ? lem_commute_tsubFTV_unbind_tvT a 
                                           (t_a ? lem_wftype_islct g t_a k_a p_g_ta) a1 t2'
         nms'                  = a:(unionEnv nms (concatE g g'))
-        n'                    = n + tdepth t_a + 1
+        n'                    = n + 2 * tdepth t_a + 0
 
 {-@ lem_subst_tv_sub :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
@@ -520,7 +521,7 @@ lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_g_wf t1 {-k1 p_env_t1-} t2 {-k2 p
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) &&
-                             sizeOf p'_s_t <= sizeOf p_s_t + tdepth t_a + 1 } / [subtypSize p_s_t, 1] @-}
+                             sizeOf p'_s_t <= sizeOf p_s_t + 2 * tdepth t_a + 0 } / [subtypSize p_s_t, 1] @-}
 lem_subst_tv_sub :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_subst_tv_sub g g' a t_a k_a p_g_ta p_g_wf s {-k_s p_env_s-} t {-k_t p_env_t-} p_t_t'@(SBase {}) 

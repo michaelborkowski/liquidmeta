@@ -193,12 +193,33 @@ lem_wfexis_for_wf_texists g t_x t k (WFKind _g _ext p_g_ex_t_base)
         nms'          = unionEnv nms g
 --    p_g_ex_t_star = WFExis g t_x k_x p_g_tx t Star nms' mk_p_yg_t_star
 
+{- one error
+{-@ lem_wf_texists_from_wf_tfunc ::  g:Env -> t_x:Type -> t:Type -> k:Kind
+        -> { p_g_txt : WFType | propOf p_g_txt  == WFType g (TFunc   t_x t) k }
+        -> { p_g_txt': WFType | propOf p_g_txt' == WFType g (TExists t_x t) Star } @-}
+lem_wf_texists_from_wf_tfunc :: Env  -> Type -> Type -> Kind -> WFType -> WFType
+lem_wf_texists_from_wf_tfunc g t_x t' k p_g_txt = case p_g_txt of
+  (WFFunc _ _ k_x p_g_tx _ k' nms mk_p_yg_t')
+      -> WFExis g t_x k_x p_g_tx t' k' nms mk_p_yg_t'
+  (WFKind _g _ext p_g_txt_base)
+      -> impossible ("by lemma" ? lem_wf_tfunc_star g t_x t' p_g_txt_base)
+-}
+
 {-@ lem_wfpoly_for_wf_tpoly :: g:Env -> k:Kind -> t:Type 
       -> { p_g_at : WFType | propOf p_g_at  == WFType g (TPoly k t) Star }
       -> { p_g_at': WFType | propOf p_g_at' == WFType g (TPoly k t) Star && isWFPoly p_g_at' } @-}
 lem_wfpoly_for_wf_tpoly :: Env -> Kind -> Type -> WFType -> WFType
 lem_wfpoly_for_wf_tpoly g k t p_g_at@(WFPoly {})           = p_g_at
 lem_wfpoly_for_wf_tpoly g k t (WFKind _g _at p_g_at_base) 
+  = impossible ("by lemma" ? lem_wf_tpoly_star g k t p_g_at_base)
+
+{-@ lem_wfpoly_for_wf_tpoly' :: g:Env -> k:Kind -> t:Type -> k_t:Kind
+      -> { p_g_at : WFType | propOf p_g_at  == WFType g (TPoly k t) k_t }
+      -> { p_g_at': WFType | propOf p_g_at' == WFType g (TPoly k t) Star && isWFPoly p_g_at' } @-}
+lem_wfpoly_for_wf_tpoly' :: Env -> Kind -> Type -> Kind -> WFType -> WFType
+lem_wfpoly_for_wf_tpoly' g k t k_t p_g_at@(WFPoly {})           = case k_t of 
+  Star -> p_g_at
+lem_wfpoly_for_wf_tpoly' g k t k_t (WFKind _g _at p_g_at_base) 
   = impossible ("by lemma" ? lem_wf_tpoly_star g k t p_g_at_base)
 
 {-@ lem_wf_tpoly_star :: g:Env -> k:Kind -> t:Type
@@ -214,20 +235,6 @@ lem_wf_tpoly_star g k t (WFExis {}) = ()
 lem_wf_tpoly_star g k t (WFPoly {}) = ()
 lem_wf_tpoly_star g k t (WFKind {}) = ()
 
-{-
-{-@ lem_wf_usertype_base_trefn :: g:Env -> t_a:UserType -> ProofOf(WFType g t_a Base)
-        -> { pf:_ | isTRefn t_a } @-}
-lem_wf_usertype_base_trefn :: Env -> Type -> WFType -> Proof
-lem_wf_usertype_base_trefn g t_a (WFBase {}) = ()
-lem_wf_usertype_base_trefn g t_a (WFRefn {}) = ()
-lem_wf_usertype_base_trefn g t_a (WFVar1 {}) = ()
-lem_wf_usertype_base_trefn g t_a (WFVar2 {}) = ()
-lem_wf_usertype_base_trefn g t_a (WFVar3 {}) = ()
-lem_wf_usertype_base_trefn g t_a (WFFunc {}) = impossible ""
-lem_wf_usertype_base_trefn g t_a (WFExis {}) = impossible ""
-lem_wf_usertype_base_trefn g t_a (WFPoly {}) = impossible ""
-lem_wf_usertype_base_trefn g t_a (WFKind {}) = impossible ""
--}
  -- SYSTEM F VERSIONS
 
 {-@ lem_wfftfunc_for_wf_ftfunc :: g:FEnv -> t_x:FType -> t:FType -> k:Kind 

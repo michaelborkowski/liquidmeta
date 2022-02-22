@@ -100,6 +100,21 @@ fv (AppT e t)      = S.union (fv e) (free t)
 fv (Let   ex e)    = S.union (fv ex) (fv e)
 fv (Annot e t)     = S.union (fv e) (free t) 
 
+{-@ reflect fvList @-} 
+{-@ fvList :: e:Expr -> { xs:Names | listElts xs == fv e } / [esize e] @-}
+fvList :: Expr -> Names
+fvList (Bc _)          = []
+fvList (Ic _)          = []
+fvList (Prim _)        = []
+fvList (BV _)          = []
+fvList (FV x)          = [x]
+fvList (Lambda   e)    = fvList e 
+fvList (App e e')      = union (fvList e) (fvList e')
+fvList (LambdaT   k e) = fvList e
+fvList (AppT e t)      = union (fvList e) (freeList t)
+fvList (Let   ex e)    = union (fvList ex) (fvList e)
+fvList (Annot e t)     = union (fvList e) (freeList t) 
+
 {-@ reflect ftv @-}
 {-@ ftv :: e:Expr -> S.Set Vname / [esize e] @-}
 ftv :: Expr -> S.Set Vname
@@ -344,6 +359,12 @@ fvP :: Preds -> S.Set Vname
 fvP PEmpty       = S.empty
 fvP (PCons p ps) = S.union (fv p) (fvP ps)
 
+{-@ reflect fvPList @-}
+{-@ fvPList :: ps:Preds -> { xs:Names | listElts xs == fvP ps } / [predsize ps] @-}
+fvPList :: Preds -> Names
+fvPList PEmpty       = []
+fvPList (PCons p ps) = union (fvList p) (fvPList ps)
+
 {-@ reflect ftvP @-}
 {-@ ftvP :: ps:Preds -> S.Set Vname / [predsize ps] @-}
 ftvP :: Preds -> S.Set Vname
@@ -539,12 +560,20 @@ tsize (TExists   t_x t)     = (tsize t_x) + (tsize t) + 1
 tsize (TPoly   k   t)       = (tsize t)   + 1
 
 {-@ measure tdepth @-}   -- modified for extra wiggle room
-{-@ tdepth :: t:Type -> { v:Int | v >= 0 } @-} 
+{-@ tdepth :: t:Type -> { v:Int | v >= 1 } @-} 
 tdepth :: Type -> Int
-tdepth (TRefn b   r)         = 0
+tdepth (TRefn b   r)         = 1
 tdepth (TFunc   t_x t)       = (max (tdepth t_x) (tdepth t)) + 1
-tdepth (TExists   t_x t)     = (max (tdepth t_x) (tdepth t)) + 2
+tdepth (TExists   t_x t)     = (max (tdepth t_x) (tdepth t)) + 1 -- 2
 tdepth (TPoly   k   t)       = (tdepth t)   + 1
+
+{-@ measure xdepth @-}
+{-@ xdepth :: t:Type -> { v:Int | v >= 1 } @-}
+xdepth :: Type -> Int
+xdepth (TRefn b   r)         = 1
+xdepth (TFunc   t_x t)       = (max (xdepth t_x) (xdepth t)) * 3
+xdepth (TExists   t_x t)     = (max (xdepth t_x) (xdepth t)) * 3
+xdepth (TPoly   k   t)       = (xdepth t) * 3
 
 {-@ measure polysize @-}
 {-@ polysize :: t:Type -> { v:Int | v >= 0 } @-}
@@ -582,6 +611,14 @@ free (TFunc   t_x t)    = S.union (free t_x) (free t)
 free (TExists   t_x t)  = S.union (free t_x) (free t) 
 free (TPoly   k   t)    = free t
 
+{-@ reflect freeList @-}
+{-@ freeList :: t:Type -> { xs:Names | listElts xs == free t } / [tsize t] @-}
+freeList :: Type -> Names
+freeList (TRefn b   rs)     = fvPList rs
+freeList (TFunc   t_x t)    = union (freeList t_x) (freeList t) 
+freeList (TExists   t_x t)  = union (freeList t_x) (freeList t) 
+freeList (TPoly   k   t)    = freeList t
+
 {-@ reflect freeTV @-} -- free TYPE variables
 {-@ freeTV :: t:Type -> S.Set Vname / [tsize t] @-}
 freeTV :: Type -> S.Set Vname
@@ -613,7 +650,7 @@ isLCT_at j_x j_a (TPoly   k   t) =                         isLCT_at j_x (j_a+1) 
                                       Set_sub (freeTV t') (freeTV t) &&
                                       Set_sub (free t) (free t') && Set_sub (freeTV t) (freeTV t') &&
                                       (noExists t => noExists t') && tsize t == tsize t' &&
-                                      tdepth t == tdepth t' && 
+                                      tdepth t == tdepth t' && xdepth t == xdepth t' &&
                                       erase t == erase t' } / [tsize t] @-} 
 unbindT :: Vname -> Type -> Type
 unbindT y t = openT_at 0 y t
@@ -624,7 +661,7 @@ unbindT y t = openT_at 0 y t
                                        Set_sub (free t) (free t') &&
                                        Set_sub (freeTV t') (freeTV t) && Set_sub (freeTV t) (freeTV t') &&
                                        (noExists t => noExists t') && tsize t == tsize t' &&
-                                       tdepth t == tdepth t' && 
+                                       tdepth t == tdepth t' && xdepth t == xdepth t' &&
                                        erase t == erase t' } / [tsize t] @-} 
 openT_at :: Index -> Vname -> Type -> Type
 openT_at j y (TRefn b ps)    = TRefn b (openP_at (j+1) y ps)
@@ -637,7 +674,7 @@ openT_at j y (TPoly   k   t) = TPoly k (openT_at j y t)   -- not j+1
                        -> { t':Type | Set_sub (freeTV t') (Set_cup (Set_sng a') (freeTV t)) &&
                                       Set_sub (free t') (free t) &&
                                       Set_sub (freeTV t) (freeTV t') && Set_sub (free t) (free t') &&
-                                      tdepth t == tdepth t' && 
+                                      tdepth t == tdepth t' && xdepth t == xdepth t' &&
                                       (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
 unbind_tvT :: Vname -> Type -> Type
 unbind_tvT a' t = open_tvT_at 0 a' t
@@ -647,7 +684,7 @@ unbind_tvT a' t = open_tvT_at 0 a' t
                        -> { t':Type | Set_sub (freeTV t') (Set_cup (Set_sng a') (freeTV t)) &&
                                       Set_sub (free t') (free t) &&
                                       Set_sub (freeTV t) (freeTV t') && Set_sub (free t) (free t') &&
-                                      tdepth t == tdepth t' && 
+                                      tdepth t == tdepth t' && xdepth t == xdepth t' &&
                                       (noExists t => noExists t') && tsize t == tsize t' } / [tsize t] @-} 
 open_tvT_at :: Index -> Vname -> Type -> Type
 open_tvT_at j a' (TRefn b  ps)     = case b of 
@@ -699,7 +736,7 @@ push p (TPoly     k   t) = TPoly     k   t
                 ( Set_sub (free t') (Set_cup (fv e) (Set_dif (free t) (Set_sng x))) ) &&
                   Set_sub (freeTV t') (Set_cup (ftv e) (freeTV t)) &&
                 ( (not (Set_mem x (fv e))) => not (Set_mem x (free t')) ) &&
-                  tdepth t == tdepth t' &&
+                  tdepth t == tdepth t' && xdepth t == xdepth t' &&
                 ( noExists t => noExists t' ) } / [tsize t] @-}
 tsubFV :: Vname -> Expr -> Type -> Type
 tsubFV x v_x (TRefn  b r)     = TRefn b   (psubFV x v_x r)
@@ -717,7 +754,7 @@ tsubFV x v_x (TPoly  k   t)   = TPoly    k                  (tsubFV x v_x t)
                 ( Set_sub (freeTV t') (Set_cup (freeTV t_a) (Set_dif (freeTV t) (Set_sng a))) ) &&
                   Set_sub (free t') (Set_cup (free t_a) (free t)) && 
                 ( (not (Set_mem a (freeTV t_a))) => not (Set_mem a (freeTV t')) ) &&
-                  tdepth t' <= tdepth t_a + tdepth t &&
+                  tdepth t' <= tdepth t_a + tdepth t &&  tdepth t' >= tdepth t &&
                 ( noExists t => noExists t' ) } / [tsize t] @-} 
 tsubFTV :: Vname -> Type -> Type -> Type
 tsubFTV a t_a (TRefn b   r)        = case b of
@@ -739,6 +776,7 @@ tsubFTV a t_a (TPoly      k  t)    = TPoly      k                   (tsubFTV a t
                 -> { t':Type | Set_sub (free t') (Set_cup (fv v_x) (free t)) &&
                                Set_sub (freeTV t') (Set_cup (ftv v_x) (freeTV t)) &&
                                erase t == erase t' && tdepth t == tdepth t' &&
+                               xdepth t == xdepth t' &&
                                ( esize v_x != 1 || tsize t == tsize t' ) } / [tsize t] @-}
 tsubBV :: Expr -> Type -> Type
 tsubBV v_x t = tsubBV_at 0 v_x t
@@ -748,6 +786,7 @@ tsubBV v_x t = tsubBV_at 0 v_x t
                 -> { t':Type | Set_sub (free t') (Set_cup (fv v_x) (free t)) &&
                                Set_sub (freeTV t') (Set_cup (ftv v_x) (freeTV t)) &&
                                erase t == erase t' && tdepth t == tdepth t' &&
+                               xdepth t == xdepth t' &&
                                ( esize v_x != 1 || tsize t == tsize t' ) } / [tsize t] @-}
 tsubBV_at :: Index -> Expr -> Type -> Type
 tsubBV_at j v_x (TRefn b ps)    = TRefn b (psubBV_at (j+1) v_x ps)  
@@ -767,6 +806,7 @@ tsubBV_at j v_x (TPoly   k  t)  = TPoly k (tsubBV_at j v_x t)   -- not j+1
 {-@ reflect tsubBTV @-}  --  ( isTrivial t_a => tsize t == tsize t' )
 {-@ tsubBTV :: t_a:UserType -> t:Type
                 -> { t':Type | Set_sub (free t') (Set_cup (free t_a) (free t)) &&
+                               tdepth t' <= tdepth t_a + tdepth t && tdepth t' >= tdepth t &&
                                Set_sub (freeTV t') (Set_cup (freeTV t_a) (freeTV t)) } / [tsize t] @-}
 tsubBTV :: Type -> Type -> Type
 tsubBTV t_a t = tsubBTV_at 0 t_a t
@@ -774,6 +814,7 @@ tsubBTV t_a t = tsubBTV_at 0 t_a t
 {-@ reflect tsubBTV_at @-}  --  ( isTrivial t_a => tsize t == tsize t' )
 {-@ tsubBTV_at :: j:Index -> t_a:UserType -> t:Type
                 -> { t':Type | Set_sub (free t') (Set_cup (free t_a) (free t)) &&
+                               tdepth t' <= tdepth t_a + tdepth t && tdepth t' >= tdepth t &&
                                Set_sub (freeTV t') (Set_cup (freeTV t_a) (freeTV t)) } / [tsize t] @-}
 tsubBTV_at :: Index -> Type -> Type -> Type
 tsubBTV_at j t_a (TRefn b   ps)        = case b of 
@@ -1289,6 +1330,39 @@ lem_above_max_nms_fenv x []     (FCons  y t g) = lem_above_max_nms_fenv x [] g
 lem_above_max_nms_fenv x []     (FConsT a k g) = lem_above_max_nms_fenv x [] g
 lem_above_max_nms_fenv x (_:ys) g              = lem_above_max_nms_fenv x ys g
 
+
+{-@ reflect fresh_varT @-}
+{-@ fresh_varT :: xs:Names -> g:Env -> t:Type 
+        -> { x:Vname | not (Set_mem x (free t)) && not (in_env x g) && NotElem x xs } @-}
+fresh_varT :: Names -> Env -> Type -> Vname
+fresh_varT xs g t
+  = n `withProof` lem_above_max_nms_type n xs (freeList t) g
+      where
+        n    = 1 + max_nms_type xs (freeList t) g
+
+{-@ reflect max_nms_type @-}
+{-@ max_nms_type :: Names -> Names -> Env -> { x:Vname | x >= 0 } @-}
+max_nms_type :: Names -> Names -> Env -> Vname 
+max_nms_type ([])   ([])   Empty         = 0
+max_nms_type ([])   ([])   (Cons  x t g) 
+  = if (x > max_nms_type [] [] g) then x else (max_nms_type [] [] g)
+max_nms_type ([])   ([])   (ConsT a k g)
+  = if (a > max_nms_type [] [] g) then a else (max_nms_type [] [] g)
+max_nms_type ([])   (y:ys) g 
+  = if (y > max_nms_type [] ys g) then y else (max_nms_type [] ys g)
+max_nms_type (x:xs) ys     g 
+  = if (x > max_nms_type xs ys g) then x else (max_nms_type xs ys g)
+
+{-@ reflect lem_above_max_nms_type @-}
+{-@ lem_above_max_nms_type :: x:Vname -> xs:Names -> ys:Names
+        -> { g:Env | x > max_nms_type xs ys g } 
+        -> { pf:_ | NotElem x xs && NotElem x ys && not (in_env x g) } @-}
+lem_above_max_nms_type :: Vname -> Names -> Names -> Env -> Proof
+lem_above_max_nms_type _ []     []     Empty         = ()
+lem_above_max_nms_type x []     []     (Cons  y t g) = lem_above_max_nms_type x [] [] g
+lem_above_max_nms_type x []     []     (ConsT a k g) = lem_above_max_nms_type x [] [] g
+lem_above_max_nms_type x []     (_:ys) g             = lem_above_max_nms_type x [] ys g
+lem_above_max_nms_type x (_:xs) ys     g             = lem_above_max_nms_type x xs ys g
 
 {-@ reflect fresh_varFTs @-}
 {-@ fresh_varFTs :: xs:Names -> g:Env -> t1:FType -> t2:FType 

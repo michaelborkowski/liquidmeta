@@ -41,6 +41,15 @@ lem_wf_tyic g n = undefined --makeWFType g (tyic n) Base
 lem_wf_ty :: Prim -> WFType
 lem_wf_ty c        = undefined
 
+{-@ lem_wf_intype :: { c:Prim | not (isPoly c) } -> ProofOf(WFType Empty (inType c) Base) @-}
+lem_wf_intype :: Prim -> WFType
+lem_wf_intype c    = undefined 
+
+{-@ lem_wf_ty' :: { c:Prim | not (isPoly c) } -> y:Vname
+        -> ProofOf(WFType (Cons y (inType c) Empty) (unbindT y (ty' c)) Star) @-}
+lem_wf_ty' :: Prim -> Int -> WFType
+lem_wf_ty' c y   = undefined
+
 -- Lemma. Constants Have Exact Types
 {-@ lem_tybc_exact :: g:Env -> b:Bool 
         -> { pf:Subtype | propOf pf == Subtype g (tybc b) (self (tybc b) (Bc b) Base) &&
@@ -53,4 +62,17 @@ lem_tybc_exact g b = undefined
                           sizeOf pf == 0 } @-}
 lem_tyic_exact :: Env -> Int -> Subtype
 lem_tyic_exact g n = undefined
+
+-- Lemma. Typing of \delta(c,v) and \delta_T(c,t)
+{-@ lem_delta_ty'c :: { c:Prim | not (isPoly c) } -> v:Value -> ProofOf(HasType Empty v (inType c))
+        -> ProofOf(HasType Empty (delta c v) (tsubBV v (ty' c))) @-}
+lem_delta_ty'c :: Prim -> Expr -> HasType -> HasType
+lem_delta_ty'c c v p_v_tx = undefined -- this part we leave as an assumption
+
+{-@ lem_deltaT_ty'c :: { c:Prim | isPoly c } -> t:UserType -> ProofOf(WFType Empty t Base)
+        -> ProofOf(HasType Empty (deltaT c t)
+                           (tsubBTV t (TFunc (inType c) (ty' c)))) @-}
+lem_deltaT_ty'c :: Prim -> Type -> WFType -> HasType
+lem_deltaT_ty'c c t p_emp_t = undefined -- this part we leave as an assumption
+
 

@@ -141,6 +141,31 @@ lem_subBV_at_lc_at j v kx ka (Annot e t)
                 = () ? lem_subBV_at_lc_at   j   v kx     ka e
                      ? lem_tsubBV_at_lct_at j   v kx     ka t  
 
+{-@ lem_subBTV_at_lc_at :: j:Index -> t_a:UserType -> kx:Index -> { ka:Index | j >= ka }
+        -> { e:Expr | isLC_at kx ka e } -> { pf:_ | subBTV_at j t_a e = e } / [esize e] @-}
+lem_subBTV_at_lc_at :: Index -> Type -> Index -> Index -> Expr -> Proof
+lem_subBTV_at_lc_at j t_a kx ka (Bc _)          = ()
+lem_subBTV_at_lc_at j t_a kx ka (Ic _)          = ()
+lem_subBTV_at_lc_at j t_a kx ka (Prim _)        = ()
+lem_subBTV_at_lc_at j t_a kx ka (BV w)          = ()
+lem_subBTV_at_lc_at j t_a kx ka (FV _)          = ()
+lem_subBTV_at_lc_at j t_a kx ka (Lambda e)
+                = () ? lem_subBTV_at_lc_at j     t_a (kx+1) ka e
+lem_subBTV_at_lc_at j t_a kx ka (App e e')      
+                = () ? lem_subBTV_at_lc_at j     t_a kx     ka e 
+                     ? lem_subBTV_at_lc_at j     t_a kx     ka e'
+lem_subBTV_at_lc_at j t_a kx ka (LambdaT k e) 
+                = () ? lem_subBTV_at_lc_at (j+1) t_a kx     (ka+1) e
+lem_subBTV_at_lc_at j t_a kx ka (AppT e t)      
+                = () ? lem_subBTV_at_lc_at   j   t_a kx     ka e
+                     ? lem_tsubBTV_at_lct_at j   t_a kx     ka t
+lem_subBTV_at_lc_at j t_a kx ka (Let ew e)
+                = () ? lem_subBTV_at_lc_at   j   t_a kx     ka ew
+                     ? lem_subBTV_at_lc_at   j   t_a (kx+1) ka e
+lem_subBTV_at_lc_at j t_a kx ka (Annot e t)     
+                = () ? lem_subBTV_at_lc_at   j   t_a kx     ka e
+                     ? lem_tsubBTV_at_lct_at j   t_a kx     ka t  
+
 {-@ lem_subBV_is_unbind :: y:Vname -> e:Expr
         -> { pf:_ | subBV (FV y) e == unbind y e } / [esize e] @-}
 lem_subBV_is_unbind :: Vname -> Expr -> Proof
@@ -268,6 +293,41 @@ lem_commute_subFV_open_at x v j y (Annot e t)
               = () ? lem_commute_subFV_open_at   x v j   y e
                    ? lem_commute_tsubFV_openT_at x v j   y t
 
+{-@ lem_commute_subFV_subBV :: v:Value -> y:Vname -> { v_y:Value | isLC v_y } -> e:Expr
+        -> { pf:_ | subFV y v_y (subBV v e) == subBV (subFV y v_y v) (subFV y v_y e) } @-}
+lem_commute_subFV_subBV :: Expr -> Vname -> Expr -> Expr -> Proof
+lem_commute_subFV_subBV v y v_y e = lem_commute_subFV_subBV_at 0 v y v_y e
+
+{-@ lem_commute_subFV_subBV_at :: j:Index -> v:Value -> y:Vname -> { v_y:Value | isLC v_y } -> e:Expr
+      -> { pf:_ | subFV y v_y (subBV_at j v e) == subBV_at j (subFV y v_y v) (subFV y v_y e) } 
+       / [esize e] @-}
+lem_commute_subFV_subBV_at :: Index -> Expr -> Vname -> Expr -> Expr -> Proof
+lem_commute_subFV_subBV_at j v y v_y (Bc b)       = ()
+lem_commute_subFV_subBV_at j v y v_y (Ic n)       = ()
+lem_commute_subFV_subBV_at j v y v_y (Prim p)     = ()
+lem_commute_subFV_subBV_at j v y v_y (BV k) 
+  | j == k    = ()
+  | otherwise = ()
+lem_commute_subFV_subBV_at j v y v_y (FV w)       
+  | y == w    = () ? lem_subBV_at_lc_at j (subFV y v_y v) 0 0 v_y
+  | otherwise = ()
+lem_commute_subFV_subBV_at j v y v_y (Lambda e)
+              = () ? lem_commute_subFV_subBV_at (j+1) v y v_y e
+lem_commute_subFV_subBV_at j v y v_y (App e e')
+              = () ? lem_commute_subFV_subBV_at j v y v_y e
+                   ? lem_commute_subFV_subBV_at j v y v_y e'
+lem_commute_subFV_subBV_at j v y v_y (LambdaT k e)
+              = () ? lem_commute_subFV_subBV_at   j v y v_y e
+lem_commute_subFV_subBV_at j v y v_y (AppT e t)
+              = () ? lem_commute_subFV_subBV_at   j v y v_y e
+                   ? lem_commute_tsubFV_tsubBV_at j v y v_y t
+lem_commute_subFV_subBV_at j v y v_y (Let ew e)
+              = () ? lem_commute_subFV_subBV_at j     v y v_y ew
+                   ? lem_commute_subFV_subBV_at (j+1) v y v_y e
+lem_commute_subFV_subBV_at j v y v_y (Annot e t)
+              = () ? lem_commute_subFV_subBV_at   j v y v_y e
+                   ? lem_commute_tsubFV_tsubBV_at j v y v_y t
+
 {-@ lem_commute_subFV_unbind_tv :: x:Vname -> { v:Value | isLC v } -> { a:Vname | a != x } -> e:Expr
         -> { pf:_ | subFV x v (unbind_tv a e) == unbind_tv a (subFV x v e) } / [esize e] @-}
 lem_commute_subFV_unbind_tv :: Vname -> Expr -> Vname -> Expr -> Proof
@@ -299,6 +359,35 @@ lem_commute_subFV_open_tv_at x v j a (Let ew e)
 lem_commute_subFV_open_tv_at x v j a (Annot e t)
               = () ? lem_commute_subFV_open_tv_at   x v j   a e
                    ? lem_commute_tsubFV_open_tvT_at x v j   a t
+
+{-@ lem_commute_subFV_subBTV_at :: j:Index -> t_a:UserType  -> y:Vname -> { v_y:Value | isLC v_y } 
+      -> e:Expr
+      -> { pf:_ | subFV y v_y (subBTV_at j t_a e) == subBTV_at j (tsubFV y v_y t_a) (subFV y v_y e) } 
+       / [esize e] @-}
+lem_commute_subFV_subBTV_at :: Index -> Type -> Vname -> Expr -> Expr -> Proof
+lem_commute_subFV_subBTV_at j t_a y v_y (Bc b)       = ()
+lem_commute_subFV_subBTV_at j t_a y v_y (Ic n)       = ()
+lem_commute_subFV_subBTV_at j t_a y v_y (Prim p)     = ()
+lem_commute_subFV_subBTV_at j t_a y v_y (BV w)       = ()
+lem_commute_subFV_subBTV_at j t_a y v_y (FV w)       
+  | y == w    = () ? lem_subBTV_at_lc_at j (tsubFV y v_y t_a) 0 0 v_y
+  | otherwise = ()
+lem_commute_subFV_subBTV_at j t_a y v_y (Lambda e)
+              = () ? lem_commute_subFV_subBTV_at j t_a y v_y e
+lem_commute_subFV_subBTV_at j t_a y v_y (App e e')
+              = () ? lem_commute_subFV_subBTV_at j t_a y v_y e
+                   ? lem_commute_subFV_subBTV_at j t_a y v_y e'
+lem_commute_subFV_subBTV_at j t_a y v_y (LambdaT k e)
+              = () ? lem_commute_subFV_subBTV_at (j+1) t_a y v_y e
+lem_commute_subFV_subBTV_at j t_a y v_y (AppT e t)
+              = () ? lem_commute_subFV_subBTV_at   j t_a y v_y e
+                   ? lem_commute_tsubFV_tsubBTV_at j t_a y v_y t
+lem_commute_subFV_subBTV_at j t_a y v_y (Let ew e)
+              = () ? lem_commute_subFV_subBTV_at j t_a y v_y ew
+                   ? lem_commute_subFV_subBTV_at j t_a y v_y e
+lem_commute_subFV_subBTV_at j t_a y v_y (Annot e t)
+              = () ? lem_commute_subFV_subBTV_at   j t_a y v_y e
+                   ? lem_commute_tsubFV_tsubBTV_at j t_a y v_y t
 
 ------------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of SUBSTITUTION for TYPE VARIABLES in TERMS
@@ -414,176 +503,11 @@ lem_commute_subFTV_open_tv_at a t_a j a' (Annot e t)
               = () ? lem_commute_subFTV_open_tv_at   a t_a j   a' e
                    ? lem_commute_tsubFTV_open_tvT_at a t_a j   a' t
 
-{-
-{-@ lem_commute_subFV_unbind_tv :: x:Vname -> v:Value -> { z:Vname | not (Set_mem z (freeBTV v)) }
-        -> { z':Vname | z' != x } -> e:Expr
-        -> {pf:_ | subFV x v (unbind_tv z z' e) == unbind_tv z z' (subFV x v e)} / [esize e] @-}
-lem_commute_subFV_unbind_tv :: Vname -> Expr -> Vname -> Vname -> Expr -> Proof
-lem_commute_subFV_unbind_tv x v z z' (Bc b)       = ()
-lem_commute_subFV_unbind_tv x v z z' (Ic n)       = ()
-lem_commute_subFV_unbind_tv x v z z' (Prim c)     = ()
-lem_commute_subFV_unbind_tv x v z z' (BV w)       = () 
-lem_commute_subFV_unbind_tv x v z z' (FV w)       
-  | w == x    = () ? lem_unbind_tv_notin z z' v
-  | otherwise = ()
-lem_commute_subFV_unbind_tv x v z z' (Lambda w e) 
-              = () ? lem_commute_subFV_unbind_tv x v z z' e
-lem_commute_subFV_unbind_tv x v z z' (App e e')     
-              = () ? lem_commute_subFV_unbind_tv x v z z' e
-                   ? lem_commute_subFV_unbind_tv x v z z' e'
-lem_commute_subFV_unbind_tv x v z z' (LambdaT a k e)
-  | a == z    = ()
-  | otherwise = () ? lem_commute_subFV_unbind_tv x v z z' e
-lem_commute_subFV_unbind_tv x v z z' (AppT e t)     
-              = () ? lem_commute_subFV_unbind_tv x v z z' e
-                   ? lem_commute_tsubFV_unbind_tvT x v z z' t
-lem_commute_subFV_unbind_tv x v z z' (Let w ew e)     
-              = () ? lem_commute_subFV_unbind_tv x v z z' ew
-                   ? lem_commute_subFV_unbind_tv x v z z' e
-lem_commute_subFV_unbind_tv x v z z' (Annot e t)     
-              = () ? lem_commute_subFV_unbind_tv x v z z' e
-                   ? lem_commute_tsubFV_unbind_tvT x v z z' t
-
-{-@ lem_commute_subFV_subBV :: x:Vname -> v:Value 
-        -> y:Vname -> { v_y:Value | not (Set_mem x (freeBV v_y)) } -> e:Expr
-        -> { pf:_ | subFV y v_y (subBV x v e) == subBV x (subFV y v_y v) (subFV y v_y e) } / [esize e] @-}
-lem_commute_subFV_subBV :: Vname -> Expr -> Vname -> Expr -> Expr -> Proof
-lem_commute_subFV_subBV x v y v_y (Bc b)       = ()
-lem_commute_subFV_subBV x v y v_y (Ic n)       = ()
-lem_commute_subFV_subBV x v y v_y (Prim p)     = ()
-lem_commute_subFV_subBV x v y v_y (BV w) 
-  | x == w    = () -- ? lem_subFV_notin y v_y (BV x)
-  | otherwise = ()
-lem_commute_subFV_subBV x v y v_y (FV w)       
-  | y == w    = () 
-                   ? lem_unbind_lc x (subFV y v_y v) v_y
-  | otherwise = ()
-lem_commute_subFV_subBV x v y v_y (Lambda w e)
-  | x == w    = () 
-  | otherwise = () ? lem_commute_subFV_subBV x v y v_y e
-lem_commute_subFV_subBV x v y v_y (App e e')
-              = () ? lem_commute_subFV_subBV x v y v_y e
-                   ? lem_commute_subFV_subBV x v y v_y e'
-lem_commute_subFV_subBV x v y v_y (LambdaT a k e)
-              = () ? lem_commute_subFV_subBV   x v y v_y e
-lem_commute_subFV_subBV x v y v_y (AppT e t)
-              = () ? lem_commute_subFV_subBV   x v y v_y e
-                   ? lem_commute_tsubFV_tsubBV x v y v_y t
-lem_commute_subFV_subBV x v y v_y (Let w ew e)
-  | x == w    = () ? lem_commute_subFV_subBV x v y v_y ew
-  | otherwise = () ? lem_commute_subFV_subBV x v y v_y ew
-                   ? lem_commute_subFV_subBV x v y v_y e
-lem_commute_subFV_subBV x v y v_y (Annot e t)
-              = () ? lem_commute_subFV_subBV   x v y v_y e
-                   ? lem_commute_tsubFV_tsubBV x v y v_y t
-
-{-@ lem_commute_subFV_subBV1 :: x:Vname -> v:Value 
-        -> { y:Vname | not (Set_mem y (fv v)) } -> { v_y:Value | not (Set_mem x (freeBV v_y)) } -> e:Expr
-        -> { pf:_ | subFV y v_y (subBV x v e) == subBV x v (subFV y v_y e) } @-}
-lem_commute_subFV_subBV1 :: Vname -> Expr -> Vname -> Expr -> Expr -> Proof
-lem_commute_subFV_subBV1 x v y v_y e = lem_commute_subFV_subBV x v y v_y e 
-                                           ? lem_subFV_notin y v_y v 
-
-{-@ lem_commute_subFV_subFTV :: a:Vname -> t_a:UserType ->  y:Vname
-        -> { v_y:Value | not (Set_mem a (ftv v_y)) } -> e:Expr 
-        -> { pf:_ | subFV y v_y (subFTV a t_a e) == 
-                    subFTV a (tsubFV y v_y t_a) (subFV y v_y e) } / [esize e] @-} 
-lem_commute_subFV_subFTV :: Vname -> Type -> Vname -> Expr -> Expr -> Proof
-lem_commute_subFV_subFTV a t_a x v (Bc b)       = ()
-lem_commute_subFV_subFTV a t_a x v (Ic n)       = ()
-lem_commute_subFV_subFTV a t_a x v (Prim p)     = ()
-lem_commute_subFV_subFTV a t_a x v (BV w)       = ()
-lem_commute_subFV_subFTV a t_a x v (FV w)     
-  | x == w    = () ? lem_subFTV_notin a (tsubFV x v t_a) v
-  | otherwise = ()
-lem_commute_subFV_subFTV a t_a x v (Lambda w e)
-              = () ? lem_commute_subFV_subFTV a t_a x v e
-lem_commute_subFV_subFTV a t_a x v (App e e')
-              = () ? lem_commute_subFV_subFTV a t_a x v e
-                   ? lem_commute_subFV_subFTV a t_a x v e'
-lem_commute_subFV_subFTV a t_a x v (LambdaT a1 k e)
-              = () ? lem_commute_subFV_subFTV   a t_a x v e
-lem_commute_subFV_subFTV a t_a x v (AppT e t) 
-              = () ? lem_commute_subFV_subFTV   a t_a x v e
-                   ? lem_commute_tsubFV_tsubFTV a t_a x v t
-lem_commute_subFV_subFTV a t_a x v (Let w ew e)
-              = () ? lem_commute_subFV_subFTV a t_a x v ew
-                   ? lem_commute_subFV_subFTV a t_a x v e
-lem_commute_subFV_subFTV a t_a x v (Annot e t)
-              = () ? lem_commute_subFV_subFTV   a t_a x v e
-                   ? lem_commute_tsubFV_tsubFTV a t_a x v t
-
-{-@ lem_commute_subFV_subBTV :: a:Vname -> t_a:UserType
-        -> y:Vname -> { v_y:Value | not (Set_mem a (freeBTV v_y)) } -> e:Expr
-        -> { pf:_ | subFV y v_y (subBTV a t_a e) == subBTV a (tsubFV y v_y t_a) (subFV y v_y e) } / [esize e] @-}
-lem_commute_subFV_subBTV :: Vname -> Type -> Vname -> Expr -> Expr -> Proof
-lem_commute_subFV_subBTV a t_a y v_y (Bc b)       = ()
-lem_commute_subFV_subBTV a t_a y v_y (Ic n)       = ()
-lem_commute_subFV_subBTV a t_a y v_y (Prim p)     = ()
-lem_commute_subFV_subBTV a t_a y v_y (BV w)       = ()
-lem_commute_subFV_subBTV a t_a y v_y (FV w)       
-  | y == w    = () ? lem_subBTV_notin a (tsubFV y v_y t_a) v_y
-  | otherwise = ()
-lem_commute_subFV_subBTV a t_a y v_y (Lambda w e)
-              = () ? lem_commute_subFV_subBTV   a t_a y v_y e
-lem_commute_subFV_subBTV a t_a y v_y (App e e')
-              = () ? lem_commute_subFV_subBTV a t_a y v_y e
-                   ? lem_commute_subFV_subBTV a t_a y v_y e'
-lem_commute_subFV_subBTV a t_a y v_y (LambdaT a' k e)
-  | a == a'   = () 
-  | otherwise = () ? lem_commute_subFV_subBTV a t_a y v_y e
-lem_commute_subFV_subBTV a t_a y v_y (AppT e t)
-  = ()      ? lem_commute_subFV_subBTV   a t_a y v_y e
-            ? lem_commute_tsubFV_tsubBTV a t_a y v_y t
-lem_commute_subFV_subBTV a t_a y v_y (Let w ew e)
-              = () ? lem_commute_subFV_subBTV a t_a y v_y ew
-                   ? lem_commute_subFV_subBTV a t_a y v_y e
-lem_commute_subFV_subBTV a t_a y v_y (Annot e t)
-              = () ? lem_commute_subFV_subBTV   a t_a y v_y e
-                   ? lem_commute_tsubFV_tsubBTV a t_a y v_y t
-
-{-@ lem_commute_subFV_subBTV1 :: a:Vname -> t_a:UserType
-        -> { y:Vname | not (Set_mem y (free t_a)) } -> { v_y:Value | not (Set_mem a (freeBTV v_y)) } 
-        -> e:Expr -> { pf:_ | subFV y v_y (subBTV a t_a e) == subBTV a t_a (subFV y v_y e) } @-}
-lem_commute_subFV_subBTV1 :: Vname -> Type -> Vname -> Expr -> Expr -> Proof
-lem_commute_subFV_subBTV1 a t_a y v_y e = lem_commute_subFV_subBTV a t_a y v_y e 
-                                              ? lem_tsubFV_notin y v_y t_a
-
-{-@ lem_commute_subFV :: x:Vname -> v:Value -> { y:Vname | not (y == x)} 
-        -> { v_y:Value | not (Set_mem x (fv v_y)) } -> e:Expr 
-        -> { pf:_ | subFV y v_y (subFV x v e) == 
-                    subFV x (subFV y v_y v) (subFV y v_y e) } / [esize e] @-} 
-lem_commute_subFV :: Vname -> Expr -> Vname -> Expr -> Expr -> Proof
-lem_commute_subFV x v y v_y (Bc b)       = ()
-lem_commute_subFV x v y v_y (Ic n)       = ()
-lem_commute_subFV x v y v_y (Prim p)     = ()
-lem_commute_subFV x v y v_y (BV w)       = ()
-lem_commute_subFV x v y v_y (FV w)       
-  | x == w    = ()
-  | y == w    = () ? lem_subFV_notin x v_y (FV y)
-                   ? lem_subFV_notin x (subFV y v_y v) v_y
-  | otherwise = ()
-lem_commute_subFV x v y v_y (Lambda w e)
-              = () ? lem_commute_subFV x v y v_y e
-lem_commute_subFV x v y v_y (App e e')
-              = () ? lem_commute_subFV x v y v_y e
-                   ? lem_commute_subFV x v y v_y e'
-lem_commute_subFV x v y v_y (LambdaT a k e)
-              = () ? lem_commute_subFV x v y v_y e
-lem_commute_subFV x v y v_y (AppT e t)
-              = () ? lem_commute_subFV x v y v_y e
-                   ? lem_commute_tsubFV x v y v_y t
-lem_commute_subFV x v y v_y (Let w ew e)
-              = () ? lem_commute_subFV x v y v_y ew
-                   ? lem_commute_subFV x v y v_y e
-lem_commute_subFV x v y v_y (Annot e t)
-              = () ? lem_commute_subFV x v y v_y e
-                   ? lem_commute_tsubFV x v y v_y t
-
 ------------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of SUBSTITUTION for TYPE VARIABLES in TERMS
 ------------------------------------------------------------------------------
 
+{-
 {-@ lem_subBTV_notin :: a:Vname -> t:UserType -> { e:Expr | not (Set_mem a (freeBTV e)) } 
                                -> { pf:_ | subBTV a t e == e } / [esize e] @-} 
 lem_subBTV_notin :: Vname -> Type -> Expr -> Proof
@@ -633,104 +557,64 @@ lem_commute_subFTV_subFV x v a t_a (Let w ew e)
 lem_commute_subFTV_subFV x v a t_a (Annot e t)
               = () ? lem_commute_subFTV_subFV   x v a t_a e
                    ? lem_commute_tsubFTV_tsubFV x v a t_a t
-
-{-@ lem_commute_subFTV_subBV :: x:Vname -> v:Value 
-        -> a:Vname -> { t_a:UserType | not (Set_mem x (tfreeBV t_a)) } -> e:Expr
-        -> { pf:_ | subFTV a t_a (subBV x v e) == subBV x (subFTV a t_a v) (subFTV a t_a e) } / [esize e] @-}
-lem_commute_subFTV_subBV :: Vname -> Expr -> Vname -> Type -> Expr -> Proof
-lem_commute_subFTV_subBV x v a t_a (Bc b)       = ()
-lem_commute_subFTV_subBV x v a t_a (Ic n)       = ()
-lem_commute_subFTV_subBV x v a t_a (Prim p)     = ()
-lem_commute_subFTV_subBV x v a t_a (BV w) 
-  | x == w    = () -- ? lem_subFV_notin y v_y (BV x)
-  | otherwise = ()
-lem_commute_subFTV_subBV x v a t_a (FV w)       = () 
-lem_commute_subFTV_subBV x v a t_a (Lambda w e)
-  | x == w    = () 
-  | otherwise = () ? lem_commute_subFTV_subBV x v a t_a e
-lem_commute_subFTV_subBV x v a t_a (App e e')
-              = () ? lem_commute_subFTV_subBV x v a t_a e
-                   ? lem_commute_subFTV_subBV x v a t_a e'
-lem_commute_subFTV_subBV x v a t_a (LambdaT a' k e)
-              = () ? lem_commute_subFTV_subBV   x v a t_a e
-lem_commute_subFTV_subBV x v a t_a (AppT e t) 
-              = () ? lem_commute_subFTV_subBV   x v a t_a e
-                   ? lem_commute_tsubFTV_tsubBV x v a t_a t
-lem_commute_subFTV_subBV x v a t_a (Let w ew e)
-  | x == w    = () ? lem_commute_subFTV_subBV x v a t_a ew
-  | otherwise = () ? lem_commute_subFTV_subBV x v a t_a ew
-                   ? lem_commute_subFTV_subBV x v a t_a e
-lem_commute_subFTV_subBV x v a t_a (Annot e t)
-              = () ? lem_commute_subFTV_subBV   x v a t_a e
-                   ? lem_commute_tsubFTV_tsubBV x v a t_a t
-
-{-@ lem_commute_subFTV_subBV1 :: x:Vname -> v:Value -> { a:Vname | not (Set_mem a (ftv v)) } 
-        -> { t_a:UserType | not (Set_mem x (tfreeBV t_a)) } -> e:Expr
-        -> { pf:_ | subFTV a t_a (subBV x v e) == subBV x v (subFTV a t_a e) } @-}
-lem_commute_subFTV_subBV1 :: Vname -> Expr -> Vname -> Type -> Expr -> Proof
-lem_commute_subFTV_subBV1 x v a t_a e = lem_commute_subFTV_subBV x v a t_a e 
-                                            ? lem_subFTV_notin a t_a v 
-
-{-@ lem_commute_subFTV :: a1:Vname -> t1:UserType
-      -> { a:Vname | not (a1 == a) } -> { t_a:UserType | not (Set_mem a1 (freeTV t_a)) } -> e:Expr
-      -> { pf:_ | subFTV a t_a (subFTV a1 t1 e) == subFTV a1 (tsubFTV a t_a t1) (subFTV a t_a e) } / [esize e] @-}
-lem_commute_subFTV :: Vname -> Type -> Vname -> Type -> Expr -> Proof
-lem_commute_subFTV a1 t1 a t_a (Bc b)       = ()
-lem_commute_subFTV a1 t1 a t_a (Ic n)       = ()
-lem_commute_subFTV a1 t1 a t_a (Prim p)     = ()
-lem_commute_subFTV a1 t1 a t_a (BV w)       = ()
-lem_commute_subFTV a1 t1 a t_a (FV w)       = () 
-lem_commute_subFTV a1 t1 a t_a (Lambda w e)
-              = () ? lem_commute_subFTV a1 t1 a t_a e
-lem_commute_subFTV a1 t1 a t_a (App e e')
-              = () ? lem_commute_subFTV a1 t1 a t_a e
-                   ? lem_commute_subFTV a1 t1 a t_a e'
-lem_commute_subFTV a1 t1 a t_a (LambdaT a' k e)
-              = () ? lem_commute_subFTV a1 t1 a t_a e
-lem_commute_subFTV a1 t1 a t_a (AppT e t) 
-  = ()      ? lem_commute_subFTV  a1 t1 a t_a e
-            ? lem_commute_tsubFTV a1 t1 a t_a t
-lem_commute_subFTV a1 t1 a t_a (Let w ew e)
-              = () ? lem_commute_subFTV a1 t1 a t_a ew
-                   ? lem_commute_subFTV a1 t1 a t_a e
-lem_commute_subFTV a1 t1 a t_a (Annot e t)
-              = () ? lem_commute_subFTV  a1 t1 a t_a e
-                   ? lem_commute_tsubFTV a1 t1 a t_a t
-
-{-@ lem_commute_subFTV_subBTV :: a1:Vname -> t1:UserType
-        -> a:Vname -> { t_a:UserType | not (Set_mem a1 (tfreeBTV t_a)) } -> e:Expr
-        -> { pf:_ | subFTV a t_a (subBTV a1 t1 e) == subBTV a1 (tsubFTV a t_a t1) (subFTV a t_a e) } / [esize e] @-}
-lem_commute_subFTV_subBTV :: Vname -> Type -> Vname -> Type -> Expr -> Proof
-lem_commute_subFTV_subBTV a1 t1 a t_a (Bc b)       = ()
-lem_commute_subFTV_subBTV a1 t1 a t_a (Ic n)       = ()
-lem_commute_subFTV_subBTV a1 t1 a t_a (Prim p)     = ()
-lem_commute_subFTV_subBTV a1 t1 a t_a (BV w)       = ()
-lem_commute_subFTV_subBTV a1 t1 a t_a (FV w)       = () 
-lem_commute_subFTV_subBTV a1 t1 a t_a (Lambda w e)
-              = () ? lem_commute_subFTV_subBTV a1 t1 a t_a e
-lem_commute_subFTV_subBTV a1 t1 a t_a (App e e')
-              = () ? lem_commute_subFTV_subBTV a1 t1 a t_a e
-                   ? lem_commute_subFTV_subBTV a1 t1 a t_a e'
-lem_commute_subFTV_subBTV a1 t1 a t_a (LambdaT a' k e)
-  | a1 == a'  = ()
-  | otherwise = () ? lem_commute_subFTV_subBTV a1 t1 a t_a e
-lem_commute_subFTV_subBTV a1 t1 a t_a (AppT e t) 
-  = ()      ? lem_commute_subFTV_subBTV   a1 t1 a t_a e
-            ? lem_commute_tsubFTV_tsubBTV a1 t1 a t_a t
-lem_commute_subFTV_subBTV a1 t1 a t_a (Let w ew e)
-              = () ? lem_commute_subFTV_subBTV a1 t1 a t_a ew
-                   ? lem_commute_subFTV_subBTV a1 t1 a t_a e
-lem_commute_subFTV_subBTV a1 t1 a t_a (Annot e t)
-              = () ? lem_commute_subFTV_subBTV   a1 t1 a t_a e
-                   ? lem_commute_tsubFTV_tsubBTV a1 t1 a t_a t
-
-{-@ lem_commute_subFTV_subBTV1 :: a1:Vname -> t1:UserType 
-        -> { a:Vname | not (Set_mem a (freeTV t1)) } -> { t_a:UserType | not (Set_mem a1 (tfreeBTV t_a)) } 
-        -> e:Expr -> { pf:_ | subFTV a t_a (subBTV a1 t1 e) == subBTV a1 t1 (subFTV a t_a e) } @-}
-lem_commute_subFTV_subBTV1 :: Vname -> Type -> Vname -> Type -> Expr -> Proof
-lem_commute_subFTV_subBTV1 a1 t1 a t_a e = lem_commute_subFTV_subBTV a1 t1 a t_a e 
-                                               ? lem_tsubFTV_notin a t_a t1
 -}
+
+{-@ lem_commute_subFTV_subBV_at :: j:Index -> v:Value 
+        -> a:Vname -> { t_a:UserType | isLCT t_a } -> e:Expr
+        -> { pf:_ | subFTV a t_a (subBV_at j v e) == subBV_at j (subFTV a t_a v) (subFTV a t_a e) } 
+         / [esize e] @-}
+lem_commute_subFTV_subBV_at :: Index -> Expr -> Vname -> Type -> Expr -> Proof
+lem_commute_subFTV_subBV_at j v a t_a (Bc b)       = ()
+lem_commute_subFTV_subBV_at j v a t_a (Ic n)       = ()
+lem_commute_subFTV_subBV_at j v a t_a (Prim p)     = ()
+lem_commute_subFTV_subBV_at j v a t_a (BV k) 
+  | j == k    = () -- ? lem_subFV_notin y v_y (BV x)
+  | otherwise = ()
+lem_commute_subFTV_subBV_at j v a t_a (FV w)       = () 
+lem_commute_subFTV_subBV_at j v a t_a (Lambda e)
+              = () ? lem_commute_subFTV_subBV_at (j+1) v a t_a e
+lem_commute_subFTV_subBV_at j v a t_a (App e e')
+              = () ? lem_commute_subFTV_subBV_at j v a t_a e
+                   ? lem_commute_subFTV_subBV_at j v a t_a e'
+lem_commute_subFTV_subBV_at j v a t_a (LambdaT k e)
+              = () ? lem_commute_subFTV_subBV_at j v a t_a e
+lem_commute_subFTV_subBV_at j v a t_a (AppT e t) 
+              = () ? lem_commute_subFTV_subBV_at   j v a t_a e
+                   ? lem_commute_tsubFTV_tsubBV_at j v a t_a t
+lem_commute_subFTV_subBV_at j v a t_a (Let ew e)
+              = () ? lem_commute_subFTV_subBV_at j v a t_a ew
+                   ? lem_commute_subFTV_subBV_at (j+1) v a t_a e
+lem_commute_subFTV_subBV_at j v a t_a (Annot e t)
+              = () ? lem_commute_subFTV_subBV_at   j v a t_a e
+                   ? lem_commute_tsubFTV_tsubBV_at j v a t_a t
+
+
+{-@ lem_commute_subFTV_subBTV_at :: j:Index -> t1:UserType
+        -> a:Vname -> { t_a:UserType | isLCT t_a } -> e:Expr
+        -> { pf:_ | subFTV a t_a (subBTV_at j t1 e) == subBTV_at j (tsubFTV a t_a t1) (subFTV a t_a e) }
+         / [esize e] @-}
+lem_commute_subFTV_subBTV_at :: Index -> Type -> Vname -> Type -> Expr -> Proof
+lem_commute_subFTV_subBTV_at j t1 a t_a (Bc b)       = ()
+lem_commute_subFTV_subBTV_at j t1 a t_a (Ic n)       = ()
+lem_commute_subFTV_subBTV_at j t1 a t_a (Prim p)     = ()
+lem_commute_subFTV_subBTV_at j t1 a t_a (BV w)       = ()
+lem_commute_subFTV_subBTV_at j t1 a t_a (FV w)       = () 
+lem_commute_subFTV_subBTV_at j t1 a t_a (Lambda e)
+              = () ? lem_commute_subFTV_subBTV_at j t1 a t_a e
+lem_commute_subFTV_subBTV_at j t1 a t_a (App e e')
+              = () ? lem_commute_subFTV_subBTV_at j t1 a t_a e
+                   ? lem_commute_subFTV_subBTV_at j t1 a t_a e'
+lem_commute_subFTV_subBTV_at j t1 a t_a (LambdaT k e)
+              = () ? lem_commute_subFTV_subBTV_at (j+1) t1 a t_a e
+lem_commute_subFTV_subBTV_at j t1 a t_a (AppT e t) 
+              = () ? lem_commute_subFTV_subBTV_at   j t1 a t_a e
+                   ? lem_commute_tsubFTV_tsubBTV_at j t1 a t_a t
+lem_commute_subFTV_subBTV_at j t1 a t_a (Let ew e)
+              = () ? lem_commute_subFTV_subBTV_at j t1 a t_a ew
+                   ? lem_commute_subFTV_subBTV_at j t1 a t_a e
+lem_commute_subFTV_subBTV_at j t1 a t_a (Annot e t)
+              = () ? lem_commute_subFTV_subBTV_at   j t1 a t_a e
+                   ? lem_commute_tsubFTV_tsubBTV_at j t1 a t_a t
 
 ----------------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of SUBSTITUTION for TERM VARIABLES in PREDICATES
@@ -771,6 +655,13 @@ lem_open_tvP_at_lcp_at j a kx ka PEmpty       = ()
 lem_open_tvP_at_lcp_at j a kx ka (PCons p ps) = () ? lem_open_tv_at_lc_at   j a kx ka p
                                                    ? lem_open_tvP_at_lcp_at j a kx ka ps
 
+{-@ lem_psubBTV_at_lcp_at :: j:Index -> t_a:UserType -> kx:Index -> { ka:Index | j >= ka } 
+        -> { ps:Preds | isLCP_at kx ka ps } -> { pf:_ | psubBTV_at j t_a ps = ps } / [predsize ps] @-}
+lem_psubBTV_at_lcp_at :: Index -> Type -> Index -> Index -> Preds -> Proof
+lem_psubBTV_at_lcp_at j t_a kx ka PEmpty       = ()
+lem_psubBTV_at_lcp_at j t_a kx ka (PCons p ps) = () ? lem_subBTV_at_lc_at   j t_a kx ka p
+                                                    ? lem_psubBTV_at_lcp_at j t_a kx ka ps
+
 {-@ lem_psubBV_at_is_openP_at :: j:Index -> y:Vname -> ps:Preds
         -> { pf:_ | psubBV_at j (FV y) ps == openP_at j y ps } / [predsize ps] @-}
 lem_psubBV_at_is_openP_at :: Index -> Vname -> Preds -> Proof
@@ -808,6 +699,15 @@ lem_commute_psubFV_openP_at x v j y PEmpty       = ()
 lem_commute_psubFV_openP_at x v j y (PCons p ps) = () ? lem_commute_subFV_open_at   x v j y p
                                                       ? lem_commute_psubFV_openP_at x v j y ps
 
+{-@ lem_commute_psubFV_psubBV_at :: j:Index -> v:Value -> y:Vname -> { v_y:Value | isLC v_y } 
+      -> ps:Preds
+      -> { pf:_ | psubFV y v_y (psubBV_at j v ps) == psubBV_at j (subFV y v_y v) (psubFV y v_y ps) } 
+       / [predsize ps] @-}
+lem_commute_psubFV_psubBV_at :: Index -> Expr -> Vname -> Expr -> Preds -> Proof
+lem_commute_psubFV_psubBV_at j v y v_y PEmpty       = ()
+lem_commute_psubFV_psubBV_at j v y v_y (PCons p ps) = () ? lem_commute_subFV_subBV_at   j v y v_y p
+                                                         ? lem_commute_psubFV_psubBV_at j v y v_y ps
+
 {-@ lem_commute_psubFV_unbind_tvP :: x:Vname -> { v:Value | isLC v } -> { a:Vname | x != a } -> ps:Preds
         -> { pf:_ | psubFV x v (unbind_tvP a ps) = unbind_tvP a (psubFV x v ps) } / [predsize ps] @-}
 lem_commute_psubFV_unbind_tvP :: Vname -> Expr -> Vname -> Preds -> Proof
@@ -822,6 +722,15 @@ lem_commute_psubFV_open_tvP_at :: Vname -> Expr -> Index -> Vname -> Preds -> Pr
 lem_commute_psubFV_open_tvP_at x v j a PEmpty       = ()
 lem_commute_psubFV_open_tvP_at x v j a (PCons p ps) = () ? lem_commute_subFV_open_tv_at   x v j a p
                                                          ? lem_commute_psubFV_open_tvP_at x v j a ps
+
+{-@ lem_commute_psubFV_psubBTV_at :: j:Index -> t:UserType -> y:Vname -> { v_y:Value | isLC v_y } 
+      -> ps:Preds
+      -> { pf:_ | psubFV y v_y (psubBTV_at j t ps) == psubBTV_at j (tsubFV y v_y t) (psubFV y v_y ps) } 
+       / [predsize ps] @-}
+lem_commute_psubFV_psubBTV_at :: Index -> Type -> Vname -> Expr -> Preds -> Proof
+lem_commute_psubFV_psubBTV_at j t y v_y PEmpty       = ()
+lem_commute_psubFV_psubBTV_at j t y v_y (PCons p ps) = () ? lem_commute_subFV_subBTV_at   j t y v_y p
+                                                          ? lem_commute_psubFV_psubBTV_at j t y v_y ps
 
 {-@ lem_commute_psubFTV_unbindP :: a:Vname -> { t_a:UserType | isLCT t_a } 
         -> { y:Vname | a != y } -> ps:Preds
@@ -839,6 +748,15 @@ lem_commute_psubFTV_openP_at a t_a j y PEmpty       = ()
 lem_commute_psubFTV_openP_at a t_a j y (PCons p ps) = () ? lem_commute_subFTV_open_at   a t_a j y p
                                                          ? lem_commute_psubFTV_openP_at a t_a j y ps
 
+{-@ lem_commute_psubFTV_psubBV_at :: j:Index -> v:Value -> y:Vname -> { t_y:UserType | isLCT t_y } 
+      -> ps:Preds
+      -> { pf:_ | psubFTV y t_y (psubBV_at j v ps) == psubBV_at j (subFTV y t_y v) (psubFTV y t_y ps) } 
+       / [predsize ps] @-}
+lem_commute_psubFTV_psubBV_at :: Index -> Expr -> Vname -> Type -> Preds -> Proof
+lem_commute_psubFTV_psubBV_at j v y t_y PEmpty       = ()
+lem_commute_psubFTV_psubBV_at j v y t_y (PCons p ps) = () ? lem_commute_subFTV_subBV_at   j v y t_y p
+                                                          ? lem_commute_psubFTV_psubBV_at j v y t_y ps
+
 {-@ lem_commute_psubFTV_unbind_tvP :: a:Vname -> { t_a:UserType | isLCT t_a } 
       -> { a':Vname | a' != a } -> ps:Preds
       -> { pf:_ | psubFTV a t_a (unbind_tvP a' ps) = unbind_tvP a' (psubFTV a t_a ps) } / [predsize ps] @-}
@@ -854,6 +772,15 @@ lem_commute_psubFTV_open_tvP_at :: Vname -> Type -> Index -> Vname -> Preds -> P
 lem_commute_psubFTV_open_tvP_at a t_a j a' PEmpty       = ()
 lem_commute_psubFTV_open_tvP_at a t_a j a' (PCons p ps) = () ? lem_commute_subFTV_open_tv_at   a t_a j a' p
                                                              ? lem_commute_psubFTV_open_tvP_at a t_a j a' ps
+
+{-@ lem_commute_psubFTV_psubBTV_at :: j:Index -> t:UserType -> y:Vname -> { t_y:UserType | isLCT t_y } 
+      -> ps:Preds
+      -> {pf:_ | psubFTV y t_y (psubBTV_at j t ps) == psubBTV_at j (tsubFTV y t_y t) (psubFTV y t_y ps)} 
+       / [predsize ps] @-}
+lem_commute_psubFTV_psubBTV_at :: Index -> Type -> Vname -> Type -> Preds -> Proof
+lem_commute_psubFTV_psubBTV_at j t y t_y PEmpty       = ()
+lem_commute_psubFTV_psubBTV_at j t y t_y (PCons p ps) = () ? lem_commute_subFTV_subBTV_at   j t y t_y p
+                                                           ? lem_commute_psubFTV_psubBTV_at j t y t_y ps
 
 
 ------------------------------------------------------------------------------
@@ -922,6 +849,20 @@ lem_open_tvT_at_lct_at j a kx ka (TExists t_z t)
                      ? lem_open_tvT_at_lct_at j     a (kx+1) ka     t
 lem_open_tvT_at_lct_at j a kx ka (TPoly k t)
                 = () ? lem_open_tvT_at_lct_at (j+1) a kx     (ka+1) t
+
+{-@ lem_tsubBTV_at_lct_at :: j:Index -> t_a:UserType -> kx:Index -> { ka:Index | j >= ka } 
+        -> { t:Type | isLCT_at kx ka t } -> { pf:_ | tsubBTV_at j t_a t = t } / [tsize t] @-}
+lem_tsubBTV_at_lct_at :: Index -> Type -> Index -> Index -> Type -> Proof
+lem_tsubBTV_at_lct_at j t_a kx ka (TRefn b ps)
+                = () ? lem_psubBTV_at_lcp_at j     t_a (kx+1) ka     ps
+lem_tsubBTV_at_lct_at j t_a kx ka (TFunc t_z t)
+                = () ? lem_tsubBTV_at_lct_at j     t_a kx     ka     t_z
+                     ? lem_tsubBTV_at_lct_at j     t_a (kx+1) ka     t
+lem_tsubBTV_at_lct_at j t_a kx ka (TExists t_z t)
+                = () ? lem_tsubBTV_at_lct_at j     t_a kx     ka     t_z
+                     ? lem_tsubBTV_at_lct_at j     t_a (kx+1) ka     t
+lem_tsubBTV_at_lct_at j t_a kx ka (TPoly k t)
+                = () ? lem_tsubBTV_at_lct_at (j+1) t_a kx     (ka+1) t
 
 {-@ lem_tsubBV_is_unbindT :: y:Vname -> t:Type -> { pf:_ | tsubBV (FV y) t == unbindT y t } @-}
 lem_tsubBV_is_unbindT :: Vname -> Type -> Proof
@@ -1002,6 +943,29 @@ lem_commute_tsubFV_openT_at x v j y (TExists t_w t)
 lem_commute_tsubFV_openT_at x v j y (TPoly k t)
               = () ? lem_commute_tsubFV_openT_at x v j     y t
 
+{-@ lem_commute_tsubFV_tsubBV :: v:Value 
+        -> y:Vname -> { v_y:Value | isLC v_y } -> t:Type
+        -> { pf:_ | tsubFV y v_y (tsubBV v t) == tsubBV (subFV y v_y v) (tsubFV y v_y t) } 
+         / [tsize t] @-}
+lem_commute_tsubFV_tsubBV :: Expr -> Vname -> Expr -> Type -> Proof
+lem_commute_tsubFV_tsubBV v y v_y t = lem_commute_tsubFV_tsubBV_at 0 v y v_y t
+
+{-@ lem_commute_tsubFV_tsubBV_at :: j:Index -> v:Value 
+        -> y:Vname -> { v_y:Value | isLC v_y } -> t:Type
+        -> { pf:_ | tsubFV y v_y (tsubBV_at j v t) == tsubBV_at j (subFV y v_y v) (tsubFV y v_y t) } 
+         / [tsize t] @-}
+lem_commute_tsubFV_tsubBV_at :: Index -> Expr -> Vname -> Expr -> Type -> Proof
+lem_commute_tsubFV_tsubBV_at j v y v_y (TRefn b ps)
+  | otherwise = () ? lem_commute_psubFV_psubBV_at (j+1) v y v_y ps
+lem_commute_tsubFV_tsubBV_at j v y v_y (TFunc t_w t)
+              = () ? lem_commute_tsubFV_tsubBV_at j v y v_y t_w
+                   ? lem_commute_tsubFV_tsubBV_at (j+1) v y v_y t
+lem_commute_tsubFV_tsubBV_at j v y v_y (TExists t_w t)
+              = () ? lem_commute_tsubFV_tsubBV_at j v y v_y t_w
+                   ? lem_commute_tsubFV_tsubBV_at (j+1) v y v_y t
+lem_commute_tsubFV_tsubBV_at j v y v_y (TPoly k t) 
+              = () ? lem_commute_tsubFV_tsubBV_at j v y v_y t
+
 {-@ lem_commute_tsubFV_unbind_tvT :: x:Vname -> { v:Value | isLC v } -> { a:Vname | x != a } -> t:Type
         -> {pf:_ | tsubFV x v (unbind_tvT a t) == unbind_tvT a (tsubFV x v t)} / [tsize t] @-}
 lem_commute_tsubFV_unbind_tvT :: Vname -> Expr -> Vname -> Type -> Proof
@@ -1023,6 +987,30 @@ lem_commute_tsubFV_open_tvT_at x v j a (TExists t_w t)
                    ? lem_commute_tsubFV_open_tvT_at x v j     a t
 lem_commute_tsubFV_open_tvT_at x v j a (TPoly k t)
               = () ? lem_commute_tsubFV_open_tvT_at x v (j+1) a t
+
+{-@ lem_commute_tsubFV_tsubBTV :: t_a:UserType
+        -> y:Vname -> { v_y:Value | isLC v_y }  -> t:Type
+        -> { pf:_ | tsubFV y v_y (tsubBTV t_a t) == tsubBTV (tsubFV y v_y t_a) (tsubFV y v_y t) } @-}
+lem_commute_tsubFV_tsubBTV :: Type -> Vname -> Expr -> Type -> Proof
+lem_commute_tsubFV_tsubBTV t_a y v_y t = lem_commute_tsubFV_tsubBTV_at 0 t_a y v_y t
+
+{-@ lem_commute_tsubFV_tsubBTV_at :: j:Index -> t_a:UserType
+      -> y:Vname -> { v_y:Value | isLC v_y }  -> t:Type
+      -> { pf:_ | tsubFV y v_y (tsubBTV_at j t_a t) == tsubBTV_at j (tsubFV y v_y t_a) (tsubFV y v_y t)}
+       / [ tsize t ] @-}
+lem_commute_tsubFV_tsubBTV_at :: Index -> Type -> Vname -> Expr -> Type -> Proof
+lem_commute_tsubFV_tsubBTV_at j t_a y v_y (TRefn b ps) = case b of
+  (BTV j') | j == j' -> () ? lem_commute_psubFV_psubBTV_at j t_a y v_y ps
+                           ? lem_subFV_push           y v_y (psubBTV_at j t_a ps) t_a
+  _                  -> () ? lem_commute_psubFV_psubBTV_at j t_a y v_y ps
+lem_commute_tsubFV_tsubBTV_at j t_a y v_y (TFunc t_w t)
+              = () ? lem_commute_tsubFV_tsubBTV_at j t_a y v_y t_w
+                   ? lem_commute_tsubFV_tsubBTV_at j t_a y v_y t
+lem_commute_tsubFV_tsubBTV_at j t_a y v_y (TExists  t_w t)
+              = () ? lem_commute_tsubFV_tsubBTV_at j t_a y v_y t_w
+                   ? lem_commute_tsubFV_tsubBTV_at j t_a y v_y t
+lem_commute_tsubFV_tsubBTV_at j t_a y v_y (TPoly k t) 
+              = () ? lem_commute_tsubFV_tsubBTV_at (j+1) t_a y v_y t
 
 {-@ lem_commute_tsubFTV_unbindT :: a:Vname -> { t_a:UserType | isLCT t_a } 
         -> { y:Vname | a != y } -> t:Type
@@ -1048,6 +1036,31 @@ lem_commute_tsubFTV_openT_at a t_a j y (TExists t_w t)
                    ? lem_commute_tsubFTV_openT_at a t_a (j+1) y t
 lem_commute_tsubFTV_openT_at a t_a j y (TPoly k t)
               = () ? lem_commute_tsubFTV_openT_at a t_a j     y t
+
+{-@ lem_commute_tsubFTV_tsubBV :: v:Value 
+        -> a:Vname -> { t_a:UserType | isLCT t_a } -> t:Type
+        -> { pf:_ | tsubFTV a t_a (tsubBV v t) == tsubBV (subFTV a t_a v) (tsubFTV a t_a t) } @-}
+lem_commute_tsubFTV_tsubBV :: Expr -> Vname -> Type -> Type -> Proof
+lem_commute_tsubFTV_tsubBV v a t_a t = lem_commute_tsubFTV_tsubBV_at 0 v a t_a t
+
+{-@ lem_commute_tsubFTV_tsubBV_at :: j:Index -> v:Value 
+        -> a:Vname -> { t_a:UserType | isLCT t_a } -> t:Type
+        -> { pf:_ | tsubFTV a t_a (tsubBV_at j v t) == tsubBV_at j (subFTV a t_a v) (tsubFTV a t_a t) } 
+         / [tsize t] @-}
+lem_commute_tsubFTV_tsubBV_at :: Index -> Expr -> Vname -> Type -> Type -> Proof
+lem_commute_tsubFTV_tsubBV_at j v a t_a (TRefn b ps) = case b of
+  (FTV a') | a == a'   -> () ? lem_commute_psubFTV_psubBV_at (j+1) v a t_a ps
+                             ? lem_subBV_at_push j (subFTV a t_a v) (psubFTV a t_a ps) t_a
+                             ? lem_tsubBV_at_lct_at j (subFTV a t_a v) 0 0 t_a
+  _                    -> () ? lem_commute_psubFTV_psubBV_at (j+1) v a t_a ps
+lem_commute_tsubFTV_tsubBV_at j v a t_a (TFunc t_w t)
+              = () ? lem_commute_tsubFTV_tsubBV_at j     v a t_a t_w
+                   ? lem_commute_tsubFTV_tsubBV_at (j+1) v a t_a t
+lem_commute_tsubFTV_tsubBV_at j v a t_a (TExists t_w t)
+              = () ? lem_commute_tsubFTV_tsubBV_at j     v a t_a t_w
+                   ? lem_commute_tsubFTV_tsubBV_at (j+1) v a t_a t
+lem_commute_tsubFTV_tsubBV_at j v a t_a (TPoly k t) 
+              = () ? lem_commute_tsubFTV_tsubBV_at j v a t_a t
 
 {-@ lem_commute_tsubFTV_unbind_tvT :: a:Vname -> { t_a:UserType | isLCT t_a } 
         -> { a':Vname | a' != a } -> t:Type
@@ -1076,96 +1089,33 @@ lem_commute_tsubFTV_open_tvT_at a t_a j a' (TExists t_w t)
 lem_commute_tsubFTV_open_tvT_at a t_a j a' (TPoly k t)
               = () ? lem_commute_tsubFTV_open_tvT_at a t_a (j+1) a' t
 
-{-@ lem_commute_tsubFV_tsubBV :: v:Value 
-        -> y:Vname -> { v_y:Value | isLC v_y } -> t:Type
-        -> { pf:_ | tsubFV y v_y (tsubBV v t) == tsubBV (subFV y v_y v) (tsubFV y v_y t) } 
-         / [tsize t] @-}
-lem_commute_tsubFV_tsubBV :: Expr -> Vname -> Expr -> Type -> Proof
-lem_commute_tsubFV_tsubBV v y v_y t = undefined {-
-lem_commute_tsubFV_tsubBV x v y v_y (TRefn b w p)
-  | x == 0    = ()
-  | otherwise = () ? lem_commute_subFV_subBV x v y v_y p
-lem_commute_tsubFV_tsubBV x v y v_y (TFunc w t_w t)
-  | x == w    = () ? lem_commute_tsubFV_tsubBV x v y v_y t_w
-  | otherwise = () ? lem_commute_tsubFV_tsubBV x v y v_y t_w
-                   ? lem_commute_tsubFV_tsubBV x v y v_y t
-lem_commute_tsubFV_tsubBV x v y v_y (TExists w t_w t)
-  | x == w    = () ? lem_commute_tsubFV_tsubBV x v y v_y t_w
-  | otherwise = () ? lem_commute_tsubFV_tsubBV x v y v_y t_w
-                   ? lem_commute_tsubFV_tsubBV x v y v_y t
-lem_commute_tsubFV_tsubBV x v y v_y (TPoly a k t) 
-              = () ? lem_commute_tsubFV_tsubBV x v y v_y t
--}
+{-@ lem_commute_tsubFTV_tsubBTV :: t1:UserType
+        -> a:Vname -> { t_a:UserType | isLCT t_a } -> t:Type
+        -> { pf:_ | tsubFTV a  t_a                (tsubBTV t1 t) 
+                 == tsubBTV (tsubFTV a t_a t1) (tsubFTV a t_a t) } / [tsize t] @-}
+lem_commute_tsubFTV_tsubBTV :: Type -> Vname -> Type -> Type -> Proof
+lem_commute_tsubFTV_tsubBTV t1 a t_a t = lem_commute_tsubFTV_tsubBTV_at 0 t1 a t_a t
 
-{-
-{-@ lem_commute_tsubFV_tsubBV1 :: x:Vname -> v:Value 
-        -> { y:Vname | not (Set_mem y (fv v)) } -> { v_y:Value | not (Set_mem x (freeBV v_y)) } -> t:Type
-        -> { pf:_ | tsubFV y v_y (tsubBV x v t) == tsubBV x v (tsubFV y v_y t) } @-}
-lem_commute_tsubFV_tsubBV1 :: Vname -> Expr -> Vname -> Expr -> Type -> Proof
-lem_commute_tsubFV_tsubBV1 x v y v_y t = lem_commute_tsubFV_tsubBV x v y v_y t
-                                             ? lem_subFV_notin y v_y v
-
-{-@ lem_commute_tsubFV_tsubFTV :: a:Vname -> t_a:UserType ->  y:Vname
-        -> { v_y:Value | not (Set_mem a (ftv v_y)) } -> t:Type
-        -> { pf:_ | tsubFV y v_y (tsubFTV a t_a t) == 
-                    tsubFTV a (tsubFV y v_y t_a) (tsubFV y v_y t) } / [tsize t] @-} 
-lem_commute_tsubFV_tsubFTV :: Vname -> Type -> Vname -> Expr -> Type -> Proof
-lem_commute_tsubFV_tsubFTV a t_a x v (TRefn b w p) = case b of
-  (FTV a1) | a == a1   -> () ? lem_commute_subFV_subFTV a t_a x v p
-                             ? lem_subFV_push x v (subFTV a t_a p) t_a
-           | otherwise -> () ? lem_commute_subFV_subFTV a t_a x v p
-  _                    -> () ? lem_commute_subFV_subFTV a t_a x v p
-lem_commute_tsubFV_tsubFTV a t_a x v (TFunc w t_w t)
-              = () ? lem_commute_tsubFV_tsubFTV a t_a x v t_w
-                   ? lem_commute_tsubFV_tsubFTV a t_a x v t
-lem_commute_tsubFV_tsubFTV a t_a x v (TExists w t_w t)
-              = () ? lem_commute_tsubFV_tsubFTV a t_a x v t_w
-                   ? lem_commute_tsubFV_tsubFTV a t_a x v t
-lem_commute_tsubFV_tsubFTV a t_a x v (TPoly a1 k t) 
-              = () ? lem_commute_tsubFV_tsubFTV a t_a x v t
--}
-
-{-@ lem_commute_tsubFV_tsubBTV :: t_a:UserType
-        -> y:Vname -> { v_y:Value | isLC v_y }  -> t:Type
-        -> { pf:_ | tsubFV y v_y (tsubBTV t_a t) == tsubBTV (tsubFV y v_y t_a) (tsubFV y v_y t) } 
-         / [ tsize t ] @-}
-lem_commute_tsubFV_tsubBTV :: Type -> Vname -> Expr -> Type -> Proof
-lem_commute_tsubFV_tsubBTV t_a y v_y t = undefined {-
-lem_commute_tsubFV_tsubBTV a t_a y v_y (TRefn b w p) = case b of
-  (BTV a') | a == a' -> () ? lem_commute_subFV_subBTV a t_a y v_y p
-                           ? lem_subFV_push           y v_y (subBTV a t_a p) t_a
-  _                  -> () ? lem_commute_subFV_subBTV a t_a y v_y p
-lem_commute_tsubFV_tsubBTV a t_a y v_y (TFunc w t_w t)
-              = () ? lem_commute_tsubFV_tsubBTV a t_a y v_y t_w
-                   ? lem_commute_tsubFV_tsubBTV a t_a y v_y t
-lem_commute_tsubFV_tsubBTV a t_a y v_y (TExists w t_w t)
-              = () ? lem_commute_tsubFV_tsubBTV a t_a y v_y t_w
-                   ? lem_commute_tsubFV_tsubBTV a t_a y v_y t
-lem_commute_tsubFV_tsubBTV a t_a y v_y (TPoly a' k t) 
-  | a == a'   = ()
-  | otherwise = () ? lem_commute_tsubFV_tsubBTV a t_a y v_y t
--}
-
-{-
-{-@ lem_commute_tsubFV_tsubBTV1 :: a:Vname -> t_a:UserType
-        -> { y:Vname | not (Set_mem y (free t_a)) } -> { v_y:Value | not (Set_mem a (freeBTV v_y)) } 
-        -> t:Type -> { pf:_ | tsubFV y v_y (tsubBTV a t_a t) == tsubBTV a t_a (tsubFV y v_y t) } @-}
-lem_commute_tsubFV_tsubBTV1 :: Vname -> Type -> Vname -> Expr -> Type -> Proof
-lem_commute_tsubFV_tsubBTV1 a t_a y v_y t = lem_commute_tsubFV_tsubBTV a t_a y v_y t
-                                                ? lem_tsubFV_notin y v_y t_a
-
-{-@ lem_commute_tsubFV :: x:Vname -> v:Value -> { y:Vname | not ( y == x ) } 
-        -> { v_y:Value | not (Set_mem x (fv v_y)) } -> t:Type 
-        -> { pf:_ | tsubFV y v_y (tsubFV x v t) 
-                 == tsubFV x (subFV y v_y v) (tsubFV y v_y t) } / [tsize t] @-}
-lem_commute_tsubFV :: Vname -> Expr -> Vname -> Expr -> Type -> Proof
-lem_commute_tsubFV x v y v_y (TRefn b w p)     = () ? lem_commute_subFV x v y v_y p
-lem_commute_tsubFV x v y v_y (TFunc w t_w t)   = () ? lem_commute_tsubFV x v y v_y t_w
-                                                    ? lem_commute_tsubFV x v y v_y t
-lem_commute_tsubFV x v y v_y (TExists w t_w t) = () ? lem_commute_tsubFV x v y v_y t_w
-                                                    ? lem_commute_tsubFV x v y v_y t
-lem_commute_tsubFV x v y v_y (TPoly a k t)     = () ? lem_commute_tsubFV x v y v_y t
--}
+{-@ lem_commute_tsubFTV_tsubBTV_at :: j:Index -> t1:UserType
+        -> a:Vname -> { t_a:UserType | isLCT t_a } -> t:Type
+        -> { pf:_ | tsubFTV a  t_a                (tsubBTV_at j t1 t) 
+                 == tsubBTV_at j (tsubFTV a t_a t1) (tsubFTV a t_a t) } / [tsize t] @-}
+lem_commute_tsubFTV_tsubBTV_at :: Index -> Type -> Vname -> Type -> Type -> Proof
+lem_commute_tsubFTV_tsubBTV_at j t1 a t_a (TRefn b ps) = case b of
+  (FTV a') | a == a'    -> () ? lem_commute_psubFTV_psubBTV_at j t1 a t_a ps
+                              ? lem_subBTV_at_push j (tsubFTV a t_a t1) (psubFTV a t_a ps) t_a
+                              ? lem_tsubBTV_at_lct_at j (tsubFTV a t_a t1) 0 0 t_a
+  (BTV j') | j == j'    -> () ? lem_commute_psubFTV_psubBTV_at j t1 a t_a ps
+                              ? lem_subFTV_push a t_a (psubBTV_at j t1 ps) t1
+  _                     -> () ? lem_commute_psubFTV_psubBTV_at j t1 a t_a ps
+lem_commute_tsubFTV_tsubBTV_at j t1 a t_a (TFunc t_w t)
+              = () ? lem_commute_tsubFTV_tsubBTV_at j t1 a t_a t_w
+                   ? lem_commute_tsubFTV_tsubBTV_at j t1 a t_a t
+lem_commute_tsubFTV_tsubBTV_at j t1 a t_a (TExists t_w t)
+              = () ? lem_commute_tsubFTV_tsubBTV_at j t1 a t_a t_w
+                   ? lem_commute_tsubFTV_tsubBTV_at j t1 a t_a t
+lem_commute_tsubFTV_tsubBTV_at j t1 a t_a (TPoly k t) 
+              = () ? lem_commute_tsubFTV_tsubBTV_at (j+1) t1 a t_a t
 
 ------------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of SUBSTITUTION for TYPE VARIABLES in TYPES
@@ -1186,29 +1136,17 @@ lem_tsubFTV_notin a t_a t@(TPoly  k t')    = () ? lem_tsubFTV_notin a t_a t'
 lem_tsubFTV_ftv :: Vname -> Type -> Proof
 lem_tsubFTV_ftv a t_a = lem_push_empty t_a
 
-{-
-{-@ lem_tsubBTV_notin :: a:Vname -> t_a:UserType -> { t:Type | not (Set_mem a (tfreeBTV t)) }
-                -> { pf:_ | tsubBTV a t_a t == t } / [tsize t] @-} 
-lem_tsubBTV_notin :: Vname -> Type -> Type -> Proof
-lem_tsubBTV_notin a t_a (TRefn b y r)        = () ? lem_subBTV_notin a t_a r
-lem_tsubBTV_notin a t_a (TFunc z t_z t)      = () ? lem_tsubBTV_notin a t_a t_z
-                                                  ? lem_tsubBTV_notin a t_a t
-lem_tsubBTV_notin a t_a (TExists z t_z t)    = () ? lem_tsubBTV_notin a t_a t_z
-                                                  ? lem_tsubBTV_notin a t_a t
-lem_tsubBTV_notin a t_a (TPoly a' k t') 
-    | a == a'   = ()
-    | otherwise = () ? lem_tsubBTV_notin a t_a t'
-
 {-@ lem_tsubFTV_trefn :: a:Vname -> { t_a:UserType | isTRefn t_a } -> { t:Type | isTRefn t }
         -> { pf:_ | isTRefn (tsubFTV a t_a t) } @-}
 lem_tsubFTV_trefn :: Vname -> Type -> Type -> Proof
-lem_tsubFTV_trefn a (TRefn b' y' q') (TRefn b z p) = case b of
-  (FTV a') | a' == a  -> () {-? toProof (
-        tsubFTV a (TRefn b' y' q') (TRefn b z p)
-    === push (subFTV a (TRefn b' y' q') p) (TRefn b' y' q')
-    === TRefn b' y' (strengthen (subFTV a (TRefn b' y' q') p) q') )-}
+lem_tsubFTV_trefn a (TRefn b' q') (TRefn b p) = case b of
+  (FTV a') | a' == a  -> toProof (
+        tsubFTV a (TRefn b'  q') (TRefn b  p)
+    === push (psubFTV a (TRefn b'  q') p) (TRefn b'  q')
+    === TRefn b'  (strengthen (psubFTV a (TRefn b'  q') p) q') )
   _                   -> ()
 
+{-
 {-@ lem_tsubFTV_tfreeBV :: a:Vname -> { t_a:UserType | Set_emp (tfreeBV t_a) }
         -> { t:Type | Set_emp (tfreeBV t) } -> { pf:_ | Set_emp (tfreeBV (tsubFTV a t_a t)) } @-}
 lem_tsubFTV_tfreeBV :: Vname -> Type -> Type -> Proof
@@ -1241,138 +1179,6 @@ lem_tsubFTV_open_tvT_at j a t_a (TExists t_w t') = () ? lem_tsubFTV_open_tvT_at 
                                                       ? lem_tsubFTV_open_tvT_at j a t_a t'
 lem_tsubFTV_open_tvT_at j a t_a (TPoly k t')     = () ? lem_tsubFTV_open_tvT_at (j+1) a t_a t'
 
-{-
-{-@ lem_commute_tsubFTV_tsubFV :: x:Vname -> v:Value -> a:Vname 
-        -> { t_a:UserType | not (Set_mem x (free t_a)) } -> t:Type
-        -> { pf:_ | tsubFTV a t_a (tsubFV x v t) == 
-                    tsubFV x (subFTV a t_a v) (tsubFTV a t_a t) } / [tsize t] @-} 
-lem_commute_tsubFTV_tsubFV :: Vname -> Expr -> Vname -> Type -> Type -> Proof
-lem_commute_tsubFTV_tsubFV x v a t_a (TRefn b w p) = case b of
-  (FTV a1) | a == a1   -> () ? lem_commute_subFTV_subFV x v a t_a p
-                             ? lem_tsubFV_notin x (subFTV a t_a v) t_a
-                             ? lem_subFV_push x (subFTV a t_a v) (subFTV a t_a p) t_a
-           | otherwise -> () ? lem_commute_subFTV_subFV x v a t_a p
-  _                    -> () ? lem_commute_subFTV_subFV x v a t_a p
-lem_commute_tsubFTV_tsubFV x v a t_a (TFunc w t_w t)
-              = () ? lem_commute_tsubFTV_tsubFV x v a t_a t_w
-                   ? lem_commute_tsubFTV_tsubFV x v a t_a t
-lem_commute_tsubFTV_tsubFV x v a t_a (TExists w t_w t)
-              = () ? lem_commute_tsubFTV_tsubFV x v a t_a t_w
-                   ? lem_commute_tsubFTV_tsubFV x v a t_a t
-lem_commute_tsubFTV_tsubFV x v a t_a (TPoly a1 k t) 
-              = () ? lem_commute_tsubFTV_tsubFV x v a t_a t
--}
-
-{-@ lem_commute_tsubFTV_tsubBV :: v:Value 
-        -> a:Vname -> { t_a:UserType | isLCT t_a } -> t:Type
-        -> { pf:_ | tsubFTV a t_a (tsubBV v t) == tsubBV (subFTV a t_a v) (tsubFTV a t_a t) } 
-         / [tsize t] @-}
-lem_commute_tsubFTV_tsubBV :: Expr -> Vname -> Type -> Type -> Proof
-lem_commute_tsubFTV_tsubBV v a t_a t = undefined {-
-lem_commute_tsubFTV_tsubBV x v a t_a (TRefn b w p) = case b of
-  (FTV a') | a == a' && x == 0       -> () ? lem_tsubBV_RVname x (subFTV a t_a v) 
-                                                                 (tsubFTV a t_a (TRefn b w p))
-           | a == a' && not (x == 0) -> () ? lem_commute_subFTV_subBV x v a t_a p
-                                           ? lem_subBV_push x (subFTV a t_a v) (subFTV a t_a p) t_a
-                                           ? lem_tsubBV_notin x (subFTV a t_a v) t_a
-           | otherwise -> () ? lem_commute_subFTV_subBV x v a t_a p
-  _        | x == 0    -> () 
-           | otherwise -> () ? lem_commute_subFTV_subBV x v a t_a p
-lem_commute_tsubFTV_tsubBV x v a t_a (TFunc w t_w t)
-  | x == w    = () ? lem_commute_tsubFTV_tsubBV x v a t_a t_w
-  | otherwise = () ? lem_commute_tsubFTV_tsubBV x v a t_a t_w
-                   ? lem_commute_tsubFTV_tsubBV x v a t_a t
-lem_commute_tsubFTV_tsubBV x v a t_a (TExists w t_w t)
-  | x == w    = () ? lem_commute_tsubFTV_tsubBV x v a t_a t_w
-  | otherwise = () ? lem_commute_tsubFTV_tsubBV x v a t_a t_w
-                   ? lem_commute_tsubFTV_tsubBV x v a t_a t
-lem_commute_tsubFTV_tsubBV x v a t_a (TPoly a' k t) 
-              = () ? lem_commute_tsubFTV_tsubBV x v a t_a t
--}
-
-{-
-{-@ lem_commute_tsubFTV_tsubBV1 :: x:Vname -> v:Value 
-        -> { a:Vname | not (Set_mem a (ftv v)) } 
-        -> { t_a:UserType | not (Set_mem x (tfreeBV t_a)) } -> t:Type
-        -> { pf:_ | tsubFTV a t_a (tsubBV x v t) == tsubBV x v (tsubFTV a t_a t) } @-}
-lem_commute_tsubFTV_tsubBV1 :: Vname -> Expr -> Vname -> Type -> Type -> Proof
-lem_commute_tsubFTV_tsubBV1 x v a t_a t = lem_commute_tsubFTV_tsubBV x v a t_a t
-                                             ? lem_subFTV_notin a t_a v
-
-{-@ lem_commute_tsubFTV :: a1:Vname -> t1:UserType
-        -> { a:Vname | not (a1 == a) } -> { t_a:UserType | not (Set_mem a1 (freeTV t_a)) } -> t:Type
-        -> { pf:_ | tsubFTV a  t_a                (tsubFTV a1 t1 t) 
-                 == tsubFTV a1 (tsubFTV a t_a t1) (tsubFTV a t_a t) } / [tsize t] @-}
-lem_commute_tsubFTV :: Vname -> Type -> Vname -> Type -> Type -> Proof
-lem_commute_tsubFTV a1 t1 a t_a (TRefn b w p) = case b of
-  (FTV a') | a  == a'       -> () ? lem_commute_subFTV a1 t1 a t_a p
-                                  ? lem_subFTV_push a1 (tsubFTV a t_a t1) (subFTV a t_a p) t_a
-                                  ? lem_tsubFTV_notin a1 (tsubFTV a t_a t1) t_a
-  (FTV a') | a1 == a'       -> () ? lem_commute_subFTV a1 t1 a t_a p
-                                  ? lem_subFTV_push a t_a (subFTV a1 t1 p) t1
-  _                         -> () ? lem_commute_subFTV a1 t1 a t_a p
-lem_commute_tsubFTV a1 t1 a t_a (TFunc w t_w t)
-              = () ? lem_commute_tsubFTV a1 t1 a t_a t_w
-                   ? lem_commute_tsubFTV a1 t1 a t_a t
-lem_commute_tsubFTV a1 t1 a t_a (TExists w t_w t)
-              = () ? lem_commute_tsubFTV a1 t1 a t_a t_w
-                   ? lem_commute_tsubFTV a1 t1 a t_a t
-lem_commute_tsubFTV a1 t1 a t_a (TPoly a' k t) 
-              = () ? lem_commute_tsubFTV a1 t1 a t_a t
--}
-
-{-@ lem_commute_tsubFTV_tsubBTV :: t1:UserType
-        -> a:Vname -> { t_a:UserType | isLCT t_a } -> t:Type
-        -> { pf:_ | tsubFTV a  t_a                (tsubBTV t1 t) 
-                 == tsubBTV (tsubFTV a t_a t1) (tsubFTV a t_a t) } / [tsize t] @-}
-lem_commute_tsubFTV_tsubBTV :: Type -> Vname -> Type -> Type -> Proof
-lem_commute_tsubFTV_tsubBTV t1 a t_a t = undefined {-
-lem_commute_tsubFTV_tsubBTV a1 t1 a t_a (TRefn b w p) = case b of
-  (FTV a') | a  == a'       -> () ? lem_commute_subFTV_subBTV a1 t1 a t_a p
-                                  ? lem_subBTV_push a1 (tsubFTV a t_a t1) (subFTV a t_a p) t_a
-                                  ? lem_tsubBTV_notin a1 (tsubFTV a t_a t1) t_a
-  (BTV a') | a1 == a'       -> () ? lem_commute_subFTV_subBTV a1 t1 a t_a p
-                                  ? lem_subFTV_push a t_a (subBTV a1 t1 p) t1
-  _                         -> () ? lem_commute_subFTV_subBTV a1 t1 a t_a p
-lem_commute_tsubFTV_tsubBTV a1 t1 a t_a (TFunc w t_w t)
-              = () ? lem_commute_tsubFTV_tsubBTV a1 t1 a t_a t_w
-                   ? lem_commute_tsubFTV_tsubBTV a1 t1 a t_a t
-lem_commute_tsubFTV_tsubBTV a1 t1 a t_a (TExists w t_w t)
-              = () ? lem_commute_tsubFTV_tsubBTV a1 t1 a t_a t_w
-                   ? lem_commute_tsubFTV_tsubBTV a1 t1 a t_a t
-lem_commute_tsubFTV_tsubBTV a1 t1 a t_a (TPoly a' k t) 
-  | a1 == a'  = ()
-  | otherwise = () ? lem_commute_tsubFTV_tsubBTV a1 t1 a t_a t
--}
-
-{-
-{-@ lem_commute_tsubFTV_tsubBTV1 :: a1:Vname -> t1:UserType 
-        -> { a:Vname | not (Set_mem a (freeTV t1)) } -> { t_a:UserType | not (Set_mem a1 (tfreeBTV t_a)) } 
-        -> t:Type -> { pf:_ | tsubFTV a t_a (tsubBTV a1 t1 t) == tsubBTV a1 t1 (tsubFTV a t_a t) } @-}
-lem_commute_tsubFTV_tsubBTV1 :: Vname -> Type -> Vname -> Type -> Type -> Proof
-lem_commute_tsubFTV_tsubBTV1 a1 t1 a t_a t = lem_commute_tsubFTV_tsubBTV a1 t1 a t_a t
-                                                 ? lem_tsubFTV_notin a t_a t1
-
-{-@ lem_commute_tchgFTV_tsubBTV :: a1:Vname -> t1:UserType
-        -> a:Vname -> a':Vname -> t:Type
-        -> { pf:_ | tchgFTV a  a'                (tsubBTV a1 t1 t) 
-                 == tsubBTV a1 (tchgFTV a a' t1) (tchgFTV a a' t) } / [tsize t] @-}
-lem_commute_tchgFTV_tsubBTV :: Vname -> Type -> Vname -> Vname -> Type -> Proof
-lem_commute_tchgFTV_tsubBTV a1 t1 a a' (TRefn b w p) = case b of
-  (FTV a2) | a  == a2       -> () ? lem_commute_chgFTV_subBTV a1 t1 a a' p
-  (BTV a2) | a1 == a2       -> () ? lem_commute_chgFTV_subBTV a1 t1 a a' p
-                                  ? lem_chgFTV_push a a' (subBTV a1 t1 p) t1
-  _                         -> () ? lem_commute_chgFTV_subBTV a1 t1 a a' p
-lem_commute_tchgFTV_tsubBTV a1 t1 a a' (TFunc w t_w t)
-              = () ? lem_commute_tchgFTV_tsubBTV a1 t1 a a' t_w
-                   ? lem_commute_tchgFTV_tsubBTV a1 t1 a a' t
-lem_commute_tchgFTV_tsubBTV a1 t1 a a' (TExists w t_w t)
-              = () ? lem_commute_tchgFTV_tsubBTV a1 t1 a a' t_w
-                   ? lem_commute_tchgFTV_tsubBTV a1 t1 a a' t
-lem_commute_tchgFTV_tsubBTV a1 t1 a a' (TPoly a2 k t) 
-  | a1 == a2  = ()
-  | otherwise = () ? lem_commute_tchgFTV_tsubBTV a1 t1 a a' t
--}
 ---------------------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of SUBSTITUTION and the PUSH function
 ---------------------------------------------------------------------------------------
@@ -1405,61 +1211,59 @@ lem_open_tvT_at_push j a' ps (TRefn   b ps') = case b of
 lem_open_tvT_at_push j a' ps (TFunc   t_x t) = () 
 lem_open_tvT_at_push j a' ps (TPoly   k t)   = () 
 
-{-
-{-@ lem_push_strengthen :: p:Pred -> r:Pred -> t:Type
-        -> { pf:_ | push (strengthen p r) t == push p (push r t) } @-}
-lem_push_strengthen :: Expr -> Expr -> Type -> Proof
-lem_push_strengthen p r (TRefn b z q)     = () ? lem_strengthen_assoc p r q
-lem_push_strengthen p r (TFunc z t_z t)   = () ? lem_push_strengthen p r t_z
-                                               ? lem_push_strengthen p r t
-lem_push_strengthen p r (TExists z t_z t) = () ? lem_push_strengthen p r t_z
-                                               ? lem_push_strengthen p r t
-lem_push_strengthen p r (TPoly a k t)     = () ? lem_push_strengthen p r t
+{-@ lem_push_strengthen :: ps:Preds -> rs:Preds -> t:Type
+        -> { pf:_ | push (strengthen ps rs) t == push ps (push rs t) } @-}
+lem_push_strengthen :: Preds -> Preds -> Type -> Proof
+lem_push_strengthen ps rs (TRefn b qs)    = () ? lem_strengthen_assoc ps rs qs
+lem_push_strengthen ps rs (TFunc t_z t)   = () {-? lem_push_strengthen  ps rs t_z
+                                               ? lem_push_strengthen  ps rs t-}
+lem_push_strengthen ps rs (TExists t_z t) = () ? lem_push_strengthen  ps rs t_z
+                                               ? lem_push_strengthen  ps rs t
+lem_push_strengthen ps rs (TPoly k t)     = () -- ? lem_push_strengthen  ps rs t
 
-{-@ lem_subFV_push :: x:Vname -> v:Value -> p:Pred -> t:UserType
-        -> { pf:_ | tsubFV x v (push p t) == push (subFV x v p) (tsubFV x v t) } @-}
-lem_subFV_push :: Vname -> Expr -> Expr -> Type -> Proof
-lem_subFV_push x v p (TRefn   b z   r) = () ? lem_subFV_strengthen x v p r
-lem_subFV_push x v p (TFunc   y t_y t) = () ? lem_subFV_push x v p t_y 
-                                            ? lem_subFV_push x v p t
-lem_subFV_push x v p (TPoly   a k   t) = () ? lem_subFV_push x v p t
+{-@ lem_subFV_push :: x:Vname -> v:Value -> ps:Preds -> t:UserType
+        -> { pf:_ | tsubFV x v (push ps t) == push (psubFV x v ps) (tsubFV x v t) } @-}
+lem_subFV_push :: Vname -> Expr -> Preds -> Type -> Proof
+lem_subFV_push x v ps (TRefn   b  rs) = () ? lem_psubFV_strengthen x v ps rs
+lem_subFV_push x v ps (TFunc   t_y t) = () -- ? lem_subFV_push x v ps t_y 
+                                           -- ? lem_subFV_push x v ps t
+lem_subFV_push x v ps (TPoly   k   t) = () -- ? lem_subFV_push x v ps t
 
-{-@ lem_subBV_push :: { x:Vname | not (x == 0) } -> v:Value -> p:Pred -> t:UserType
-        -> { pf:_ | tsubBV x v (push p t) == push (subBV x v p) (tsubBV x v t) } @-}
-lem_subBV_push :: Vname -> Expr -> Expr -> Type -> Proof
-lem_subBV_push x v p (TRefn   b z   r) = () ? lem_subBV_strengthen x v p r
-lem_subBV_push x v p (TFunc   y t_y t) = () ? lem_subBV_push x v p t_y 
-                                            ? lem_subBV_push x v p t
-lem_subBV_push x v p (TPoly   a k   t) = () ? lem_subBV_push x v p t
+{-@ lem_subBV_at_push :: j:Index -> v:Value -> ps:Preds -> t:UserType
+        -> { pf:_ | tsubBV_at j v (push ps t) == push (psubBV_at (j+1) v ps) (tsubBV_at j v t) } @-}
+lem_subBV_at_push :: Index -> Expr -> Preds -> Type -> Proof
+lem_subBV_at_push j v ps (TRefn   b  rs) = () ? lem_psubBV_at_strengthen (j+1) v ps rs
+lem_subBV_at_push j v ps (TFunc   t_y t) = () -- ? lem_subBV_at_push j v ps t_y 
+                                              -- ? lem_subBV_at_push (j+1) v ps t
+lem_subBV_at_push j v ps (TPoly   k   t) = () -- ? lem_subBV_at_push j v ps t
 
-{-@ lem_subFTV_push :: a:Vname -> t_a:UserType -> p:Pred -> t:UserType
-        -> { pf:_ | tsubFTV a t_a (push p t) == push (subFTV a t_a p) (tsubFTV a t_a t) } @-}
-lem_subFTV_push :: Vname -> Type -> Expr -> Type -> Proof
-lem_subFTV_push a t_a p (TRefn   b z   r) = case b of 
+{-@ lem_subFTV_push :: a:Vname -> t_a:UserType -> ps:Preds -> t:UserType
+        -> { pf:_ | tsubFTV a t_a (push ps t) == push (psubFTV a t_a ps) (tsubFTV a t_a t) } @-}
+lem_subFTV_push :: Vname -> Type -> Preds -> Type -> Proof
+lem_subFTV_push a t_a ps (TRefn   b  rs) = case b of 
   (FTV a') | a == a'  -> () {-? toProof ( tsubFTV a t_a (push p (TRefn (FTV a) z r))
                     === tsubFTV a t_a (TRefn b z (strengthen p r))
                     === push (subFTV a t_a (strengthen p r)) t_a-}
-                      ? lem_subFTV_strengthen a t_a p r
+                      ? lem_psubFTV_strengthen a t_a ps rs
 --                    === push (strengthen (subFTV a t_a p) (subFTV a t_a r)) t_a
-                      ? lem_push_strengthen (subFTV a t_a p) (subFTV a t_a r) t_a
+                      ? lem_push_strengthen (psubFTV a t_a ps) (psubFTV a t_a rs) t_a
   {-                  === push (subFTV a t_a p) (push (subFTV a t_a r) t_a)
                     === push (subFTV a t_a p) (tsubFTV a t_a (TRefn (FTV a) z r)) )-}
-  _        -> () ? lem_subFTV_strengthen a t_a p r    
-lem_subFTV_push a t_a p (TFunc   y t_y t) = () ? lem_subFTV_push a t_a p t_y
-                                               ? lem_subFTV_push a t_a p t
-lem_subFTV_push a t_a p (TPoly   a' k  t) = () ? lem_subFTV_push a t_a p t
+  _                   -> () ? lem_psubFTV_strengthen a t_a ps rs
+lem_subFTV_push a t_a ps (TFunc   t_y t) = () -- ? lem_subFTV_push a t_a ps t_y
+                                             -- ? lem_subFTV_push a t_a ps t
+lem_subFTV_push a t_a ps (TPoly    k  t) = () -- ? lem_subFTV_push a t_a ps t
 
-{-@ lem_subBTV_push ::  a:Vname -> t_a:UserType -> p:Pred -> t:UserType 
-        -> { pf:_ | tsubBTV a t_a (push p t) == push (subBTV a t_a p) (tsubBTV a t_a t) } @-}
-lem_subBTV_push :: Vname -> Type -> Expr -> Type -> Proof
-lem_subBTV_push a t_a p (TRefn   b z   r) = case b of 
-  (BTV a') | a == a'  -> () ? lem_subBTV_strengthen a t_a p r
-                            ? lem_push_strengthen (subBTV a t_a p) (subBTV a t_a r) t_a
-  _        -> () ? lem_subBTV_strengthen a t_a p r    
-lem_subBTV_push a t_a p (TFunc   y t_y t) = () ? lem_subBTV_push a t_a p t_y
-                                               ? lem_subBTV_push a t_a p t
-lem_subBTV_push a t_a p (TPoly   a' k  t) = () ? lem_subBTV_push a t_a p t
--}
+{-@ lem_subBTV_at_push :: j:Index -> t_a:UserType -> ps:Preds -> t:UserType 
+      -> {pf:_ | tsubBTV_at j t_a (push ps t) == push (psubBTV_at j t_a ps) (tsubBTV_at j t_a t)} @-}
+lem_subBTV_at_push :: Index -> Type -> Preds -> Type -> Proof
+lem_subBTV_at_push j t_a ps (TRefn   b  rs) = case b of 
+  (BTV j') | j == j'  -> () ? lem_psubBTV_at_strengthen j t_a ps rs
+                            ? lem_push_strengthen (psubBTV_at j t_a ps) (psubBTV_at j t_a rs) t_a
+  _                   -> () ? lem_psubBTV_at_strengthen j t_a ps rs    
+lem_subBTV_at_push j t_a ps (TFunc   t_y t) = () -- ? lem_subBTV_at_push a t_a p t_y
+                                                -- ? lem_subBTV_at_push a t_a p t
+lem_subBTV_at_push j t_a ps (TPoly    k  t) = () -- ? lem_subBTV_at_push a t_a p t
 
 ---------------------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of SUBSTITUTION for TYPE VARIABLES in SYSTEM F TYPES

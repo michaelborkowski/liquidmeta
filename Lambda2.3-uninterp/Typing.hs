@@ -81,6 +81,15 @@ lem_self_islct_at j (TExists  t_z t) e Base = lem_self_islct_at (j+1) t e Base
 lem_self_islct_at j (TPoly    k_a t) e Base = ()
 lem_self_islct_at j t                e Star = ()
 
+{- errs
+{-@ lem_self_push :: t:Type -> e:Expr -> ps:Preds
+        -> { pf:_ | self (push ps t) e Base == self t e Base } @-}
+lem_self_push :: Type -> Expr -> Preds -> Proof
+lem_self_push t@(TRefn b ps)   e qs = () -- -- TRefn b (PCons  (eqlPred (TRefn b ps) e)  ps)
+lem_self_push (TFunc    t_z t) e qs = ()
+lem_self_push (TExists  t_z t) e qs = lem_self_push t e qs
+lem_self_push (TPoly    k_a t) e qs = ()
+-}
 
 {-@ lem_unbindT_self :: y:Vname -> t:Type -> { e:Expr | isLC e } -> k:Kind
         -> { pf:_ | unbindT y (self t e k) == self (unbindT y t) e k } @-}
@@ -147,24 +156,27 @@ lem_tsubBV_at_self j v_z (TExists t_x t) e Base
 lem_tsubBV_at_self j v_z (TPoly k_a t)   e Base = ()
 lem_tsubBV_at_self j v_z t               e Star = ()
 
-{-@ lem_tsubFTV_self :: a:Vname -> t_a:UserType -> t:Type -> e:Expr -> k:Kind
-        -> { pf:_ | tsubFTV a t_a (self t e k) == self (tsubFTV a t_a t) (subFTV a t_a e) k } @-}
+{-@ lem_tsubFTV_self :: a:Vname -> t_a:UserType -> t:Type 
+        -> { e:Expr | not (Set_mem a (ftv e)) } -> k:Kind
+        -> { pf:_ | tsubFTV a t_a (self t e k) == self (tsubFTV a t_a t) e k } @-}
 lem_tsubFTV_self :: Vname -> Type -> Type -> Expr -> Kind -> Proof
 lem_tsubFTV_self a t_a t@(TRefn b ps)    e Base = case b of
-  (FTV a') | a' == a  -> {- -} undefined {- case t_a of 
-      (TRefn b_a  qs_a) ->  () {- ? toProof (
+  (FTV a') | a' == a  -> case t_a of 
+    (TRefn b_a  qs_a) -> undefined {- () 
+{- ? toProof (
          tsubFTV a t_a (self t e Base) === tsubFTV a t_a (push (eqlPred t e) t) -}
-       ? lem_subFTV_push a t_a (eqlPred t e) t 
+       ? lem_self_push t_a e (psubFTV a t_a ps)
+       ? lem_subFTV_notin a t_a e
+       ? lem_subFTV_push a t_a (PCons (eqlPred t e) PEmpty) t 
        ? lem_tsubFTV_trefn a t_a t
 --     === push (subFTV a t_a (eqlPred t e)) (tsubFTV a t_a t)
-       ? lem_tsubFTV_eqlPred a t_a t e
+       ? lem_tsubFTV_eqlPred a t_a t e   -}
 {-     === push (App (App (AppT (Prim Eql) (tsubFTV a t_a t)) (BV z)) (subFTV a t_a e)) (tsubFTV a t_a t)
      === push (eqlPred (tsubFTV a t_a t) (subFTV a t_a e)) (tsubFTV a t_a t)
-     === self (tsubFTV a t_a t) (subFTV a t_a e) Base )-}
-      (TFunc   t_y t')  -> ()
-      (TExists t_y t')  -> ()
-      (TPoly   k1 t')   -> () 
--}
+     === self (tsubFTV a t_a t) (subFTV a t_a e) Base )
+    (TFunc   t_y t')  -> ()
+    (TExists t_y t')  -> ()
+    (TPoly   k1 t')   -> ()  -}
   _                   -> ()
 lem_tsubFTV_self a t_a (TFunc   t_x t)   e Base = ()
 lem_tsubFTV_self a t_a (TExists   t_x t) e Base = () ? lem_tsubFTV_self a t_a t e Base
@@ -176,16 +188,24 @@ lem_tsubFTV_self a t_a t                 e Star = ()
         -> { pf:_ | subFV y v_y (eqlPred t e) == eqlPred (tsubFV y v_y t) (subFV y v_y e) } @-}
 lem_subFV_eqlPred :: Vname -> Expr -> Type -> Expr -> Proof
 lem_subFV_eqlPred y v_y t e = () ? lem_subFV_notin y v_y (BV 0)
+-}
 
-{-@ lem_tsubFTV_eqlPred :: a:Vname -> { t_a:UserType | isTRefn t_a } -> { t:Type | isTRefn t } -> e:Expr
+{-
+{-@ lem_tsubFTV_eqlPred :: a:Vname -> { t_a:UserType | isTRefn t_a } 
+        -> { t:Type | isTRefn t } -> e:Expr
         -> { pf:_ | subFTV a t_a (eqlPred t e) == eqlPred (tsubFTV a t_a t) (subFTV a t_a e) } @-}
 lem_tsubFTV_eqlPred :: Vname -> Type -> Type -> Expr -> Proof
 lem_tsubFTV_eqlPred a t_a@(TRefn b' qs') (TRefn b ps) e = case b of 
-  (FTV a') | a' == a  -> () ? lem_subFTV_notin a t_a (BV 0)
-                            ? lem_subFTV_notin a t_a (Prim Eql)
+  (FTV a') | a' == a  -> () ? lem_subFTV_notin  a t_a (BV 0)
+--                            ? lem_psubFTV_notin a t_a PEmpty
+                            ? lem_subFTV_notin  a t_a (Prim Eql)
                             ? lem_tsubFTV_trefn a t_a (TRefn b ps)
   _                   -> ()
-
+-- eqlPred (TRefn b ps) e = App (App (AppT (Prim Eql) (TRefn b PEmpty)) (BV 0)) e
+  need tsubFTV a t_a (TRefn b PEmpty) === push PEmpty t_a === t_a === TRefn qs'
+   === ers $ tsubFTV a t_a (TRefn b ps) === push ps t_a 
+-}
+{-
 {-@ lem_tsubFV_self0 :: z:Vname -> v_z:Expr -> t:Type -> { x:Vname | x == z } -> k:Kind
         -> { pf:_ | tsubFV z v_z (self t (FV x) k) == self (tsubFV z v_z t) v_z k } @-}
 lem_tsubFV_self0 :: Vname -> Expr -> Type -> Vname -> Kind -> Proof
@@ -240,9 +260,9 @@ data HasType where
 --                    -> ProofOfN (n + 1) (HasType (Cons y s g) (FV x) t)
 {-@ data HasType where
         TBC   :: g:Env -> b:Bool -> { pf:HasType | propOf pf == HasType g (Bc b) (tybc b) &&
-                                                   sizeOf pf == 0 }
+                                                   sizeOf pf == 1 }
         TIC   :: g:Env -> m:Int  -> { pf:HasType | propOf pf == HasType g (Ic m) (tyic m) &&
-                                                   sizeOf pf == 0 }
+                                                   sizeOf pf == 1 }
         TVar1 :: g:Env -> { x:Vname | not (in_env x g) } 
                     -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
                     -> { pf:HasType | propOf pf == HasType (Cons x t g) (FV x) (self t (FV x) k) &&
@@ -256,13 +276,13 @@ data HasType where
                     -> { pf:HasType | propOf pf == HasType (ConsT a k g) (FV x) t &&
                                       sizeOf pf == n + 1 }
         TPrm  :: g:Env -> c:Prim -> { pf:HasType | propOf pf == HasType g (Prim c) (ty c) &&
-                                                   sizeOf pf == 0 }
+                                                   sizeOf pf == tdepth (ty c) }
         TAbs  :: n:Nat -> g:Env -> t_x:Type -> k_x:Kind -> ProofOf(WFType g t_x k_x)
                   -> e:Expr -> t:Type -> nms:Names
                   -> ( { y:Vname | NotElem y nms } 
                            -> ProofOfN n (HasType (Cons y t_x g) (unbind y e) (unbindT y t)) )
                   -> { pf:HasType | propOf pf == HasType g (Lambda e) (TFunc t_x t) &&
-                                    sizeOf pf == n + 1 }
+                                    sizeOf pf == max n (tdepth t_x) + 1 }
         TApp  :: n:Nat -> g:Env -> e:Expr -> t_x:Type -> t:Type
                   -> ProofOfN n (HasType g e (TFunc t_x t)) 
                   -> e':Expr -> ProofOfN n (HasType g e' t_x) 
@@ -276,7 +296,7 @@ data HasType where
         TAppT :: n:Nat -> g:Env -> e:Expr -> k:Kind -> s:Type -> ProofOfN n (HasType g e (TPoly k s))
                   -> t:UserType -> ProofOf(WFType g t k)
                   -> { pf:HasType | propOf pf == HasType g (AppT e t) (tsubBTV t s) &&
-                                    sizeOf pf == n + 1 }
+                                    sizeOf pf == max n (tdepth (tsubBTV t s)) + 1 }
         TLet  :: n:Nat -> g:Env -> e_x:Expr -> t_x:Type -> ProofOfN n (HasType g e_x t_x)
                   -> e:Expr -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> nms:Names
                   -> ({ y:Vname | NotElem y nms }
@@ -291,21 +311,55 @@ data HasType where
                   -> { pf:HasType | propOf pf == HasType g e t && sizeOf pf == n + 1 } @-} 
 
 {-@ measure typSize @-}
-{-@ typSize :: pf:HasType -> { v:Int | v == sizeOf pf && v >= 0 } @-}
+{-@ typSize :: pf:HasType -> { v:Int | v == sizeOf pf && v >= 1 } @-}
 typSize :: HasType -> Int
-typSize (TBC _ _)                               = 0
-typSize (TIC _ _)                               = 0
+typSize (TBC _ _)                               = 1
+typSize (TIC _ _)                               = 1
 typSize (TVar1 _ _ t _ _)                       = tdepth t
 typSize (TVar2 n _ _ _ p_x_b _ _)               = n   + 1
 typSize (TVar3 n _ _ _ p_x_b _ _)               = n   + 1
-typSize (TPrm _ _)                              = 0
-typSize (TAbs n _ _ _ _ _ _ _ p_e_b')           = n   + 1
+typSize (TPrm _ c)                              = tdepth (ty c)
+typSize (TAbs n _ t_x _ _ _ _ _ p_e_b')         = max n (tdepth t_x) + 1
 typSize (TApp n _ _ _ _ p_e_bb' _ p_e'_b)       = n   + 1
 typSize (TAbsT n _ _ _ _ _ p_e_t)               = n   + 1
-typSize (TAppT n _ _ _ _ p_e_as _ _)            = n   + 1
+typSize (TAppT n _ _ _ s p_e_as t _)            = max n (tdepth (tsubBTV t s)) + 1 --n+(tdepth t)+1
 typSize (TLet n _ _ p_ex_b _ _ _ _ _ _ p_e_b')  = n   + 1
 typSize (TAnn n _ _ _ p_e_b)                    = n   + 1
 typSize (TSub n _ _ _ p_e_s _ _ _ p_s_t)        = n   + 1
+
+{-@ lem_typSize_lb :: g:Env -> e:Expr -> t:Type 
+        -> { p_e_t:HasType | propOf p_e_t == HasType g e t }
+        -> { pf:_ | sizeOf p_e_t >= tdepth t } / [sizeOf p_e_t] @-}
+lem_typSize_lb :: Env -> Expr -> Type -> HasType -> Proof
+lem_typSize_lb g e t (TBC {})                     = ()
+lem_typSize_lb g e t (TIC {})                     = ()
+lem_typSize_lb g e t (TVar1 _ x t' k _)            
+    = () ? toProof ( tdepth (self t' (FV x) k) === tdepth t' )
+lem_typSize_lb g e t (TVar2 n g' _ _ p_x_b _ _)   = lem_typSize_lb g' e t p_x_b
+lem_typSize_lb g e t (TVar3 n g' _ _ p_x_b _ _)   = lem_typSize_lb g' e t p_x_b
+lem_typSize_lb g e t (TPrm {})                    = ()
+lem_typSize_lb g e t (TAbs _ _ t_x _ _ e' t' nms mk_p_e'_txt')
+    = lem_typSize_lb (Cons y t_x g) (unbind y e') (unbindT y t') (mk_p_e'_txt' y)
+        where
+          y = fresh_var nms g
+lem_typSize_lb g e t (TApp _ _ e1 t_x t' p_e1_txt' _ _)
+    = lem_typSize_lb g e1 (TFunc t_x t') p_e1_txt'
+    ? toProof (tdepth (TExists t_x t') === tdepth (TFunc t_x t') )
+lem_typSize_lb g e t (TAbsT _ _ k e' t' nms mk_p_e'_t')
+    = lem_typSize_lb (ConsT a k g) (unbind_tv a e') (unbind_tvT a t') (mk_p_e'_t' a)
+        where
+          a = fresh_var nms g
+lem_typSize_lb g e t (TAppT _ _ e' k s p_e_ks t' _)
+    = lem_typSize_lb g e' (TPoly k s) p_e_ks
+--    ? toProof ( tdepth (tsubBTV t' s) =<= tdepth s + tdepth t' )
+lem_typSize_lb g e t (TLet _ _ _ t_x _ e' t' _ _ nms mk_p_e'_t')
+    = lem_typSize_lb (Cons y t_x g) (unbind y e') (unbindT y t') (mk_p_e'_t' y)
+        where
+          y = fresh_var nms g
+lem_typSize_lb g e t (TAnn _ _ e' _ p_e'_t)       = lem_typSize_lb g e' t p_e'_t
+lem_typSize_lb g e t (TSub _ _ _ s p_e_s _ _ _ p_s_t) 
+    = lem_subtypSize_lb g s t p_s_t
+
 
 {-@ reflect isTBC @-}
 isTBC :: HasType -> Bool
@@ -392,7 +446,7 @@ data Subtype where
                            -> ProofOf(Implies (Cons y (TRefn b PEmpty) g) 
                                               (unbindP y p1) (unbindP y p2)) )
                    -> { pf:Subtype | propOf pf == Subtype g (TRefn b p1) (TRefn b p2) &&
-                                     sizeOf pf == 0 }
+                                     sizeOf pf == 1 }
         SFunc :: n:Nat -> g:Env -> s1:Type -> s2:Type -> ProofOfN n (Subtype g s2 s1) 
                    -> t1:Type -> t2:Type -> nms:Names
                    -> ({ y:Vname | NotElem y nms} 
@@ -407,7 +461,7 @@ data Subtype where
                    -> ({ y:Vname | NotElem y nms }
                            -> ProofOfN n (Subtype (Cons y t_x g) (unbindT y t) t') )
                    -> { pf:Subtype | propOf pf == Subtype g (TExists t_x t) t' &&
-                                     sizeOf pf == n + 1 }
+                                     sizeOf pf == max n (tdepth t_x) + 1 }
         SPoly :: n:Nat -> g:Env -> k:Kind -> t1:Type -> t2:Type -> nms:Names
                    -> ({ a:Vname | NotElem a nms }
                            -> ProofOfN n (Subtype (ConsT a k g) (unbind_tvT a t1) (unbind_tvT a t2)) )
@@ -417,14 +471,35 @@ data Subtype where
 --                                                      && not (Set_mem y (free t')) }
 
 {-@ measure subtypSize @-}
-{-@ subtypSize :: pf:Subtype -> { v:Int | v == sizeOf pf && v >= 0 } @-}
+{-@ subtypSize :: pf:Subtype -> { v:Int | v == sizeOf pf && v >= 1 } @-}
 subtypSize :: Subtype -> Int
-subtypSize (SBase {})                     = 0
-subtypSize (SFunc n _ _ _ _ _ _ _ _)      = n + 1
-subtypSize (SWitn n _ _ _ _ _ _ _)        = n + 1
-subtypSize (SBind n _ _ _ _ _ _)          = n + 1
-subtypSize (SPoly n _ _ _ _ _ _)          = n + 1
+subtypSize (SBase {})                   = 1
+subtypSize (SFunc n _ _ _ _ _ _ _ _)    = n + 1
+subtypSize (SWitn n _ _ _ _ _ _ _)      = n + 1
+subtypSize (SBind n _ t_x t _ _ _)      = max n (tdepth t_x) + 1
+subtypSize (SPoly n _ _ _ _ _ _)        = n + 1
 
+{-@ lem_subtypSize_lb :: g:Env -> s:Type -> t:Type
+        -> { p_s_t:Subtype | propOf p_s_t == Subtype g s t }
+        -> { pf:_ | sizeOf p_s_t >= tdepth t && sizeOf p_s_t >= tdepth s } / [sizeOf p_s_t] @-}
+lem_subtypSize_lb :: Env -> Type -> Type -> Subtype -> Proof
+lem_subtypSize_lb g s t (SBase {}) = ()
+lem_subtypSize_lb g s t (SFunc _ _ s1 s2 p_s2_s1 t1 t2 nms mk_p_t1_t2)
+    = () ? lem_subtypSize_lb g s2 s1 p_s2_s1
+         ? lem_subtypSize_lb (Cons y s2 g) (unbindT y t1) (unbindT y t2) (mk_p_t1_t2 y)
+             where
+               y = fresh_var nms g
+lem_subtypSize_lb g s t (SWitn _ _ v_x t_x p_vx_tx _ t' p_s_t'vx)
+    = () ? lem_subtypSize_lb g s (tsubBV v_x t') p_s_t'vx
+         ? lem_typSize_lb     g v_x t_x p_vx_tx
+lem_subtypSize_lb g s t (SBind _ _ s_x s' _ nms mk_p_s'_t)
+    = () ? lem_subtypSize_lb (Cons y s_x g) (unbindT y s') t (mk_p_s'_t y)
+             where
+               y = fresh_var nms g
+lem_subtypSize_lb g s t (SPoly _ _ k t1 t2 nms mk_p_t1_t2)
+    = () ? lem_subtypSize_lb (ConsT a k g) (unbind_tvT a t1) (unbind_tvT a t2) (mk_p_t1_t2 a)
+             where
+               a = fresh_var nms g
 
 {-@ reflect isSBase @-}
 isSBase :: Subtype -> Bool

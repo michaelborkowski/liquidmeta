@@ -59,6 +59,12 @@ lem_psubBV_strengthen :: Expr -> Preds -> Preds -> Proof
 lem_psubBV_strengthen v PEmpty       rs = () 
 lem_psubBV_strengthen v (PCons p ps) rs = () ? lem_psubBV_strengthen v ps rs
  
+{-@ lem_psubBV_at_strengthen :: j:Index -> v:Value -> ps:Preds -> rs:Preds
+        -> { pf:_ | psubBV_at j v (strengthen ps rs) == strengthen (psubBV_at j v ps) (psubBV_at j v rs) } @-}
+lem_psubBV_at_strengthen :: Index -> Expr -> Preds -> Preds -> Proof
+lem_psubBV_at_strengthen j v PEmpty       rs = () 
+lem_psubBV_at_strengthen j v (PCons p ps) rs = () ? lem_psubBV_at_strengthen j v ps rs
+ 
 {-@ lem_open_tvP_at_strengthen :: j:Index -> a':Vname -> ps:Preds -> rs:Preds
         -> { pf:_ | open_tvP_at j a' (strengthen ps rs) == 
                          strengthen (open_tvP_at j a' ps) (open_tvP_at j a' rs) } @-}
@@ -71,3 +77,9 @@ lem_open_tvP_at_strengthen j a' (PCons p ps) rs = () ? lem_open_tvP_at_strengthe
 lem_psubBTV_strengthen :: Type -> Preds -> Preds -> Proof
 lem_psubBTV_strengthen t_a PEmpty       rs = () 
 lem_psubBTV_strengthen t_a (PCons p ps) rs = () ? lem_psubBTV_strengthen t_a ps rs
+
+{-@ lem_psubBTV_at_strengthen :: j:Index -> t_a:Type -> ps:Preds -> rs:Preds
+      -> {pf:_ | psubBTV_at j t_a (strengthen ps rs) == strengthen (psubBTV_at j t_a ps) (psubBTV_at j t_a rs)} @-}
+lem_psubBTV_at_strengthen :: Index -> Type -> Preds -> Preds -> Proof
+lem_psubBTV_at_strengthen j t_a PEmpty       rs = () 
+lem_psubBTV_at_strengthen j t_a (PCons p ps) rs = () ? lem_psubBTV_at_strengthen j t_a ps rs

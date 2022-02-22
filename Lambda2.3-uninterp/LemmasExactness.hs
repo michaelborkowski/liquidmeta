@@ -30,8 +30,8 @@ import PrimitivesWFType
 --import SubtypingFromEntailments
 import LemmasWeakenWF
 --import LemmasWeakenWFTV
-import SubstitutionLemmaWF
 import LemmasWellFormedness
+import SubstitutionLemmaWF
 import LemmasTyping
 import LemmasSubtyping
 --import LemmasWeakenTyp
@@ -44,7 +44,7 @@ import LemmasSubtyping
 {-@ lem_self_idempotent_upper :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
         -> e:Expr -> ProofOf(HasFType (erase_env g) e (erase t))
         -> { pf:Subtype | propOf pf == Subtype g (self t e k) (self (self t e k) e k) &&
-                          sizeOf pf <= tdepth t } / [tsize t] @-}
+                          sizeOf pf <= 2 * tdepth t } / [tsize t] @-}
 lem_self_idempotent_upper :: Env -> Type -> Kind -> WFType -> Expr -> HasFType ->  Subtype
 lem_self_idempotent_upper g t@(TRefn b q) Base p_g_t e p_e_t 
   = SBase g b (PCons eqlP q) (PCons eqlP (PCons eqlP q)) nms p_imp_sq_ssq
@@ -60,8 +60,8 @@ lem_self_idempotent_upper g t@(TRefn b q) Base p_g_t e p_e_t
 lem_self_idempotent_upper g t@(TFunc t_z t') Base p_g_t e p_e_t 
   = lem_sub_refl g t Base p_g_t  ? self (TFunc t_z t') e Base
 lem_self_idempotent_upper g (TExists t_z t') Base p_g_t e p_e_t 
-  = lem_subtype_in_exists (tdepth t') g t_z (self t' e Base) (self (self t' e Base) e Base)
-                          p_g_self2_t nms' mk_p_st'_sst'
+  = lem_subtype_in_exists (2 * tdepth t') g t_z (self t' e Base) (self (self t' e Base) e Base)
+                          Base p_g_self2_t nms' mk_p_st'_sst'
 {-              ? toProof ( self (self (TExists t_z t') e Base) e Base
                       === self (TExists t_z (self t' e Base)) e Base
                       === TExists t_z (self (self t' e Base) e Base) )
@@ -71,7 +71,7 @@ lem_self_idempotent_upper g (TExists t_z t') Base p_g_t e p_e_t
         {-@ mk_p_st'_sst' :: { y:Vname | NotElem y nms' } 
               -> { pf:Subtype | propOf pf == Subtype (Cons y t_z g) (unbindT y (self t' e Base))
                                                      (unbindT y (self (self t' e Base) e Base)) &&
-                                sizeOf pf <= tdepth t' }  @-}
+                                sizeOf pf <= 2 * tdepth t' }  @-}
         mk_p_st'_sst' y = lem_self_idempotent_upper (Cons y t_z g) (unbindT y t') k'
                                                     (mk_p_yg_t' y) e p_yg_e_t'
                               ? lem_unbindT_self y t'               (e ? islc_e) Base
@@ -181,7 +181,7 @@ lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t Star _ e p_e_t
         -> { p_v_t:HasType | propOf p_v_t == HasType g v t } -> k:Kind
         -> ProofOf(WFType g t k) -> ProofOf(WFEnv g) 
         -> { p_v_st:HasType | propOf p_v_st == HasType g v (self t v k) &&
-                              sizeOf p_v_st <= (sizeOf p_v_t + 1) } @-}
+                              sizeOf p_v_st <= (sizeOf p_v_t * 2 + 1) } @-}
 lem_exact_type :: Env -> Expr -> Type -> HasType -> Kind -> WFType -> WFEnv -> HasType
 lem_exact_type g e t p_e_t@(TBC _ b)   Base p_g_t p_g_wf 
   = TSub n g (Bc b) (tybc b) p_e_t (self (tybc b) (Bc b) Base) Base p_g_selft p_t_selft
@@ -189,14 +189,14 @@ lem_exact_type g e t p_e_t@(TBC _ b)   Base p_g_t p_g_wf
         p_g_t     = lem_wf_tybc g b
         p_g_selft = lem_selfify_wf g (tybc b) Base p_g_t (Bc b) (FTBC (erase_env g) b)
         p_t_selft = lem_tybc_exact g b 
-        n         = {-max-} (typSize p_e_t) {-(subtypSize p_t_selft)-}
+        n         = {-max-} 2 * (typSize p_e_t) {-(subtypSize p_t_selft)-}
 lem_exact_type g e t p_e_t@(TIC _ m)   Base p_g_t p_g_wf  
   = TSub n g (Ic m) (tyic m) p_e_t (self (tyic m) (Ic m) Base) Base p_g_selft p_t_selft
       where
         p_g_t     = lem_wf_tyic g m
         p_g_selft = lem_selfify_wf g (tyic m) Base p_g_t (Ic m) (FTIC (erase_env g) m)
         p_t_selft = lem_tyic_exact g m 
-        n         = {-max-} (typSize p_e_t) {-(subtypSize p_t_selft)-}
+        n         = {-max-} 2 * (typSize p_e_t) {-(subtypSize p_t_selft)-}
 lem_exact_type g e t p_e_t@(TVar1 env x t' k' p_env_t')  Base p_g_t p_g_wf = case k' of
   Base -> TSub n g (FV x) t p_e_t (self t (FV x) Base) Base p_g_slt p_t_selft
     where
@@ -205,7 +205,7 @@ lem_exact_type g e t p_e_t@(TVar1 env x t' k' p_env_t')  Base p_g_t p_g_wf = cas
       p_g_t'    = lem_weaken_wf env Empty t' Base p_env_t' x t'
       p_t_selft = lem_self_idempotent_upper g t' Base {-p_env_t'-} p_g_t' (FV x) 
                               (p_e_er_t ? erase (self t' (FV x) Base)) -- p_env_wf
-      n         = max (typSize p_e_t) (subtypSize p_t_selft)
+      n         = 2 * {-max-} (typSize p_e_t) -- (subtypSize p_t_selft)
   Star -> {- t == t' -} TVar1 env x t' Base p_env_t'_b ? t_is_t'
     where 
       p_env_t'_b = lem_strengthen_wftype_base env Empty x t' t' p_env_t' p_g_t
@@ -238,8 +238,8 @@ lem_exact_type g e t p_e_t@(TAbsT {}) Base _ p_g_wf
 lem_exact_type g e t (TAppT {}) Base _ p_g_wf = impossible "not a value"
 lem_exact_type g e t (TLet {})  Base _ p_g_wf = impossible "not a value"
 lem_exact_type g e t (TAnn {})  Base _ p_g_wf = impossible "not a value"
-lem_exact_type g e t p_e_t@(TSub _ _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base p_g_t_b p_g_wf 
-  = TSub n g e (self s e Base) p_e_selfs (self t e Base) Base p_g_selft p_selfs_selft
+lem_exact_type g e t p_e_t@(TSub n _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base p_g_t_b p_g_wf 
+  = TSub n' g e (self s e Base) p_e_selfs (self t e Base) Base p_g_selft p_selfs_selft
      where
        p_e_er_t      = lem_typing_hasftype g e t p_e_t p_g_wf
        p_g_s_st      = lem_typing_wf           g e s p_g_e_s p_g_wf
@@ -248,5 +248,5 @@ lem_exact_type g e t p_e_t@(TSub _ _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base p_g_
        p_g_selft     = lem_selfify_wf    g t Base p_g_t_b e p_e_er_t
        p_selfs_selft = lem_exact_subtype g p_g_wf s Base p_g_s_b t p_g_s_t Base p_g_t_b (e 
                            ? lem_ftyp_islc (erase_env g) e (erase t) p_e_er_t) p_e_er_t
-       n             = max (typSize p_e_selfs) (subtypSize p_selfs_selft)
+       n'            = {-n +-} 2 * n + 1-- max (typSize p_e_selfs) (subtypSize p_selfs_selft)
 lem_exact_type g e t p_e_t Star _ p_g_wf = p_e_t ? toProof ( self t e Star === t )
