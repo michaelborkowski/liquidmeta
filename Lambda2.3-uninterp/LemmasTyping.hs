@@ -19,18 +19,11 @@ import PrimitivesWFType
 import BasicPropsSubstitution
 import BasicPropsEnvironments
 import BasicPropsWellFormedness
---import SystemFLemmasFTyping
---import SystemFLemmasSubstitution
 import Typing
---import BasicPropsEraseTyping
 import LemmasWeakenWF
 import LemmasWeakenWFTV
 import LemmasWellFormedness
 import SubstitutionLemmaWFTV
-
---{-@ reflect foo43 @-}
---foo43 x = Just x
---foo43 :: a -> Maybe a
 
 {-@ lem_tsubFV_tybc :: x:Vname -> v_x:Value -> b:Bool
         -> { pf:_ | tsubFV x v_x (tybc b) == tybc b } @-}
@@ -143,7 +136,6 @@ lem_typing_wf g e t (TApp _ _g e1 t_x t' p_e1_txt' e2 p_e2_tx) p_wf_g
 lem_typing_wf g e t (TAbsT _ _g k e' t' nms mk_p_a'g_e'_t') p_wf_g 
     = WFPoly g k t' Star nms' mk_p_a'g_t' 
         where
---          p_wf_er_g = lem_erase_env_wfenv g p_wf_g
           {-@ mk_p_a'g_t' :: { a':Vname | NotElem a' nms' }
                 -> ProofOf(WFType (ConsT a' k g) (unbind_tvT a' t') Star) @-}
           mk_p_a'g_t' a' = lem_typing_wf (ConsT a' k g) (unbind_tv a' e') (unbind_tvT a' t')
@@ -151,7 +143,6 @@ lem_typing_wf g e t (TAbsT _ _g k e' t' nms mk_p_a'g_e'_t') p_wf_g
             where
               p_wf_a'g   = WFEBindT g p_wf_g a' k
           nms'           = unionEnv nms g
---  = WFPoly g k t' k_t' a' p_a'g_t'
 lem_typing_wf g e t (TAppT _ _g e' k s p_e'_as t' p_g_t') p_wf_g 
   = if k_s == Star then p_g_st' else WFKind g (tsubBTV t' s) p_g_st'
       where
@@ -159,7 +150,6 @@ lem_typing_wf g e t (TAppT _ _g e' k s p_e'_as t' p_g_t') p_wf_g
         (WFPoly _ _ _ k_s nms mk_p_a'g_s) = lem_wfpoly_for_wf_tpoly g k s p_g_as
         a'        = fresh_var nms g 
         p_wf_er_g = lem_erase_env_wfenv g p_wf_g
---        p_wf_a'g  = WFFBindT (erase_env g) p_wf_er_g a' k
         p_g_st'   = lem_subst_tv_wf g Empty a' t' k p_g_t' p_wf_er_g (unbind_tvT a' s) k_s 
                                     (mk_p_a'g_s a') ? lem_tsubFTV_unbind_tvT a' t' 
                                         (s ? lem_free_bound_in_env g (TPoly k s) Star p_g_as a')
@@ -174,16 +164,6 @@ lem_typing_wf g e t (TSub _ _g _e s p_e_s _t k p_g_t p_s_t) p_wf_g
         Base -> WFKind g t p_g_t 
         Star -> p_g_t
 
-{-
-{-@ lem_selfify_wf' :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> ProofOf(WFEnv g)
-        -> e:Term -> ProofOf(HasType g e t) -> ProofOf(WFType g (self t e k) k) @-}
-lem_selfify_wf' :: Env -> Type -> Kind -> WFType -> WFEnv -> Expr -> HasType -> WFType
-lem_selfify_wf' g t {- @(TRefn b z p)-} k p_g_t p_g_wf e p_e_t 
-  = lem_selfify_wf g t k p_g_t p_er_g_wf e p_e_er_t
-      where
-        p_er_g_wf = lem_erase_env_wfenv g p_g_wf
-        p_e_er_t  = lem_typing_hasftype g e t p_e_t p_g_wf
--}
 {-@ lem_typing_hasftype :: g:Env -> e:Expr -> t:Type 
         -> { p_e_t:HasType | propOf p_e_t == HasType g e t }
         -> ProofOf(WFEnv g) -> ProofOf(HasFType (erase_env g) e (erase t)) / [sizeOf p_e_t] @-}
@@ -244,7 +224,7 @@ lem_typing_hasftype g e t (TAppT _ _g e' k s p_e'_as t' p_g_t') p_g_wf
          p_e'_er_as = lem_typing_hasftype g e' (TPoly k s) p_e'_as p_g_wf
          p_g_er_t'  = lem_erase_wftype    g t' k p_g_t'
 lem_typing_hasftype g e t (TLet _ _g e_x t_x p_ex_tx e' _t k p_g_t nms mk_p_yg_e'_t) p_g_wf
-    = FTLet (erase_env g) e_x (erase t_x) p_ex_er_tx e' (erase t {-? lem_erase_tsubBV x (FV y) t-}) 
+    = FTLet (erase_env g) e_x (erase t_x) p_ex_er_tx e' (erase t) 
             nms' mk_p_yg_e'_er_t
         where
           p_ex_er_tx   = lem_typing_hasftype g e_x t_x p_ex_tx p_g_wf         
@@ -264,64 +244,7 @@ lem_typing_hasftype g e t (TAnn _ _g e' _ p_e'_t) p_g_wf
           p_t_wf = lem_typing_wf g e' t p_e'_t p_g_wf
 lem_typing_hasftype g e t (TSub _ _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf
     = lem_typing_hasftype g e s p_e_s p_g_wf 
-          ? lem_erase_subtype g s {-Star p_g_ers-} t {-k p_g_ert-} p_s_t
---        where
---          p_g_s   = lem_typing_wf g e s p_e_s p_g_wf 
---          p_g_ers = lem_erase_wftype g s Star p_g_s
---          p_g_ert = lem_erase_wftype g t k    p_g_t
-
-
-
-
-{-
--- Lemma. All free variables in a typed expression are bound in the environment
-{-@ lem_fv_bound_in_env :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
-                -> ProofOf(WFEnv g) -> { x:Vname | not (in_env x g) }
-                -> { pf:_ | not (Set_mem x (fv e)) && not (Set_mem x (ftv e)) } @-}
-lem_fv_bound_in_env :: Env -> Expr -> Type -> HasType -> WFEnv -> Vname -> Proof
-lem_fv_bound_in_env g e t (TBC _g b) p_g_wf x          = ()
-lem_fv_bound_in_env g e t (TIC _g n) p_g_wf x          = ()
-lem_fv_bound_in_env g e t (TVar1 _ y _t _ _) p_g_wf x  = ()
-lem_fv_bound_in_env g e t (TVar2 _ y _t p_y_t z t') p_g_wf x = ()
-lem_fv_bound_in_env g e t (TVar3 _ y _y p_y_t z k)  p_g_wf x = ()
-lem_fv_bound_in_env g e t (TPrm _g c) p_g_wf x         = ()
-lem_fv_bound_in_env g e t (TAbs _g y t_y k_y p_g_ty e' t' y' p_e'_t') p_g_wf x 
-    = case ( x == y' ) of
-        (True)  -> ()
-        (False) -> () ? lem_fv_bound_in_env (Cons y' t_y g) (unbind y y' e') (unbindT y y' t') 
-                                            p_e'_t' p_y'g_wf x
-          where
-            p_y'g_wf = WFEBind g p_g_wf y' t_y k_y p_g_ty 
-lem_fv_bound_in_env g e t (TApp _g e1 y t_y t' p_e1_tyt' e2 p_e2_ty) p_g_wf x 
-    = () ? lem_fv_bound_in_env g e1 (TFunc y t_y t') p_e1_tyt' p_g_wf x
-         ? lem_fv_bound_in_env g e2 t_y p_e2_ty p_g_wf x
-lem_fv_bound_in_env g e t (TAbsT _g a k e' t' k_t' a' p_e'_t' _) p_g_wf x
-    = case ( x == a' ) of
-        True  -> ()
-        False -> () ? lem_fv_bound_in_env (ConsT a' k g) (unbind_tv a a' e') 
-                                           (unbind_tvT a a' t') p_e'_t' p_a'g_wf x
-          where
-            p_a'g_wf = WFEBindT g p_g_wf a' k
-lem_fv_bound_in_env g e t (TAppT _g e' a k s p_e'_as t' p_g_t') p_g_wf x
-    = () ? lem_fv_bound_in_env   g e' (TPoly a k s) p_e'_as p_g_wf x
-         ? lem_free_bound_in_env g t' k p_g_t' x
-lem_fv_bound_in_env g e t (TLet _g e_y t_y p_ey_ty y e' t' k' p_g_t' y' p_e'_t') p_g_wf x 
-    = case ( x == y' ) of
-        (True)  -> () ? lem_fv_bound_in_env g e_y t_y p_ey_ty p_g_wf x
-        (False) -> () ? lem_fv_bound_in_env g e_y t_y p_ey_ty p_g_wf x
-                      ? lem_fv_bound_in_env (Cons y' t_y g) (unbind y y' e') (unbindT y y' t') 
-                                            p_e'_t' p_y'g_wf x
-          where
-            p_g_ty   = lem_typing_wf g e_y t_y p_ey_ty p_g_wf
-            p_y'g_wf = WFEBind g p_g_wf y' t_y Star p_g_ty
-lem_fv_bound_in_env g e t (TAnn _g e' _t p_e'_t) p_g_wf x 
-    = () ? lem_fv_bound_in_env g e' t p_e'_t p_g_wf x
-         ? lem_free_bound_in_env g t Star p_g_t x
-       where
-         p_g_t = lem_typing_wf g e' t p_e'_t p_g_wf 
-lem_fv_bound_in_env g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_g_wf x
-    = () ? lem_fv_bound_in_env g e s p_e_s p_g_wf x
--}
+          ? lem_erase_subtype g s  t  p_s_t
 
 {-@ lem_fv_subset_binds :: g:Env -> e:Expr -> t:Type -> ProofOf(HasType g e t)
         -> ProofOf(WFEnv g) -> { pf:_ | Set_sub (fv e) (binds g)  && Set_sub (ftv e) (binds g) &&

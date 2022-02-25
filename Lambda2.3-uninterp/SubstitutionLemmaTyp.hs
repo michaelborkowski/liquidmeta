@@ -12,46 +12,22 @@ import qualified Data.Set as S
 
 import Basics
 import LocalClosure
-----import Strengthenings ----
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
 import BasicPropsSubstitution            
-----import PrimitivesFTyping ----
 import BasicPropsEnvironments
 import WellFormedness                    
-----import PrimitivesWFType ----
 import BasicPropsWellFormedness
-----import SystemFLemmasWellFormedness ----
-----import SystemFLemmasWeaken ----
---import SystemFLemmasSubstitution       
-----import SystemFSoundness ----
 import Typing
---import BasicPropsCSubst
---import BasicPropsDenotes
---import Entailments
---import LemmasWeakenWF
 import LemmasWeakenWF          
-----import LemmasWeakenWFTV        ----
 import LemmasWellFormedness
 import SubstitutionLemmaWF
-----import SubstitutionLemmaWFTV   ----
 import LemmasTyping
 import LemmasWeakenTyp
 import LemmasWeakenTypTV
-----import LemmasSubtyping           ----
---import DenotationsSelfify
---import DenotationsSoundness
---import PrimitivesSemantics
---import PrimitivesDenotations
 import LemmasExactness
---import SubstitutionLemmaEnt
 
---{-@ reflect foo63 @-}
---foo63 x = Just x
---foo63 :: a -> Maybe a
-
---        -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) -> e:Expr -> t:Type 
 {-@ lem_subst_typ_tvar1 :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
         -> t_x:Type -> { p_vx_tx:HasType | propOf p_vx_tx == HasType g v_x t_x }
@@ -72,18 +48,14 @@ lem_subst_typ_tvar1 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar1 _env z t' k' p_env_
                                    ? lem_tsubFV_self x v_x t_x (FV z) Base
           Star -> p_vx_tx ? lem_free_bound_in_env g t_x Star p_g_tx x
                           ? lem_tsubFV_notin x v_x t_x 
-                          ---- ? toProof (self t' (FV z) Star  === t' === t_x)
         where
           p_g_tx = lem_typing_wf g v_x t_x p_vx_tx p_g_wf
---          (WFEBind _g p_g_wf _x _tx k_x p_g_tx) = p_env_wf
       (Cons _z _ g'')  -> TVar1 (concatE g (esubFV x v_x g''))  -- z <> x, t = self t' (FV z)
                                 (z ? lem_in_env_esub g'' x v_x z
                                    ? lem_in_env_concat g g'' z )
                                 (tsubFV x v_x t') k' p_env'_t'vx
                                    ? lem_tsubFV_self2 x v_x t' z k'
         where
---          p_xg_wf     = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---          (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
           p_vx_er_tx  = lem_typing_hasftype g v_x t_x p_vx_tx p_g_wf
           p_env'_t'vx = lem_subst_wf g g'' x v_x t_x p_vx_er_tx t' k' p_env_t
 
@@ -105,13 +77,11 @@ lem_subst_typ_tvar2 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar2 n env_ z _t p_z_t w
             (False) -> p_z_t ? lem_tsubFV_notin x v_x (t 
                                    ? lem_free_bound_in_env g t Star p_g_t x)
                 where
---                  (WFEBind g_ p_g_wf _ _ _ _) = p_env_wf
                   p_g_t = lem_typing_wf g (FV z) t p_z_t p_g_wf
         (Cons _w _tw g'') -> case (x == z) of
             (True)  -> lem_weaken_typ (concatE g (esubFV x v_x g'')) Empty 
                                       v_x (tsubFV x v_x t) p_gg''_vx_tx w (tsubFV x v_x t_w)
                          where
---                           (WFEBind _gg'' p_gg''_wf _ _ _ _) = p_env_wf
                            w = w_ ? lem_in_env_esub g'' x v_x w_
                                   ? lem_in_env_concat g g'' w_
                            p_gg''_vx_tx = lem_subst_typ g g'' x v_x t_x p_vx_tx p_g_wf
@@ -121,7 +91,6 @@ lem_subst_typ_tvar2 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar2 n env_ z _t p_z_t w
                                 ? lem_in_env_concat (Cons x t_x g) g'' z) 
                              (tsubFV x v_x t) p_z_tvx w (tsubFV x v_x t_w)
                          where
---                           (WFEBind _gg'' p_gg''_wf _ _ _ _) = p_env_wf
                            w = w_ ? lem_in_env_esub g'' x v_x w_
                                   ? lem_in_env_concat g g'' w_
                            p_z_tvx = lem_subst_typ g g'' x v_x t_x p_vx_tx
@@ -145,7 +114,6 @@ lem_subst_typ_tvar3 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar3 n env_ z _t p_z_t a
             (True)  -> lem_weaken_tv_typ (concatE g (esubFV x v_x g'')) Empty 
                                          v_x (tsubFV x v_x t) p_gg''_vx_tx a k_a
                          where
---                           (WFEBindT _gg'' p_gg''_wf _ _) = p_env_wf
                            a = a_ ? lem_in_env_esub g'' x v_x a_
                                   ? lem_in_env_concat g g'' a_
                            p_gg''_vx_tx = lem_subst_typ g g'' x v_x t_x p_vx_tx p_g_wf
@@ -155,7 +123,6 @@ lem_subst_typ_tvar3 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar3 n env_ z _t p_z_t a
                                 ? lem_in_env_concat (Cons x t_x g) g'' z) 
                              (tsubFV x v_x t) p_z_tvx a k_a
                          where
---                           (WFEBindT _gg'' p_gg''_wf _ _) = p_env_wf
                            a = a_ ? lem_in_env_esub g'' x v_x a_
                                   ? lem_in_env_concat g g'' a_
                            p_z_tvx = lem_subst_typ g g'' x v_x t_x p_vx_tx
@@ -177,8 +144,6 @@ lem_subst_typ_tabs g g' x v_x t_x p_vx_tx p_g_wf e t
   = TAbs n' (concatE g (esubFV x v_x g')) (tsubFV x v_x t_z) k_z p_g'g_tzvx
          (subFV x v_x e') (tsubFV x v_x t') nms' mk_p_yg'g_e'vx_t'vx
       where
---        p_xg_wf          = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
         p_vx_er_tx       = lem_typing_hasftype g v_x t_x p_vx_tx p_g_wf
         p_g'g_tzvx       = lem_subst_wf g g' x v_x t_x p_vx_er_tx t_z k_z p_env_tz
         {-@ mk_p_yg'g_e'vx_t'vx :: { y:Vname | NotElem y nms' } 
@@ -192,8 +157,6 @@ lem_subst_typ_tabs g g' x v_x t_x p_vx_tx p_g_wf e t
                                                (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) y e'
                                          ? lem_commute_tsubFV_unbindT  x 
                                                (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) y t' 
---          where
---            p_yenv_wf         = WFEBind (concatE (Cons x t_x g) g') p_env_wf y t_z k_z p_env_tz
         nms'                  = unionEnv nms (concatE (Cons x t_x g) g')
         n'                    =  n + 2 * (typSize p_vx_tx)
 
@@ -217,6 +180,7 @@ lem_subst_typ_tapp g g' x v_x t_x p_vx_tx p_g_wf e t
                                           (TFunc t_z t') p_env_e'_tzt'
         p_g'g_ezvx_tzvx   = lem_subst_typ g g' x v_x t_x p_vx_tx p_g_wf e_z t_z p_env_ez_tz 
         n'                = max (typSize p_g'g_e'vx_tzt'vx) (typSize p_g'g_ezvx_tzvx)
+
 {-@ lem_subst_typ_tabst :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
         -> t_x:Type -> { p_vx_tx:HasType | propOf p_vx_tx == HasType g v_x t_x }
@@ -233,8 +197,6 @@ lem_subst_typ_tabst g g' x v_x t_x p_vx_tx p_g_wf e t
   = TAbsT n' (concatE g (esubFV x v_x g')) k (subFV x v_x e') (tsubFV x v_x t') nms'
           mk_p_a'env'_e'_t'
       where
---        p_xg_wf          = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
         {-@ mk_p_a'env'_e'_t' :: { a':Vname | NotElem a' nms' }
               -> { pf:HasType | propOf pf ==
                       HasType (ConsT a' k (concatE g (esubFV x v_x g')))
@@ -247,8 +209,6 @@ lem_subst_typ_tabst g g' x v_x t_x p_vx_tx p_g_wf e t
                                      (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) a' e'
                                  ? lem_commute_tsubFV_unbind_tvT x
                                      (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) a' t'
---          where
---            p_a'env_wf       = WFEBindT env p_env_wf a' k
         nms'                 = unionEnv nms (concatE (Cons x t_x g) g')
         n'                   =  n + 2 * (typSize p_vx_tx)
           
@@ -270,12 +230,9 @@ lem_subst_typ_tappt g g' x v_x t_x p_vx_tx p_g_wf e t
           ? lem_commute_tsubFV_tsubBTV t' x (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) s
           ? toProof ( tdepth (tsubFV x v_x (tsubBTV t' s)) === tdepth (tsubBTV t' s)  ) 
       where
---        p_xg_wf          = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
         p_vx_er_tx    = lem_typing_hasftype g v_x t_x p_vx_tx p_g_wf
         p_env'_e'_a1s = lem_subst_typ g g' x v_x t_x p_vx_tx p_g_wf e' (TPoly k1 s) p_e'_a1s
         p_env'_t'     = lem_subst_wf  g g' x v_x t_x p_vx_er_tx t' k1 p_env_t'
---        n'            = max (typSize p_env'_e'_a1s) (tdepth (tsubBTV (tsubFV x v_x t') (tsubFV x v_x s))
         n'            = n + 2*(typSize p_vx_tx)
                       
  
@@ -295,10 +252,7 @@ lem_subst_typ_tlet g g' x v_x t_x p_vx_tx p_g_wf e t
   = TLet n' (concatE g (esubFV x v_x g')) (subFV x v_x e_z) (tsubFV x v_x t_z) p_g'g_ezvx_tzvx
          (subFV x v_x e') (tsubFV x v_x t) k p_g'g_t'vx nms' mk_p_yg'g_e'vx_tvx
       where
---        p_xg_wf     = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
         p_vx_er_tx       = lem_typing_hasftype g v_x t_x p_vx_tx p_g_wf
---        p_env_tz         = lem_typing_wf env_ e_z t_z p_env_ez_tz p_env_wf
         p_g'g_ezvx_tzvx  = lem_subst_typ g g' x v_x t_x p_vx_tx p_g_wf e_z t_z p_env_ez_tz
         p_g'g_t'vx       = lem_subst_wf  g g' x v_x t_x p_vx_er_tx t k p_env_t
         {-@ mk_p_yg'g_e'vx_tvx :: { y:Vname | NotElem y nms' } 
@@ -313,8 +267,6 @@ lem_subst_typ_tlet g g' x v_x t_x p_vx_tx p_g_wf e t
                                                (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) y e'
                                          ? lem_commute_tsubFV_unbindT  x 
                                                (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) y t
---          where
---            p_yenv_wf        = WFEBind (concatE (Cons x t_x g) g') p_env_wf y t_z Star p_env_tz
         nms'                 = unionEnv nms (concatE (Cons x t_x g) g')
         n'                   = n + 2 * (typSize p_vx_tx)
 
@@ -334,13 +286,10 @@ lem_subst_typ_tsub g g' x v_x t_x p_vx_tx p_g_wf e t
   = TSub n' (concatE g (esubFV x v_x g')) (subFV x v_x e) (tsubFV x v_x s) p_g'g_e_s
          (tsubFV x v_x t) k p_g'g_t p_g'g_s_t
       where
---        p_xg_wf    = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _) = p_xg_wf
         p_vx_er_tx = lem_typing_hasftype g v_x t_x p_vx_tx p_g_wf
         p_g'g_e_s  = lem_subst_typ g g' x v_x t_x p_vx_tx p_g_wf e s p_env_e_s
         p_g'g_t    = lem_subst_wf  g g' x v_x t_x p_vx_er_tx t k p_env_t
---        p_env_s    = lem_typing_wf (concatE (Cons x t_x g) g') e s p_env_e_s p_env_wf
-        p_g'g_s_t  = lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf s {-Star p_env_s-} t {-k p_env_t-} p_env_s_t
+        p_g'g_s_t  = lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf s  t  p_env_s_t
         n'         = max (typSize p_g'g_e_s) (subtypSize p_g'g_s_t)
 
 {-@ lem_subst_typ :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
@@ -384,10 +333,6 @@ lem_subst_typ g g' x v_x t_x p_vx_tx p_g_wf e t (TAnn n env_ e' t_ p_env_e'_t)
 lem_subst_typ g g' x v_x t_x p_vx_tx p_g_wf e t p_e_t@(TSub {}) 
   = lem_subst_typ_tsub g g' x v_x t_x p_vx_tx p_g_wf e t p_e_t
 
-----        -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) 
-----        -> s:Type -> k_s:Kind -> ProofOf(WFType (concatE (Cons x t_x g) g') s k_s)
-----        -> t:Type -> k_t:Kind -> ProofOf(WFType (concatE (Cons x t_x g) g') t k_t)
---                      subtypSize' p_s_t == subtypSize' p'_s_t } / [subtypSize p_s_t, 0] @- }
 {-@ lem_subst_sub_sbase :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
         -> t_x:Type -> { p_vx_tx:HasType | propOf p_vx_tx == HasType g v_x t_x }
@@ -404,8 +349,6 @@ lem_subst_sub_sbase g g' x v_x t_x p_vx_tx p_g_wf s {-k_s p_env_s-} t {-k_t p_en
   = SBase (concatE g (esubFV x v_x g')) b (psubFV x v_x ps) (psubFV x v_x qs) nms'
           mk_imp_ps'_qs'
       where
---        p_xg_wf          = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _)       = p_xg_wf
         {-@ mk_imp_ps'_qs' :: { y:Vname | NotElem y nms' }
               -> ProofOf(Implies (Cons y (TRefn b PEmpty) (concatE g (esubFV x v_x g')))
                                  (unbindP y (psubFV x v_x ps)) (unbindP y (psubFV x v_x qs))) @-}
@@ -419,11 +362,6 @@ lem_subst_sub_sbase g g' x v_x t_x p_vx_tx p_g_wf s {-k_s p_env_s-} t {-k_t p_en
                                         === TRefn b (psubFV x v_x PEmpty) === TRefn b PEmpty )
         nms'             = x:(unionEnv nms (concatE g g'))
 
---        -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) -> s:Type -> t:Type
---
---        -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) 
---        -> s:Type -> k_s:Kind -> ProofOf(WFType (concatE (Cons x t_x g) g') s k_s)
---        -> t:Type -> k_t:Kind -> ProofOf(WFType (concatE (Cons x t_x g) g') t k_t)
 {-@ lem_subst_sub_sfunc :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
         -> t_x:Type -> { p_vx_tx:HasType | propOf p_vx_tx == HasType g v_x t_x }
@@ -448,33 +386,14 @@ lem_subst_sub_sfunc g g' x v_x t_x p_vx_tx p_g_wf ty1 {-ky1 p_env_ty1-} ty2 {-ky
                               (unbindT y (tsubFV x v_x t1)) (unbindT y (tsubFV x v_x t2)) &&
                                 sizeOf pf <= n + 2 * (sizeOf p_vx_tx) } @-}
         mk_p_yg'g_t1vx_t2vx y = lem_subst_sub g (Cons y s2 g') x v_x t_x p_vx_tx p_g_wf
-                                         (unbindT y t1) {-k_t1 (mk_p_ys2env_t1 y)-}
-                                         (unbindT y t2) {-k_t2 (mk_p_yenv_t2 y)-} (mk_p_yenv_t1_t2 y)
+                                         (unbindT y t1) (unbindT y t2) (mk_p_yenv_t1_t2 y)
                                          ? lem_commute_tsubFV_unbindT  x
                                                (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) y t1
                                          ? lem_commute_tsubFV_unbindT  x 
                                                (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) y t2 
---          where
---            p_yenv_wf         = WFEBind (concatE (Cons x t_x g) g') p_env_wf y s2 k_s2 p_env_s2 
---        {-@ mk_p_ys2env_t1 :: { y:Vname | NotElem y nms' }
---              -> ProofOf(WFType (Cons y s2 (concatE (Cons x t_x g) g')) (unbindT y t1) k_t1) @-}
---        mk_p_ys2env_t1  y     = lem_narrow_wf (concatE (Cons x t_x g) g') Empty  
---                                              y s2 {-k_s2 p_env_s2-} s1 {-k_s1 p_env_s1-}
---                                              p_s2_s1 (unbindT y t1) k_t1 (mk_p_yenv_t1 y) 
---        (WFFunc _ _s1 k_s1 p_env_s1 _ k_t1 nms1 mk_p_yenv_t1) 
---                         = lem_wffunc_for_wf_tfunc (concatE (Cons x t_x g) g') s1 t1 ky1 p_env_ty1
---        (WFFunc _ _s2 k_s2 p_env_s2 _ k_t2 nms2 mk_p_yenv_t2)
---                         = lem_wffunc_for_wf_tfunc (concatE (Cons x t_x g) g') s2 t2 ky2 p_env_ty2
---                               (g' ? toProof (not (in_env x g'))) ) s2 t2 ky2 p_env_ty2
---        p_xg_wf          = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _)      = p_xg_wf
-        p_s2vx_s1vx      = lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf 
-                                         s2 {-k_s2 p_env_s2-} s1 {-k_s1 p_env_s1-} p_s2_s1 
-        nms'             = x:(unionEnv {-(union-} nms {-(union nms1 nms2))-} (concatE g g'))
+        p_s2vx_s1vx      = lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf s2 s1 p_s2_s1 
+        nms'             = x:(unionEnv  nms  (concatE g g'))
         n'               = n + 2 * (typSize p_vx_tx)
-
-
-
  
 {-@ lem_subst_sub_switn :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
@@ -492,20 +411,7 @@ lem_subst_sub_switn g g' x v_x t_x p_vx_tx p_g_wf t {-k p_env_t-} t2 {-k2 p_env_
   = SWitn n' (concatE g (esubFV x v_x g')) (subFV x v_x v_z) (tsubFV x v_x t_z) p_g'g_vzvx_tzvx
           (tsubFV x v_x t) (tsubFV x v_x t') p_g'g_tvx_t'vzvx
       where
---        p_xg_wf          = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _)      = p_xg_wf
---        (WFExis _ _ k_z p_env_tz _ k' nms mk_p_yenv_t') 
---                         = lem_wfexis_for_wf_texists (concatE (Cons x t_x g) g') t_z t' k2 p_env_t2
         p_g'g_vzvx_tzvx  = lem_subst_typ g g' x v_x t_x p_vx_tx p_g_wf v_z t_z p_env_vz_tz
---        y                = fresh_var nms (concatE (Cons x t_x g) g')
---        p_yenv_wf        = WFEBind env p_env_wf y t_z k_z p_env_tz
---        p_env_vz_ertz    = lem_typing_hasftype (concatE (Cons x t_x g) g') 
---                                               v_z t_z p_env_vz_tz p_env_wf
---        p_env_t'vz       = lem_subst_wf (concatE (Cons x t_x g) g') Empty y v_z t_z p_env_vz_ertz 
---                              {-p_yenv_wf-} (unbindT y t') k' (mk_p_yenv_t' y)
---                              ? lem_tsubFV_unbindT y v_z (t'
---                                    ? lem_free_bound_in_env (concatE (Cons x t_x g) g') 
---                                                            t2 k2 p_env_t2 y)
         p_g'g_tvx_t'vzvx = lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf t {-k p_env_t -}
                                          (tsubBV v_z t') {-k' p_env_t'vz-} p_env_t_t'vz
                                          ? lem_commute_tsubFV_tsubBV v_z x 
@@ -530,22 +436,15 @@ lem_subst_sub_sbind g g' x v_x t_x p_vx_tx p_g_wf t1 {-k1 p_env_t1-} t' {-k' p_e
                                  (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) t')
           nms' mk_p_wenv'_tvx_t'vx
       where 
---        p_xg_wf          = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _)       = p_xg_wf
         {-@ mk_p_wenv'_tvx_t'vx :: { w:Vname | NotElem w nms'}
                -> { pf:Subtype | propOf pf ==
                        Subtype (Cons w (tsubFV x v_x t_z) (concatE g (esubFV x v_x g')))
                                (unbindT w (tsubFV x v_x t)) (tsubFV x v_x t') &&
                                  sizeOf pf <= n + 2 * (sizeOf p_vx_tx) } @-}
         mk_p_wenv'_tvx_t'vx w = lem_subst_sub g (Cons w t_z g') x v_x t_x p_vx_tx p_g_wf
-                                         (unbindT w t) {-k (mk_p_wenv_t w) -}
-                                         t' {-k' p_wenv_t'-} (mk_p_wenv_t_t' w)
+                                         (unbindT w t)  t'  (mk_p_wenv_t_t' w)
                                          ? lem_commute_tsubFV_unbindT x 
                                              (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) w t
---          where
---            p_wenv_t'        = lem_weaken_wf     env Empty t' k' p_env_t' w t_z
---        (WFExis _ _ k_z p_env_tz _ k nms1 mk_p_wenv_t) 
---                         = lem_wfexis_for_wf_texists (concatE (Cons x t_x g) g') t_z t k1 p_env_t1
         nms'             = x:(unionEnv nms (concatE g g'))
         n'               = n + 2 * (typSize p_vx_tx)
 
@@ -572,32 +471,15 @@ lem_subst_sub_spoly g g' x v_x t_x p_vx_tx p_g_wf t1 {-k1@Star p_env_t1-} t2 {-k
                                 sizeOf pf <= n + 2 * (sizeOf p_vx_tx) } @-}
         mk_p_a1g'g_t1'vx_t2'vx a1 = lem_subst_sub g (ConsT (a1 ? lem_in_env_concat g g' a1) k' g') 
                                       x v_x t_x p_vx_tx p_g_wf
-                                      (unbind_tvT a1 t1') {-k_t1' (mk_p_a1env_t1' a1)-}
-                                      (unbind_tvT a1 t2') {-k_t2' (mk_p_a1env_t2' a1)-}
+                                      (unbind_tvT a1 t1') (unbind_tvT a1 t2') 
                                       (mk_p_a1env_t1'_t2' a1)
                                       ? lem_commute_tsubFV_unbind_tvT x 
                                           (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) a1 t1'
                                       ? lem_commute_tsubFV_unbind_tvT x 
                                           (v_x ? lem_typ_islc g v_x t_x p_vx_tx p_g_wf) a1 t2'
-          where
---            p_a1env_wf          = WFEBindT env p_env_wf a1  k'
---        (WFPoly _ _ _ k_t1' nms1 mk_p_a1env_t1')  
---                             = lem_wfpoly_for_wf_tpoly env k' t1' p_env_t1
---        (WFPoly _ _ _ k_t2' nms2 mk_p_a1env_t2')
---                             = lem_wfpoly_for_wf_tpoly env k' t2' p_env_t2
---        p_xg_wf              = lem_truncate_wfenv (Cons x t_x g) g' p_env_wf
---        (WFEBind _ p_g_wf _ _ _ _)  = p_xg_wf
         nms'             = unionEnv nms (concatE (Cons x t_x g) g')
         n'               = n + 2 * (typSize p_vx_tx)
-{-lem_subst_sub_spoly g g' x v_x t_x p_vx_tx p_env_wf t1 Base p_env_t1 t2 k2   p_env_t2 
-                    (SPoly _ env k' t1' t2' nms mk_p_a1env_t1'_t2') 
-  = impossible ("by lemma" ? lem_wf_tpoly_star env k' t1' p_env_t1)
-lem_subst_sub_spoly g g' x v_x t_x p_vx_tx p_env_wf t1 k1   p_env_t1 t2 Base p_env_t2 
-                    (SPoly _ env k' t1' t2' nms mk_p_a1env_t1'_t2') 
-  = impossible ("by lemma" ? lem_wf_tpoly_star env k' t2' p_env_t2)-}
------}
 
---        -> ProofOf(WFEnv (concatE (Cons x t_x g) g') ) -> s:Type -> t:Type
 {-@ lem_subst_sub :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { x:Vname | (not (in_env x g)) && not (in_env x g') } -> v_x:Value
         -> t_x:Type -> { p_vx_tx:HasType | propOf p_vx_tx == HasType g v_x t_x }
@@ -611,10 +493,8 @@ lem_subst_sub :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf s {-k_s p_env_s-} t {-k_t p_env_t-} p_s_t@(SBase {}) 
     = lem_subst_sub_sbase g g' x v_x t_x p_vx_tx p_g_wf s {-k_s p_env_s-} t {-k_t p_env_t-} p_s_t
-lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf ty1 {-ky1 p_env_ty1-} ty2 {-ky2 p_env_ty2-}
-              p_ty1_ty2@(SFunc {}) 
-    = lem_subst_sub_sfunc g g' x v_x t_x p_vx_tx p_g_wf ty1 {-ky1 p_env_ty1-} ty2 {-ky2 
-                          p_env_ty2-} p_ty1_ty2
+lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf ty1  ty2  p_ty1_ty2@(SFunc {}) 
+    = lem_subst_sub_sfunc g g' x v_x t_x p_vx_tx p_g_wf ty1 ty2  p_ty1_ty2
 lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf t {-k p_env_t-} t2 {-k2 p_env_t2-} p_t_t2@(SWitn {}) 
     = lem_subst_sub_switn g g' x v_x t_x p_vx_tx p_g_wf t {-k p_env_t-} t2 {-k2 p_env_t2-} p_t_t2
 lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf t1 {-k1 p_env_t1-} t' {-k' p_env_t'-} p_t1_t'@(SBind {}) 

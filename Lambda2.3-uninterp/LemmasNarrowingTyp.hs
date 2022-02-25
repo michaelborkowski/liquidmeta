@@ -190,7 +190,6 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) &&
                               sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + 1 }
          / [ subtypSize p_s_t, 0] @-}
---                              && subtypSize' p_s_t == subtypSize' p'_s_t } / [subtypSize p_s_t, 0] @-}
 lem_narrow_sub_sbase :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
 lem_narrow_sub_sbase g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf s {-k_s p_env_s-} t {-k_t p_env_t-}
@@ -224,10 +223,8 @@ lem_narrow_sub_sfunc g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf ty1 {-ky1 p_env_t
                                                      (unbindT y t1) (unbindT y t2) &&
                                 sizeOf pf <= n + subtypSize p_sx_tx + 1 } @-}
         mk_p_yenv'_t1_t2 y = lem_narrow_sub g (Cons y s2 g') x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf
-                                       (unbindT y t1) {-k_t1 p_yenv_t1 -}
-                                       (unbindT y t2) {-k_t2 p_yenv_t2 -} (mk_p_yenv_t1_t2 y)
-        p_env'_s2_s1  = lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
-                                       s2 {-k_s2 p_env_s2-} s1 {-k_s1 p_env_s1-} p_s2_s1
+                                       (unbindT y t1) (unbindT y t2) (mk_p_yenv_t1_t2 y)
+        p_env'_s2_s1  = lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf s2 s1 p_s2_s1
         nms'               = unionEnv nms (concatE (Cons x s_x g) g')
         n'                 = n + subtypSize p_sx_tx + 1
 
@@ -296,8 +293,7 @@ lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 {-k1 p_env_t1-
                                                      (unbind_tvT a t1') (unbind_tvT a t2') &&
                                 sizeOf pf <= n + subtypSize p_sx_tx + 1 } @-}
         mk_p_env'_t1'_t2' a = lem_narrow_sub g (ConsT a k g') x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
-                                  (unbind_tvT a t1') {-k_t1' p_aenv_t1'-} 
-                                  (unbind_tvT a t2') {-k_t2' p_aenv_t2'-} (mk_p_env_t1'_t2' a)
+                                  (unbind_tvT a t1') (unbind_tvT a t2') (mk_p_env_t1'_t2' a)
         nms'               = unionEnv nms (concatE (Cons x s_x g) g')
         n'                 = n + subtypSize p_sx_tx + 1
 
@@ -311,24 +307,14 @@ lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 {-k1 p_env_t1-
                               sizeOf p'_s_t <= sizeOf p_s_t + sizeOf p_sx_tx + 1 }
          / [ subtypSize p_s_t, 1] @-}
 lem_narrow_sub :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
-                    -> Type {-> Kind -> WFType-} -> Type {-> Kind -> WFType-} -> Subtype -> Subtype
-lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf s {-k_s p_env_s-} t {-k_t p_env_t-}
-              p_s_t@(SBase {}) -- p_env_s_t
-  = lem_narrow_sub_sbase g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
-                         s {-k_s p_env_s-} t {-k_t p_env_t-} p_s_t
-lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf ty1 {-ky1 p_env_ty1-} ty2 {-ky2 p_env_ty2-}
-               p_ty1_ty2@(SFunc {}) 
-  = lem_narrow_sub_sfunc g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
-                         ty1 {-ky1 p_env_ty1-} ty2 {-ky2 p_env_ty2-} p_ty1_ty2
-lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t {-k p_env_t-} t2 {-k2 p_env_t2-}
-               p_t_t2@(SWitn {}) 
-  = lem_narrow_sub_switn g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
-                         t {-k p_env_t-} t2 {-k2 p_env_t2-} p_t_t2
-lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 {-k1 p_env_t1-} t' {-k' p_env_t'-}
-               p_t1_t'@(SBind {}) 
-  = lem_narrow_sub_sbind g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
-                         t1 {-k1 p_env_t1-} t' {-k' p_env_t'-} p_t1_t'
-lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 {-k1 p_env_t1-} t2 {-k2 p_env_t2-}
-               p_t1_t2@(SPoly {}) 
-  = lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf 
-                         t1 {-k1 p_env_t1-} t2 {-k2 p_env_t2-} p_t1_t2
+                    -> Type -> Type -> Subtype -> Subtype
+lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf s t p_s_t@(SBase {}) -- p_env_s_t
+  = lem_narrow_sub_sbase g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf s t p_s_t
+lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf ty1 ty2 p_ty1_ty2@(SFunc {}) 
+  = lem_narrow_sub_sfunc g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf ty1 ty2 p_ty1_ty2
+lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t t2 p_t_t2@(SWitn {}) 
+  = lem_narrow_sub_switn g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t t2 p_t_t2
+lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 t' p_t1_t'@(SBind {}) 
+  = lem_narrow_sub_sbind g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 t' p_t1_t'
+lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 t2 p_t1_t2@(SPoly {}) 
+  = lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 t2 p_t1_t2

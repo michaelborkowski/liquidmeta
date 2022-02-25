@@ -14,10 +14,6 @@ import Basics
 import SystemFWellFormedness
 import SystemFTyping
 
-{-@ reflect foo05 @-}
-foo05 :: a -> Maybe a
-foo05 x = Just x
-
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : WELL-FORMEDNESS of TYPES and ENVIRONMENTS
 -----------------------------------------------------------------------------

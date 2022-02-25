@@ -18,13 +18,11 @@ import SystemFTyping
 import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
---import BasicPropsWellFormedness
 
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : the Typing Relation and the Subtyping Relation
 -----------------------------------------------------------------------------
 
---                       Set_sub (ftv p') (Set_cup (freeTV t) (ftv e))  &&
 {-@ reflect eqlPred @-}               -- new definition avoids dealing with ps inside eqlPred
 {-@ eqlPred :: { t:Type | isTRefn t } -> e:Expr   
         -> { p':Expr | self t e Base == push (PCons p' PEmpty) t &&
@@ -38,24 +36,13 @@ eqlPred (TRefn b ps) e = App (App (AppT (Prim Eql) (TRefn b PEmpty)) (BV 0)) e
 lem_eqlPred_islc_at :: Basic -> Preds -> Expr -> Proof
 lem_eqlPred_islc_at b ps e = () ? lem_islc_at_weaken 0 0 1 0 e
 
-{-
-{-@ reflect selfify @-} 
-{-@ selfify :: ps:Preds -> b:Basic -> e:Expr
-        -> { ps':Preds | fvP ps' == Set_cup (fvP ps) (fv e) && 
-                         TRefn b ps' == self (TRefn b ps) e Base } @-}
-selfify :: Preds -> Basic -> Expr -> Preds
-selfify ps b e = PCons  (App (App (AppT (Prim Eql) (TRefn b ps)) (BV 0)) e)  ps
--}
-
---                             Set_sub (freeTV t') (Set_cup (freeTV t) (ftv e)) &&
-{-@ reflect self @-} -- Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (freeBV e)) && 
+{-@ reflect self @-} 
 {-@ self :: t:Type -> e:Expr -> k:Kind
               -> { t':Type | Set_sub (free t') (Set_cup (free t) (fv e)) &&
                              (isTRefn t => isTRefn t') && (noExists t => noExists t' ) &&
                              tdepth t == tdepth t' &&
                              erase t == erase t' && ( (k == Star) => (t == t') ) } @-}
 self :: Type -> Expr -> Kind -> Type
---self t@(TRefn b ps)   e Base = TRefn b (PCons  (App (App (AppT (Prim Eql) t) (BV 0)) e)  ps)
 self t@(TRefn b ps)   e Base = TRefn b (PCons  (eqlPred (TRefn b ps) e)  ps)
 self (TFunc    t_z t) e Base = TFunc   t_z t
 self (TExists  t_z t) e Base = TExists t_z (self t e Base)
@@ -75,21 +62,10 @@ lem_self_islct_at j t@(TRefn b ps)   e Base = case b of
   _       -> () ? lem_eqlPred_islc_at b ps e
                 ? lem_islc_at_weaken 0 0 (j+1) 0 e
                 ? lem_islc_at_weaken 1 0 (j+1) 0 (eqlPred (TRefn b ps) e)
-  -- TRefn b (PCons  (eqlPred (TRefn b ps) e)  ps)
 lem_self_islct_at j (TFunc    t_z t) e Base = ()
 lem_self_islct_at j (TExists  t_z t) e Base = lem_self_islct_at (j+1) t e Base
 lem_self_islct_at j (TPoly    k_a t) e Base = ()
 lem_self_islct_at j t                e Star = ()
-
-{- errs
-{-@ lem_self_push :: t:Type -> e:Expr -> ps:Preds
-        -> { pf:_ | self (push ps t) e Base == self t e Base } @-}
-lem_self_push :: Type -> Expr -> Preds -> Proof
-lem_self_push t@(TRefn b ps)   e qs = () -- -- TRefn b (PCons  (eqlPred (TRefn b ps) e)  ps)
-lem_self_push (TFunc    t_z t) e qs = ()
-lem_self_push (TExists  t_z t) e qs = lem_self_push t e qs
-lem_self_push (TPoly    k_a t) e qs = ()
--}
 
 {-@ lem_unbindT_self :: y:Vname -> t:Type -> { e:Expr | isLC e } -> k:Kind
         -> { pf:_ | unbindT y (self t e k) == self (unbindT y t) e k } @-}
@@ -100,7 +76,6 @@ lem_unbindT_self y t e k = lem_openT_at_self 0 y t e k
         -> { pf:_ | openT_at j y (self t e k) == self (openT_at j y t) e k } @-}
 lem_openT_at_self :: Index -> Vname -> Type -> Expr -> Kind -> Proof
 lem_openT_at_self j y (TRefn b ps)    e Base = lem_open_at_lc_at (j+1) y 0 0 e
---                                             ? lem_openT_at_shiftT_at j y 0 (TRefn b ps)
 lem_openT_at_self j y (TFunc t_x t)   e Base = ()
 lem_openT_at_self j y (TExists t_x t) e Base = lem_openT_at_self (j+1) y t e Base
 lem_openT_at_self j y (TPoly k_a t)   e Base = ()
@@ -113,6 +88,14 @@ lem_open_at_eqlPred ::  Vname -> Basic -> Preds -> Expr -> Proof
 lem_open_at_eqlPred y b ps e = () ? lem_open_at_lc_at 0 y 0 0 e
                                   ? toProof (unbind y (Prim Eql) === Prim Eql)
                                   ? toProof (unbind y (BV 0) === FV y) 
+
+{-@ lem_tsubFTV_eqlPred :: a:Vname -> t_a:UserType -> { b:Basic | not (b == FTV a) } 
+        -> ps:Preds  -> { e:Expr | not (Set_mem a (ftv e)) }
+        -> { pf:_ | subFTV a t_a (eqlPred (TRefn b ps) e) == eqlPred (TRefn b ps) e } @-}
+lem_tsubFTV_eqlPred :: Vname -> Type -> Basic -> Preds -> Expr -> Proof
+lem_tsubFTV_eqlPred a t_a b ps e 
+  = () ? lem_psubFTV_notin a t_a PEmpty
+       ? lem_subFTV_notin  a t_a e
 
 {-@ lem_tsubFV_self :: z:Vname -> v_z:Expr -> t:Type -> e:Expr -> k:Kind
         -> { pf:_ | tsubFV z v_z (self t e k) == self (tsubFV z v_z t) (subFV z v_z e) k } @-}
@@ -156,87 +139,10 @@ lem_tsubBV_at_self j v_z (TExists t_x t) e Base
 lem_tsubBV_at_self j v_z (TPoly k_a t)   e Base = ()
 lem_tsubBV_at_self j v_z t               e Star = ()
 
-{-@ lem_tsubFTV_self :: a:Vname -> t_a:UserType -> t:Type 
-        -> { e:Expr | not (Set_mem a (ftv e)) } -> k:Kind
-        -> { pf:_ | tsubFTV a t_a (self t e k) == self (tsubFTV a t_a t) e k } @-}
-lem_tsubFTV_self :: Vname -> Type -> Type -> Expr -> Kind -> Proof
-lem_tsubFTV_self a t_a t@(TRefn b ps)    e Base = case b of
-  (FTV a') | a' == a  -> case t_a of 
-    (TRefn b_a  qs_a) -> undefined {- () 
-{- ? toProof (
-         tsubFTV a t_a (self t e Base) === tsubFTV a t_a (push (eqlPred t e) t) -}
-       ? lem_self_push t_a e (psubFTV a t_a ps)
-       ? lem_subFTV_notin a t_a e
-       ? lem_subFTV_push a t_a (PCons (eqlPred t e) PEmpty) t 
-       ? lem_tsubFTV_trefn a t_a t
---     === push (subFTV a t_a (eqlPred t e)) (tsubFTV a t_a t)
-       ? lem_tsubFTV_eqlPred a t_a t e   -}
-{-     === push (App (App (AppT (Prim Eql) (tsubFTV a t_a t)) (BV z)) (subFTV a t_a e)) (tsubFTV a t_a t)
-     === push (eqlPred (tsubFTV a t_a t) (subFTV a t_a e)) (tsubFTV a t_a t)
-     === self (tsubFTV a t_a t) (subFTV a t_a e) Base )
-    (TFunc   t_y t')  -> ()
-    (TExists t_y t')  -> ()
-    (TPoly   k1 t')   -> ()  -}
-  _                   -> ()
-lem_tsubFTV_self a t_a (TFunc   t_x t)   e Base = ()
-lem_tsubFTV_self a t_a (TExists   t_x t) e Base = () ? lem_tsubFTV_self a t_a t e Base
-lem_tsubFTV_self a t_a (TPoly    k_a' t) e Base = ()  
-lem_tsubFTV_self a t_a t                 e Star = ()
-
-{-
-{-@ lem_subFV_eqlPred :: y:Vname -> v_y:Value -> { t:Type | isTRefn t } -> e:Expr
-        -> { pf:_ | subFV y v_y (eqlPred t e) == eqlPred (tsubFV y v_y t) (subFV y v_y e) } @-}
-lem_subFV_eqlPred :: Vname -> Expr -> Type -> Expr -> Proof
-lem_subFV_eqlPred y v_y t e = () ? lem_subFV_notin y v_y (BV 0)
--}
-
-{-
-{-@ lem_tsubFTV_eqlPred :: a:Vname -> { t_a:UserType | isTRefn t_a } 
-        -> { t:Type | isTRefn t } -> e:Expr
-        -> { pf:_ | subFTV a t_a (eqlPred t e) == eqlPred (tsubFTV a t_a t) (subFTV a t_a e) } @-}
-lem_tsubFTV_eqlPred :: Vname -> Type -> Type -> Expr -> Proof
-lem_tsubFTV_eqlPred a t_a@(TRefn b' qs') (TRefn b ps) e = case b of 
-  (FTV a') | a' == a  -> () ? lem_subFTV_notin  a t_a (BV 0)
---                            ? lem_psubFTV_notin a t_a PEmpty
-                            ? lem_subFTV_notin  a t_a (Prim Eql)
-                            ? lem_tsubFTV_trefn a t_a (TRefn b ps)
-  _                   -> ()
--- eqlPred (TRefn b ps) e = App (App (AppT (Prim Eql) (TRefn b PEmpty)) (BV 0)) e
-  need tsubFTV a t_a (TRefn b PEmpty) === push PEmpty t_a === t_a === TRefn qs'
-   === ers $ tsubFTV a t_a (TRefn b ps) === push ps t_a 
--}
-{-
-{-@ lem_tsubFV_self0 :: z:Vname -> v_z:Expr -> t:Type -> { x:Vname | x == z } -> k:Kind
-        -> { pf:_ | tsubFV z v_z (self t (FV x) k) == self (tsubFV z v_z t) v_z k } @-}
-lem_tsubFV_self0 :: Vname -> Expr -> Type -> Vname -> Kind -> Proof
-lem_tsubFV_self0 z v_z (TRefn b ps)     x Base = case b of
-  TBool   -> () 
-  TInt    -> () 
-  (FTV a) -> ()
-  (BTV a) -> ()
-lem_tsubFV_self0 z v_z (TFunc    t_y t) x Base = ()
-lem_tsubFV_self0 z v_z (TExists  t_y t) x Base = () ? lem_tsubFV_self0 z v_z t x Base
-lem_tsubFV_self0 z v_z (TPoly    k_a t) x Base = ()
-lem_tsubFV_self0 z v_z t                x Star = ()
-
-{-@ lem_tsubFV_self1 :: z:Vname -> z':Vname -> t:Type -> { x:Vname | x == z } -> k:Kind
-      -> { pf:_ | tsubFV z (FV z') (self t (FV x) k) == self (tsubFV z (FV z') t) (FV z') k } @-}
-lem_tsubFV_self1 :: Vname -> Vname -> Type -> Vname -> Kind -> Proof
-lem_tsubFV_self1 z z' (TRefn b ps)     x Base = case b of
-  TBool   -> () 
-  TInt    -> () 
-  (FTV a) -> ()
-  (BTV a) -> ()
-lem_tsubFV_self1 z z' (TFunc    t_y t) x Base = ()
-lem_tsubFV_self1 z z' (TExists  t_y t) x Base = () ? lem_tsubFV_self1 z z' t x Base
-lem_tsubFV_self1 z z' (TPoly    k_a t) x Base = ()
-lem_tsubFV_self1 z z' t                x Star = ()
--}
-
 
   --- | the Typing Judgement  --  Due to cofinite quantification, we need to explicity annotate
   ---                               the judgment size in order to define a termination metric.
-
+ 
 data HasType where            
     TBC   :: {-Int ->-} Env -> Bool -> HasType
     TIC   :: {-Int ->-} Env -> Int -> HasType
@@ -255,9 +161,6 @@ data HasType where
     TAnn  :: Int -> Env -> Expr -> Type -> HasType -> HasType
     TSub  :: Int -> Env -> Expr -> Type -> HasType -> Type -> Kind -> WFType -> Subtype -> HasType
 
----                 -> { y:Vname | y != x && not (in_env y g) && not (Set_mem y (free t)) } -> s:Type
----                 -> { a:Vname | a != x && not (in_env a g) && not (Set_mem a (freeTV t)) } -> k:Kind
---                    -> ProofOfN (n + 1) (HasType (Cons y s g) (FV x) t)
 {-@ data HasType where
         TBC   :: g:Env -> b:Bool -> { pf:HasType | propOf pf == HasType g (Bc b) (tybc b) &&
                                                    sizeOf pf == 1 }
@@ -351,7 +254,6 @@ lem_typSize_lb g e t (TAbsT _ _ k e' t' nms mk_p_e'_t')
           a = fresh_var nms g
 lem_typSize_lb g e t (TAppT _ _ e' k s p_e_ks t' _)
     = lem_typSize_lb g e' (TPoly k s) p_e_ks
---    ? toProof ( tdepth (tsubBTV t' s) =<= tdepth s + tdepth t' )
 lem_typSize_lb g e t (TLet _ _ _ t_x _ e' t' _ _ nms mk_p_e'_t')
     = lem_typSize_lb (Cons y t_x g) (unbind y e') (unbindT y t') (mk_p_e'_t' y)
         where
@@ -467,8 +369,6 @@ data Subtype where
                            -> ProofOfN n (Subtype (ConsT a k g) (unbind_tvT a t1) (unbind_tvT a t2)) )
                    -> { pf:Subtype | propOf pf == Subtype g (TPoly k t1) (TPoly k t2) &&
                                      sizeOf pf == n + 1 } @-}
--- SBind                -> { y:Vname | not (in_env y g) && not (Set_mem y (free t))
---                                                      && not (Set_mem y (free t')) }
 
 {-@ measure subtypSize @-}
 {-@ subtypSize :: pf:Subtype -> { v:Int | v == sizeOf pf && v >= 1 } @-}
@@ -543,6 +443,7 @@ data Implies where
     IWeakTV :: Env -> Env -> Preds -> Preds -> Implies -> Vname -> Kind -> Implies 
     ISub    :: Env -> Env -> Vname -> Expr -> Type -> HasType -> Preds -> Preds -> Implies -> Implies 
     ISubTV  :: Env -> Env -> Vname -> Type -> Kind -> WFType  -> Preds -> Preds -> Implies -> Implies 
+    IEqlSub :: Env -> Basic -> Vname -> Expr -> Preds -> Implies
     IStren  :: Vname -> Basic -> Preds -> Env -> Preds -> Preds -> Implies -> Implies
 
 {-@ data Implies where 
@@ -578,9 +479,12 @@ data Implies where
             -> k_a:Kind -> ProofOf(WFType g t_a k_a)   -> ps:Preds -> qs:Preds
             -> ProofOf(Implies (concatE (ConsT a k_a g) g') ps qs)
             -> ProofOf(Implies (concatE g (esubFTV a t_a g')) (psubFTV a t_a ps) (psubFTV a t_a qs)) 
+        IEqlSub :: g:Env -> b:Basic -> y:Vname -> e:Expr -> ps:Preds
+            -> ProofOf(Implies g
+                 (PCons (App (App (AppT (Prim Eql) (TRefn b PEmpty)) (FV y)) e) PEmpty)
+                 (PCons (App (App (AppT (Prim Eql) (TRefn b ps    )) (FV y)) e) PEmpty) )
         IStren  :: y:Vname -> b':Basic -> qs:Preds -> { g:Env | not (in_env y g) }
             -> p1s:Preds -> p2s:Preds 
             -> ProofOf(Implies (Cons y (TRefn b' qs)     g) p1s p2s)
             -> ProofOf(Implies (Cons y (TRefn b' PEmpty) g) 
-                               (strengthen p1s (unbindP y qs)) (strengthen p2s (unbindP y qs)))
-@-} 
+                               (strengthen p1s (unbindP y qs)) (strengthen p2s (unbindP y qs))) @-} 

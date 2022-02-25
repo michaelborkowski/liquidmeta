@@ -208,12 +208,6 @@ open_tv_at j a' (Let e1 e2  )                = Let       (open_tv_at j a' e1) (o
 open_tv_at j a' (Annot e t)                  = Annot     (open_tv_at j a' e)  (open_tvT_at j a' t)
 
   --- TERM-LEVEL SUBSTITUTION
---                      ( Set_sub (fv e) (Set_cup (Set_sng x) (fv e')) ) &&
---                        Set_sub (ftv e) (ftv e') &&
--- may need to restore these later:
---                      ( isLC e' => isLC e ) &&
--- must restore next
---                      ( (isLC e && isLC v) => isLC e' ) &&
 {-@ reflect subFV @-} -- substitute a value for a term variable in a term 
 {-@ subFV :: x:Vname -> { v:Expr | isValue v } -> e:Expr
                      -> { e':Expr | (Set_mem x (fv e) || e == e') &&
@@ -236,13 +230,6 @@ subFV x v_x (AppT e bt)               = AppT  (subFV x v_x e) (tsubFV x v_x bt)
 subFV x v_x (Let   e1 e2)             = Let   (subFV x v_x e1) (subFV x v_x e2)
 subFV x v_x (Annot e t)               = Annot (subFV x v_x e) (tsubFV x v_x t) 
 
---                       ( Set_sub (ftv e) (Set_cup (Set_sng a) (ftv e')) ) &&
---                         Set_sub (fv e) (fv e') &&
---                      ( (not (Set_mem a (freeTV t))) => not (Set_mem a (ftv e')) ) && 
---  may need to restore these later:
---                      ( isLC e' => isLC e ) &&
---  must restore these in another form
---                       ( (isLC e && isLCT t) => isLC e' ) &&
 {-@ reflect subFTV @-} -- substitute a type for a type variable in a term  
 {-@ subFTV :: a:Vname -> t:UserType -> e:Expr 
                       -> { e':Expr | (Set_mem a (ftv e) || e == e') &&
@@ -263,14 +250,6 @@ subFTV a t_a (AppT e t)                = AppT  (subFTV a t_a e) (tsubFTV a t_a t
 subFTV a t_a (Let   e1 e2)             = Let   (subFTV a t_a e1) (subFTV a t_a e2)
 subFTV a t_a (Annot e t)               = Annot (subFTV a t_a e) (tsubFTV a t_a t) 
 
--- may need to restore these later:
---                               Set_sub (fv e) (fv e') && 
---                               Set_sub (ftv e) (ftv e') && 
---                             Set_sub (freeBV e')  (Set_cup (Set_dif (freeBV e) (Set_sng x)) (freeBV v)) &&
---                             Set_sub (Set_dif (freeBV e) (Set_sng x)) (freeBV e') &&
---                             Set_sub (freeBTV e') (Set_cup (freeBTV e) (freeBTV v)) &&
---                             Set_sub (freeBTV e) (freeBTV e') } / [esize e] @- }
---                           ( e == Bc True => e' == Bc True ) && 
 {-@ reflect subBV @-} -- unbind opens (BV 0) to v in e 
 {-@ subBV :: v:Value -> e:Expr 
                 -> { e':Expr | Set_sub (fv e') (Set_cup (fv e) (fv v)) &&
@@ -298,16 +277,6 @@ subBV_at j v (AppT e t)         = AppT  (subBV_at j v e)  (tsubBV_at j v t)
 subBV_at j v (Let ex e)         = Let   (subBV_at j v ex) (subBV_at (j+1) v e)
 subBV_at j v (Annot e t)        = Annot (subBV_at j v e)  (tsubBV_at j v t)
 
-{-  work these back in!
-( Set_mem a (freeBTV e) || e == e' ) &&
-                                    Set_sub (freeBV e) (freeBV e') &&
-                                    Set_sub (freeBV e') (Set_cup (tfreeBV t) (freeBV e)) &&
-                                    Set_sub (freeBTV e') (Set_cup (Set_dif (freeBTV e) (Set_sng a)) (tfreeBTV t)) &&
-                                    Set_sub (Set_dif (freeBTV e) (Set_sng a)) (freeBTV e') && -}
---     ( isTrivial t =>  esize e == esize e' )        ( noDefns e => noDefns e' ) } / [esize e] @-}
---     try without:
---                                    Set_sub (fv e) (fv e') &&
---                                    Set_sub (ftv e) (ftv e') &&
 {-@ reflect subBTV @-} -- substitute in a type for a BOUND TYPE var
 {-@ subBTV :: t:UserType -> e:Expr
                      -> { e':Expr | Set_sub (fv e') (Set_cup (fv e) (free t)) &&
@@ -382,8 +351,6 @@ isLCP_at :: Index -> Index -> Preds -> Bool
 isLCP_at j_x j_a PEmpty       = True
 isLCP_at j_x j_a (PCons p ps) = isLC_at j_x j_a p && isLCP_at j_x j_a ps
 
---                                                        Set_sub (Set_cup (fvP ps) (fvP rs)) (fvP rs') && 
---                                                        Set_sub (Set_cup (ftvP ps) (ftvP rs)) (ftvP rs') &&
 {-@ reflect strengthen @-}  -- formerly called `strengthen`
 {-@ strengthen :: ps:Preds -> rs:Preds -> { rs':Preds | Set_sub (fvP  rs') (Set_cup (fvP  ps) (fvP  rs)) && 
                                                         Set_sub (ftvP rs') (Set_cup (ftvP ps) (ftvP rs)) } @-}
@@ -433,10 +400,6 @@ open_tvP_at j a' PEmpty       = PEmpty
 open_tvP_at j a' (PCons p ps) = PCons (open_tv_at j a' p) (open_tvP_at j a' ps)
 
 --  |  SUBSTITUTION IN PREDICATES
---                       ( Set_sub (fvP ps) (Set_cup (Set_sng x) (fvP ps')) ) &&
---                         Set_sub (ftvP ps) (ftvP ps') &&
--- must restore next:
---                       ( (isLCP ps && isLC v) => isLCP ps' )  } / [predsize ps] @-}
 {-@ reflect psubFV @-} -- substitute a value for a term variable 
 {-@ psubFV :: x:Vname -> { v:Expr | isValue v } -> ps:Preds
                       -> { ps':Preds | (Set_mem x (fvP ps) || ps == ps') &&
@@ -447,10 +410,6 @@ psubFV :: Vname -> Expr -> Preds -> Preds
 psubFV x v_x PEmpty       = PEmpty
 psubFV x v_x (PCons p ps) = PCons (subFV x v_x p) (psubFV x v_x ps)
 
---                          Set_sub (fvP ps) (fvP ps') &&
---                        ( Set_sub (ftvP ps) (Set_cup (Set_sng a) (ftvP ps'))) &&
--- move elsewhere
---                        ( (isLCP ps && isLCT t) => isLCP ps' ) } / [predsize ps] @-}
 {-@ reflect psubFTV @-} -- substitute a type for a type variable
 {-@ psubFTV :: a:Vname -> t:UserType -> ps:Preds
                        -> { ps':Preds | (Set_mem a (ftvP ps) || ps == ps') &&
@@ -700,15 +659,7 @@ open_tvT_at j a' (TPoly   k  t)    = TPoly k  (open_tvT_at (j+1) a' t)
 --     basic type, then we need to express "t_a {x:p}" by pushing the refinement down into t_a.
 --     For example a{x:p}[ ( \exists y:Int{y:q}. a'{z:r} )/a] becomes roughly speaking
 --             \exists Int{y:q}. a'{z:r `And` p}
--- Assumption: x is the same as the binder of any refinement types
 
---   try without these:
---                                   Set_sub (free t) (free t') &&
---                                   Set_sub (freeTV t) (freeTV t') &&
---                               Set_sub (tfreeBV t) (tfreeBV t') &&
---                               Set_sub (tfreeBTV t)  (tfreeBTV t') &&
---                               Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (Set_dif (freeBV p) (Set_sng 0))) &&
---                               Set_sub (tfreeBTV t') (Set_cup (tfreeBTV t) (freeBTV p)) &&
 {-@ reflect push @-}
 {-@ push ::  p:Preds -> t:UserType 
                 -> { t':UserType | Set_sub (free t') (Set_cup (free t) (fvP p)) && 
@@ -725,11 +676,6 @@ push p (TPoly     k   t) = TPoly     k   t
 --     kind unless p == True, in which case there's nothing to push down. So this only really
 --     affects the existential types.
 
---  may need to restore these later
---                ( Set_sub (free t) (Set_cup (Set_sng x) (free t'))) &&
---                  Set_sub (freeTV t) (freeTV t') &&
---                          isLCT t' => isLCT t
---                ( (isLCT t && isLC e) => isLCT t' ) &&
 {-@ reflect tsubFV @-}
 {-@ tsubFV :: x:Vname -> e:Value -> t:Type  
          -> { t':Type | ( Set_mem x (free t) || t == t' ) && 
@@ -744,10 +690,6 @@ tsubFV x v_x (TFunc  t_z t)   = TFunc    (tsubFV x v_x t_z) (tsubFV x v_x t)
 tsubFV x v_x (TExists  t_z t) = TExists  (tsubFV x v_x t_z) (tsubFV x v_x t)
 tsubFV x v_x (TPoly  k   t)   = TPoly    k                  (tsubFV x v_x t)
 
---                  Set_sub (free t) (free t') &&
---                ( Set_sub (freeTV t) (Set_cup (Set_sng a) (freeTV t'))) &&
---                        Set_sub (tfreeBV t') (Set_cup (tfreeBV t_a) (tfreeBV t)) && 
---                        Set_sub (tfreeBTV t') (Set_cup (tfreeBTV t_a) (tfreeBTV t)) } / [tsize t] @-}
 {-@ reflect tsubFTV @-}
 {-@ tsubFTV :: a:Vname -> t_a:UserType -> t:Type 
          -> { t':Type | ( Set_mem a (freeTV t) || t == t' )  &&
@@ -764,13 +706,6 @@ tsubFTV a t_a (TFunc     t_z t)    = TFunc      (tsubFTV a t_a t_z) (tsubFTV a t
 tsubFTV a t_a (TExists   t_z t)    = TExists    (tsubFTV a t_a t_z) (tsubFTV a t_a t)
 tsubFTV a t_a (TPoly      k  t)    = TPoly      k                   (tsubFTV a t_a t)
 
--- may need to restore later:
---                               Set_sub (free t) (free t') &&
---                               Set_sub (freeTV t) (freeTV t') &&
---                               Set_sub (tfreeBV t') (Set_cup (Set_dif (tfreeBV t) (Set_sng x)) (freeBV v_x)) &&
---                               Set_sub (Set_dif (tfreeBV t) (Set_sng x)) (tfreeBV t') &&
---                               Set_sub (tfreeBTV t') (Set_cup (tfreeBTV t) (freeBTV v_x)) &&
---                               Set_sub (tfreeBTV t) (tfreeBTV t') && 
 {-@ reflect tsubBV @-}  
 {-@ tsubBV :: v_x:Value -> t:Type  
                 -> { t':Type | Set_sub (free t') (Set_cup (fv v_x) (free t)) &&
@@ -794,15 +729,6 @@ tsubBV_at j v_x (TFunc   t_z t) = TFunc   (tsubBV_at j v_x t_z) (tsubBV_at (j+1)
 tsubBV_at j v_x (TExists t_z t) = TExists (tsubBV_at j v_x t_z) (tsubBV_at (j+1) v_x t)
 tsubBV_at j v_x (TPoly   k  t)  = TPoly k (tsubBV_at j v_x t)   -- not j+1
 
-{-  TODO: work these back in!
-( Set_mem a (tfreeBTV t) || t == t' ) &&
-                               Set_sub (tfreeBV t) (tfreeBV t') &&
-                               Set_sub (tfreeBV t') (Set_cup (tfreeBV t) (tfreeBV t_a)) &&
-                               Set_sub (tfreeBTV t') (Set_cup (Set_dif (tfreeBTV t) (Set_sng a)) (tfreeBTV t_a)) &&
-                               Set_sub (Set_dif (tfreeBTV t) (Set_sng a)) (tfreeBTV t') &&  -} 
--- try without:
---                               Set_sub (free t) (free t') && 
---                               Set_sub (freeTV t) (freeTV t') && 
 {-@ reflect tsubBTV @-}  --  ( isTrivial t_a => tsize t == tsize t' )
 {-@ tsubBTV :: t_a:UserType -> t:Type
                 -> { t':Type | Set_sub (free t') (Set_cup (free t_a) (free t)) &&
@@ -952,12 +878,6 @@ erase (TFunc t_x t)   = FTFunc (erase t_x) (erase t)
 erase (TExists t_x t) = (erase t)
 erase (TPoly  k  t)   = FTPoly k (erase t)
 
-{-@ unerase :: ft:FType -> { t:UserType | erase t == ft } @-}
-unerase :: FType -> Type
-unerase (FTBasic b)      = TRefn b PEmpty
-unerase (FTFunc t_x   t) = TFunc   (unerase t_x) (unerase t)
-unerase (FTPoly  k  t)   = TPoly k (unerase t)
-
 -- there are no term vars in a Bare Type, only type ones
 {-@ reflect ffreeTV @-} 
 {-@ ffreeTV :: t:FType -> S.Set Vname / [ftsize t] @-}
@@ -1012,9 +932,6 @@ openFT_at j a' (FTPoly k   t) = FTPoly k (openFT_at (j+1) a' t)
 -- System F substituion is simpler because there are no refinements to worry about, so we can just
 --   do a single substitution instead of both a variable replacement t[a'/a] and a refinment-streng.
 --   substitution t[a:=t_a]
---                        ( Set_sub (ffreeTV t) (Set_cup (Set_sng a) (ffreeTV t'))) &&
---                Set_sub (ffreeBV t') (Set_cup (ffreeBV t) (ffreeBV t_a)) &&
---                Set_sub (ffreeBV t) (ffreeBV t') &&
 {-@ reflect ftsubFV @-}
 {-@ ftsubFV :: a:Vname -> t_a:FType -> t:FType  
          -> { t':FType | ( Set_mem a (ffreeTV t) || t == t' ) && 
@@ -1027,10 +944,6 @@ ftsubFV a t_a (FTBasic b)           = case b of
 ftsubFV a t_a (FTFunc t_z t)        = FTFunc (ftsubFV a t_a t_z) (ftsubFV a t_a t)
 ftsubFV a t_a (FTPoly   k t)        = FTPoly k (ftsubFV a t_a t)
 
--- maybe restore these later:
---                        Set_sub (ffreeTV t) (ffreeTV t') &&
---                        Set_sub (ffreeBV t') (Set_cup (Set_dif (ffreeBV t) (Set_sng a)) (ffreeBV t_a)) && 
---                        Set_sub (Set_dif (ffreeBV t) (Set_sng a)) (ffreeBV t') &&
 {-@ reflect ftsubBV @-} 
 {-@ ftsubBV :: t_a:FType -> t:FType  
         -> { t':FType | Set_sub (ffreeTV t') (Set_cup (ffreeTV t_a) (ffreeTV t)) &&
@@ -1177,44 +1090,6 @@ lem_erase_freeTV (TFunc   t_z t) = () ? lem_erase_freeTV t_z
 lem_erase_freeTV (TExists t_z t) = () ? lem_erase_freeTV t
 lem_erase_freeTV (TPoly    k' t) = () ? lem_erase_freeTV t
 
-{-
----------------------------------------------------------------------------
------ | deBRUIJN INDEX SHIFTING (AT or ABOVE a threshold)
----------------------------------------------------------------------------
-
-{-@ reflect shift_at @-}
-{-@ shift_at :: Index -> e:Expr 
-                      -> { e':Expr | fv e == fv e' && ftv e == ftv e' } / [esize e] @-}
-shift_at :: Index -> Expr -> Expr
-shift_at j (Bc b)              = Bc b
-shift_at j (Ic n)              = Ic n
-shift_at j (Prim c)            = Prim c
-shift_at j (BV i) | i >= j     = BV (i+1)
-                  | otherwise  = BV i
-shift_at j (FV x)              = FV x
-shift_at j (Lambda e)          = Lambda (shift_at (j+1) e)
-shift_at j (App e e')          = App (shift_at j e) (shift_at j e')
-shift_at j (LambdaT k e)       = LambdaT k (shift_at j e)
-shift_at j (AppT e t)          = AppT (shift_at j e) (shiftT_at j t)
-shift_at j (Let ex e)          = Let (shift_at j ex) (shift_at (j+1) e) 
-shift_at j (Annot e t)         = Annot (shift_at j e) (shiftT_at j t)
-
-{-@ reflect shiftP_at @-}
-{-@ shiftP_at :: Index -> ps:Preds 
-                   -> {ps':Preds | fvP ps == fvP ps' && ftvP ps == ftvP ps' } / [predsize ps] @-}
-shiftP_at :: Index -> Preds -> Preds
-shiftP_at j PEmpty       = PEmpty
-shiftP_at j (PCons p ps) = PCons (shift_at j p) (shiftP_at j ps)
-
-{-@ reflect shiftT_at @-}
-{-@ shiftT_at :: Index -> t:Type 
-                   -> { t':Type | free t == free t' && freeTV t == freeTV t' } / [tsize t] @-}
-shiftT_at :: Index -> Type -> Type
-shiftT_at j (TRefn   b ps)  = TRefn b (shiftP_at (j+1) ps)
-shiftT_at j (TFunc   t_x t) = TFunc   (shiftT_at j t_x) (shiftT_at (j+1) t)
-shiftT_at j (TExists t_x t) = TExists (shiftT_at j t_x) (shiftT_at (j+1) t)
-shiftT_at j (TPoly   k   t) = TPoly k (shiftT_at j t)
--}
 
 ---------------------------------------------------------------------------
 ----- | NAME SETS and FRESH NAMES
@@ -1225,8 +1100,6 @@ type Names = [Vname]   -- for cofinite quantification over free names
 {-@ predicate IsCup     X Y Z  = listElts X = Set_cup (listElts Y) (listElts Z) @-}
 {-@ predicate IsCupEnv  X Y Z  = listElts X = Set_cup (listElts Y) (binds Z)    @-}
 {-@ predicate IsCupFEnv X Y Z  = listElts X = Set_cup (listElts Y) (bindsF Z)   @-}
-{- @ predicate IsCupFTs X Y Z W = listElts X = Set_cup (listElts Y) (Set_cup (ffreeTV Z) (ffreeTV W)) @-}
-{-  predicate IsDel X Y Z  = listElts X = Set_dif (listElts Y) (Set_sng Z)     @-}
 {-@ predicate Elem  X Ys   = Set_mem X (listElts Ys)                            @-}
 {-@ predicate NotElem X Ys = not (Elem X Ys)                                    @-}
 
@@ -1248,33 +1121,29 @@ unionFEnv xs FEmpty         = xs
 unionFEnv xs (FCons  x t g) = x : (unionFEnv xs g)
 unionFEnv xs (FConsT a k g) = a : (unionFEnv xs g)
 
-{-@ reflect fresh @-}
 {-@ fresh :: xs:Names -> { v:Vname | NotElem v xs } @-}
 fresh :: Names -> Vname
 fresh bs = n `withProof` lem_above_max_fresh n bs
   where
     n    = 1 + maxs bs
 
-{-@ measure maxs @-}
+{-@ reflect maxs @-}
 {-@ maxs :: xs:_ -> {v:_ | v = maxs xs && v >= 0} @-}
 maxs :: Names -> Vname
 maxs ([])   = 0
 maxs (x:xs) = if (x > maxs xs) then x else (maxs xs)
 
-{-@ reflect lem_above_max_fresh @-}
 {-@ lem_above_max_fresh :: x:Vname -> xs:{Names | x > maxs xs} -> { pf:_ | NotElem x xs} @-}
 lem_above_max_fresh :: Vname -> Names -> Proof
 lem_above_max_fresh _ []     = ()
 lem_above_max_fresh x (_:ys) = lem_above_max_fresh x ys
 
-{-@ reflect fresh_var @-}
 {-@ fresh_var :: xs:Names -> g:Env -> { x:Vname | not (in_env x g) && NotElem x xs } @-}
 fresh_var :: Names -> Env -> Vname
 fresh_var xs g = n `withProof` lem_above_max_nms_env n xs g
   where
     n    = 1 + max_nms_env xs g
 
-{-@ reflect fresh_var_excluding @-}
 {-@ fresh_var_excluding :: xs:Names -> g:Env -> x:Vname 
                 -> { y:Vname | not (in_env y g) && y != x && NotElem y xs } @-}
 fresh_var_excluding :: Names -> Env -> Vname -> Vname
@@ -1289,7 +1158,6 @@ max_nms_env ([])   (Cons  x t g) = if (x > max_nms_env [] g) then x else (max_nm
 max_nms_env ([])   (ConsT a k g) = if (a > max_nms_env [] g) then a else (max_nms_env [] g)
 max_nms_env (x:xs) g             = if (x > max_nms_env xs g) then x else (max_nms_env xs g)
 
-{-@ reflect lem_above_max_nms_env @-}
 {-@ lem_above_max_nms_env :: x:Vname -> xs:Names -> { g:Env | x > max_nms_env xs g } 
                                       -> { pf:_ | NotElem x xs && not (in_env x g) } @-}
 lem_above_max_nms_env :: Vname -> Names -> Env -> Proof
@@ -1299,14 +1167,12 @@ lem_above_max_nms_env x []     (ConsT a k g) = lem_above_max_nms_env x [] g
 lem_above_max_nms_env x (_:ys) g             = lem_above_max_nms_env x ys g
 
 
-{-@ reflect fresh_varF @-}
 {-@ fresh_varF :: xs:Names -> g:FEnv -> { x:Vname | not (in_envF x g) && NotElem x xs } @-}
 fresh_varF :: Names -> FEnv -> Vname
 fresh_varF xs g = n `withProof` lem_above_max_nms_fenv n xs g
   where
     n    = 1 + max_nms_fenv xs g
 
-{-@ reflect fresh_var_excludingF @-}
 {-@ fresh_var_excludingF :: xs:Names -> g:FEnv -> x:Vname 
                 -> { y:Vname | not (in_envF y g) && y != x && NotElem y xs } @-}
 fresh_var_excludingF :: Names -> FEnv -> Vname -> Vname
@@ -1321,7 +1187,6 @@ max_nms_fenv ([])   (FCons  x t g) = if (x > max_nms_fenv [] g) then x else (max
 max_nms_fenv ([])   (FConsT a k g) = if (a > max_nms_fenv [] g) then a else (max_nms_fenv [] g)
 max_nms_fenv (x:xs) g              = if (x > max_nms_fenv xs g) then x else (max_nms_fenv xs g)
 
-{-@ reflect lem_above_max_nms_fenv @-}
 {-@ lem_above_max_nms_fenv :: x:Vname -> xs:Names -> { g:FEnv | x > max_nms_fenv xs g } 
                                       -> { pf:_ | NotElem x xs && not (in_envF x g) } @-}
 lem_above_max_nms_fenv :: Vname -> Names -> FEnv -> Proof
@@ -1331,7 +1196,6 @@ lem_above_max_nms_fenv x []     (FConsT a k g) = lem_above_max_nms_fenv x [] g
 lem_above_max_nms_fenv x (_:ys) g              = lem_above_max_nms_fenv x ys g
 
 
-{-@ reflect fresh_varT @-}
 {-@ fresh_varT :: xs:Names -> g:Env -> t:Type 
         -> { x:Vname | not (Set_mem x (free t)) && not (in_env x g) && NotElem x xs } @-}
 fresh_varT :: Names -> Env -> Type -> Vname
@@ -1353,7 +1217,6 @@ max_nms_type ([])   (y:ys) g
 max_nms_type (x:xs) ys     g 
   = if (x > max_nms_type xs ys g) then x else (max_nms_type xs ys g)
 
-{-@ reflect lem_above_max_nms_type @-}
 {-@ lem_above_max_nms_type :: x:Vname -> xs:Names -> ys:Names
         -> { g:Env | x > max_nms_type xs ys g } 
         -> { pf:_ | NotElem x xs && NotElem x ys && not (in_env x g) } @-}
@@ -1364,7 +1227,6 @@ lem_above_max_nms_type x []     []     (ConsT a k g) = lem_above_max_nms_type x 
 lem_above_max_nms_type x []     (_:ys) g             = lem_above_max_nms_type x [] ys g
 lem_above_max_nms_type x (_:xs) ys     g             = lem_above_max_nms_type x xs ys g
 
-{-@ reflect fresh_varFTs @-}
 {-@ fresh_varFTs :: xs:Names -> g:Env -> t1:FType -> t2:FType 
         -> { x:Vname | not (Set_mem x (ffreeTV t1)) && not (Set_mem x (ffreeTV t2)) && 
                        not (in_env x g)             && NotElem x xs } @-}
@@ -1389,7 +1251,6 @@ max_nms_ftypes ([])   (y:ys) zs     g
 max_nms_ftypes (x:xs) ys     zs     g 
   = if (x > max_nms_ftypes xs ys zs g) then x else (max_nms_ftypes xs ys zs g)
 
-{-@ reflect lem_above_max_nms_ftypes @-}
 {-@ lem_above_max_nms_ftypes :: x:Vname -> xs:Names -> ys:Names -> zs:Names
         -> { g:Env | x > max_nms_ftypes xs ys zs g } 
         -> { pf:_ | NotElem x xs && NotElem x ys && NotElem x zs && not (in_env x g) } @-}
@@ -1421,21 +1282,9 @@ withProof x _ = x
   --- the Type of all Propositions
 
 data Proposition where
-    -- Local Closure : no dangling deBruijn indices
-    LCExpr  :: Expr  -> Proposition  -- e is locally closed
-    LCPreds :: Preds -> Proposition  -- ps is locally closed
-    LCType  :: Type  -> Proposition  -- t is locally closed
-    EBody   :: Expr  -> Proposition  -- "\x.e is locally closed"
-    EBodyTV :: Expr  -> Proposition  -- "/\a:k. e is locally closed"
-    PBody   :: Preds -> Proposition  -- "{x : ps} is locally closed"
-    TBody   :: Type  -> Proposition  -- "x:t is locally closed"
-    TBodyTV :: Type  -> Proposition  -- "forall a. t is locally closed"
-
     -- Operational Semantics
     Step :: Expr -> Expr -> Proposition         -- e ~> e'
     EvalsTo :: Expr -> Expr -> Proposition      -- e ~>* e'
-    PEvalsTrue :: Preds -> Proposition          -- ps => PEmpty
-    CommonEvals :: Expr -> Expr -> Proposition
 
     -- System F Judgments
     WFFT :: FEnv -> FType -> Kind -> Proposition      --  G |- t : k

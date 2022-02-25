@@ -23,16 +23,10 @@ import Typing
 import LemmasWeakenWFTV
 import LemmasWellFormedness
 
-{-@ reflect foo42 @-}
-foo42 x = Just x
-foo42 :: a -> Maybe a
-
 -- -- -- -- -- -- -- -- -- -- -- ---
 -- Part of the Substitution Lemma --
 -- -- -- -- -- -- -- -- -- -- -- ---
 
---        -> k_a:Kind -> ProofOf(WFType g t_a k_a) 
---        -> ProofOf(WFFE (concatF (FConsT a k_a (erase_env g)) (erase_env g')) )
 {-@ lem_subst_tv_wf_wfrefn :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
         -> { a:Vname | (not (in_env a g)) && not (in_env a g') } -> t_a:UserType
         -> k_a:Kind -> ProofOf(WFType g t_a k_a) -> ProofOf(WFFE (erase_env g))
@@ -50,7 +44,6 @@ lem_subst_tv_wf_wfrefn g g' a t_a k_a p_g_ta p_erg_wf t k (WFRefn env b p_env_b 
           where
             p_gg'ta_ta = lem_weaken_many_wf g (esubFTV a t_a g') t_a k_a p_g_ta
                                             ? lem_psubFTV_notin a t_a PEmpty
---            p_env_er_b = lem_erase_wftype env (TRefn b PEmpty) Base p_env_b
             p_g_er_ta  = lem_erase_wftype g t_a k_a p_g_ta
             {-@ mk_pf_pta_bl :: { y:Vname | NotElem y nms' }
                   -> ProofOf(PHasFType (FCons y (erase t_a) (erase_env (concatE g (esubFTV a t_a g'))))
@@ -66,9 +59,6 @@ lem_subst_tv_wf_wfrefn g g' a t_a k_a p_g_ta p_erg_wf t k (WFRefn env b p_env_b 
                                ? lem_erase_concat g (esubFTV a t_a g')
                                ? lem_erase_esubFTV a t_a g'  
                                ? lem_erase_tsubFTV a t_a (TRefn b PEmpty)
---              where
---                p_er_yenv_wf = WFFBind (erase_env env) (p_env_wf ? lem_erase_concat (ConsT a k_a g) g') 
---                                       y (FTBasic b) Base p_env_er_b 
             nms'           = a:(unionEnv nms (concatE (ConsT a k_a g) g'))
         Star -> impossible ("by lemma" ? lem_kind_for_tv g g' a k_a
                                        ? lem_wf_ftv_kind (concatE (ConsT a k_a g) g') a k p_env_b)
@@ -78,7 +68,6 @@ lem_subst_tv_wf_wfrefn g g' a t_a k_a p_g_ta p_erg_wf t k (WFRefn env b p_env_b 
         where
           p_gg'_b       = lem_subst_tv_wf g g' a t_a k_a p_g_ta p_erg_wf 
                                           (TRefn b PEmpty) Base p_env_b  ? lem_psubFTV_notin a t_a PEmpty
---          p_env_er_b    = lem_erase_wftype env (TRefn b PEmpty) Base p_env_b
           p_g_er_ta     = lem_erase_wftype g t_a k_a p_g_ta
           {-@ mk_p_ygg'_pta_bl :: { y:Vname | NotElem y nms' }
                 -> ProofOf(PHasFType (FCons y (FTBasic b) (erase_env (concatE g (esubFTV a t_a g'))))
@@ -94,9 +83,6 @@ lem_subst_tv_wf_wfrefn g g' a t_a k_a p_g_ta p_erg_wf t k (WFRefn env b p_env_b 
                                ? lem_erase_concat g (esubFTV a t_a g')
                                ? lem_erase_esubFTV a t_a g'  
                                ? lem_erase_tsubFTV a t_a (TRefn b PEmpty)
---              where
---                p_er_yenv_wf = WFFBind (erase_env env) (p_env_wf ? lem_erase_concat (ConsT a k_a g) g') 
---                                       y (FTBasic b) Base p_env_er_b 
           nms'               = a:(unionEnv nms (concatE (ConsT a k_a g) g'))
 
 {-@ lem_subst_tv_wf_wfvar :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
@@ -130,7 +116,6 @@ lem_subst_tv_wf_wfvar g g' a t_a k_a p_g_ta p_g_wf t k p_g_t@(WFVar2 _env' a'_ k
                                              ? lem_tsubFTV_ftv a t_a
         False -> WFVar2 (concatE g (esubFTV a t_a g'')) a' k_a' p_gg''_a' y (tsubFTV a t_a t_y)
           where
---            (WFFBind _ p_env'_wf _ _ _ _) = p_env_wf
             a'        = a'_ ? lem_in_env_esubFTV g'' a t_a a'_
                             ? lem_in_env_concat (ConsT a k_a g) g'' a'_
                             ? lem_in_env_concat g (esubFTV a t_a g'') a'_
@@ -152,7 +137,6 @@ lem_subst_tv_wf_wfvar g g' a t_a k_a p_g_ta p_g_wf t k p_g_t@(WFVar3 _env' a'_ k
                                              ? lem_tsubFTV_ftv a t_a
         False -> WFVar3 (concatE g (esubFTV a t_a g'')) a' k_a' p_gg''_a' a1 k_a1
           where
---            (WFFBindT _ p_env'_wf _ _) = p_env_wf
             a'        = a'_ ? lem_in_env_esubFTV g'' a t_a a'_
                             ? lem_in_env_concat (ConsT a k_a g) g'' a'_
                             ? lem_in_env_concat g (esubFTV a t_a g'') a'_
@@ -181,11 +165,6 @@ lem_subst_tv_wf_wffunc g g' a t_a k_a p_g_ta p_g_wf t k (WFFunc env t_z k_z p_en
                                (unbindT y t') k' (mk_p_yenv_t' y)
                                ? lem_commute_tsubFTV_unbindT a
                                    (t_a ? lem_wftype_islct g t_a k_a p_g_ta) y t'
---          where
---            p_er_env_tz  = lem_erase_wftype env t_z k_z p_env_tz 
---                                            ? lem_erase_concat (ConsT a k_a g) g'
---            p_yenv_wf    = WFFBind (concatF (FConsT a k_a (erase_env g)) (erase_env g')) p_env_wf
---                                   y (erase t_z) k_z p_er_env_tz
         nms'             = a:(unionEnv nms (concatE g g'))
 
 {-@ lem_subst_tv_wf_wfexis :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
@@ -209,11 +188,6 @@ lem_subst_tv_wf_wfexis g g' a t_a k_a p_g_ta p_g_wf t k (WFExis env t_z k_z p_en
                                (unbindT y t') k' (mk_p_yenv_t' y)
                                ? lem_commute_tsubFTV_unbindT a
                                    (t_a ? lem_wftype_islct g t_a k_a p_g_ta) y t'
---          where
---            p_er_env_tz  = lem_erase_wftype env t_z k_z p_env_tz 
---                                            ? lem_erase_concat (ConsT a k_a g) g'
---            p_yenv_wf    = WFFBind (concatF (FConsT a k_a (erase_env g)) (erase_env g')) p_env_wf
---                                   y (erase t_z) k_z p_er_env_tz
         nms'             = a:(unionEnv nms (concatE g g'))
 
 {-@ lem_subst_tv_wf_wfpoly :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
@@ -235,9 +209,6 @@ lem_subst_tv_wf_wfpoly g g' a t_a k_a p_g_ta p_g_wf t k (WFPoly _env k_a1 t' k_t
                                (unbind_tvT a1 t') k_t' (mk_p_a1env_t' a1)
                                ? lem_commute_tsubFTV_unbind_tvT a
                                    (t_a ? lem_wftype_islct g t_a k_a p_g_ta) a1 t'
---          where
---            p_a1env_wf   = WFFBindT (concatF (FConsT a k_a (erase_env g)) (erase_env g')) 
---                                    p_env_wf a1 k_a1
         nms'             = a:(unionEnv nms (concatE g g'))
 
 {-@ lem_subst_tv_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
@@ -283,4 +254,3 @@ lem_subst_tv_wf' g g' a t_a k_a p_g_ta p_g_wf t k p_e_t
   = lem_subst_tv_wf g g' a t_a k_a p_g_ta p_er_g_wf t k p_e_t
       where
         p_er_g_wf = lem_erase_env_wfenv g p_g_wf
---                                          ? lem_erase_concat (ConsT a k_a g) g'

@@ -15,10 +15,6 @@ import SystemFWellFormedness
 import SystemFTyping
 import BasicPropsSubstitution
 
-{-@ reflect foo20 @-}
-foo20 x = Just x 
-foo20 :: a -> Maybe a 
-
 ----------------------------------------------------------------------------
 -- | BASIC PROPERTIES: Properties of ENVIRONMENTS / BARE-TYPED ENVIRONMENTS
 ----------------------------------------------------------------------------
@@ -39,26 +35,6 @@ lem_empty_concatE Empty         = ()
 lem_empty_concatE (Cons  x t g) = () ? lem_empty_concatE g
 lem_empty_concatE (ConsT a k g) = () ? lem_empty_concatE g
 
-{-
-
-{-@ lem_concat_shift :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
-        -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) }
-        -> { pf:_ | concatE (Cons x t_x g) g' == concatE g (concatE (Cons x t_x Empty) g') } @-}
-lem_concat_shift :: Env -> Vname -> Type -> Env -> Proof
-lem_concat_shift g x t_x Empty           = ()
-lem_concat_shift g x t_x (Cons z t_z g') = () ? lem_concat_shift g x t_x g'
-lem_concat_shift g x t_x (ConsT a k g')  = () ? lem_concat_shift g x t_x g'
-
-{-@ lem_concat_shift_tv :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
-        -> { g':Env | not (in_env a g') && Set_emp (Set_cap (binds g) (binds g')) }
-        -> { pf:_ | concatE (ConsT a k_a g) g' == concatE g (concatE (ConsT a k_a Empty) g') } @-} 
-lem_concat_shift_tv :: Env -> Vname -> Kind -> Env -> Proof
-lem_concat_shift_tv g a k_a Empty           = () 
-lem_concat_shift_tv g a k_a (Cons z t_z g') = () ? lem_concat_shift_tv g a k_a g' 
-lem_concat_shift_tv g a k_a (ConsT a' k g') = () ? lem_concat_shift_tv g a k_a g'
--}
-
---             && (not (in_env x (concatE g g')) <=> (not (in_env x g) && not (in_env x g'))) } @- }
 {-@ lem_in_env_concat :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) } 
       ->  x:Vname -> {pf:_ | (in_env x (concatE g g')) <=> ((in_env x g) || (in_env x g'))} @-}
 lem_in_env_concat :: Env -> Env -> Vname -> Proof

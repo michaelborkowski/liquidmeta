@@ -11,35 +11,24 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
---import LocalClosure
+import LocalClosure
 import Strengthenings
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
-import WellFormedness
 import BasicPropsSubstitution
 import BasicPropsEnvironments
+import WellFormedness
 import BasicPropsWellFormedness
 import SystemFLemmasWeaken
 import SystemFLemmasSubstitution
 import Typing
 import PrimitivesWFType
---import BasicPropsCSubst
---import BasicPropsDenotes
---import BasicPropsEraseTyping
---import SubtypingFromEntailments
 import LemmasWeakenWF
---import LemmasWeakenWFTV
 import LemmasWellFormedness
 import SubstitutionLemmaWF
 import LemmasTyping
 import LemmasSubtyping
---import LemmasWeakenTyp
---import LemmasWeakenTypTV
---import DenotationsSelfify
---import DenotationsSoundness
---import PrimitivesSemantics
---import PrimitivesDenotations
 
 {-@ lem_self_idempotent_upper :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
         -> e:Expr -> ProofOf(HasFType (erase_env g) e (erase t))
@@ -60,13 +49,10 @@ lem_self_idempotent_upper g t@(TRefn b q) Base p_g_t e p_e_t
 lem_self_idempotent_upper g t@(TFunc t_z t') Base p_g_t e p_e_t 
   = lem_sub_refl g t Base p_g_t  ? self (TFunc t_z t') e Base
 lem_self_idempotent_upper g (TExists t_z t') Base p_g_t e p_e_t 
-  = lem_subtype_in_exists (2 * tdepth t') g t_z (self t' e Base) (self (self t' e Base) e Base)
-                          Base p_g_self2_t nms' mk_p_st'_sst'
-{-              ? toProof ( self (self (TExists t_z t') e Base) e Base
-                      === self (TExists t_z (self t' e Base)) e Base
-                      === TExists t_z (self (self t' e Base) e Base) )
-              ? toProof ( self (TExists t_z t') e Base
-                      === TExists t_z (self t' e Base) ) -}
+  = lem_subtype_in_exists (2 * tdepth t') g t_z (self t' e Base) (self (self t' e Base) e Base
+                              ? lem_wftype_islct g (TExists t_z (self (self t' e Base) e Base))
+                                                 Base p_g_self2_t)
+                          k_z p_g_tz {-Base p_g_self2_t-} nms' mk_p_st'_sst'
       where
         {-@ mk_p_st'_sst' :: { y:Vname | NotElem y nms' } 
               -> { pf:Subtype | propOf pf == Subtype (Cons y t_z g) (unbindT y (self t' e Base))
@@ -88,21 +74,6 @@ lem_self_idempotent_upper g t@(TPoly k_a t') Base p_g_t e p_e_t
   = lem_sub_refl g t Base p_g_t  ? self (TPoly k_a t') e Base 
 lem_self_idempotent_upper g t                  Star p_g_t e p_e_t 
   = lem_sub_refl g t Star p_g_t  ? (self t e Star === t)
-
-{-
-{-@ ple lem_self_idempotent_lower @-}
-{-@ lem_self_idempotent_lower :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
-        -> e:Term -> ProofOf(HasFType (erase_env g) e (erase t))
-        -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self (self t e k) e k) (self t e k)) @-}
-lem_self_idempotent_lower :: Env -> Type -> Kind -> WFType -> Expr -> HasFType -> WFEnv -> Subtype
-lem_self_idempotent_lower g t k p_g_t e_ p_e_t p_g_wf 
-  = lem_self_is_subtype g (self t e k) k p_g_selft e p_e_t p_g_wf
-      where
-        e         = e_ ? lem_fv_subset_bindsF (erase_env g) e_ (erase t) p_e_t
-                       ? lem_freeBV_emptyB    (erase_env g) e_ (erase t) p_e_t
-        p_er_g_wf = lem_erase_env_wfenv g p_g_wf
-        p_g_selft = lem_selfify_wf g t k p_g_t p_er_g_wf e p_e_t
--}
 
 {-@ lem_exact_subtype :: g:Env -> ProofOf(WFEnv g) -> s:Type -> k_s:Kind -> ProofOf(WFType g s k_s)
         -> t:Type -> { p_s_t:Subtype | propOf p_s_t == Subtype g s t } 

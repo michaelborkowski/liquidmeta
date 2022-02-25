@@ -11,11 +11,7 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
-import SystemFWellFormedness            --(WFFT(..),WFFE(..),isWFFT,makeWFFT,isMonoF)
-
-{-@ reflect foo04 @-}
-foo04 :: a -> Maybe a
-foo04 x = Just x
+import SystemFWellFormedness            
 
 -----------------------------------------------------------------------------
 ----- | JUDGEMENTS : the Bare-Typing Relation
@@ -178,7 +174,7 @@ refn_pred Leql     = App (App (Prim Eqv) (BV 0))
 refn_pred Eql      = App (App (Prim Eqv) (BV 0))
                            (App (App (AppT (Prim Eql)  (TRefn (BTV 0) PEmpty)) (BV 2)) (BV 1))
 
-{-@ reflect ty @-} -- Primitive Typing            -- removed: && Set_emp (tfreeBV t)  -
+{-@ reflect ty @-} -- Primitive Typing            
 {-@ ty :: c:Prim -> { t:Type | Set_emp (free t) && Set_emp (freeTV t) } @-}
 ty :: Prim -> Type
 ty And      = TFunc (inType And)      (ty' And)

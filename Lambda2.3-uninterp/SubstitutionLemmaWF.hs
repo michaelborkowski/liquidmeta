@@ -21,10 +21,6 @@ import BasicPropsWellFormedness
 import SystemFLemmasSubstitution
 import Typing
 
-{-@ reflect foo41 @-}
-foo41 x = Just x
-foo41 :: a -> Maybe a
-
 -- -- -- -- -- -- -- -- -- -- -- ---
 -- Part of the Substitution Lemma --
 -- -- -- -- -- -- -- -- -- -- -- ---

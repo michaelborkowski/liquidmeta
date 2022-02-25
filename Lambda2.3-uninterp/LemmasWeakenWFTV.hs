@@ -19,10 +19,6 @@ import BasicPropsEnvironments
 import SystemFLemmasWeaken
 import LemmasWeakenWF
 
-{-@ reflect foo35 @-}
-foo35 x = Just x
-foo35 :: a -> Maybe a
-
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------

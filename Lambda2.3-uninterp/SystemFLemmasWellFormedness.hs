@@ -20,10 +20,6 @@ import BasicPropsEnvironments
 import WellFormedness
 import BasicPropsWellFormedness
 
-{-@ reflect foo22 @-}
-foo22 x = Just x
-foo22 :: a -> Maybe a
-
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying STLC :: Technical LEMMAS
 ------------------------------------------------------------------------------
@@ -44,19 +40,16 @@ lem_weaken_wfft g g' t k_t pf_t_wf@(WFFTFV1 gg a' k') x t_x = case g' of
   FEmpty               -> WFFTFV2 g a' k' pf_t_wf 
                             (x ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf x) t_x
   (FConsT _a' _k' g'') -> WFFTFV1 (concatF (FCons x t_x g) g'')   a' k'
---                            (a' ? lem_in_env_concatF g g'' a') k'
 lem_weaken_wfft g g' t k_t pf_t_wf@(WFFTFV2 gg a' k' pf_gg_a' z t_z) x t_x = case g' of
   FEmpty             -> WFFTFV2 g a' k_t pf_t_wf 
                             (x ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf x) t_x 
   (FCons _z _tz g'') -> WFFTFV2 (concatF (FCons x t_x g) g'') a' k' 
                             (lem_weaken_wfft g g'' (FTBasic (FTV a')) k' pf_gg_a' x t_x)  z t_z
---                            (z ? lem_in_env_concatF g g'' z) t_z  
 lem_weaken_wfft g g' t k_t pf_t_wf@(WFFTFV3 gg a k pf_gg_a a' k') x t_x = case g' of
   FEmpty               -> WFFTFV2 g a k_t pf_t_wf 
                             (x ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf x) t_x 
   (FConsT _a' _k' g'') -> WFFTFV3 (concatF (FCons x t_x g) g'') a k
                             (lem_weaken_wfft g g'' (FTBasic (FTV a)) k pf_gg_a x t_x)   a' k'
---                            (a' ? lem_in_env_concatF g g'' a') k' 
 lem_weaken_wfft g g' _ _ (WFFTFunc _ t1 k1 p_gg_t1 t2 k2 p_gg_t2) x t_x
   = WFFTFunc (concatF (FCons x t_x g) g') t1 k1 (lem_weaken_wfft g g' t1 k1 p_gg_t1 x t_x)
                                           t2 k2 (lem_weaken_wfft g g' t2 k2 p_gg_t2 x t_x)
@@ -83,19 +76,16 @@ lem_weaken_tv_wfft g g' t k_t pf_t_wf@(WFFTFV1 gg a' k') a k = case g' of
   FEmpty               -> WFFTFV3 g a' k_t pf_t_wf 
                             (a ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf a) k
   (FConsT _a' _k' g'') -> WFFTFV1 (concatF (FConsT a k g) g'')  a' k'
---                            (a' ? lem_in_env_concatF g g'' a') k'
 lem_weaken_tv_wfft g g' t k_t pf_t_wf@(WFFTFV2 gg a' k' pf_gg_a' z t_z)   a k = case g' of
   FEmpty             -> WFFTFV3 g a' k_t pf_t_wf 
                             (a ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf a) k
   (FCons _z _tz g'') -> WFFTFV2 (concatF (FConsT a k g) g'') a' k' 
                             (lem_weaken_tv_wfft g g'' (FTBasic (FTV a')) k' pf_gg_a' a k)  z t_z
---                            (z ? lem_in_env_concatF g g'' z) t_z
 lem_weaken_tv_wfft g g' t k_t pf_t_wf@(WFFTFV3 gg a' k' pf_gg_a' a'' k'') a k = case g' of
   FEmpty               -> WFFTFV3 g a' k_t pf_t_wf 
                             (a ? lem_ffreeTV_bound_in_fenv g t k_t pf_t_wf a) k
   (FConsT _a' _k' g'') -> WFFTFV3 (concatF (FConsT a k g) g'') a' k'
                             (lem_weaken_tv_wfft g g'' (FTBasic (FTV a')) k' pf_gg_a' a k)   a'' k''
---                            (a'' ? lem_in_env_concatF g g'' a'') k''
 lem_weaken_tv_wfft g g' _ _ (WFFTFunc _ t1 k1 p_gg_t1 t2 k2 p_gg_t2) a k
   = WFFTFunc (concatF (FConsT a k g) g') t1 k1 (lem_weaken_tv_wfft g g' t1 k1 p_gg_t1 a k)
                                          t2 k2 (lem_weaken_tv_wfft g g' t2 k2 p_gg_t2 a k)

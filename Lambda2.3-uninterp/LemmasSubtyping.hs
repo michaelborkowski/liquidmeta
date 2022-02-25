@@ -11,7 +11,6 @@ import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
---import LocalClosure
 import Semantics
 import SystemFWellFormedness
 import SystemFTyping
@@ -19,64 +18,14 @@ import BasicPropsSubstitution
 import BasicPropsEnvironments
 import WellFormedness
 import BasicPropsWellFormedness
---import SystemFLemmasSubstitution
 import Typing
---import BasicPropsCSubst
---import BasicPropsDenotes
---import BasicPropsEraseTyping
---import SubtypingFromEntailments
 import LemmasWeakenWF
---import LemmasWeakenWFTV
---import LemmasWellFormedness
 import SubstitutionLemmaWF
 import LemmasTyping
 
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------
-{-
--- do I need this?    -> ProofOf(HasType g e t)
-{-@ lem_self_is_subtype :: g:Env -> t:Type -> k:Kind -> { p_g_t:WFType | propOf p_g_t == WFType g t k }
-        -> e:Term -> ProofOf(HasFType (erase_env g) e (erase t))
-        -> ProofOf(WFEnv g) -> ProofOf(Subtype g (self t e k) t) / [tsize t, 1] @-}
-lem_self_is_subtype :: Env -> Type -> Kind -> WFType -> Expr -> HasFType -> WFEnv -> Subtype 
-lem_self_is_subtype g t@(TRefn b x p)      Base p_g_t e p_e_t p_g_wf 
-  = lem_self_refn_sub g b x (p ? lem_refn_is_pred t b x p) p_g_wf p_g_t e p_e_t
-lem_self_is_subtype g t@(TFunc x t_x t')   Base p_g_t e p_e_t p_g_wf 
-  = lem_sub_refl g t Base p_g_t p_g_wf 
-lem_self_is_subtype g t@(TExists x t_x t') Base p_g_t e_ p_e_t p_g_wf 
-  = SBind g x t_x (self t' e Base) (TExists x t_x t' ? lem_free_bound_in_env g t Base p_g_t y
-                                                     ? lem_tfreeBV_empty g t Base p_g_t)
-          (y ? lem_fv_bound_in_fenv (erase_env g) e (erase t) p_e_t y) p_self_exis
-      where
-        e           = e_ ? lem_freeBV_emptyB    (erase_env g) e_ (erase t) p_e_t
-                         ? lem_fv_subset_bindsF (erase_env g) e_ (erase t) p_e_t
-        {-@ y :: { yy:Vname | not (in_env yy g) && not (Set_mem yy (free t')) && 
-                                                   not (Set_mem yy (freeTV t')) } @-}
-        (WFExis _ _ _tx k_x p_g_tx _t' _ y p_yg_t') 
-                    = lem_wfexis_for_wf_texists g x t_x t' Base p_g_t
-        p_er_g_wf   = lem_erase_env_wfenv g p_g_wf
-        p_yg_wf     = WFEBind g p_g_wf y t_x k_x p_g_tx
-        p_yg_tx     = lem_weaken_wf' g Empty p_g_wf t_x k_x p_g_tx y t_x
-        p_y_er_tx   = FTVar1 (erase_env g) y (erase t_x)
-        -- y:t_x, g |- (self t_x y) <: tx
-        p_selftx_tx = lem_self_is_subtype (Cons y t_x g) (t_x ? toProof (tsize t_x < tsize (TExists x t_x t')))
-                                          k_x p_yg_tx (FV y) p_y_er_tx p_yg_wf 
-        p_yg_e_t    = lem_weaken_ftyp (erase_env g) FEmpty p_er_g_wf e (erase t) p_e_t y (erase t_x)
-                          ? lem_erase_tsubBV x (FV y) t'
-        -- y:t_x, g |- (unbindT x y (self t' e Base)) <: unbindT x y t'
-        p_selft'_t' = lem_self_is_subtype (Cons y t_x g) (unbindT x y t') Base p_yg_t'
-                                 e p_yg_e_t p_yg_wf ? lem_tsubBV_self x (FV y) t' e Base
-                                                    ? toProof ( t === TExists x t_x t' )
-        p_y_tx      = TSub (Cons y t_x g) (FV y) (self t_x (FV y) k_x) 
-                           (TVar1 g y t_x k_x p_g_tx) t_x k_x p_yg_tx p_selftx_tx
-        p_self_exis = SWitn (Cons y t_x g) (FV y) t_x p_y_tx (unbindT x y (self t' e Base)) 
-                            x t' p_selft'_t' -- y,g |- (Self t' e)[y/x] <: \ex x:tx. t'
-lem_self_is_subtype g t@(TPoly a k_a t')   Base p_g_t e p_e_t p_g_wf 
-  = lem_sub_refl g t Base p_g_t p_g_wf
-lem_self_is_subtype g t                    Star p_g_t e p_e_t p_g_wf 
-  = lem_sub_refl g t Star p_g_t p_g_wf
--}
 
 {-@ lem_sub_refl :: g:Env -> t:Type -> k:Kind -> { p_g_t:WFType | propOf p_g_t == WFType g t k } 
                           -> { p_t_t:Subtype | propOf p_t_t == Subtype g t t &&
@@ -206,20 +155,17 @@ lem_sub_pullback_wftype g p_g_wf s t p_s_t@(SBind _ _ s_x s' _t nms mk_p_yg_s'_t
 lem_sub_pullback_wftype g p_g_wf s t p_s_t@(SPoly _ _ k' s' t' _ _) p_g_s p_g_t
   = impossible ("by lemma" ? lem_wf_tpoly_star g k' t' p_g_t)
 
-{-@ lem_subtype_in_exists :: n:Nat -> g:Env -> t_x:Type -> t:Type -> t':Type -> k:Kind
-        -> ProofOf(WFType g (TExists t_x t') k) -> nms:Names
+{-@ lem_subtype_in_exists :: n:Nat -> g:Env -> t_x:Type -> t:Type 
+        -> { t':Type | isLCT (TExists t_x t') } -> k_x:Kind -> ProofOf(WFType g t_x k_x) -> nms:Names
         -> ({ y:Vname | NotElem y nms }
                 -> ProofOfN n (Subtype (Cons y t_x g) (unbindT y t) (unbindT y t')) )
         -> { pf:Subtype | propOf pf == Subtype g (TExists t_x t) (TExists t_x t') &&
                           sizeOf pf == max n (tdepth t_x) + 2 } @-}
 lem_subtype_in_exists :: Int -> Env -> Type -> Type -> Type -> Kind -> WFType -> Names
                              -> (Vname -> Subtype) -> Subtype
-lem_subtype_in_exists n g t_x t t' k p_g_txt' nms mk_p_yg_t_t'
-  = SBind ((max n (tdepth t_x)) + 1) g t_x t 
-          (TExists t_x t' ? lem_wftype_islct g (TExists t_x t') k p_g_txt') nms' mk_p_yg_t_ext'
+lem_subtype_in_exists n g t_x t t' k_x p_g_tx nms mk_p_yg_t_t'
+  = SBind ((max n (tdepth t_x)) + 1) g t_x t (TExists t_x t') nms' mk_p_yg_t_ext'
       where
-        (WFExis _ _tx k_x p_g_tx _t' _k' _nms'' _p_yg_t')
-                    = lem_wfexis_for_wf_texists g t_x t' k p_g_txt'
         p_g_tx_star      = if k_x == Star then p_g_tx else WFKind g t_x p_g_tx
         mk_p_yg_t_ext' y = SWitn (max n (tdepth t_x)) (Cons y t_x g) (FV y) t_x p_y_tx (unbindT y t) t'
                                  (mk_p_yg_t_t' y ? lem_tsubBV_is_unbindT y t')

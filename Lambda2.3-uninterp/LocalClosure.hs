@@ -16,8 +16,6 @@ import Basics
 ----- | Local Closure of Locally Nameless Terms
 --------------------------------------------------------------------------------
 
---isLC_at j k e => isLC_at (j-1) k (open_at j y e)
-
 {-@ lem_islc_at_weaken :: j:Index -> k:Index -> { j':Index | j <= j' } -> { k':Index | k <= k' }
         -> { e:Expr | isLC_at j k e } -> { pf:_ | isLC_at j' k' e } / [esize e] @-}
 lem_islc_at_weaken :: Index -> Index -> Index -> Index -> Expr -> Proof
@@ -151,6 +149,27 @@ lem_islct_at_tsubFTV j k a t_a (TPoly   k'  t) = () ? lem_islct_at_tsubFTV j (k+
 
   -- Local Closure of Expressions
 
+{-@ lem_islc_at_before_open_at :: j:Index -> k:Index -> y:Vname
+        -> { e:Expr | isLC_at (j+1) k e } -> { pf:_| isLC_at j k (open_at j y e) } / [esize e] @-}
+lem_islc_at_before_open_at :: Index -> Index -> Vname -> Expr -> Proof
+lem_islc_at_before_open_at j k y (Bc _)         = ()
+lem_islc_at_before_open_at j k y (Ic _)         = ()
+lem_islc_at_before_open_at j k y (Prim _)       = ()
+lem_islc_at_before_open_at j k y (FV _)         = ()
+lem_islc_at_before_open_at j k y (BV i)
+  | i == j     = ()
+  | otherwise  = ()
+lem_islc_at_before_open_at j k y (Lambda e)     = () ? lem_islc_at_before_open_at (j+1) k y e
+lem_islc_at_before_open_at j k y (App e e')     = () ? lem_islc_at_before_open_at j k y e
+                                                     ? lem_islc_at_before_open_at j k y e'
+lem_islc_at_before_open_at j k y (LambdaT k' e) = () ? lem_islc_at_before_open_at j (k+1) y e
+lem_islc_at_before_open_at j k y (AppT e t)     = () ? lem_islc_at_before_open_at j k y e
+                                                     ? lem_islct_at_before_openT_at j k y t
+lem_islc_at_before_open_at j k y (Let ex e)     = () ? lem_islc_at_before_open_at j k y ex
+                                                     ? lem_islc_at_before_open_at (j+1) k y e
+lem_islc_at_before_open_at j k y (Annot e t)    = () ? lem_islc_at_before_open_at j k y e 
+                                                     ? lem_islct_at_before_openT_at j k y t
+
 -- In particular, isLC (unbind y e) => isLC_at 1 0 e
 {-@ lem_islc_at_after_open_at :: j:Index -> k:Index -> y:Vname
         -> { e:Expr | isLC_at j k (open_at j y e) } -> { pf:_ | isLC_at (j+1) k e } / [esize e] @-}
@@ -203,6 +222,14 @@ lem_islcp_at_after_unbindP k y PEmpty       = ()
 lem_islcp_at_after_unbindP k y (PCons p ps) = () ? lem_islc_at_after_open_at   0 k y p
                                                  ? lem_islcp_at_after_unbindP    k y ps
 
+{-@ lem_islcp_at_before_openP_at :: j:Index -> k:Index -> y:Vname
+        -> { ps:Preds | isLCP_at (j+1) k ps } -> { pf:_ | isLCP_at j k (openP_at j y ps) } 
+         / [predsize ps] @-}
+lem_islcp_at_before_openP_at :: Index -> Index -> Vname -> Preds -> Proof
+lem_islcp_at_before_openP_at j k y PEmpty       = ()
+lem_islcp_at_before_openP_at j k y (PCons p ps) = () ? lem_islc_at_before_open_at   j k y p
+                                                     ? lem_islcp_at_before_openP_at j k y ps
+
 {-@ lem_islcp_at_after_openP_at :: j:Index -> k:Index -> y:Vname
         -> { ps:Preds | isLCP_at j k (openP_at j y ps) } -> { pf:_ | isLCP_at (j+1) k ps } 
          / [predsize ps] @-}
@@ -220,6 +247,19 @@ lem_islcp_at_open_tvP_at j k a (PCons p ps) = () ? lem_islc_at_after_open_tv_at 
                                                  ? lem_islcp_at_open_tvP_at j k a ps
 
   -- Local Closure of Types
+
+{-@ lem_islct_at_before_openT_at :: j:Index -> k:Index -> y:Vname
+        -> { t:Type | isLCT_at (j+1) k t } -> { pf:_ | isLCT_at j k (openT_at j y t) } 
+         / [tsize t] @-}
+lem_islct_at_before_openT_at :: Index -> Index -> Vname -> Type -> Proof
+lem_islct_at_before_openT_at j k y (TRefn   b ps)  = case b of
+  (BTV i) -> () ? lem_islcp_at_before_openP_at (j+1) k y ps
+  _       -> () ? lem_islcp_at_before_openP_at (j+1) k y ps
+lem_islct_at_before_openT_at j k y (TFunc   t_x t) = () ? lem_islct_at_before_openT_at j k y t_x
+                                                        ? lem_islct_at_before_openT_at (j+1) k y t
+lem_islct_at_before_openT_at j k y (TExists t_x t) = () ? lem_islct_at_before_openT_at j k y t_x
+                                                        ? lem_islct_at_before_openT_at (j+1) k y t
+lem_islct_at_before_openT_at j k y (TPoly   k'  t) = () ? lem_islct_at_before_openT_at j (k+1) y t
 
 {-@ lem_islct_at_after_openT_at :: j:Index -> k:Index -> y:Vname
         -> { t:Type | isLCT_at j k (openT_at j y t) } -> { pf:_ | isLCT_at (j+1) k t } 
@@ -258,84 +298,3 @@ lem_islcft_at_after_openFT_at j a (FTBasic   b)  = case b of
 lem_islcft_at_after_openFT_at j a (FTFunc t_x t) = () ? lem_islcft_at_after_openFT_at j     a t_x
                                                       ? lem_islcft_at_after_openFT_at j     a t
 lem_islcft_at_after_openFT_at j a (FTPoly k'  t) = () ? lem_islcft_at_after_openFT_at (j+1) a t
-
-{-
----------------------------------------------------------------------------------
------ | Commutative Laws for OPENING and deBRUIJN INDEX SHIFTING
----------------------------------------------------------------------------------
-
-{-@ lem_open_at_shift_at :: j:Index -> y:Vname -> { k:Index | j >= k } -> e:Expr
-        -> { pf:_ | open_at (j+1) y (shift_at k e) == shift_at k (open_at j y e) } / [esize e] @-}
-lem_open_at_shift_at :: Index -> Vname -> Index -> Expr -> Proof
-lem_open_at_shift_at j y k (Bc b)              = ()
-lem_open_at_shift_at j y k (Ic n)              = ()
-lem_open_at_shift_at j y k (Prim c)            = ()
-lem_open_at_shift_at j y k (BV i) | i >= j     = ()
-                                  | otherwise  = ()
-lem_open_at_shift_at j y k (FV x)              = ()
-lem_open_at_shift_at j y k (Lambda e)          = lem_open_at_shift_at (j+1) y (k+1) e
-lem_open_at_shift_at j y k (App e e')          = lem_open_at_shift_at j y k e 
-                                               ? lem_open_at_shift_at j y k e'
-lem_open_at_shift_at j y k (LambdaT k' e)      = lem_open_at_shift_at j y k e
-lem_open_at_shift_at j y k (AppT e t)          = lem_open_at_shift_at j y k e
-                                               ? lem_openT_at_shiftT_at j y k t
-lem_open_at_shift_at j y k (Let ex e)          = lem_open_at_shift_at j y k ex
-                                               ? lem_open_at_shift_at (j+1) y (k+1) e
-lem_open_at_shift_at j y k (Annot e t)         = lem_open_at_shift_at j y k e
-                                               ? lem_openT_at_shiftT_at j y k t
-
-{-@ lem_openP_at_shiftP_at :: j:Index -> y:Vname -> { k:Index | j >= k } -> ps:Preds
-        -> { pf:_ | openP_at (j+1) y (shiftP_at k ps) == shiftP_at k (openP_at j y ps) } 
-         / [predsize ps] @-}
-lem_openP_at_shiftP_at :: Index -> Vname -> Index -> Preds -> Proof
-lem_openP_at_shiftP_at j y k PEmpty       = ()
-lem_openP_at_shiftP_at j y k (PCons p ps) = lem_open_at_shift_at j y k p
-                                          ? lem_openP_at_shiftP_at j y k ps
-
-{-@ lem_openT_at_shiftT_at :: j:Index -> y:Vname -> { k:Index | j >= k } -> t:Type
-        -> { pf:_ | openT_at (j+1) y (shiftT_at k t) == shiftT_at k (openT_at j y t) } / [tsize t] @-}
-lem_openT_at_shiftT_at :: Index -> Vname -> Index -> Type -> Proof
-lem_openT_at_shiftT_at j y k (TRefn   b ps)  = lem_openP_at_shiftP_at (j+1) y (k+1) ps
-lem_openT_at_shiftT_at j y k (TFunc   t_x t) = lem_openT_at_shiftT_at j y k t_x
-                                             ? lem_openT_at_shiftT_at (j+1) y (k+1) t
-lem_openT_at_shiftT_at j y k (TExists t_x t) = lem_openT_at_shiftT_at j y k t_x
-                                             ? lem_openT_at_shiftT_at (j+1) y (k+1) t
-lem_openT_at_shiftT_at j y k (TPoly   k'  t) = lem_openT_at_shiftT_at j y k t
-
-{-@ lem_islc_at_shift_at :: j_x:Index -> j_a:Index -> { e:Expr | isLC_at j_x j_a e }
-        -> { k:Index | k >= j_x } -> { pf:_ | isLC_at j_x j_a (shift_at k e) } / [esize e] @-}
-lem_islc_at_shift_at :: Index -> Index -> Expr -> Index -> Proof
-lem_islc_at_shift_at j_x j_a (Bc b) k              = ()
-lem_islc_at_shift_at j_x j_a (Ic n) k              = ()
-lem_islc_at_shift_at j_x j_a (Prim c) k            = ()
-lem_islc_at_shift_at j_x j_a (BV i) k | i >= j_x   = ()
-                                      | otherwise  = ()
-lem_islc_at_shift_at j_x j_a (FV x) k              = ()
-lem_islc_at_shift_at j_x j_a (Lambda e) k          = lem_islc_at_shift_at (j_x+1) j_a e (k+1)
-lem_islc_at_shift_at j_x j_a (App e e') k          = lem_islc_at_shift_at j_x j_a e k
-                                                   ? lem_islc_at_shift_at j_x j_a e' k
-lem_islc_at_shift_at j_x j_a (LambdaT k' e) k      = lem_islc_at_shift_at j_x (j_a+1) e k
-lem_islc_at_shift_at j_x j_a (AppT e t) k          = lem_islc_at_shift_at j_x j_a e k
-                                                   ? lem_islct_at_shiftT_at j_x j_a t k
-lem_islc_at_shift_at j_x j_a (Let ex e) k          = lem_islc_at_shift_at j_x j_a ex k
-                                                   ? lem_islc_at_shift_at (j_x+1) j_a e (k+1) 
-lem_islc_at_shift_at j_x j_a (Annot e t) k         = lem_islc_at_shift_at j_x j_a e k 
-                                                   ? lem_islct_at_shiftT_at j_x j_a t k 
-
-{-@ lem_islcp_at_shiftP_at :: j_x:Index -> j_a:Index -> { ps:Preds | isLCP_at j_x j_a ps }
-        -> { k:Index | k >= j_x } -> { pf:_ | isLCP_at j_x j_a (shiftP_at k ps) } / [predsize ps] @-}
-lem_islcp_at_shiftP_at :: Index -> Index -> Preds -> Index -> Proof
-lem_islcp_at_shiftP_at j_x j_a PEmpty       k = ()
-lem_islcp_at_shiftP_at j_x j_a (PCons p ps) k = lem_islc_at_shift_at j_x j_a p k
-                                              ? lem_islcp_at_shiftP_at j_x j_a ps k
-
-{-@ lem_islct_at_shiftT_at :: j_x:Index -> j_a:Index -> { t:Type | isLCT_at j_x j_a t }
-        -> { k:Index | k >= j_x } -> { pf:_ | isLCT_at j_x j_a (shiftT_at k t) } / [tsize t] @-}
-lem_islct_at_shiftT_at :: Index -> Index -> Type -> Index -> Proof
-lem_islct_at_shiftT_at j_x j_a (TRefn   b ps)  k = lem_islcp_at_shiftP_at (j_x+1) j_a ps (k+1)
-lem_islct_at_shiftT_at j_x j_a (TFunc   t_x t) k = lem_islct_at_shiftT_at j_x j_a t_x k
-                                                 ? lem_islct_at_shiftT_at (j_x+1) j_a t (k+1) 
-lem_islct_at_shiftT_at j_x j_a (TExists t_x t) k = lem_islct_at_shiftT_at j_x j_a t_x k
-                                                 ? lem_islct_at_shiftT_at (j_x+1) j_a t (k+1) 
-lem_islct_at_shiftT_at j_x j_a (TPoly   k'  t) k = lem_islct_at_shiftT_at j_x (j_a+1) t k
--}

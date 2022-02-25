@@ -19,10 +19,6 @@ import WellFormedness                   --(WFType(..),noDefnsInRefns,isWellForme
 import PrimitivesFTyping                --(isEql)
 import Typing
 
-{-@ reflect foo19 @-}
-foo19 :: a -> Maybe a
-foo19 x = Just x
-
 -----------------------------------------------------------------------------
 -- | All of our assumptions about BUILT-IN PRIMITIVES
 -----------------------------------------------------------------------------
@@ -74,5 +70,3 @@ lem_delta_ty'c c v p_v_tx = undefined -- this part we leave as an assumption
                            (tsubBTV t (TFunc (inType c) (ty' c)))) @-}
 lem_deltaT_ty'c :: Prim -> Type -> WFType -> HasType
 lem_deltaT_ty'c c t p_emp_t = undefined -- this part we leave as an assumption
-
-

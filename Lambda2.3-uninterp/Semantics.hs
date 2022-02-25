@@ -356,35 +356,3 @@ lem_decompose_evals e e' v ev_e_e' ev_e_v = case ev_e_e' of
     (AddStep _ e2 st_e_e2 _ ev_e2_v) -> lem_decompose_evals e1 e' v ev_e1_e' ev_e1_v
       where
         ev_e1_v = ev_e2_v ? lem_sem_det e e1 st_e_e1 e2 st_e_e2
-
-
-{-@ data CommonEvals where
-        BothEv :: e:Expr -> e':Expr -> e'':Expr -> ProofOf(EvalsTo e e'') 
-                         -> ProofOf(EvalsTo e' e'') -> ProofOf(CommonEvals e e') @-}
-
-data CommonEvals where
-    BothEv :: Expr -> Expr -> Expr -> EvalsTo -> EvalsTo -> CommonEvals
-
-{-@ lem_common_evals_extend :: e:Expr -> e':Expr -> ProofOf(CommonEvals e e')
-        -> v:Value -> ProofOf(EvalsTo e v) -> ProofOf(EvalsTo e' v) @-}
-lem_common_evals_extend :: Expr -> Expr -> CommonEvals -> Expr -> EvalsTo -> EvalsTo
-lem_common_evals_extend e e' (BothEv _ _ e1 ev_e_e1 ev_e'_e1) v ev_e_v
-  = lemma_evals_trans e' e1 v ev_e'_e1 ev_e1_v
-      where
-        ev_e1_v = lem_decompose_evals e e1 v ev_e_e1 ev_e_v
-
---------------------------------------------------------------------------------
---- | Predicate Semantics (Big Step)
---------------------------------------------------------------------------------
-
--- PE-Emp    PEmp => PEmp
--- PE-Cons   PCons p ps => ps'  if p ~>* Bc True and ps => ps'
-
-data PEvalsTrue where
-    PEEmp   :: PEvalsTrue
-    PECons  :: Expr -> EvalsTo -> Preds -> PEvalsTrue -> PEvalsTrue
-
-{-@ data PEvalsTrue where
-        PEEmp   :: ProofOf(PEvalsTrue PEmpty)
-        PECons  :: p:Expr -> ProofOf(EvalsTo p (Bc True)) -> ps:Preds -> ProofOf(PEvalsTrue ps)
-                     -> ProofOf(PEvalsTrue (PCons p ps)) @-}

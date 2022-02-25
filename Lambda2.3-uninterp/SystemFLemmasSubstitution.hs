@@ -22,10 +22,6 @@ import BasicPropsWellFormedness
 import SystemFLemmasWellFormedness
 import SystemFLemmasWeaken
 
-{-@ reflect foo24 @-}
-foo24 x = Just x
-foo24 :: a -> Maybe a
-
 ------------------------------------------------------------------------------
 ----- | METATHEORY Development for the Underlying System F Calculus
 ------------------------------------------------------------------------------
@@ -148,7 +144,6 @@ lem_subst_ftyp g g' x v_x t_x p_vx_tx e t (FTAnn env_ e' t_ liqt p_env_e'_t)
                                         (v_x ? lem_ftyp_islc g v_x t_x p_vx_tx) liqt)
         p_g'g_e'_t = lem_subst_ftyp g g' x v_x t_x p_vx_tx e' t p_env_e'_t
  
---        -> ProofOf(WFFT g (erase t_a) k_a) -> ProofOf(WFFE (concatF (FConsT a k_a g) g')) 
 {-@ lem_subst_tv_ftyp :: g:FEnv -> { g':FEnv | Set_emp (Set_cap (bindsF g) (bindsF g')) }
         -> { a:Vname | (not (in_envF a g)) && not (in_envF a g') } 
         -> { t_a:UserType | Set_sub (free t_a) (vbindsF  g) && Set_sub (freeTV t_a) (tvbindsF g) &&
@@ -180,7 +175,6 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t (FTVar2 _env z _t p_z_t w t_w
                           (ftsubFV a (erase t_a) t) p_z_tta 
                           (w ? lem_in_env_concatF g g'' w) (ftsubFV a (erase t_a) t_w)
           where
---            (WFFBind _g'g p_g'g_wf _ _ _ _) = p_env_wf
             p_z_tta = lem_subst_tv_ftyp g g'' a t_a k_a p_g_ta p_g_wf e t p_z_t
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t p_env_z_t@(FTVar3 _env z _t p_z_t a1_ k1)
   = case g' of             -- g'' = Empty so x = w and p_z_t :: HasFType(g (FV z) t)
@@ -188,7 +182,6 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t p_env_z_t@(FTVar3 _env z _t p
             (True)  -> p_z_t ? lem_ftsubFV_notin a (erase t_a) 
                                                  (t ? lem_ffreeTV_bound_in_fenv g t Star p_g_t a) 
           where
---            (WFFBindT _ pf_wf_g _ _) = p_env_wf
             p_g_t = lem_ftyping_wfft g e t p_z_t p_g_wf
       (FConsT _a1 _k1 g'')  -> case ( a == z ) of
         (True)  -> impossible ("by lemma" ? lem_fv_subset_bindsF (concatF (FConsT a k_a g) g'') (FV z) t p_z_t)
@@ -196,7 +189,6 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t p_env_z_t@(FTVar3 _env z _t p
                           (z ? lem_in_env_concatF (FConsT a k_a g) g'' z) 
                           (ftsubFV a (erase t_a) t) p_z_tta a1 k1
           where
---            (WFFBindT _g'g p_g'g_wf _ _) = p_env_wf
             a1 = a1_ ? lem_in_env_concatF g g'' a1_
             p_z_tta = lem_subst_tv_ftyp g g'' a t_a k_a p_g_ta p_g_wf e t p_z_t
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t (FTPrm _env c) 
@@ -210,11 +202,9 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t (FTAbs env_ t_z k_z p_env_tz 
         {-@ mk_p_yg'g_e'ta_t' :: { y:Vname | NotElem y nms' }
               -> ProofOf(HasFType (FCons y (ftsubFV a (erase t_a) t_z) (concatF g (fesubFV a (erase t_a) g'))) 
                                   (unbind y (subFTV a t_a e')) (ftsubFV a (erase t_a) t')) @-}
-        mk_p_yg'g_e'ta_t' y = lem_subst_tv_ftyp g (FCons y t_z g') a t_a k_a p_g_ta p_g_wf {-p_yenv_wf-}
+        mk_p_yg'g_e'ta_t' y = lem_subst_tv_ftyp g (FCons y t_z g') a t_a k_a p_g_ta p_g_wf 
                                         (unbind y e') t' (mk_p_yenv_e'_t' y)
                                         ? lem_commute_subFTV_unbind a t_a y e'
---          where
---            p_yenv_wf       = WFFBind (concatF (FConsT a k_a g) g') p_env_wf y t_z k_z p_env_tz
         nms'                = a:(unionFEnv nms (concatF g g'))
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t (FTApp env_ e' t_z t' p_env_e'_tzt' e_z p_env_ez_tz)
   = FTApp (concatF g (fesubFV a (erase t_a) g')) (subFTV a t_a e') (ftsubFV a (erase t_a) t_z) 
@@ -226,17 +216,14 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t p_e_t@(FTAbsT env k' e' t' nm
   = FTAbsT (concatF g (fesubFV a (erase t_a) g')) k' (subFTV a t_a e') 
            (ftsubFV a (erase t_a) t') nms' mk_p_a'g'g_e'_t'
       where
---        p_env_t        = lem_ftyping_wfft env e t p_e_t p_env_wf
         {-@ mk_p_a'g'g_e'_t' :: { a':Vname | NotElem a' nms' }
               -> ProofOf(HasFType (FConsT a' k' (concatF g (fesubFV a (erase t_a) g')))
                              (unbind_tv a' (subFTV a t_a e')) (unbindFT a' (ftsubFV a (erase t_a) t'))) @-}
-        mk_p_a'g'g_e'_t' a' = lem_subst_tv_ftyp g (FConsT a' k' g') a t_a k_a p_g_ta p_g_wf {-p_a'env_wf-}
+        mk_p_a'g'g_e'_t' a' = lem_subst_tv_ftyp g (FConsT a' k' g') a t_a k_a p_g_ta p_g_wf 
                                   (unbind_tv a' e') (unbindFT a' t') (mk_p_a'env_e'_t' a')
                                   ? lem_commute_subFTV_unbind_tv a t_a a' e'
                                   ? lem_commute_ftsubFV_unbindFT a (erase t_a 
                                         ? lem_wfft_islcft g (erase t_a) k_a p_g_ta) a' t'
---          where
---            p_a'env_wf     = WFFBindT (concatF (FConsT a k_a g) g') p_env_wf a' k'
         nms'                = a:(unionFEnv nms (concatF g g'))
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t (FTAppT env_ e' k' t' p_env_e'_a't' liqt p_env_er_liqt)
   = FTAppT (concatF g (fesubFV a (erase t_a) g')) (subFTV a t_a e') k' 
@@ -253,16 +240,13 @@ lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t (FTLet env_ e_z t_z p_env_ez_
   = FTLet (concatF g (fesubFV a (erase t_a) g')) (subFTV a t_a e_z) (ftsubFV a (erase t_a) t_z) 
           p_g'g_ezta_tz (subFTV a t_a e') (ftsubFV a (erase t_a) t) nms' mk_p_yg'g_e'ta_t
       where
---        p_env_tz       = lem_ftyping_wfft env_ e_z t_z p_env_ez_tz p_env_wf
         p_g'g_ezta_tz  = lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e_z t_z p_env_ez_tz
         {-@ mk_p_yg'g_e'ta_t :: { y:Vname | NotElem y nms' }
               -> ProofOf(HasFType (FCons y (ftsubFV a (erase t_a) t_z) (concatF g (fesubFV a (erase t_a) g')))
                                   (unbind y (subFTV a t_a e')) (ftsubFV a (erase t_a) t)) @-}
-        mk_p_yg'g_e'ta_t y = lem_subst_tv_ftyp g (FCons y t_z g') a t_a k_a p_g_ta p_g_wf {-p_yenv_wf-}
+        mk_p_yg'g_e'ta_t y = lem_subst_tv_ftyp g (FCons y t_z g') a t_a k_a p_g_ta p_g_wf 
                                                (unbind y e') t (mk_p_yenv_e'_t y)
                                                ? lem_commute_subFTV_unbind a t_a y e' 
---          where
---            p_yenv_wf      = WFFBind (concatF (FConsT a k_a g) g') p_env_wf y t_z Star p_env_tz
         nms'               = a:(unionFEnv nms (concatF g g'))
 lem_subst_tv_ftyp g g' a t_a k_a p_g_ta p_g_wf e t (FTAnn env_ e' t_ liqt p_env_e'_t)
   = FTAnn (concatF g (fesubFV a (erase t_a) g')) (subFTV a t_a e') (ftsubFV a (erase t_a) t) 

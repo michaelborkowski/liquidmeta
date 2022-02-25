@@ -12,12 +12,8 @@ import qualified Data.Set as S
 
 import Basics
 import Semantics                        
-import SystemFWellFormedness            --(WFFT(..),WFFE(..))
-import SystemFTyping                    --(HasFType(..),erase_ty)--,firstBV,inType,ty',refn_pred,ty,erase_ty)
-
-{-@ reflect foo08 @-}
-foo08 :: a -> Maybe a
-foo08 x = Just x
+import SystemFWellFormedness            
+import SystemFTyping                    
 
 -- | Well Formedness of System F PRIMITIVES
 

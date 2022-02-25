@@ -12,10 +12,6 @@ import qualified Data.Set as S
 
 import Basics
 
-{-@ reflect foo04 @-}
-foo04 :: a -> Maybe a
-foo04 x = Just x
-
 --- Because the underyling System F types have type variables, we need a concept
 ---   of well-formedness that works for the System F types and the System F
 ---   binding environments consisting of 

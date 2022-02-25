@@ -2,7 +2,6 @@
 
 {-@ LIQUID "--reflection"  @-}
 {-@ LIQUID "--ple"         @-}
-{-@ LIQUID "--fuel=6"      @-}
 {-@ LIQUID "--short-names" @-}
 
 module PrimitivesDeltaTyping where
@@ -59,7 +58,6 @@ lem_delta_typ c v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
     where
       p_cv_ty'cv    = lem_delta_ty'c c v p_v_tx
       p_emp_exty'   = WFExis Empty t_x Base (lem_wf_intype c) (ty' c) Star [] (lem_wf_ty' c)
---lem_wf_texists_from_wf_tfunc Empty t_x t' Star (lem_wf_ty c)
       p_ty'cv_exty' = lem_witness_sub Empty v t_x p_v_tx (ty' c) Star p_emp_exty' WFEEmpty
       n             = max (typSize p_cv_ty'cv) (subtypSize  p_ty'cv_exty')
   (TSub {})  
@@ -67,8 +65,7 @@ lem_delta_typ c v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
                = lem_collapse_sub Empty (Prim c) (TFunc t_x t') WFEEmpty p_c_txt'
          in case p_s_t of
               (SFunc n _ _ _ p_tx_in _ _ nms mk_p_ty'c_t') -> case p_c_s of
-                (TPrm Empty _c) {-> case lem_wffunc_for_wf_tfunc Empty t_x t' k_t p_g_txt' of
-                  (WFFunc _ _ k_tx p_emp_tx _ k' nms' mk_p_y_t')-}
+                (TPrm Empty _c) 
                       -> TSub n''' Empty (delta c (v ? compat)) ty'cv p_cv_ty'cv
                               (TExists t_x t') Star p_emp_extxt' p_ty'cv_extxt'
                     where
@@ -85,30 +82,15 @@ lem_delta_typ c v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
                       p_emp_exty'    = WFExis Empty t_x Star p_g_tx (ty' c) Star [] mk_wf_ty' --(lem_wf_ty' c)
                       p_ty'cv_txty'  = lem_witness_sub Empty v t_x p_v_tx (ty' c) Star p_emp_exty'
                                                        WFEEmpty
-                      p_txty'_extxt' = lem_subtype_in_exists n Empty t_x (ty' c) t' Star p_emp_extxt'
-                                                             nms mk_p_ty'c_t'
+                      p_txty'_extxt' = lem_subtype_in_exists n Empty t_x (ty' c) 
+                                                     (t' ? lem_wftype_islct Empty (TExists t_x t') 
+                                                                            Star p_emp_extxt')
+                                                     Star p_g_tx nms mk_p_ty'c_t'
                       p_emp_ty'cv    = lem_typing_wf Empty (delta c v ? compat) (tsubBV v (ty' c)) 
                                                      p_cv_ty'cv WFEEmpty
                       p_ty'cv_extxt' = lem_sub_trans Empty WFEEmpty (tsubBV v (ty' c)) Star p_emp_ty'cv
                                                      (TExists t_x (ty' c)) (TExists t_x t') Star
                                                      p_emp_extxt' p_ty'cv_txty' p_txty'_extxt' 
-{-
-                      p_v_er_tx   = lem_typing_hasftype Empty v t_x p_v_tx WFEEmpty
-                      y           = fresh_var (union nms nms') Empty
-
-                      p_emp_t'v   = lem_subst_wf Empty Empty y v t_x p_v_er_tx (unbindT y t') k' 
-                                      (mk_p_y_t' y) ? lem_tsubFV_unbindT y v 
-                                        (t' ? lem_free_bound_in_env Empty (TFunc t_x t') k_t p_g_txt' y)
-
-
-                      p_ty'cv_t'v = lem_subst_sub Empty Empty y v t_x p_v_tx WFEEmpty
-                                            (unbindT y (ty' c)) (unbindT y t') (mk_p_ty'c_t' y)
-                                  ? toProof ( esubFV y v Empty === Empty )
-                                  ? lem_empty_concatE Empty
-                                  ? lem_tsubFV_unbindT y v -- (ty' c)
-                                        (ty' c ? lem_free_bound_in_env Empty (ty c) Star (lem_wf_ty c) y)
-                                  ? lem_tsubFV_unbindT y v {-t'-}
-                                        (t' ? lem_free_bound_in_env Empty (TFunc t_x t') k_t p_g_txt' y)-}
                       n''         = max (typSize p_v_tx)     (subtypSize p_tx_in)
                       n'''        = max (typSize p_cv_ty'cv) (subtypSize p_ty'cv_extxt')     
               (SBind {}) -> case p_c_s of
@@ -117,48 +99,6 @@ lem_delta_typ c v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
      p_cv_extxt'    = TApp n' Empty (Prim c) t_x t' p_c_txt' v p_v_tx
      compat         = lem_prim_compat_in_tapp c v (TExists t_x t') p_cv_extxt'
      n'          = max (typSize p_c_txt')   (typSize p_v_tx)
-
-{-
-{-@ lem_delta_typ ::  c:Prim  -> v:Value  -> t_x:Type -> t':Type
-        -> ProofOf(HasType Empty (Prim c) (TFunc t_x t')) -> ProofOf(HasType Empty v t_x)
-        -> { pf:_ | propOf pf == HasType Empty (delta c v) (tsubBV v t') } @-} 
-lem_delta_typ :: Prim -> Expr ->  Type -> Type -> HasType -> HasType -> HasType
-lem_delta_typ c v t_x t' p_c_txt' p_v_tx = case p_c_txt' of
-  (TPrm _ _) -> lem_delta_ty'c c v p_v_tx
-  (TSub {})  
-    -> let (TSub _ _ _ s p_c_s _ k_t p_g_txt' p_s_t) 
-               = lem_collapse_sub Empty (Prim c) (TFunc t_x t') WFEEmpty p_c_txt'
-         in case p_s_t of
-              (SFunc n _ _ _ p_tx_in _ _ nms mk_p_ty'c_t') -> case p_c_s of
-                (TPrm Empty _c) -> case lem_wffunc_for_wf_tfunc Empty t_x t' k_t p_g_txt' of
-                  (WFFunc _ _ k_tx p_emp_tx _ k' nms' mk_p_y_t')
-                      -> TSub n''' Empty (delta c (v ? compat)) ty'cv p_cv_ty'cv
-                              (tsubBV v t') k' p_emp_t'v p_ty'cv_t'v
-                    where
-                      compat      = lem_prim_compat_in_tapp c v (TExists t_x t')
-                                      (TApp n' Empty (Prim c) t_x t' p_c_txt' v p_v_tx)
-                      ty'cv       = tsubBV v (ty' c)
-                      p_v_in      = TSub n'' Empty v t_x p_v_tx (inType c) Base (lem_wf_intype c) p_tx_in
-                      p_cv_ty'cv  = lem_delta_ty'c c v p_v_in
-                      p_v_er_tx   = lem_typing_hasftype Empty v t_x p_v_tx WFEEmpty
-                      y           = fresh_var (union nms nms') Empty
-                      p_emp_t'v   = lem_subst_wf Empty Empty y v t_x p_v_er_tx (unbindT y t') k' 
-                                      (mk_p_y_t' y) ? lem_tsubFV_unbindT y v 
-                                        (t' ? lem_free_bound_in_env Empty (TFunc t_x t') k_t p_g_txt' y)
-                      p_ty'cv_t'v = lem_subst_sub Empty Empty y v t_x p_v_tx WFEEmpty
-                                            (unbindT y (ty' c)) (unbindT y t') (mk_p_ty'c_t' y)
-                                  ? toProof ( esubFV y v Empty === Empty )
-                                  ? lem_empty_concatE Empty
-                                  ? lem_tsubFV_unbindT y v -- (ty' c)
-                                        (ty' c ? lem_free_bound_in_env Empty (ty c) Star (lem_wf_ty c) y)
-                                  ? lem_tsubFV_unbindT y v {-t'-}
-                                        (t' ? lem_free_bound_in_env Empty (TFunc t_x t') k_t p_g_txt' y)
-                      n'          = max (typSize p_c_txt')   (typSize p_v_tx)
-                      n''         = max (typSize p_v_tx)     (subtypSize p_tx_in)
-                      n'''        = max (typSize p_cv_ty'cv) (subtypSize p_ty'cv_t'v)     
-              (SBind {}) -> case p_c_s of
-                (TPrm {}) -> impossible "s == tyc must be TFunc"
--}
 
 {-@ lem_tyeql_forallbase :: c:Prim  -> k:Kind -> s:Type 
         -> ProofOf(Subtype Empty (ty c) (TPoly k s)) -> { pf:_ | k == Base } @-}
@@ -177,8 +117,7 @@ lem_deltaT_typ c k u' p_c_ku' t p_emp_t  = case p_c_ku' of
                = lem_collapse_sub Empty (Prim c) (TPoly k u') WFEEmpty p_c_ku'
          in case p_tyc_u of
               (SPoly n _ _ tyc' _ nms mk_p_tyc'_u') -> case p_c_tyc of 
-                (TPrm Empty _c) {-> case lem_wfpoly_for_wf_tpoly' Empty k u' k_u p_emp_ku' of
-                  (WFPoly  _ _ _ k_u' nms' mk_p_a_u')-}
+                (TPrm Empty _c) 
                       -> TSub n'' Empty deltaT_c_t tyct p_ct_tyct (tsubBTV t u') Star
                               p_emp_u't p_tyct_u't
                     where
@@ -189,16 +128,9 @@ lem_deltaT_typ c k u' p_c_ku' t p_emp_t  = case p_c_ku' of
                       a           = fresh nms --_var {-(union-} nms {-nms')-} Empty
                       p_emp_u't   = lem_typing_wf Empty (AppT (Prim c) t) (tsubBTV t u') p_ct_u't 
                                                   WFEEmpty
-{-
-                      p_emp_u't   = lem_subst_tv_wf' Empty Empty a t k p_emp_t WFEEmpty
-                                      (unbind_tvT a u') k_u' (mk_p_a_u' a)
-                                      ? lem_tsubFTV_unbind_tvT a t 
-                                          (u' ? lem_free_bound_in_env Empty (TPoly k u') k_u p_emp_ku' a)
--}
                       p_tyct_u't  = lem_subst_tv_sub Empty Empty a t k p_emp_t WFEEmpty
                                       (unbind_tvT a (TFunc (inType c) (ty' c)))
                                       (unbind_tvT a u') (mk_p_tyc'_u' a)
-                                  -- ? esubFTV a'' t Empty  
                                   ? toProof ( esubFTV a t Empty === Empty )
                                   ? lem_empty_concatE Empty
                                   ? lem_tsubFTV_unbind_tvT a t (TFunc (inType c) (ty' c)
