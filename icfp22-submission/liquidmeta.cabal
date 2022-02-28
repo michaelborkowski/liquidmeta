@@ -1,0 +1,52 @@
+cabal-version: 1.12
+
+name:           liquidmeta
+version:        0.0.0
+build-type:     Simple
+
+library
+  exposed-modules:
+      Basics,
+      LocalClosure,
+      Strengthenings,
+      Semantics,
+      SystemFWellFormedness,
+      SystemFTyping,
+      BasicPropsSubstitution,
+      PrimitivesFTyping,
+      BasicPropsEnvironments,
+      WellFormedness,
+      BasicPropsWellFormedness,
+      SystemFLemmasWellFormedness,
+      SystemFLemmasWeaken,
+      SystemFLemmasSubstitution,
+      Typing,
+      PrimitivesWFType,
+      LemmasWeakenWF,
+      LemmasWeakenWFTV,
+      LemmasWellFormedness,
+      SubstitutionLemmaWF
+      SubstitutionLemmaWFTV,
+      LemmasTyping, 
+      LemmasWeakenTyp,
+      LemmasWeakenTypTV,
+      LemmasSubtyping,
+      LemmasExactness,
+      LemmasExactnessSubst,
+      SubstitutionLemmaTyp,
+      SubstitutionLemmaTypTV,
+      LemmasNarrowingTyp,
+      LemmasTransitive,
+      LemmasInversion,
+      PrimitivesDeltaTyping,
+      MainTheorems
+  hs-source-dirs:
+      src
+  ghc-options:  -fplugin=LiquidHaskell 
+  build-depends:
+      liquid-base
+    , liquid-containers
+    , liquid-prelude
+    , liquidhaskell
+    , rest-rewrite
+  default-language: Haskell2010
