@@ -66,7 +66,7 @@ lem_subst_tv_typ_tvar1 g g' a t_a k_a p_g_ta p_g_wf e t (TVar1 _env z t' k' p_en
                                            (tsubFTV a t_a t') k' p_env'_t'ta z (tsubFTV a t_a t') 
           p_zenv_selft'    = lem_selfify_wf   (concatE (ConsT a k_a g) g') t' k' p_zenv_t' 
                                               (FV z) p_z_er_t'
-	  p_zenv'_selft'ta = lem_subst_tv_wf' g g' a t_a k_a p_g_ta p_g_wf 
+          p_zenv'_selft'ta = lem_subst_tv_wf' g g' a t_a k_a p_g_ta p_g_wf 
                                               (self t' (FV z) k') k' p_zenv_selft'
           p_z_er_t'    = FTVar1 (erase_env (concatE (ConsT a k_a g) g'')) z (erase t')
           p_z_er_t'ta  = FTVar1 (erase_env (concatE g (esubFTV a t_a g'')))

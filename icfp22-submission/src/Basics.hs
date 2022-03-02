@@ -58,9 +58,9 @@ data Expr = Bc Bool                   -- True, False
 {-@ lazy esize @-}
 {-@ measure esize @-}
 {-@ esize :: e:Expr -> { v:Int | v >= 0 } @-}
-esize :: Expr -> Int      --esize (Bc True)	        = 0
-esize (Bc _)  		= 1
-esize (Ic _)		= 1
+esize :: Expr -> Int      
+esize (Bc _)            = 1
+esize (Ic _)            = 1
 esize (Prim _)          = 1
 esize (BV _)            = 1
 esize (FV _)            = 1
@@ -85,7 +85,7 @@ isValue (LambdaT   k e) = True
 isValue _               = False
 
 
-{-@ reflect fv @-} 
+{-@ measure fv @-} 
 {-@ fv :: e:Expr -> S.Set Vname / [esize e] @-}
 fv :: Expr -> S.Set Vname
 fv (Bc _)          = S.empty
@@ -306,7 +306,7 @@ subBTV_at j t_a (Annot e t)                  = Annot     (subBTV_at j t_a e) (ts
   
   ---  Refinements
 
-data Preds = PEmpty                         -- type Preds = [Expr]	
+data Preds = PEmpty                         -- type Preds = [Expr]
            | PCons  Expr Preds
   deriving Eq
 {-@ data Preds where 
@@ -757,7 +757,7 @@ tsubBTV_at j t_a (TPoly   k  t)     = TPoly k  (tsubBTV_at (j+1) t_a t)
 
   --- TYPING ENVIRONMENTS ---
 
-data Env = Empty                         -- type Env = [(Vname, Type) or Vname]	
+data Env = Empty                         -- type Env = [(Vname, Type) or Vname]
          | Cons  Vname Type Env          
          | ConsT Vname Kind Env
 --  deriving (Show)
