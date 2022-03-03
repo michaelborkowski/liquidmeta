@@ -20,6 +20,7 @@ library
       SystemFLemmasWellFormedness,
       SystemFLemmasWeaken,
       SystemFLemmasSubstitution,
+      SystemFSoundness,
       Typing,
       PrimitivesWFType,
       LemmasWeakenWF,

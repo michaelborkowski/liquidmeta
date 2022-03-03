@@ -100,7 +100,7 @@ fv (AppT e t)      = S.union (fv e) (free t)
 fv (Let   ex e)    = S.union (fv ex) (fv e)
 fv (Annot e t)     = S.union (fv e) (free t) 
 
-{-@ reflect fvList @-} 
+{-@ measure fvList @-} 
 {-@ fvList :: e:Expr -> { xs:Names | listElts xs == fv e } / [esize e] @-}
 fvList :: Expr -> Names
 fvList (Bc _)          = []
@@ -115,7 +115,7 @@ fvList (AppT e t)      = union (fvList e) (freeList t)
 fvList (Let   ex e)    = union (fvList ex) (fvList e)
 fvList (Annot e t)     = union (fvList e) (freeList t) 
 
-{-@ reflect ftv @-}
+{-@ measure ftv @-}
 {-@ ftv :: e:Expr -> S.Set Vname / [esize e] @-}
 ftv :: Expr -> S.Set Vname
 ftv (Bc _)          = S.empty
@@ -322,19 +322,19 @@ predsize :: Preds -> Int
 predsize PEmpty       = 0
 predsize (PCons p ps) = predsize ps + esize p + 1
 
-{-@ reflect fvP @-}
+{-@ measure fvP @-}
 {-@ fvP :: ps:Preds -> S.Set Vname / [predsize ps] @-}
 fvP :: Preds -> S.Set Vname
 fvP PEmpty       = S.empty
 fvP (PCons p ps) = S.union (fv p) (fvP ps)
 
-{-@ reflect fvPList @-}
+{-@ measure fvPList @-}
 {-@ fvPList :: ps:Preds -> { xs:Names | listElts xs == fvP ps } / [predsize ps] @-}
 fvPList :: Preds -> Names
 fvPList PEmpty       = []
 fvPList (PCons p ps) = union (fvList p) (fvPList ps)
 
-{-@ reflect ftvP @-}
+{-@ measure ftvP @-}
 {-@ ftvP :: ps:Preds -> S.Set Vname / [predsize ps] @-}
 ftvP :: Preds -> S.Set Vname
 ftvP PEmpty       = S.empty
@@ -467,7 +467,7 @@ data Basic = TBool         -- Bool
            | FTV     Vname   -- a   
   deriving (Eq, Show)
 
-{-@ reflect isBTV @-}
+{-@ measure isBTV @-}
 isBTV :: Basic -> Bool
 isBTV (BTV _) = True
 isBTV _       = False
@@ -542,27 +542,27 @@ polysize (TFunc   t_x t)       = (polysize t_x) + (polysize t)
 polysize (TExists   t_x t)     = (polysize t_x) + (polysize t) 
 polysize (TPoly   k   t)       = (polysize t)   + 1
 
-{-@ reflect isTRefn @-}
+{-@ measure isTRefn @-}
 isTRefn :: Type -> Bool
 isTRefn (TRefn {}) = True
 isTRefn _          = False
 
-{-@ reflect isTFunc @-}
+{-@ measure isTFunc @-}
 isTFunc :: Type -> Bool
 isTFunc (TFunc {}) = True
 isTFunc _          = False
 
-{-@ reflect isTExists @-}
+{-@ measure isTExists @-}
 isTExists :: Type -> Bool
 isTExists (TExists {}) = True
 isTExists _            = False
 
-{-@ reflect isTPoly @-}
+{-@ measure isTPoly @-}
 isTPoly :: Type -> Bool
 isTPoly (TPoly {}) = True
 isTPoly _          = False
 
-{-@ reflect free @-} -- free TERM variables
+{-@ measure free @-} -- free TERM variables
 {-@ free :: t:Type -> S.Set Vname / [tsize t] @-}
 free :: Type -> S.Set Vname
 free (TRefn b   rs)     = fvP rs
@@ -570,7 +570,7 @@ free (TFunc   t_x t)    = S.union (free t_x) (free t)
 free (TExists   t_x t)  = S.union (free t_x) (free t) 
 free (TPoly   k   t)    = free t
 
-{-@ reflect freeList @-}
+{-@ measure freeList @-}
 {-@ freeList :: t:Type -> { xs:Names | listElts xs == free t } / [tsize t] @-}
 freeList :: Type -> Names
 freeList (TRefn b   rs)     = fvPList rs
@@ -578,7 +578,7 @@ freeList (TFunc   t_x t)    = union (freeList t_x) (freeList t)
 freeList (TExists   t_x t)  = union (freeList t_x) (freeList t) 
 freeList (TPoly   k   t)    = freeList t
 
-{-@ reflect freeTV @-} -- free TYPE variables
+{-@ measure freeTV @-} -- free TYPE variables
 {-@ freeTV :: t:Type -> S.Set Vname / [tsize t] @-}
 freeTV :: Type -> S.Set Vname
 freeTV (TRefn b   r)      = case b of 
@@ -879,7 +879,7 @@ erase (TExists t_x t) = (erase t)
 erase (TPoly  k  t)   = FTPoly k (erase t)
 
 -- there are no term vars in a Bare Type, only type ones
-{-@ reflect ffreeTV @-} 
+{-@ measure ffreeTV @-} 
 {-@ ffreeTV :: t:FType -> S.Set Vname / [ftsize t] @-}
 ffreeTV :: FType -> S.Set Vname
 ffreeTV (FTBasic b)      = case b of
@@ -888,7 +888,7 @@ ffreeTV (FTBasic b)      = case b of
 ffreeTV (FTFunc t_x t)   = S.union (ffreeTV t_x) (ffreeTV t) 
 ffreeTV (FTPoly   k t)   = ffreeTV t
 
-{-@ reflect ffreeTVList @-}
+{-@ measure ffreeTVList @-}
 {-@ ffreeTVList :: t:FType -> { xs:Names | listElts xs == ffreeTV t } @-}
 ffreeTVList :: FType -> Names
 ffreeTVList (FTBasic b)     = case b of
