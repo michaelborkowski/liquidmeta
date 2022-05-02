@@ -48,6 +48,7 @@ data Alts  = AEmpty | ACons DCons Expr Alts
 {-@ data Expr where
         Bc      :: Bool  -> Expr
         Ic      :: Int   -> Expr
+        Dc      :: DCons -> Expr
         Prim    :: Prim  -> Expr 
         BV      :: Index -> Expr
         FV      :: Vname -> Expr
@@ -92,13 +93,8 @@ esize (Let   e_x e)     = (esize e_x) + (esize e) + 1
 esize (Annot e t)       = (esize e)   + (tsize t) + 1
 esize (Switch e as)     = (esize e)   + (asize as) + 1
 
-{-@ type Value = { v:Expr | isValue v } @-}
-
-{-@ reflect dataValue @-}
-dataValue :: Expr -> Bool
-dataValue (Dc _)        = True
-dataValue (App e1 e2)   = dataValue e1 && isValue e2
-dataValue _             = False
+{-@ type Value     = { v:Expr | isValue v } @-}
+{-@ type DataValue = { v:Expr | dataValue v } @-}
 
 {-@ reflect isValue @-} -- meaning: is a syntactic value 
 isValue :: Expr -> Bool
@@ -110,6 +106,24 @@ isValue (BV _)          = True
 isValue (Lambda   e)    = True 
 isValue (LambdaT   k e) = True
 isValue e               = dataValue e
+
+{-@ reflect dataValue @-}
+dataValue :: Expr -> Bool
+dataValue (Dc _)        = True
+dataValue (App e1 e2)   = dataValue e1 && isValue e2
+dataValue _             = False
+
+{-@ reflect dvdc @-}
+{-@ dvdc :: DataValue -> DCons @-}
+dvdc :: Expr -> DCons
+dvdc (Dc dc)     = dc
+dvdc (App dv v)  = dvdc dv
+
+{-@ reflect argCount @-}
+{-@ argCount :: DataValue -> Nat @-}
+argCount :: Expr -> Int
+argCount (Dc _)     = 0
+argCount (App dv v) = (argCount dv) + 1
 
 
 {-@ measure fv @-} 
@@ -182,7 +196,7 @@ isLC_at j_x j_a (LambdaT k e)  = isLC_at j_x (j_a+1) e
 isLC_at j_x j_a (AppT e t)     = isLC_at j_x j_a e     && isLCT_at j_x j_a t
 isLC_at j_x j_a (Let ex e)     = isLC_at j_x j_a ex    && isLC_at (j_x+1) j_a e 
 isLC_at j_x j_a (Annot e t)    = isLC_at j_x j_a e     && isLCT_at j_x j_a t
-isLC_at j_x j_a (Switch e cs)  = isLC_at j_x j_a e     && isLCA_at j_x j_a t
+isLC_at j_x j_a (Switch e cs)  = isLC_at j_x j_a e     && isLCA_at j_x j_a cs
 
 {-@ reflect unbind @-} -- unbind opens (BV i) to (FV y) in e 
 {-@ unbind :: y:Vname -> e:Expr 
@@ -320,7 +334,7 @@ subBV_at j v (LambdaT k e)      = LambdaT k (subBV_at j v e)  -- not j+1
 subBV_at j v (AppT e t)         = AppT  (subBV_at j v e)  (tsubBV_at j v t)
 subBV_at j v (Let ex e)         = Let   (subBV_at j v ex) (subBV_at (j+1) v e)
 subBV_at j v (Annot e t)        = Annot (subBV_at j v e)  (tsubBV_at j v t)
-subBV_at j v (Switch e cs)      = Switch (subBV_at j v e)  (tsubBV_at j v cs)
+subBV_at j v (Switch e cs)      = Switch (subBV_at j v e)  (asubBV_at j v cs)
 
 {-@ reflect subBTV @-} -- substitute in a type for a BOUND TYPE var
 {-@ subBTV :: t:UserType -> e:Expr
@@ -356,8 +370,8 @@ subBTV_at j t_a (Switch e cs)    = Switch    (subBTV_at j t_a e) (asubBTV_at j t
 {-@ measure asize @-}
 {-@ asize :: Alts -> { v:Int | v >= 0 } @-}
 asize :: Alts -> Int
-asize (ACons dc e as) = esize e + asize as + 1
 asize AEmpty          = 1
+asize (ACons dc e as) = esize e + asize as + 1
 
 {-@ measure fvA @-}
 {-@ fvA :: ps:Alts -> S.Set Vname / [asize ps] @-}
@@ -388,109 +402,111 @@ isLCA_at :: Index -> Index -> Alts -> Bool
 isLCA_at j_x j_a AEmpty          = True
 isLCA_at j_x j_a (ACons dc e cs) = isLC_at (j_x + (arity dc)) j_a e && isLCA_at j_x j_a cs
 
+--                                 not (ps == AEmpty) => not (ps' == AEmpty) &&
 {-@ reflect unbindA @-}
 {-@ unbindA :: y:Vname -> ps:Alts
                  -> { ps':Alts | Set_sub (fvA ps') (Set_cup (Set_sng y) (fvA ps)) &&
                                  Set_sub (fvA ps) (fvA ps') &&
                                  Set_sub (ftvA ps') (ftvA ps) && Set_sub (ftvA ps) (ftvA ps') &&
-                                 not (ps == AEmpty) => not (ps' == AEmpty) &&
                                  asize ps == asize ps' } / [asize ps] @-}
 unbindA :: Vname -> Alts -> Alts
 unbindA y AEmpty          = AEmpty
 unbindA y (ACons dc e cs) = ACons dc (open_at (arity dc) y e) (unbindA y cs)
 
+--                                 not (ps == AEmpty) => not (ps' == AEmpty) &&
 {-@ reflect openA_at @-}
 {-@ openA_at :: j:Index -> y:Vname -> ps:Alts
                  -> { ps':Alts | Set_sub (fvA ps') (Set_cup (Set_sng y) (fvA ps)) &&
                                  Set_sub (fvA ps) (fvA ps') &&
                                  Set_sub (ftvA ps') (ftvA ps) && Set_sub (ftvA ps) (ftvA ps') &&
-                                 not (ps == AEmpty) => not (ps' == AEmpty) &&
                                  asize ps == asize ps' } / [asize ps] @-}
 openA_at :: Index -> Vname -> Alts -> Alts
 openA_at j y AEmpty          = AEmpty
 openA_at j y (ACons dc e cs) = ACons dc (open_at (j + (arity dc)) y e) (openA_at j y cs)
 
+--                                     not (ps == AEmpty) => not (ps' == AEmpty) &&
 {-@ reflect unbind_tvA @-}
 {-@ unbind_tvA :: a':Vname -> ps:Alts
                      -> { ps':Alts | Set_sub (ftvA ps') (Set_cup (Set_sng a') (ftvA ps)) &&
                                      Set_sub (fvA ps') (fvA ps)  &&  
                                      Set_sub (fvA ps) (fvA ps') && Set_sub (ftvA ps) (ftvA ps') &&
-                                     not (ps == AEmpty) => not (ps' == AEmpty) &&
                                      asize ps == asize ps' } / [asize ps] @-}
 unbind_tvA :: Vname -> Alts -> Alts
 unbind_tvA a' AEmpty          = AEmpty
 unbind_tvA a' (ACons dc e cs) = ACons dc (open_tv_at (arity dc) a' e) (unbind_tvA a' cs)
 
+--                                    not (ps == AEmpty) => not (ps' == AEmpty) &&
 {-@ reflect open_tvA_at @-}
 {-@ open_tvA_at :: j:Index -> a':Vname -> ps:Alts
                     -> { ps':Alts | Set_sub (ftvA ps') (Set_cup (Set_sng a') (ftvA ps)) &&
                                     Set_sub (fvA ps') (fvA ps)  &&  
                                     Set_sub (fvA ps) (fvA ps') && Set_sub (ftvA ps) (ftvA ps') &&
-                                    not (ps == AEmpty) => not (ps' == AEmpty) &&
                                     asize ps == asize ps' } / [asize ps] @-}
 open_tvA_at :: Index -> Vname -> Alts -> Alts
 open_tvA_at j a' AEmpty          = AEmpty
-open_tvA_at j a' (ACons dc e cs) = ACons dc (open_tv_at (j+(arity dc)) a' e) (open_tvA_at j a' cs)
+open_tvA_at j a' (ACons dc e cs) = ACons dc (open_tv_at j a' e) (open_tvA_at j a' cs)
 
+--                         not (ps == AEmpty) => not (ps' == AEmpty) &&
 --  |  SUBSTITUTION IN SPLIT CASES
 {-@ reflect asubFV @-} -- substitute a value for a term variable 
 {-@ asubFV :: x:Vname -> { v:Expr | isValue v } -> ps:Alts
                -> { ps':Alts | (Set_mem x (fvA ps) || ps == ps') &&
                        ( Set_sub (fvA ps') (Set_cup (fv v) (Set_dif (fvA ps) (Set_sng x)))) &&
                        ( (not (Set_mem x (fv v))) => not (Set_mem x (fvA ps')) ) &&
-                         not (ps == AEmpty) => not (ps' == AEmpty) &&
                          Set_sub (ftvA ps') (Set_cup (ftvA ps) (ftv v)) } / [asize ps] @-}
 asubFV :: Vname -> Expr -> Alts -> Alts
 asubFV x v_x AEmpty          = AEmpty
 asubFV x v_x (ACons dc e cs) = ACons dc (subFV x v_x e) (asubFV x v_x cs)
 
+--                          not (ps == AEmpty) => not (ps' == AEmpty) &&
 {-@ reflect asubFTV @-} -- substitute a type for a type variable
 {-@ asubFTV :: a:Vname -> t:UserType -> ps:Alts
                 -> { ps':Alts | (Set_mem a (ftvA ps) || ps == ps') &&
                         ( Set_sub (ftvA ps') (Set_cup (freeTV t) (Set_dif (ftvA ps) (Set_sng a)))) &&
-                          not (ps == AEmpty) => not (ps' == AEmpty) &&
                           Set_sub (fvA ps') (Set_cup (fvA ps) (free t)) } / [asize ps] @-}
 asubFTV :: Vname -> Type -> Alts -> Alts
 asubFTV a t_a AEmpty          = AEmpty
 asubFTV a t_a (ACons dc e cs) = ACons dc (subFTV a t_a e) (asubFTV a t_a cs)
 
+--                                 not (ps == AEmpty) => not (ps' == AEmpty) &&
 {-@ reflect asubBV @-} -- unbind opens (BV 0) to v in ps
 {-@ asubBV :: v:Value -> ps:Alts
                  -> { ps':Alts | Set_sub (fvA ps') (Set_cup (fvA ps) (fv v)) &&
                                  Set_sub (ftvA ps') (Set_cup (ftvA ps) (ftv v)) &&
-                                 not (ps == AEmpty) => not (ps' == AEmpty) &&
                                ( esize v != 1 || asize ps == asize ps') } / [asize ps] @-}
 asubBV :: Expr -> Alts -> Alts
 asubBV v_x AEmpty          = AEmpty
 asubBV v_x (ACons dc e cs) = ACons dc (subBV_at (arity dc) v_x e) (asubBV v_x cs)
 
+--                                  not (ps == AEmpty) => not (ps' == AEmpty) &&
 {-@ reflect asubBV_at @-} -- unbind opens (BV j) to v in ps
 {-@ asubBV_at :: j:Index -> v:Value -> ps:Alts
                   -> { ps':Alts | Set_sub (fvA ps') (Set_cup (fvA ps) (fv v)) &&
                                   Set_sub (ftvA ps') (Set_cup (ftvA ps) (ftv v)) &&
-                                  not (ps == AEmpty) => not (ps' == AEmpty) &&
                                 ( esize v != 1 || asize ps == asize ps') } / [asize ps] @-}
 asubBV_at :: Index -> Expr -> Alts -> Alts
 asubBV_at j v_x AEmpty          = AEmpty
 asubBV_at j v_x (ACons dc e cs) = ACons dc (subBV_at (j+(arity dc)) v_x e) (asubBV_at j v_x cs)
 
+--                                not (ps == AEmpty) => not (ps' == AEmpty) } / [asize ps] @-}
 {-@ reflect asubBTV @-} -- substitute in a type for a BOUND TYPE var
 {-@ asubBTV :: t:UserType -> ps:Alts
                 -> { ps':Alts | Set_sub (fvA ps') (Set_cup (fvA ps) (free t)) &&
-                                 Set_sub (ftvA ps') (Set_cup (ftvA ps) (freeTV t)) &&
-                                 not (ps == AEmpty) => not (ps' == AEmpty) } / [asize ps] @-}
+                                Set_sub (ftvA ps') (Set_cup (ftvA ps) (freeTV t)) }
+                 / [asize ps] @-}
 asubBTV :: Type -> Alts -> Alts
 asubBTV t_a AEmpty          = AEmpty
 asubBTV t_a (ACons dc e cs) = ACons dc (subBTV t_a e) (asubBTV t_a cs)
 
+--                                not (ps == AEmpty) => not (ps' == AEmpty) } / [asize ps] @-}
 {-@ reflect asubBTV_at @-} -- substitute in a type for a BOUND TYPE var
 {-@ asubBTV_at :: j:Index -> t:UserType -> ps:Alts
                    -> { ps':Alts | Set_sub (fvA ps') (Set_cup (fvA ps) (free t)) &&
-                                   Set_sub (ftvA ps') (Set_cup (ftvA ps) (freeTV t)) &&
-                                   not (ps == AEmpty) => not (ps' == AEmpty) } / [asize ps] @-}
+                                   Set_sub (ftvA ps') (Set_cup (ftvA ps) (freeTV t)) }
+                    / [asize ps] @-}
 asubBTV_at :: Index -> Type -> Alts -> Alts
 asubBTV_at j t_a AEmpty          = AEmpty
-asubBTV_at j t_a (ACons dc e as) = ACons dc (subBTV_at j t_a e) (asubBTV_at j t_a cs)
+asubBTV_at j t_a (ACons dc e cs) = ACons dc (subBTV_at j t_a e) (asubBTV_at j t_a cs)
 
   
   ---  Refinements
@@ -646,7 +662,8 @@ psubBTV_at j t_a (PCons p ps) = PCons (subBTV_at j t_a p) (psubBTV_at j t_a ps)
   ---   TYPES
 
 {-@ data TCons = TCons Id @-}
-data TCons = TCons Id
+data TCons = TCons Id 
+  deriving Eq
 
 {-@ data Basic where
         TBool ::          Basic
@@ -659,12 +676,17 @@ data Basic = TBool         -- Bool
            | TData   TCons Type -- List[t]
            | BTV     Index   -- a  
            | FTV     Vname   -- a   
-  deriving (Eq, Show)
+  deriving Eq
 
 {-@ measure isBTV @-}
 isBTV :: Basic -> Bool
 isBTV (BTV _) = True
 isBTV _       = False
+
+{-@ measure isData @-}
+isData :: Basic -> Bool
+isData (TData _ _) = True
+isData _           = False
 
   -- ONLY types with Base Kind may have non-trivial refinements. Star kinded type variables 
   --     may only have the refinement { x : [] }.
@@ -723,7 +745,7 @@ tsize (TExists   t_x t)     = (tsize t_x) + (tsize t) + 1
 tsize (TPoly   k   t)       = (tsize t)   + 1
 
 {-@ measure bdepth @-}
-{-@ bdepth :: b:Base -> { v:Int | v >= 1 } / [bsize b] @-}
+{-@ bdepth :: b:Basic -> { v:Int | v >= 1 } / [bsize b] @-}
 bdepth :: Basic -> Int
 bdepth TBool        = 1
 bdepth TInt         = 1
@@ -998,6 +1020,22 @@ data TDefn = TDef { tcid   :: Id,
 
 type Defs = [TDefn]
 
+{-
+{-@ reflect ty_dc @-}
+ty_dc dcid tcid = ....
+
+{-@ reflect binds @-}
+binds :: Env -> S.Set Vname
+binds Empty         = S.empty
+binds (Cons x t g)  = S.union (S.singleton x) (binds g)
+binds (ConsT a k g) = S.union (S.singleton a) (binds g)
+
+{-@ reflect binds @-}
+binds :: Env -> S.Set Vname
+binds Empty         = S.empty
+binds (Cons x t g)  = S.union (S.singleton x) (binds g)
+binds (ConsT a k g) = S.union (S.singleton a) (binds g)
+-}
   --- TYPING ENVIRONMENTS ---
 
 data Env = Empty                         -- type Env = [(Vname, Type) or Vname]
@@ -1094,52 +1132,41 @@ lem_binds_invariants (Cons x t_x g)  = () ? lem_binds_invariants g
 lem_binds_invariants (ConsT a k_a g) = () ? lem_binds_invariants g
 
 
-  --- BARE TYPES: i.e. System F types. These still contain type polymorphism and type variables, 
+  -- BARE TYPES: i.e. System F types. These still contain type polymorphism and type variables, 
   --    but all the refinements, dependent arrow binders, and existentials have been erased.
+{-@ data FType where
+         FTBasic :: { b:Basic | not (isData b) } -> FType
+         FTData  :: TCons -> FType -> FType
+         FTFunc  :: FType -> FType -> FType
+         FTPoly  :: Kind  -> FType -> FType        @-}
 
-data FBasic = FTBool         -- Bool
-            | FTInt          -- Int
-            | FTData   TCons FType -- List[t]
-            | BFTV     Index   -- a
-            | FFTV     Vname   -- a
-  deriving (Eq, Show)
-
-data FType = FTBasic FBasic          -- b: Bool, Int, FTV a, BTV a
+data FType = FTBasic Basic          -- b: Bool, Int, FTV a, BTV a, but not TData...
+           | FTData TCons FType
            | FTFunc FType FType     -- bt -> bt'
            | FTPoly Kind  FType     -- \forall a:k. bt 
-  deriving (Eq, Show)
+  deriving Eq
 
-{-@ lazy fbsize @-}
-{-@ measure fbsize @-}
-{-@ fbsize :: b:FBasic -> { v:Int | v >= 0 } @-}
-fbsize :: FBasic -> Int
-fbsize FTBool        = 1
-fbsize FTInt         = 1
-fbsize (FTData tc t) = (ftsize t) + 1
-fbsize (BFTV i)      = 1
-fbsize (FFTV a)      = 1
-
-{-@ lazy ftsize @-}
 {-@ measure ftsize @-}
 {-@ ftsize :: t:FType -> { v:Int | v >= 0 } @-} 
 ftsize :: FType -> Int
-ftsize (FTBasic b)      = (fbsize b)   + 1
+ftsize (FTBasic b)      = 1
+ftsize (FTData tc    t) = (ftsize t)   + 1
 ftsize (FTFunc t_x   t) = (ftsize t_x) + (ftsize t) + 1
 ftsize (FTPoly    k  t) = (ftsize t)   + 1
 
-{-@ measure isBaseF @-}
-isBaseF :: FType -> Bool
-isBaseF (FTBasic b)     = True
-isBaseF _               = False
+--{-@ measure isBaseF @-}
+--isBaseF :: FType -> Bool
+--isBaseF (FTBasic b)     = True
+--isBaseF _               = False
 
 {-@ reflect erase @-}
 erase :: Type -> FType
 erase (TRefn b r)     = case b of 
-  TBool        -> FTBasic FTBool
-  TInt         -> FTBasic FTInt
-  (TData tc t) -> FTBasic (FTData tc (erase t))
-  (BTV i)      -> FTBasic (BFTV i)
-  (FTV a)      -> FTBasic (FFTV a)
+  TBool        -> FTBasic TBool
+  TInt         -> FTBasic TInt
+  (BTV i)      -> FTBasic (BTV i)
+  (FTV a)      -> FTBasic (FTV a)
+  (TData tc t) -> FTData tc (erase t)
 erase (TFunc t_x t)   = FTFunc (erase t_x) (erase t)
 erase (TExists t_x t) = (erase t)
 erase (TPoly  k  t)   = FTPoly k (erase t)
@@ -1149,9 +1176,9 @@ erase (TPoly  k  t)   = FTPoly k (erase t)
 {-@ ffreeTV :: t:FType -> S.Set Vname / [ftsize t] @-}
 ffreeTV :: FType -> S.Set Vname
 ffreeTV (FTBasic b)      = case b of
-  (FTData tc t)              -> ffreeTV t
-  (FFTV a)                   -> S.singleton a
-  _                          -> S.empty
+  (FTV a)                   -> S.singleton a
+  _                         -> S.empty
+ffreeTV (FTData tc t)    = ffreeTV t
 ffreeTV (FTFunc t_x t)   = S.union (ffreeTV t_x) (ffreeTV t) 
 ffreeTV (FTPoly   k t)   = ffreeTV t
 
@@ -1159,9 +1186,9 @@ ffreeTV (FTPoly   k t)   = ffreeTV t
 {-@ ffreeTVList :: t:FType -> { xs:Names | listElts xs == ffreeTV t } @-}
 ffreeTVList :: FType -> Names
 ffreeTVList (FTBasic b)     = case b of
-  (FTData tc t)                 -> ffreeTVList t
-  (FFTV a)                      -> [a]
-  _                             -> []
+  (FTV a)                      -> [a]
+  _                            -> []
+ffreeTVList (FTData tc t)   = ffreeTVList t
 ffreeTVList (FTFunc t_x t)  = union (ffreeTVList t_x)  (ffreeTVList t)
 ffreeTVList (FTPoly   k t)  = ffreeTVList t
 
@@ -1172,15 +1199,11 @@ isLCFT t = isLCFT_at 0 t
 {-@ reflect isLCFT_at @-} 
 isLCFT_at :: Index -> FType -> Bool
 isLCFT_at j (FTBasic b)      = case b of
-  (FTData tc t)              -> isLCFT_at j t
-  (BFTV i)                   -> i < j
-  _                          -> True
+  (BTV i)                   -> i < j
+  _                         -> True
+isLCFT_at j (FTData tc t)    = isLCFT_at j t
 isLCFT_at j (FTFunc t_x t)   = isLCFT_at j t_x && isLCFT_at j t
 isLCFT_at j (FTPoly   k t)   = isLCFT_at (j+1) t
-
------------------------------------------------------
------------------------------------------------------
------------------------------------------------------
 
 {-@ reflect unbindFT @-}
 {-@ unbindFT :: a':Vname -> t:FType 
@@ -1199,6 +1222,7 @@ openFT_at :: Index -> Vname -> FType -> FType
 openFT_at j a' (FTBasic b)    = case b of
   (BTV i) | i == j  -> FTBasic (FTV a')
   _                 -> FTBasic b
+openFT_at j a' (FTData tc  t) = FTData tc (openFT_at j a' t)
 openFT_at j a' (FTFunc t_x t) = FTFunc (openFT_at j a' t_x) (openFT_at j a' t)
 openFT_at j a' (FTPoly k   t) = FTPoly k (openFT_at (j+1) a' t)
 
@@ -1214,6 +1238,7 @@ ftsubFV :: Vname -> FType -> FType -> FType
 ftsubFV a t_a (FTBasic b)           = case b of 
   (FTV a') | a == a'                    -> t_a
   _                                     -> FTBasic b
+ftsubFV a t_a (FTData tc  t)        = FTData tc (ftsubFV a t_a t)
 ftsubFV a t_a (FTFunc t_z t)        = FTFunc (ftsubFV a t_a t_z) (ftsubFV a t_a t)
 ftsubFV a t_a (FTPoly   k t)        = FTPoly k (ftsubFV a t_a t)
 
@@ -1232,6 +1257,7 @@ ftsubBV_at :: Index -> FType -> FType -> FType
 ftsubBV_at j t_a (FTBasic   b)      = case b of 
   (BTV i) | i == j                    -> t_a
   _                                   -> FTBasic b
+ftsubBV_at j t_a (FTData tc  t)     = FTData tc (ftsubBV_at j t_a t)
 ftsubBV_at j t_a (FTFunc t_z t)     = FTFunc (ftsubBV_at j t_a t_z) (ftsubBV_at j t_a t)
 ftsubBV_at j t_a (FTPoly  k  t)     = FTPoly k (ftsubBV_at (j+1) t_a t)
  
@@ -1357,11 +1383,13 @@ erase_env (ConsT a k g) = FConsT a k         (erase_env g)
 
 {-@ lem_erase_freeTV :: t:Type -> { pf:_ | Set_sub (ffreeTV (erase t)) (freeTV t) } @-}
 lem_erase_freeTV :: Type -> Proof
-lem_erase_freeTV (TRefn   b   p) = ()
-lem_erase_freeTV (TFunc   t_z t) = () ? lem_erase_freeTV t_z
+lem_erase_freeTV (TRefn   b   p) = case b of
+  (TData tc t)            -> lem_erase_freeTV t
+  _                       -> ()
+lem_erase_freeTV (TFunc   t_z t) =      lem_erase_freeTV t_z
                                       ? lem_erase_freeTV t
-lem_erase_freeTV (TExists t_z t) = () ? lem_erase_freeTV t
-lem_erase_freeTV (TPoly    k' t) = () ? lem_erase_freeTV t
+lem_erase_freeTV (TExists t_z t) =      lem_erase_freeTV t
+lem_erase_freeTV (TPoly    k' t) =      lem_erase_freeTV t
 
 
 ---------------------------------------------------------------------------
