@@ -36,9 +36,9 @@ type Id = Int
 {-@ type Arity =  { v:Int | v >= 0 } @-} 
 type Arity = Int
 
-{-@ data DCons = DCons { id    :: Id,
+{-@ data DCons = DCons { dcid  :: Id,
                          arity :: Arity } @-}
-data DCons = DCons { id    :: Id, 
+data DCons = DCons { dcid  :: Id, 
                      arity :: Arity }
   deriving Eq
                             -- nameless binders
@@ -62,7 +62,7 @@ data Alts  = AEmpty | ACons DCons Expr Alts
 @-} 
 data Expr = Bc Bool                   -- True, False
           | Ic Int                    -- 0, 1, 2, ...
-          | Dc DCons		      -- D, ...
+          | Dc DCons                  -- D, ...
           | Prim Prim                 -- built-in primitive functions 
           | BV Index                  -- BOUND Variables: bound to a Lambda, Let or :t
           | FV Vname                  -- FREE Variables: bound in an environment
@@ -125,6 +125,7 @@ argCount :: Expr -> Int
 argCount (Dc _)     = 0
 argCount (App dv v) = (argCount dv) + 1
 
+{-@ predicate FullyApplied DV =   argCount DV = arity (dvdc DV) @-}
 
 {-@ measure fv @-} 
 {-@ fv :: e:Expr -> S.Set Vname / [esize e] @-}
@@ -661,8 +662,8 @@ psubBTV_at j t_a (PCons p ps) = PCons (subBTV_at j t_a p) (psubBTV_at j t_a ps)
 
   ---   TYPES
 
-{-@ data TCons = TCons Id @-}
-data TCons = TCons Id 
+{-@ data TCons = TCons { tcid :: Id } @-}
+data TCons = TCons { tcid :: Id } 
   deriving Eq
 
 {-@ data Basic where
@@ -1007,18 +1008,36 @@ tsubBTV_at j t_a (TPoly   k  t)     = TPoly k  (tsubBTV_at (j+1) t_a t)
   
   --- DEFINITIONAL ENVIRONMENTS ---
 
-data DDefn = DDef { dcid    :: Id,
-                    dcarity :: Arity,
-                    dctype  :: Type }                 
+{-@ data DDefn = DDef { ddid    :: Id,
+                        ddarity :: Arity,
+                        ddtype  :: Type }  @-}
+data DDefn = DDef { ddid    :: Id,
+                    ddarity :: Arity,
+                    ddtype  :: Type }                 
 
 data Polarity = Pos | Neg | Both | None
 
-data TDefn = TDef { tcid   :: Id,
+{-@ data TDefn = TDef { tdid   :: Id,
+                        vkind  :: Kind,
+                        vpolar :: Polarity,
+                        dcons  :: [DDefn] } @-}
+data TDefn = TDef { tdid   :: Id,
                     vkind  :: Kind,
                     vpolar :: Polarity,
                     dcons  :: [DDefn] }        
 
 type Defs = [TDefn]
+
+{-@ reflect tcKind @-}
+tcKind :: TCons -> Defs -> Maybe Kind 
+tcKind tc []                             =  Nothing
+tcKind tc (td:tds) | tcid tc == tdid td  =  Just (vkind td)
+                   | otherwise           =  tcKind tc tds
+
+{-@ reflect isJust @-}
+isJust :: Maybe a -> Bool
+isJust Nothing  = False
+isJust (Just _) = True
 
 {-
 {-@ reflect ty_dc @-}
@@ -1584,18 +1603,18 @@ withProof x _ = x
 
 data Proposition where
     -- Operational Semantics
-    Step :: Expr -> Expr -> Proposition         -- e ~> e'
-    EvalsTo :: Expr -> Expr -> Proposition      -- e ~>* e'
+    Step      :: Expr -> Expr -> Proposition         -- e ~> e'
+    EvalsTo   :: Expr -> Expr -> Proposition      -- e ~>* e'
 
     -- System F Judgments
-    WFFT :: FEnv -> FType -> Kind -> Proposition      --  G |- t : k
-    WFFE :: FEnv -> Proposition                       --    |- G
-    HasFType :: FEnv -> Expr -> FType -> Proposition  --  G |- e : t
-    PHasFType :: FEnv -> Preds -> Proposition         --  G |- ps : [FTBasic TBool]
+    WFFT      :: FEnv -> Defs -> FType -> Kind -> Proposition    --  G,D |- t : k
+    WFFE      :: FEnv -> Defs -> Proposition                     --  D   |- G
+    HasFType  :: FEnv -> Defs -> Expr -> FType -> Proposition    --  G,D |- e : t
+    PHasFType :: FEnv -> Defs -> Preds -> Proposition            --  G,D |- ps : [FTBasic TBool]
     
     -- System RF Judgments
-    WFType :: Env -> Type -> Kind -> Proposition
-    WFEnv :: Env -> Proposition
-    HasType :: Env -> Expr -> Type -> Proposition -- HasType G e t means G |- e : t
-    Subtype :: Env -> Type -> Type -> Proposition
-    Implies :: Env -> Preds -> Preds -> Proposition   --  G |= p => q
+    WFType    :: Env -> Defs -> Type -> Kind -> Proposition
+    WFEnv     :: Env -> Defs -> Proposition
+    HasType   :: Env -> Defs -> Expr -> Type -> Proposition -- HasType G D e t means G,D |- e : t
+    Subtype   :: Env -> Defs -> Type -> Type -> Proposition
+    Implies   :: Env -> Defs -> Preds -> Preds -> Proposition   --  G |= p => q   ???

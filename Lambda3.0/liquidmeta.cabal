@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           liquidmeta
-version:        2.4.0
+version:        3.0.0
 build-type:     Simple
 
 library
@@ -10,37 +10,38 @@ library
       LocalClosure,
       Strengthenings,
       Semantics,
-      SystemFWellFormedness,
-      SystemFTyping,
-      BasicPropsSubstitution,
-      PrimitivesFTyping,
-      BasicPropsEnvironments,
-      WellFormedness,
-      BasicPropsWellFormedness,
-      SystemFLemmasWellFormedness,
-      SystemFLemmasWeaken,
-      SystemFLemmasSubstitution,
-      SystemFSoundness,
-      Typing,
-      PrimitivesWFType,
-      LemmasWeakenWF,
-      LemmasWeakenWFTV,
-      LemmasWellFormedness,
-      SubstitutionLemmaWF
-      SubstitutionLemmaWFTV,
-      LemmasTyping, 
-      LemmasWeakenTyp,
-      LemmasWeakenTypTV,
-      LemmasSubtyping,
-      LemmasExactness,
-      LemmasExactnessSubst,
-      SubstitutionLemmaTyp,
-      SubstitutionLemmaTypTV,
-      LemmasNarrowingTyp,
-      LemmasTransitive,
-      LemmasInversion,
-      PrimitivesDeltaTyping,
-      MainTheorems
+      SystemFWellFormedness
+-- ,
+--      SystemFTyping,
+--      BasicPropsSubstitution,
+--      PrimitivesFTyping,
+--      BasicPropsEnvironments,
+--      WellFormedness,
+--      BasicPropsWellFormedness,
+--      SystemFLemmasWellFormedness,
+--      SystemFLemmasWeaken,
+--      SystemFLemmasSubstitution,
+--      SystemFSoundness,
+--      Typing,
+--      PrimitivesWFType,
+--      LemmasWeakenWF,
+--      LemmasWeakenWFTV,
+--      LemmasWellFormedness,
+--      SubstitutionLemmaWF
+--      SubstitutionLemmaWFTV,
+--      LemmasTyping, 
+--      LemmasWeakenTyp,
+--      LemmasWeakenTypTV,
+--      LemmasSubtyping,
+--      LemmasExactness,
+--      LemmasExactnessSubst,
+--      SubstitutionLemmaTyp,
+--      SubstitutionLemmaTypTV,
+--      LemmasNarrowingTyp,
+--      LemmasTransitive,
+--      LemmasInversion,
+--      PrimitivesDeltaTyping,
+--      MainTheorems
   hs-source-dirs:
       src
   ghc-options:  -fplugin=LiquidHaskell 
