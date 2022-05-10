@@ -1017,14 +1017,16 @@ data DDefn = DDef { ddid    :: Id,
 
 data Polarity = Pos | Neg | Both | None
 
+data DDefns =  DEmpty | DCons DDefn DDefns
+
 {-@ data TDefn = TDef { tdid   :: Id,
                         vkind  :: Kind,
                         vpolar :: Polarity,
-                        dcons  :: [DDefn] } @-}
+                        dcons  :: { ds:DDefns | not (ds = DEmpty) } @-}
 data TDefn = TDef { tdid   :: Id,
                     vkind  :: Kind,
                     vpolar :: Polarity,
-                    dcons  :: [DDefn] }        
+                    dcons  :: DDefns }        
 
 type Defs = [TDefn]
 
@@ -1610,11 +1612,13 @@ data Proposition where
     WFFT      :: FEnv -> Defs -> FType -> Kind -> Proposition    --  G,D |- t : k
     WFFE      :: FEnv -> Defs -> Proposition                     --  D   |- G
     HasFType  :: FEnv -> Defs -> Expr -> FType -> Proposition    --  G,D |- e : t
+    AHasFType :: FEnv -> Defs -> ... ... -> DCons -> Expr -> FType -> Proposition
     PHasFType :: FEnv -> Defs -> Preds -> Proposition            --  G,D |- ps : [FTBasic TBool]
-    
+                                                                 --  G,D | .... |- D -> e' : t
     -- System RF Judgments
     WFType    :: Env -> Defs -> Type -> Kind -> Proposition
     WFEnv     :: Env -> Defs -> Proposition
     HasType   :: Env -> Defs -> Expr -> Type -> Proposition -- HasType G D e t means G,D |- e : t
+    AHasType  :: Env -> Defs -> .... .... -> DCons -> Expr -> Type -> Proposition
     Subtype   :: Env -> Defs -> Type -> Type -> Proposition
     Implies   :: Env -> Defs -> Preds -> Preds -> Proposition   --  G |= p => q   ???
