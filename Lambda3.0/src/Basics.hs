@@ -45,11 +45,11 @@ data DCons = DCons { dcid  :: Id,
 data Alts  = AEmpty | ACons DCons Expr Alts
   deriving Eq
 
+data Const = Bc Bool | Ic Int | Prim Prim | Dc DCons
+  deriving Eq
+
 {-@ data Expr where
-        Bc      :: Bool  -> Expr
-        Ic      :: Int   -> Expr
-        Dc      :: DCons -> Expr
-        Prim    :: Prim  -> Expr 
+        C       :: Const -> Expr
         BV      :: Index -> Expr
         FV      :: Vname -> Expr
         Lambda  :: Expr  -> Expr
@@ -60,10 +60,7 @@ data Alts  = AEmpty | ACons DCons Expr Alts
         Annot   :: Expr  -> Type -> Expr 
         Switch  :: Expr  -> { cs:Alts | not (cs == AEmpty) } -> Expr
 @-} 
-data Expr = Bc Bool                   -- True, False
-          | Ic Int                    -- 0, 1, 2, ...
-          | Dc DCons                  -- D, ...
-          | Prim Prim                 -- built-in primitive functions 
+data Expr = C Const                   -- True, False, 0, 1, 2, And, Eql, (D 1) etc
           | BV Index                  -- BOUND Variables: bound to a Lambda, Let or :t
           | FV Vname                  -- FREE Variables: bound in an environment
           | Lambda Expr               -- \x.e          abstractions    (x is nameless)
@@ -79,10 +76,7 @@ data Expr = Bc Bool                   -- True, False
 {-@ measure esize @-}
 {-@ esize :: e:Expr -> { v:Int | v >= 0 } @-}
 esize :: Expr -> Int      
-esize (Bc _)            = 1
-esize (Ic _)            = 1
-esize (Dc _)            = 1
-esize (Prim _)          = 1
+esize (C _)             = 1
 esize (BV _)            = 1
 esize (FV _)            = 1
 esize (Lambda   e)      = (esize e)   + 1
@@ -98,9 +92,7 @@ esize (Switch e as)     = (esize e)   + (asize as) + 1
 
 {-@ reflect isValue @-} -- meaning: is a syntactic value 
 isValue :: Expr -> Bool
-isValue (Bc _)          = True
-isValue (Ic _)          = True
-isValue (Prim c)        = True
+isValue (C  _)          = True
 isValue (FV _)          = True 
 isValue (BV _)          = True 
 isValue (Lambda   e)    = True 
@@ -109,20 +101,20 @@ isValue e               = dataValue e
 
 {-@ reflect dataValue @-}
 dataValue :: Expr -> Bool
-dataValue (Dc _)        = True
+dataValue (C (Dc _))    = True
 dataValue (App e1 e2)   = dataValue e1 && isValue e2
 dataValue _             = False
 
 {-@ reflect dvdc @-}
 {-@ dvdc :: DataValue -> DCons @-}
 dvdc :: Expr -> DCons
-dvdc (Dc dc)     = dc
+dvdc (C (Dc dc)) = dc
 dvdc (App dv v)  = dvdc dv
 
 {-@ reflect argCount @-}
 {-@ argCount :: DataValue -> Nat @-}
 argCount :: Expr -> Int
-argCount (Dc _)     = 0
+argCount (C (Dc _)) = 0
 argCount (App dv v) = (argCount dv) + 1
 
 {-@ predicate FullyApplied DV =   argCount DV = arity (dvdc DV) @-}
@@ -130,10 +122,7 @@ argCount (App dv v) = (argCount dv) + 1
 {-@ measure fv @-} 
 {-@ fv :: e:Expr -> S.Set Vname / [esize e] @-}
 fv :: Expr -> S.Set Vname
-fv (Bc _)          = S.empty
-fv (Ic _)          = S.empty
-fv (Dc _)          = S.empty
-fv (Prim _)        = S.empty
+fv (C  _)          = S.empty
 fv (BV _)          = S.empty
 fv (FV x)          = S.singleton x
 fv (Lambda   e)    = fv e 
@@ -147,10 +136,7 @@ fv (Switch e cs)   = S.union (fv e) (fvA cs)
 {-@ measure fvList @-} 
 {-@ fvList :: e:Expr -> { xs:Names | listElts xs == fv e } / [esize e] @-}
 fvList :: Expr -> Names
-fvList (Bc _)          = []
-fvList (Ic _)          = []
-fvList (Dc _)          = []
-fvList (Prim _)        = []
+fvList (C  _)          = []
 fvList (BV _)          = []
 fvList (FV x)          = [x]
 fvList (Lambda   e)    = fvList e 
@@ -164,10 +150,7 @@ fvList (Switch e cs)   = union (fvList e) (fvAList cs)
 {-@ measure ftv @-}
 {-@ ftv :: e:Expr -> S.Set Vname / [esize e] @-}
 ftv :: Expr -> S.Set Vname
-ftv (Bc _)          = S.empty
-ftv (Ic _)          = S.empty
-ftv (Dc _)          = S.empty
-ftv (Prim _)        = S.empty
+ftv (C  _)          = S.empty
 ftv (BV _)          = S.empty
 ftv (FV x)          = S.empty -- differs from fv
 ftv (Lambda   e)    = ftv e 
@@ -185,10 +168,7 @@ isLC e = isLC_at 0 0 e
 {-@ reflect isLC_at @-}
 {-@ isLC_at :: Index -> Index -> e:Expr -> Bool / [esize e] @-}
 isLC_at :: Index -> Index -> Expr -> Bool
-isLC_at j_x j_a (Bc _)         = True
-isLC_at j_x j_a (Ic _)         = True
-isLC_at j_x j_a (Dc _)         = True
-isLC_at j_x j_a (Prim _)       = True
+isLC_at j_x j_a (C  _)         = True
 isLC_at j_x j_a (BV i)         = i < j_x
 isLC_at j_x j_a (FV _)         = True
 isLC_at j_x j_a (Lambda e)     = isLC_at (j_x+1) j_a e
@@ -215,10 +195,7 @@ unbind y e = open_at 0 y e -- subBV x (FV y) e
                                 Set_sub (ftv e) (ftv e') && Set_sub (ftv e') (ftv e) &&
                                 esize e == esize e' } / [esize e] @-}
 open_at :: Index -> Vname -> Expr -> Expr
-open_at j y (Bc b)             = Bc b
-open_at j y (Ic n)             = Ic n
-open_at j y (Dc d)             = Dc d
-open_at j y (Prim c)           = Prim c
+open_at j y (C  c)             = C  c
 open_at j y (BV i) | i == j    = FV y
                    | otherwise = BV i
 open_at j y (FV x)             = FV x
@@ -230,13 +207,14 @@ open_at j y (Let ex e)         = Let   (open_at j y ex) (open_at (j+1) y e)
 open_at j y (Annot e t)        = Annot (open_at j y e)  (openT_at j y t)
 open_at j y (Switch e cs)      = Switch (open_at j y e)  (openA_at j y cs)
 
+--                                   ( e == Bc True => e' == Bc True ) } / [esize e] @-}
 {-@ reflect unbind_tv @-} -- unbind converts (BTV a) to (FTV a') in e -- aka "chgBTV"
-{-@ unbind_tv :: a':Vname -> e:Expr 
+{-@ unbind_tv :: a':Vname -> e:Expr  
                     -> { e':Expr | Set_sub (ftv e') (Set_cup (Set_sng a') (ftv e)) &&
                                    Set_sub (ftv e) (ftv e') && 
                                    Set_sub (fv e) (fv e') && 
-                                   Set_sub (fv e') (fv e)  &&  esize e == esize e' &&
-                                   ( e == Bc True => e' == Bc True ) } / [esize e] @-}
+                                   Set_sub (fv e') (fv e)  &&  esize e == esize e' }
+                     / [esize e] @-}
 unbind_tv :: Vname -> Expr -> Expr
 unbind_tv a' e = open_tv_at 0 a' e
 
@@ -247,10 +225,7 @@ unbind_tv a' e = open_tv_at 0 a' e
                                    Set_sub (fv e) (fv e') && 
                                    Set_sub (fv e') (fv e)  &&  esize e == esize e' } / [esize e] @-}
 open_tv_at :: Index -> Vname -> Expr -> Expr
-open_tv_at j a' (Bc b)               = Bc b
-open_tv_at j a' (Ic n)               = Ic n
-open_tv_at j a' (Dc n)               = Dc n
-open_tv_at j a' (Prim p)             = Prim p
+open_tv_at j a' (C  c)               = C  c
 open_tv_at j a' (BV i)               = BV i -- looking for type vars
 open_tv_at j a' (FV y)               = FV y
 open_tv_at j a' (Lambda e)           = Lambda    (open_tv_at j a' e)  -- not j+1
@@ -262,19 +237,16 @@ open_tv_at j a' (Annot e t)          = Annot     (open_tv_at j a' e)  (open_tvT_
 open_tv_at j a' (Switch e cs)        = Switch    (open_tv_at j a' e)  (open_tvA_at j a' cs)
 
   --- TERM-LEVEL SUBSTITUTION
+--                      ( e == Bc True => e' == Bc True )  &&
 {-@ reflect subFV @-} -- substitute a value for a term variable in a term 
 {-@ subFV :: x:Vname -> { v:Expr | isValue v } -> e:Expr
                      -> { e':Expr | (Set_mem x (fv e) || e == e') &&
                       ( Set_sub (fv e') (Set_cup (fv v) (Set_dif (fv e) (Set_sng x)))) &&
                       ( (not (Set_mem x (fv v))) => not (Set_mem x (fv e')) ) && 
                         Set_sub (ftv e') (Set_cup (ftv e) (ftv v)) &&
-                      ( e == Bc True => e' == Bc True )  &&
                       ( isValue e => isValue e' ) } / [esize e] @-}
 subFV :: Vname -> Expr -> Expr -> Expr
-subFV x v_x (Bc b)                    = Bc b
-subFV x v_x (Ic n)                    = Ic n
-subFV x v_x (Dc d)                    = Dc d
-subFV x v_x (Prim p)                  = Prim p
+subFV x v_x (C  c)                    = C  c
 subFV x v_x (BV i)                    = BV i
 subFV x v_x (FV y) | x == y           = v_x  
                    | otherwise        = FV y
@@ -286,18 +258,15 @@ subFV x v_x (Let   e1 e2)             = Let   (subFV x v_x e1) (subFV x v_x e2)
 subFV x v_x (Annot e t)               = Annot (subFV x v_x e) (tsubFV x v_x t) 
 subFV x v_x (Switch e cs)             = Switch (subFV x v_x e) (asubFV x v_x cs) 
 
+--                       ( e == Bc True => e' == Bc True )} / [esize e] @-}
 {-@ reflect subFTV @-} -- substitute a type for a type variable in a term  
 {-@ subFTV :: a:Vname -> t:UserType -> e:Expr 
                       -> { e':Expr | (Set_mem a (ftv e) || e == e') &&
                        ( Set_sub (ftv e') (Set_cup (freeTV t) (Set_dif (ftv e) (Set_sng a)))) &&
                          Set_sub (fv e') (Set_cup (fv e) (free t)) &&
-                       ( isValue e => isValue e' ) && 
-                       ( e == Bc True => e' == Bc True )} / [esize e] @-}
+                       ( isValue e => isValue e' ) } / [esize e] @-}
 subFTV :: Vname -> Type -> Expr -> Expr
-subFTV a t_a (Bc b)                    = Bc b
-subFTV a t_a (Ic n)                    = Ic n
-subFTV a t_a (Dc d)                    = Dc d
-subFTV a t_a (Prim p)                  = Prim p
+subFTV a t_a (C  c)                    = C  c
 subFTV a t_a (BV i)                    = BV i
 subFTV a t_a (FV y)                    = FV y
 subFTV a t_a (Lambda   e)              = Lambda     (subFTV a t_a e)
@@ -322,10 +291,7 @@ subBV v e = subBV_at 0 v e
                                 Set_sub (ftv e') (Set_cup (ftv e) (ftv v)) &&
                               ( esize v != 1 || esize e == esize e') } / [esize e] @-}
 subBV_at :: Index -> Expr -> Expr -> Expr
-subBV_at j v (Bc b)             = Bc b
-subBV_at j v (Ic n)             = Ic n
-subBV_at j v (Dc d)             = Dc d
-subBV_at j v (Prim c)           = Prim c
+subBV_at j v (C  c)             = C  c
 subBV_at j v (BV i) | i == j    = v
                     | otherwise = BV i
 subBV_at j v (FV x)             = FV x
@@ -337,24 +303,23 @@ subBV_at j v (Let ex e)         = Let   (subBV_at j v ex) (subBV_at (j+1) v e)
 subBV_at j v (Annot e t)        = Annot (subBV_at j v e)  (tsubBV_at j v t)
 subBV_at j v (Switch e cs)      = Switch (subBV_at j v e)  (asubBV_at j v cs)
 
+--                                    ( e == Bc True => e' == Bc True ) } / [esize e] @-}
 {-@ reflect subBTV @-} -- substitute in a type for a BOUND TYPE var
 {-@ subBTV :: t:UserType -> e:Expr
-                     -> { e':Expr | Set_sub (fv e') (Set_cup (fv e) (free t)) &&
-                                    Set_sub (ftv e') (Set_cup (ftv e) (freeTV t)) &&
-                                    ( e == Bc True => e' == Bc True ) } / [esize e] @-}
+                -> { e':Expr | Set_sub (fv e') (Set_cup (fv e) (free t)) &&
+                               Set_sub (ftv e') (Set_cup (ftv e) (freeTV t)) } 
+                 / [esize e] @-}
 subBTV :: Type -> Expr -> Expr
 subBTV t e = subBTV_at 0 t e
 
+--                                    ( e == Bc True => e' == Bc True ) } / [esize e] @-}
 {-@ reflect subBTV_at @-} -- substitute in a type for a BOUND TYPE var
 {-@ subBTV_at :: j:Index -> t:UserType -> e:Expr
                      -> { e':Expr | Set_sub (fv e') (Set_cup (fv e) (free t)) &&
-                                    Set_sub (ftv e') (Set_cup (ftv e) (freeTV t)) &&
-                                    ( e == Bc True => e' == Bc True ) } / [esize e] @-}
+                                    Set_sub (ftv e') (Set_cup (ftv e) (freeTV t)) }
+                      / [esize e] @-}
 subBTV_at :: Index -> Type -> Expr -> Expr
-subBTV_at j t_a (Bc b)           = Bc b
-subBTV_at j t_a (Ic n)           = Ic n
-subBTV_at j t_a (Dc d)           = Dc d
-subBTV_at j t_a (Prim p)         = Prim p
+subBTV_at j t_a (C  c)           = C  c
 subBTV_at j t_a (BV y)           = BV y -- looking for type vars
 subBTV_at j t_a (FV y)           = FV y
 subBTV_at j t_a (Lambda   e)     = Lambda    (subBTV_at j t_a e)  -- not j+1
@@ -1017,12 +982,12 @@ data DDefn = DDef { ddid    :: Id,
 
 data Polarity = Pos | Neg | Both | None
 
-data DDefns =  DEmpty | DCons DDefn DDefns
+data DDefns =  DDEmpty | DDCons DDefn DDefns
 
 {-@ data TDefn = TDef { tdid   :: Id,
                         vkind  :: Kind,
                         vpolar :: Polarity,
-                        dcons  :: { ds:DDefns | not (ds = DEmpty) } @-}
+                        dcons  :: { ds:DDefns | not (ds = DDEmpty) } } @-}
 data TDefn = TDef { tdid   :: Id,
                     vkind  :: Kind,
                     vpolar :: Polarity,
@@ -1612,13 +1577,13 @@ data Proposition where
     WFFT      :: FEnv -> Defs -> FType -> Kind -> Proposition    --  G,D |- t : k
     WFFE      :: FEnv -> Defs -> Proposition                     --  D   |- G
     HasFType  :: FEnv -> Defs -> Expr -> FType -> Proposition    --  G,D |- e : t
-    AHasFType :: FEnv -> Defs -> ... ... -> DCons -> Expr -> FType -> Proposition
+--    AHasFType :: FEnv -> Defs -> ... ... -> DCons -> Expr -> FType -> Proposition
     PHasFType :: FEnv -> Defs -> Preds -> Proposition            --  G,D |- ps : [FTBasic TBool]
                                                                  --  G,D | .... |- D -> e' : t
     -- System RF Judgments
     WFType    :: Env -> Defs -> Type -> Kind -> Proposition
     WFEnv     :: Env -> Defs -> Proposition
     HasType   :: Env -> Defs -> Expr -> Type -> Proposition -- HasType G D e t means G,D |- e : t
-    AHasType  :: Env -> Defs -> .... .... -> DCons -> Expr -> Type -> Proposition
+--    AHasType  :: Env -> Defs -> .... .... -> DCons -> Expr -> Type -> Proposition
     Subtype   :: Env -> Defs -> Type -> Type -> Proposition
     Implies   :: Env -> Defs -> Preds -> Preds -> Proposition   --  G |= p => q   ???
