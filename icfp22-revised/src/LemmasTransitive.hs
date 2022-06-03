@@ -7,7 +7,7 @@
 module LemmasTransitive where
 
 import Prelude hiding (max,min)
-import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
+import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
 import qualified Data.Set as S
 
 import Basics

@@ -7,7 +7,7 @@
 module LemmasExactness where
 
 import Prelude hiding (max)
-import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
+import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
 import qualified Data.Set as S
 
 import Basics
@@ -47,7 +47,7 @@ lem_self_idempotent_upper g t@(TRefn b q) Base p_g_t e p_e_t
                               ? lem_ftyp_islc (erase_env g) e (erase t) p_e_t)
         nms            = unionEnv [] g
 lem_self_idempotent_upper g t@(TFunc t_z t') Base p_g_t e p_e_t 
-  = lem_sub_refl g t Base p_g_t  ? self (TFunc t_z t') e Base
+  = lem_sub_refl g t Base p_g_t  ? toProof (self (TFunc t_z t') e Base)
 lem_self_idempotent_upper g (TExists t_z t') Base p_g_t e p_e_t 
   = lem_subtype_in_exists (2 * tdepth t') g t_z (self t' e Base) (self (self t' e Base) e Base
                               ? lem_wftype_islct g (TExists t_z (self (self t' e Base) e Base))
@@ -71,9 +71,9 @@ lem_self_idempotent_upper g (TExists t_z t') Base p_g_t e p_e_t
         islc_e          = lem_ftyp_islc (erase_env g) e (erase t') p_e_t
         nms'            = unionEnv nms g
 lem_self_idempotent_upper g t@(TPoly k_a t') Base p_g_t e p_e_t 
-  = lem_sub_refl g t Base p_g_t  ? self (TPoly k_a t') e Base 
+  = lem_sub_refl g t Base p_g_t  ? toProof (self (TPoly k_a t') e Base)
 lem_self_idempotent_upper g t                  Star p_g_t e p_e_t 
-  = lem_sub_refl g t Star p_g_t  ? (self t e Star === t)
+  = lem_sub_refl g t Star p_g_t  ? toProof (self t e Star === t)
 
 {-@ lem_exact_subtype :: g:Env -> ProofOf(WFEnv g) -> s:Type -> k_s:Kind -> ProofOf(WFType g s k_s)
         -> t:Type -> { p_s_t:Subtype | propOf p_s_t == Subtype g s t } 
@@ -107,7 +107,7 @@ lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SFunc {}) k _ e p_e_t = p_s_t
 lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SWitn n _ v_x t_x p_vx_tx _s t' p_s_t'vx) 
                   Base p_g_t e p_e_t 
   = SWitn n g v_x t_x p_vx_tx (self s e Base) (self t' e Base) p_self_s_t'vx
-          ? self (TExists t_x t') e Base
+          ? toProof (self (TExists t_x t') e Base)
       where 
         (WFExis _ _tx k_x p_g_tx _ _ nms mk_p_wg_t') 
                       = lem_wfexis_for_wf_texists g t_x t' Base p_g_t
@@ -125,7 +125,7 @@ lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SWitn n _ v_x t_x p_vx_tx _s t' 
                                           ? lem_subBV_lc    v_x    e
 lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBind n _ s_x s' _t nms mk_p_s'_t) Base p_g_t e p_e_t  
   = SBind n g s_x (self s' e Base) (self t e Base ? lem_self_islct t e Base ) 
-          nms'' mk_p_self_s'_t                    ? self (TExists s_x s') e Base
+          nms'' mk_p_self_s'_t                    ? toProof (self (TExists s_x s') e Base)
       where
         {-@ mk_p_self_s'_t :: { y:Vname | NotElem y nms'' }
               -> { pf:Subtype | propOf pf == Subtype (Cons y s_x g) (unbindT y (self s' e Base)) 
@@ -175,12 +175,12 @@ lem_exact_type g e t p_e_t@(TVar1 env x t' k' p_env_t')  Base p_g_t p_g_wf = cas
       p_g_slt   = lem_selfify_wf g t Base p_g_t (FV x) p_e_er_t
       p_g_t'    = lem_weaken_wf env Empty t' Base p_env_t' x t'
       p_t_selft = lem_self_idempotent_upper g t' Base {-p_env_t'-} p_g_t' (FV x) 
-                              (p_e_er_t ? erase (self t' (FV x) Base)) -- p_env_wf
+                              (p_e_er_t ? toProof (erase (self t' (FV x) Base))) -- p_env_wf
       n         = 2 * {-max-} (typSize p_e_t) -- (subtypSize p_t_selft)
   Star -> {- t == t' -} TVar1 env x t' Base p_env_t'_b ? t_is_t'
     where 
       p_env_t'_b = lem_strengthen_wftype_base env Empty x t' t' p_env_t' p_g_t
-      t_is_t'    = t === self t' (FV x) Star === t'
+      t_is_t'    = toProof (t === self t' (FV x) Star === t')
 lem_exact_type g e t p_e_t@(TVar2 _ env x _t p_env_e_t w t_w) Base p_g_t p_g_wf
   = TVar2 (typSize p_env_e_selft) env x (self t (FV x) Base) p_env_e_selft w t_w
       where

@@ -7,7 +7,7 @@
 module SystemFLemmasSubstitution where
 
 import Prelude hiding (max)
-import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
+import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
 import qualified Data.Set as S
 
 import Basics

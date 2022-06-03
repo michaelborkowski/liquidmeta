@@ -1,13 +1,13 @@
-
-resolver: lts-18.18
+resolver: lts-18.27
+compiler: ghc-8.10.7
 packages:
     - .
 extra-deps:
-    - text-format-0.3.2   ## unchanged since Feb
-    - Diff-0.3.4
+  #    - text-format-0.3.2   ## unchanged since Feb
+  #    - Diff-0.3.4
     - location:
       git: https://github.com/ucsd-progsys/liquidhaskell
-      commit: f3902663a7e32f44d35db78abbe23ec11dbb629f
+      commit: 8b5e3640fe06964b27af9f6e44f563d8e6abbfe0
     - location: 
       git: https://github.com/liquidhaskell/liquid-base
       commit: 79e2bee57ef6e34e69a80cd361bc8edde80da34a ## unchanged since feb

@@ -7,7 +7,7 @@
 module Basics where
 
 import Prelude hiding (max)
-import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
+import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
 import qualified Data.Set as S
 
 ---------------------------------------------------------------------------
@@ -1269,9 +1269,13 @@ lem_above_max_nms_ftypes x (_:xs) ys     zs     g = lem_above_max_nms_ftypes x x
 ---------------------------------------------------------------------------
 
 {-@ reflect withProof @-}
-{-@ withProof :: x:a -> b -> { v:a | v = x } @-}
-withProof :: a -> b -> a
+{-@ withProof :: x:a -> Proof -> { v:a | v = x } @-}
+withProof :: a -> Proof -> a
 withProof x _ = x
+
+{-@ (?) :: x:a -> Proof -> { v:a | v = x } @-}
+(?) :: a -> Proof -> a
+(?) x _ = x
 
 {-@ measure propOf :: a -> Proposition @-}
 {-@ type ProofOf E = { proofObj:_ | propOf proofObj = E } @-}

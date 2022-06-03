@@ -6,7 +6,7 @@
 
 module Strengthenings where
 
-import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
+import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
 
 import Basics
 
