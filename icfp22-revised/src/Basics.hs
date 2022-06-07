@@ -1289,6 +1289,7 @@ data Proposition where
     -- Operational Semantics
     Step :: Expr -> Expr -> Proposition         -- e ~> e'
     EvalsTo :: Expr -> Expr -> Proposition      -- e ~>* e'
+    PEvalsTrue :: Preds -> Proposition          -- ps => PEmpty
 
     -- System F Judgments
     WFFT :: FEnv -> FType -> Kind -> Proposition      --  G |- t : k

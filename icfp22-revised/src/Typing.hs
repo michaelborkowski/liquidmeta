@@ -7,7 +7,7 @@
 module Typing where
 
 import Prelude hiding (max)
-import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
+import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
 import qualified Data.Set as S
 
 import Basics
@@ -426,6 +426,47 @@ isSPoly :: Subtype -> Bool
 isSPoly (SPoly {}) = True
 isSPoly _          = False
 
+{-
+-------------------------------------------------------------------------
+----- | DENOTATIONAL SEMANTICS OF TYPES
+-------------------------------------------------------------------------
+
+data Entails where
+    EntPred :: Env -> Expr -> (CSub -> DenotesEnv -> PEvalsTrue) -> Entails
+
+{-@ data Entails where
+        EntPred :: g:Env -> p:Pred 
+                   -> (th:CSub -> ProofOf(DenotesEnv g th) 
+                               -> ProofOf(PEvalsTrue (csubst th p)) )
+                   -> ProofOf(Entails g p) @-} 
+
+-- We say the proposition ValueDenoted e t holds if there exists a value v such that
+--     * e \many v, and
+--     * v \in [[ t ]].
+{-@ data ValueDenoted where 
+        ValDen :: e:Expr -> t:Type -> v:Value -> ProofOf(EvalsTo e v)
+                                   -> ProofOf(Denotes t v) -> ProofOf(ValueDenoted e t) @-}
+data ValueDenoted where     
+    ValDen :: Expr -> Type -> Expr -> EvalsTo -> Denotes -> ValueDenoted
+
+-- placeholder
+pEvalsTrue :: Preds -> Bool
+pEvalsTrue p = undefined
+
+denotes :: Type -> Value -> DProp   -- also include 
+denotes (TRefn b   p)  v = PBase (pEvalsTrue (psubBV v p))
+denotes (TFunc   tx t) v = PAll  (\vx -> denotes tx vx => denotes (t[x -> vx]) (app v vx))
+denotes (TExists tx t) v =
+denotes (TPoly    k t) v =
+
+{-@ data DProp where
+        PBase :: ProofOf(PEvalsTrue )
+
+@-}
+
+data DProp = PBase Bool Proposition
+           | 
+-}
 
 -------------------------------------------------------------------------
 ----- | UNINTERPRETED IMPLICATION 

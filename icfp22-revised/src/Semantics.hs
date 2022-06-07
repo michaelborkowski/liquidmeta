@@ -356,3 +356,19 @@ lem_decompose_evals e e' v ev_e_e' ev_e_v = case ev_e_e' of
     (AddStep _ e2 st_e_e2 _ ev_e2_v) -> lem_decompose_evals e1 e' v ev_e1_e' ev_e1_v
       where
         ev_e1_v = ev_e2_v ? lem_sem_det e e1 st_e_e1 e2 st_e_e2
+
+--------------------------------------------------------------------------------
+--- | Predicate Semantics (Big Step)
+--------------------------------------------------------------------------------
+
+-- PE-Emp    PEmp => PEmp
+-- PE-Cons   PCons p ps => ps'  if p ~>* Bc True and ps => ps'
+
+data PEvalsTrue where
+    PEEmp   :: PEvalsTrue
+    PECons  :: Expr -> EvalsTo -> Preds -> PEvalsTrue -> PEvalsTrue
+
+{-@ data PEvalsTrue where
+        PEEmp   :: ProofOf(PEvalsTrue PEmpty)
+        PECons  :: p:Expr -> ProofOf(EvalsTo p (Bc True)) -> ps:Preds -> ProofOf(PEvalsTrue ps)
+                     -> ProofOf(PEvalsTrue (PCons p ps)) @-}
