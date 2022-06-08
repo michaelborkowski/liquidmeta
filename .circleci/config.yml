@@ -8,7 +8,7 @@ jobs:
           password: $DOCKERHUB_PASSWORD 
                                                           
     steps:
-      - run: apt-get update && apt-get install -y curl git ssh unzip wget libtinfo-dev gcc make
+      - run: apt-get update && apt-get install -y curl git ssh unzip wget libtinfo-dev gcc-9 make
 
       - run: 
           name: Install z3 
