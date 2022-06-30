@@ -8,6 +8,7 @@ module Basics where
 
 import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
+import Language.Haskell.Liquid.This
 import qualified Data.Set as S
 
 ---------------------------------------------------------------------------
@@ -1284,6 +1285,8 @@ withProof x _ = x
 
 {-@ measure sizeOf :: a -> { n:Int | n >= 0 } @-}
 {-@ type ProofOfN N E = { proofObj:_ | propOf proofObj = E && sizeOf proofObj <= N } @-}
+
+-- {-@ measure this :: a @-}
 
   --- the Type of all Propositions
 
