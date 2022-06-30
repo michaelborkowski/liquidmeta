@@ -200,8 +200,8 @@ lem_weaken_tv_typ g g' {-p_env_wf-} e t p_e_t@(TLet {}) a k_a
   = lem_weaken_tv_typ_tlet g g' {-p_env_wf-} e t p_e_t  a k_a
 lem_weaken_tv_typ g g' {-p_env_wf-} e t p_e_t@(TAnn {}) a k_a
   = lem_weaken_tv_typ_tann g g' {-p_env_wf-} e t p_e_t  a k_a
-lem_weaken_tv_typ g g' {-p_env_wf-} e t (TSub n env _e s p_e_s _t k p_env_t p_s_t) a k_a
-  = TSub (n+1) (concatE (ConsT a k_a g) g') e s p_env'_e_s t k p_env'_t p_env'_s_t
+lem_weaken_tv_typ g g' {-p_env_wf-} e t (TSub {-n-} env _e s p_e_s _t k p_env_t p_s_t) a k_a
+  = TSub {-(n+1)-} (concatE (ConsT a k_a g) g') e s p_env'_e_s t k p_env'_t p_env'_s_t
       where
         p_env'_e_s = lem_weaken_tv_typ     g g' e s p_e_s a k_a
         p_env'_t   = lem_weaken_tv_wf      g g' t k p_env_t a k_a
