@@ -44,6 +44,7 @@ library
   hs-source-dirs:
       src
   ghc-options:  -fplugin=LiquidHaskell 
+                -fplugin-opt=LiquidHaskell:--ple-with-undecided-guards
   build-depends:
       liquid-base
     , liquid-containers

@@ -783,9 +783,11 @@ envsize Empty         = 0
 envsize (Cons  _ _ g) = envsize g + 1
 envsize (ConsT _ _ g) = envsize g + 1
 
-{-@ reflect max @-}
+{-@ inline max @-}
 max :: Int -> Int -> Int
 max x y = if x >= y then x else y
+
+
 
 {-@ reflect in_env @-}              -- any kind of variable
 in_env :: Vname -> Env -> Bool

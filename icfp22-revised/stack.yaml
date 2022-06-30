@@ -7,7 +7,7 @@ extra-deps:
   #    - Diff-0.3.4
     - location:
       git: https://github.com/ucsd-progsys/liquidhaskell
-      commit: 8b5e3640fe06964b27af9f6e44f563d8e6abbfe0
+      commit: 65cce2897e012f57a36ec43a039a426c3c8089fd
     - location: 
       git: https://github.com/liquidhaskell/liquid-base
       commit: 79e2bee57ef6e34e69a80cd361bc8edde80da34a ## unchanged since feb
@@ -18,9 +18,10 @@ extra-deps:
     - liquid-ghc-prim-0.6.1
     - location: 
       git: https://github.com/ucsd-progsys/liquid-fixpoint
-      commit: 08fa6b6e0001c2da6b96a135523ca56107a3c0d6
-    - location:
-      git: https://github.com/facundominguez/rest
-      commit: 31e974979c90e910efe5199ee0d3721b791667f6
+      commit: a63a20e8e73f2a3c214a874cc6b2da0f76a57318
+    - rest-rewrite-0.3.0
+        #    - location:
+        #      git: https://github.com/facundominguez/rest
+        #      commit: 31e974979c90e910efe5199ee0d3721b791667f6
 
 allow-newer: true
