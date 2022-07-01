@@ -34,8 +34,7 @@ import LemmasNarrowingTyp
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t'  && isSBase p_t_t' }
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSBase p_t'_t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && 
-                                    sizeOf p_t_t''  == 1 }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 0] @-}
 lem_sub_trans_sbase :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
@@ -53,19 +52,17 @@ lem_sub_trans_sbase g p_g_wf t k p_g_t t' {-k' p_g_t'-} t'' k'' p_g_t''
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t'  && isSFunc p_t_t' }
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSFunc p_t'_t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' } 
              / [tdepth t + tdepth t' + tdepth t'', 0] @-}
 lem_sub_trans_sfunc :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
 lem_sub_trans_sfunc g p_g_wf t k p_g_t t' {-k' p_g_t'-} t'' k'' p_g_t''
-              (SFunc n  _  s1 s2 p_s2_s1  t1 t2 nms  mk_p_y2g_t1_t2)
-              (SFunc n' _ _s2 s3 p_s3_s2 _t2 t3 nms' mk_p_z3g_t2_t3)
-  = SFunc n'' g s1 s3 p_s3_s1 t1 t3 nms'' mk_p_z3g_t1_t3
+              (SFunc _  s1 s2 p_s2_s1  t1 t2 nms  mk_p_y2g_t1_t2)
+              (SFunc _ _s2 s3 p_s3_s2 _t2 t3 nms' mk_p_z3g_t2_t3)
+  = SFunc g s1 s3 p_s3_s1 t1 t3 nms'' mk_p_z3g_t1_t3
       where
         {-@ mk_p_z3g_t1_t3 :: { z:Vname | NotElem z nms'' }
-              -> { pf:Subtype | propOf pf == Subtype (Cons z s3 g) (unbindT z t1) (unbindT z t3) &&
-                     sizeOf pf <= (xdepth t1)*(xdepth t2)*(xdepth t3)* max (n + n' + 1) n' } @-}
+              -> { pf:Subtype | propOf pf == Subtype (Cons z s3 g) (unbindT z t1) (unbindT z t3) } @-}
         mk_p_z3g_t1_t3 z = lem_sub_trans (Cons z s3 g) p_z3g_wf  (unbindT z t1) k_t1 p_w3g_t1 
                                (unbindT z t2) {-k_t2 p_w3g_t2-} (unbindT z t3) k_t3 (mk_p_w3g_t3 z)
                                p_y3g_t1_t2 {-(mk_p_z3g_t1_t2 z)-} (mk_p_z3g_t2_t3 z)
@@ -80,25 +77,22 @@ lem_sub_trans_sfunc g p_g_wf t k p_g_t t' {-k' p_g_t'-} t'' k'' p_g_t''
             = lem_wffunc_for_wf_tfunc g s3 t3 k'' p_g_t'' 
         p_s3_s1     = lem_sub_trans g p_g_wf s3 k_s3 p_g_s3 s2 s1 k_s1 p_g_s1 p_s3_s2 p_s2_s1
         nms''            = unionEnv (union (union nms nms') (union nms1 {-(union nms2-} nms3{-)-})) g
-        n''              = (xdepth t)*(xdepth t')*(xdepth t'') * max n n'
 
 {-@ lem_sub_trans_spoly :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t'  && isSPoly p_t_t' }
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSPoly p_t'_t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 0] @-}
 lem_sub_trans_spoly :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
 lem_sub_trans_spoly g p_g_wf t k p_g_t t' {-k' p_g_t'-} t'' k'' p_g_t''
-              (SPoly n _ k1 t1 t2 nms mk_p_ag_t1_t2) (SPoly n' _ _ _ t3 nms' mk_p_ag_t2_t3)
-  = SPoly n'' g k1 t1 t3 nms'' mk_p_ag_t1_t3
+              (SPoly _ k1 t1 t2 nms mk_p_ag_t1_t2) (SPoly _ _ _ t3 nms' mk_p_ag_t2_t3)
+  = SPoly g k1 t1 t3 nms'' mk_p_ag_t1_t3
       where
         {-@ mk_p_ag_t1_t3 :: { a:Vname | NotElem a nms'' }
               -> { pf:Subtype | propOf pf == Subtype (ConsT a k1 g)
-                                                     (unbind_tvT a t1) (unbind_tvT a t3) &&
-                                sizeOf pf <= (xdepth t1)*(xdepth t2)*(xdepth t3)* max n n' } @-}
+                                                     (unbind_tvT a t1) (unbind_tvT a t3) } @-}
         mk_p_ag_t1_t3 a = lem_sub_trans (ConsT a k1 g) p_ag_wf 
                                     (unbind_tvT a t1) k_t1 (mk_p_ag_t1 a)
                                     (unbind_tvT a t2) 
@@ -111,20 +105,18 @@ lem_sub_trans_spoly g p_g_wf t k p_g_t t' {-k' p_g_t'-} t'' k'' p_g_t''
         (WFPoly _ _ _ k_t1 nms1 mk_p_ag_t1) = lem_wfpoly_for_wf_tpoly g k1 t1 p_g_t_st
         (WFPoly _ _ _ k_t3 nms3 mk_p_ag_t3) = lem_wfpoly_for_wf_tpoly g k1 t3 p_g_t''_st
         nms''       = unionEnv (union (union nms nms') (union {-(union-} nms1 {-nms2)-} nms3)) g
-        n''         = (xdepth t1)*(xdepth t2)*(xdepth t3)* max n n'
 
 {-@ lem_sub_trans_switnR :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' }
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSWitn p_t'_t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 0] @-}
 lem_sub_trans_switnR :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
 lem_sub_trans_switnR g p_g_wf t k p_g_t t' {-k' p_g_t'-} t'' k'' p_g_t'' p_g_t_t'
-                     (SWitn n _ v_y s_y p_vy_sy _t' s'' p_g_t'_s''vy)  -- t'' == \ex s_y. s''
-  = SWitn n' g v_y s_y p_vy_sy t s'' p_g_t_s''vy
+                     (SWitn _ v_y s_y p_vy_sy _t' s'' p_g_t'_s''vy)  -- t'' == \ex s_y. s''
+  = SWitn g v_y s_y p_vy_sy t s'' p_g_t_s''vy
       where
         (WFExis _ _ k_sy p_g_sy _ _ nms mk_p_wg_s'') 
                     = lem_wfexis_for_wf_texists g s_y s'' k'' p_g_t''
@@ -135,19 +127,17 @@ lem_sub_trans_switnR g p_g_wf t k p_g_t t' {-k' p_g_t'-} t'' k'' p_g_t'' p_g_t_t
                                        (s'' ? lem_free_subset_binds g t'' k'' p_g_t'')
         p_g_t_s''vy = lem_sub_trans g p_g_wf t k p_g_t t' {-k' p_g_t'-} (tsubBV v_y s'') k'' 
                                     p_g_s''vy p_g_t_t' p_g_t'_s''vy
-        n'          = max (typSize p_vy_sy) (subtypSize p_g_t_s''vy)
 
 {-@ lem_sub_trans_switnbind :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t'  && isSWitn p_t_t' }
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' && isSBind p_t'_t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 0] @-}
 lem_sub_trans_switnbind :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
 lem_sub_trans_switnbind g p_g_wf t k p_g_t t' {-k' p_g_t'-} t'' k'' p_g_t''
-        (SWitn n _ v_x s_x p_vx_sx _t s' p_g_t_s'vx) (SBind n' _ _sx _s' _t'' nms mk_p_yg_s'_t'')
+        (SWitn _ v_x s_x p_vx_sx _t s' p_g_t_s'vx) (SBind _ _sx _s' _t'' nms mk_p_yg_s'_t'')
   = lem_sub_trans g p_g_wf t k p_g_t (tsubBV v_x s')  t'' k'' p_g_t'' p_g_t_s'vx p_g_s'vx_t''
       where
         w            = fresh_varT {-(union-} nms {-nms')-} g s'
@@ -162,18 +152,16 @@ lem_sub_trans_switnbind g p_g_wf t k p_g_t t' {-k' p_g_t'-} t'' k'' p_g_t''
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSBind p_t_t'}
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 0] @-}
 lem_sub_trans_sbindL :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
 lem_sub_trans_sbindL g p_g_wf t k p_g_t t' {-k' p_g_t'-} t''_ k'' p_g_t''
-              (SBind n _ s_x s _t' nms mk_p_yg_s_t') p_g_t'_t'' = case (isTExists t) of
-  True  -> SBind n' g s_x s t'' nms'' mk_p_yg_s_t''
+              (SBind _ s_x s _t' nms mk_p_yg_s_t') p_g_t'_t'' = case (isTExists t) of
+  True  -> SBind g s_x s t'' nms'' mk_p_yg_s_t''
       where
         {-@ mk_p_yg_s_t'' :: { y:Vname | NotElem y nms'' }
-              -> { pf:Subtype | propOf pf == Subtype (Cons y s_x g) (unbindT y s) t'' &&
-                     sizeOf pf <= (xdepth s)*(xdepth t')*(xdepth t'')*max n (sizeOf p_g_t'_t''+1) } @-}
+              -> { pf:Subtype | propOf pf == Subtype (Cons y s_x g) (unbindT y s) t'' } @-}
         mk_p_yg_s_t'' y = lem_sub_trans (Cons y s_x g) p_yg_wf (unbindT y s) k_s (mk_p_yg_s y)
                                         t' t'' k'' p_yg_t'' (mk_p_yg_s_t' y) p_yg_t'_t''
           where
@@ -183,15 +171,13 @@ lem_sub_trans_sbindL g p_g_wf t k p_g_t t' {-k' p_g_t'-} t''_ k'' p_g_t''
         t''         = t''_ ? lem_wftype_islct g t''_ k'' p_g_t'' 
         (WFExis _ _ k_sx p_g_sx _ k_s nms' mk_p_yg_s) = lem_wfexis_for_wf_texists g s_x s k p_g_t
         nms''           = unionEnv (union nms nms') g
-        n'              = (xdepth s)*(xdepth t')*(xdepth t'')* max n (subtypSize p_g_t'_t'' + 1)
   False -> impossible ""
 
 {-@ lem_sub_trans_go_sbase :: g:Env -> ProofOf(WFEnv g) -> t:Type -> k:Kind -> ProofOf(WFType g t k)
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSBase p_t_t'}
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 1] @-}
 lem_sub_trans_go_sbase :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
@@ -207,8 +193,7 @@ lem_sub_trans_go_sbase g _ t _ _ t' {-_ _-} t'' _ _ (SBase {}) (SPoly {}) = impo
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSFunc p_t_t'}
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 1] @-}
 lem_sub_trans_go_sfunc :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
@@ -224,8 +209,7 @@ lem_sub_trans_go_sfunc g _ t _ _ t' {-_ _-} t'' _ _ (SFunc {}) (SPoly {}) = impo
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSPoly p_t_t'}
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 1] @-}
 lem_sub_trans_go_spoly :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
@@ -241,8 +225,7 @@ lem_sub_trans_go_spoly g _ t _ _ t' {-_ _-} t'' _ _ (SPoly {}) (SBind {}) = impo
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' && isSWitn p_t_t'}
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 1] @-}
 lem_sub_trans_go_switn :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype
@@ -258,8 +241,7 @@ lem_sub_trans_go_switn g _ t _ _ t' {-_ _-} t'' _ _ (SWitn {}) (SPoly {}) = impo
             -> t':Type -> t'':Type -> k'':Kind -> ProofOf(WFType g t'' k'')
             -> { p_t_t':Subtype   | propOf p_t_t'   == Subtype g t  t' }
             -> { p_t'_t'':Subtype | propOf p_t'_t'' == Subtype g t' t'' }
-            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' && sizeOf p_t_t''
-                     <= (xdepth t)*(xdepth t')*(xdepth t'') * max (sizeOf p_t_t') (sizeOf p_t'_t'') }
+            -> { p_t_t'':Subtype  | propOf p_t_t''  == Subtype g t  t'' }
              / [tdepth t + tdepth t' + tdepth t'', 2] @-}
 lem_sub_trans :: Env -> WFEnv -> Type -> Kind -> WFType -> Type {-> Kind -> WFType-}
                      -> Type -> Kind -> WFType -> Subtype -> Subtype -> Subtype

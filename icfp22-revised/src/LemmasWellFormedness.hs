@@ -50,21 +50,21 @@ lem_openFT_at_equals j a (FTPoly k t1') (FTPoly _ t2')
 -- LEMMA 6. If G |- s <: t, then if we erase the types then (erase s) == (erase t)
 {-@ lem_erase_subtype :: g:Env -> t1:Type -> t2:Type 
         -> { p_t1_t2:Subtype | propOf p_t1_t2 == Subtype g t1 t2 }
-        -> { pf:_ | erase t1 == erase t2 } / [sizeOf p_t1_t2] @-}
+        -> { pf:_ | erase t1 == erase t2 } / [subtypSize p_t1_t2] @-}
 lem_erase_subtype :: Env -> Type -> Type  -> Subtype -> Proof
 lem_erase_subtype g t1 t2 (SBase _g b p1 p2 _ _) = ()
-lem_erase_subtype g s  t  (SFunc _ _g s1 t1 p_t1_s1 s2 t2 nms mk_p_s2_t2)
+lem_erase_subtype g s  t  (SFunc _g s1 t1 p_t1_s1 s2 t2 nms mk_p_s2_t2)
   = () ? lem_erase_subtype  g t1  s1  p_t1_s1
        ? lem_erase_subtype (Cons y t1 g) (unbindT y s2) (unbindT y t2)  (mk_p_s2_t2 y)
       where 
         y         = fresh_var nms g
-lem_erase_subtype g t1  t2 (SWitn _ _g v t_x p_v_tx _t1 t' p_t1_t'v)
+lem_erase_subtype g t1  t2 (SWitn _g v t_x p_v_tx _t1 t' p_t1_t'v)
   = () ? lem_erase_subtype g t1 (tsubBV v t')  p_t1_t'v 
-lem_erase_subtype g t1  t2 (SBind _ _g t_x t _t2 nms mk_p_t_t')
+lem_erase_subtype g t1  t2 (SBind _g t_x t _t2 nms mk_p_t_t')
   = () ? lem_erase_subtype (Cons y t_x g) (unbindT y t)  t2  (mk_p_t_t' y)
       where
         y         = fresh_var nms g 
-lem_erase_subtype g t1 t2  (SPoly _ _g k t1' t2' nms mk_p_ag_t1'_t2')
+lem_erase_subtype g t1 t2  (SPoly _g k t1' t2' nms mk_p_ag_t1'_t2')
   = () ? lem_erase_subtype (ConsT a k g) 
                       (unbind_tvT a t1'   ? lem_erase_unbind_tvT a t1')
                       (unbind_tvT a t2'   ? lem_erase_unbind_tvT a t2')
@@ -168,11 +168,11 @@ lem_push_wf g (TPoly    k' t) p_g_ta ps nms mk_p_yg_p_bl = p_g_ta
           -> { pf:_ | S.member x (vbinds g) } @-}
 lem_tvar_v_in_env :: Env -> Vname -> Type -> HasType -> Proof
 lem_tvar_v_in_env g x t (TVar1 _  _x _t _ _) = ()
-lem_tvar_v_in_env g x t (TVar2 _ g' _x _t p_g'_x_t y t_y)
+lem_tvar_v_in_env g x t (TVar2 g' _x _t p_g'_x_t y t_y)
   = lem_tvar_v_in_env g' x t p_g'_x_t
-lem_tvar_v_in_env g x t (TVar3 _ g' _x _t p_g'_x_t a k_a)
+lem_tvar_v_in_env g x t (TVar3 g' _x _t p_g'_x_t a k_a)
   = lem_tvar_v_in_env g' x t p_g'_x_t
-lem_tvar_v_in_env g x t (TSub _ _ _ s p_x_s _ k p_g_t p_s_t)
+lem_tvar_v_in_env g x t (TSub _ _ s p_x_s _ k p_g_t p_s_t)
   = lem_tvar_v_in_env g x s p_x_s
 
 {-@ lem_narrow_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }

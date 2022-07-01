@@ -32,8 +32,8 @@ import LemmasSubtyping
 
 {-@ lem_self_idempotent_upper :: g:Env -> t:Type -> k:Kind -> ProofOf(WFType g t k)
         -> e:Expr -> ProofOf(HasFType (erase_env g) e (erase t))
-        -> { pf:Subtype | propOf pf == Subtype g (self t e k) (self (self t e k) e k) &&
-                          sizeOf pf <= 2 * tdepth t } / [tsize t] @-}
+        -> { pf:Subtype | propOf pf == Subtype g (self t e k) (self (self t e k) e k) }
+         / [tsize t] @-}
 lem_self_idempotent_upper :: Env -> Type -> Kind -> WFType -> Expr -> HasFType ->  Subtype
 lem_self_idempotent_upper g t@(TRefn b q) Base p_g_t e p_e_t 
   = SBase g b (PCons eqlP q) (PCons eqlP (PCons eqlP q)) nms p_imp_sq_ssq
@@ -49,15 +49,14 @@ lem_self_idempotent_upper g t@(TRefn b q) Base p_g_t e p_e_t
 lem_self_idempotent_upper g t@(TFunc t_z t') Base p_g_t e p_e_t 
   = lem_sub_refl g t Base p_g_t  ? toProof (self (TFunc t_z t') e Base)
 lem_self_idempotent_upper g (TExists t_z t') Base p_g_t e p_e_t 
-  = lem_subtype_in_exists (2 * tdepth t') g t_z (self t' e Base) (self (self t' e Base) e Base
+  = lem_subtype_in_exists g t_z (self t' e Base) (self (self t' e Base) e Base
                               ? lem_wftype_islct g (TExists t_z (self (self t' e Base) e Base))
                                                  Base p_g_self2_t)
                           k_z p_g_tz {-Base p_g_self2_t-} nms' mk_p_st'_sst'
       where
         {-@ mk_p_st'_sst' :: { y:Vname | NotElem y nms' } 
               -> { pf:Subtype | propOf pf == Subtype (Cons y t_z g) (unbindT y (self t' e Base))
-                                                     (unbindT y (self (self t' e Base) e Base)) &&
-                                sizeOf pf <= 2 * tdepth t' }  @-}
+                                                     (unbindT y (self (self t' e Base) e Base)) } @-}
         mk_p_st'_sst' y = lem_self_idempotent_upper (Cons y t_z g) (unbindT y t') k'
                                                     (mk_p_yg_t' y) e p_yg_e_t'
                               ? lem_unbindT_self y t'               (e ? islc_e) Base
@@ -79,8 +78,8 @@ lem_self_idempotent_upper g t                  Star p_g_t e p_e_t
         -> t:Type -> { p_s_t:Subtype | propOf p_s_t == Subtype g s t } 
         -> k:Kind -> ProofOf(WFType g t k) -> { e:Expr | isLC e } 
         -> ProofOf(HasFType (erase_env g) e (erase t))
-        -> { p_s'_t':Subtype | propOf p_s'_t' == Subtype g (self s e k) (self t e k) &&
-                               sizeOf p_s'_t' == sizeOf p_s_t } / [sizeOf p_s_t] @-}
+        -> { p_s'_t':Subtype | propOf p_s'_t' == Subtype g (self s e k) (self t e k) }
+         / [subtypSize p_s_t] @-}
 lem_exact_subtype :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Subtype -> Kind -> WFType
                          -> Expr -> HasFType -> Subtype
 lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBase _ b ps qs nms mk_imp_yg_ps_qs) Base p_g_t e p_e_t 
@@ -104,9 +103,9 @@ lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBase _ b ps qs nms mk_imp_yg_ps
         qs'           = PCons (eqlPred (TRefn b qs) e) qs
         nms'          = unionEnv nms g
 lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SFunc {}) k _ e p_e_t = p_s_t
-lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SWitn n _ v_x t_x p_vx_tx _s t' p_s_t'vx) 
+lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SWitn _ v_x t_x p_vx_tx _s t' p_s_t'vx) 
                   Base p_g_t e p_e_t 
-  = SWitn n g v_x t_x p_vx_tx (self s e Base) (self t' e Base) p_self_s_t'vx
+  = SWitn g v_x t_x p_vx_tx (self s e Base) (self t' e Base) p_self_s_t'vx
           ? toProof (self (TExists t_x t') e Base)
       where 
         (WFExis _ _tx k_x p_g_tx _ _ nms mk_p_wg_t') 
@@ -117,20 +116,18 @@ lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SWitn n _ v_x t_x p_vx_tx _s t' 
                              ? lem_tsubFV_unbindT w v_x (t'
                                    ? lem_free_bound_in_env g (TExists t_x t') Base p_g_t w) 
         {-@ p_self_s_t'vx :: { pf:Subtype | propOf pf == Subtype g (self s e Base) 
-                                                                   (tsubBV v_x (self t' e Base)) &&
-                                            sizeOf pf <= n } @-}
+                                                                   (tsubBV v_x (self t' e Base)) } @-}
         p_self_s_t'vx = lem_exact_subtype g p_g_wf s k_s p_g_s (tsubBV v_x t') p_s_t'vx Base p_g_t'vx
                                           e p_e_t 
                                           ? lem_tsubBV_self v_x t' e Base
                                           ? lem_subBV_lc    v_x    e
-lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBind n _ s_x s' _t nms mk_p_s'_t) Base p_g_t e p_e_t  
-  = SBind n g s_x (self s' e Base) (self t e Base ? lem_self_islct t e Base ) 
+lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBind _ s_x s' _t nms mk_p_s'_t) Base p_g_t e p_e_t  
+  = SBind g s_x (self s' e Base) (self t e Base ? lem_self_islct t e Base ) 
           nms'' mk_p_self_s'_t                    ? toProof (self (TExists s_x s') e Base)
       where
         {-@ mk_p_self_s'_t :: { y:Vname | NotElem y nms'' }
               -> { pf:Subtype | propOf pf == Subtype (Cons y s_x g) (unbindT y (self s' e Base)) 
-                                                     (self t e Base) &&
-                                sizeOf pf <= n } @-}
+                                                     (self t e Base) } @-}
         mk_p_self_s'_t y = lem_exact_subtype (Cons y s_x g) p_yg_wf (unbindT y s') k_s (mk_p_yg_s' y)
                                              t (mk_p_s'_t y) Base p_yg_t e p_yg_e_t
                                              ? lem_unbindT_self  y s'               e Base
@@ -151,45 +148,41 @@ lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t Star _ e p_e_t
 {-@ lem_exact_type :: g:Env -> v:Value -> t:Type 
         -> { p_v_t:HasType | propOf p_v_t == HasType g v t } -> k:Kind
         -> ProofOf(WFType g t k) -> ProofOf(WFEnv g) 
-        -> { p_v_st:HasType | propOf p_v_st == HasType g v (self t v k) &&
-                              sizeOf p_v_st <= (sizeOf p_v_t * 2 + 1) } @-}
+        -> { p_v_st:HasType | propOf p_v_st == HasType g v (self t v k) } @-}
 lem_exact_type :: Env -> Expr -> Type -> HasType -> Kind -> WFType -> WFEnv -> HasType
 lem_exact_type g e t p_e_t@(TBC _ b)   Base p_g_t p_g_wf 
-  = TSub n g (Bc b) (tybc b) p_e_t (self (tybc b) (Bc b) Base) Base p_g_selft p_t_selft
+  = TSub g (Bc b) (tybc b) p_e_t (self (tybc b) (Bc b) Base) Base p_g_selft p_t_selft
       where
         p_g_t     = lem_wf_tybc g b
         p_g_selft = lem_selfify_wf g (tybc b) Base p_g_t (Bc b) (FTBC (erase_env g) b)
         p_t_selft = lem_tybc_exact g b 
-        n         = {-max-} 2 * (typSize p_e_t) {-(subtypSize p_t_selft)-}
 lem_exact_type g e t p_e_t@(TIC _ m)   Base p_g_t p_g_wf  
-  = TSub n g (Ic m) (tyic m) p_e_t (self (tyic m) (Ic m) Base) Base p_g_selft p_t_selft
+  = TSub g (Ic m) (tyic m) p_e_t (self (tyic m) (Ic m) Base) Base p_g_selft p_t_selft
       where
         p_g_t     = lem_wf_tyic g m
         p_g_selft = lem_selfify_wf g (tyic m) Base p_g_t (Ic m) (FTIC (erase_env g) m)
         p_t_selft = lem_tyic_exact g m 
-        n         = {-max-} 2 * (typSize p_e_t) {-(subtypSize p_t_selft)-}
 lem_exact_type g e t p_e_t@(TVar1 env x t' k' p_env_t')  Base p_g_t p_g_wf = case k' of
-  Base -> TSub n g (FV x) t p_e_t (self t (FV x) Base) Base p_g_slt p_t_selft
+  Base -> TSub g (FV x) t p_e_t (self t (FV x) Base) Base p_g_slt p_t_selft
     where
       p_e_er_t  = lem_typing_hasftype g (FV x) t p_e_t p_g_wf
       p_g_slt   = lem_selfify_wf g t Base p_g_t (FV x) p_e_er_t
       p_g_t'    = lem_weaken_wf env Empty t' Base p_env_t' x t'
       p_t_selft = lem_self_idempotent_upper g t' Base {-p_env_t'-} p_g_t' (FV x) 
                               (p_e_er_t ? toProof (erase (self t' (FV x) Base))) -- p_env_wf
-      n         = 2 * {-max-} (typSize p_e_t) -- (subtypSize p_t_selft)
   Star -> {- t == t' -} TVar1 env x t' Base p_env_t'_b ? t_is_t'
     where 
       p_env_t'_b = lem_strengthen_wftype_base env Empty x t' t' p_env_t' p_g_t
       t_is_t'    = toProof (t === self t' (FV x) Star === t')
-lem_exact_type g e t p_e_t@(TVar2 _ env x _t p_env_e_t w t_w) Base p_g_t p_g_wf
-  = TVar2 (typSize p_env_e_selft) env x (self t (FV x) Base) p_env_e_selft w t_w
+lem_exact_type g e t p_e_t@(TVar2 env x _t p_env_e_t w t_w) Base p_g_t p_g_wf
+  = TVar2 env x (self t (FV x) Base) p_env_e_selft w t_w
       where
         (WFEBind _env p_env_wf _ _ _ _) = p_g_wf
         p_env_t_st    = lem_typing_wf env e t p_env_e_t p_env_wf
         p_env_t_b     = lem_strengthen_wftype_base env Empty w t_w t p_env_t_st p_g_t
         p_env_e_selft = lem_exact_type env e t p_env_e_t Base p_env_t_b p_env_wf 
-lem_exact_type g e t p_e_t@(TVar3 _ env x _t p_env_e_t a k_a) Base p_g_t p_g_wf
-  = TVar3 (typSize p_env_e_selft) env x (self t (FV x) Base) p_env_e_selft a k_a
+lem_exact_type g e t p_e_t@(TVar3 env x _t p_env_e_t a k_a) Base p_g_t p_g_wf
+  = TVar3 env x (self t (FV x) Base) p_env_e_selft a k_a
       where
         (WFEBindT _env p_env_wf _ _) = p_g_wf
         p_env_t_st    = lem_typing_wf env e t p_env_e_t p_env_wf
@@ -209,8 +202,8 @@ lem_exact_type g e t p_e_t@(TAbsT {}) Base _ p_g_wf
 lem_exact_type g e t (TAppT {}) Base _ p_g_wf = impossible "not a value"
 lem_exact_type g e t (TLet {})  Base _ p_g_wf = impossible "not a value"
 lem_exact_type g e t (TAnn {})  Base _ p_g_wf = impossible "not a value"
-lem_exact_type g e t p_e_t@(TSub n _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base p_g_t_b p_g_wf 
-  = TSub n' g e (self s e Base) p_e_selfs (self t e Base) Base p_g_selft p_selfs_selft
+lem_exact_type g e t p_e_t@(TSub _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base p_g_t_b p_g_wf 
+  = TSub g e (self s e Base) p_e_selfs (self t e Base) Base p_g_selft p_selfs_selft
      where
        p_e_er_t      = lem_typing_hasftype g e t p_e_t p_g_wf
        p_g_s_st      = lem_typing_wf           g e s p_g_e_s p_g_wf
@@ -219,5 +212,4 @@ lem_exact_type g e t p_e_t@(TSub n _g e_ s p_g_e_s t_ k p_g_t p_g_s_t) Base p_g_
        p_g_selft     = lem_selfify_wf    g t Base p_g_t_b e p_e_er_t
        p_selfs_selft = lem_exact_subtype g p_g_wf s Base p_g_s_b t p_g_s_t Base p_g_t_b (e 
                            ? lem_ftyp_islc (erase_env g) e (erase t) p_e_er_t) p_e_er_t
-       n'            = {-n +-} 2 * n + 1-- max (typSize p_e_selfs) (subtypSize p_selfs_selft)
 lem_exact_type g e t p_e_t Star _ p_g_wf = p_e_t ? toProof ( self t e Star === t )

@@ -228,57 +228,6 @@ data HasType where
                                      subtypSize pf1 < typSize this }
                   -> { pf:HasType | propOf pf == HasType g e t } @-} 
 
-{- @ measure typSize @- }
-{-@ typSize :: pf:HasType -> { v:Int | v == sizeOf pf && v >= 1 } @-}
-typSize :: HasType -> Int
-typSize (TBC _ _)                               = 1
-typSize (TIC _ _)                               = 1
-typSize (TVar1 _ _ t _ _)                       = tdepth t
-typSize (TVar2 n _ _ _ p_x_b _ _)               = n   + 1
-typSize (TVar3 n _ _ _ p_x_b _ _)               = n   + 1
-typSize (TPrm _ c)                              = tdepth (ty c)
-typSize (TAbs n _ t_x _ _ _ _ _ p_e_b')         = max n (tdepth t_x) + 1
-typSize (TApp n _ _ _ _ p_e_bb' _ p_e'_b)       = n   + 1
-typSize (TAbsT n _ _ _ _ _ p_e_t)               = n   + 1
-typSize (TAppT n _ _ _ s p_e_as t _)            = max n (tdepth (tsubBTV t s)) + 1 --n+(tdepth t)+1
-typSize (TLet n _ _ p_ex_b _ _ _ _ _ _ p_e_b')  = n   + 1
-typSize (TAnn n _ _ _ p_e_b)                    = n   + 1
-typSize (TSub n _ _ _ p_e_s _ _ _ p_s_t)        = n   + 1
--}
-
-{- @ lem_typSize_lb :: g:Env -> e:Expr -> t:Type 
-        -> { p_e_t:HasType | propOf p_e_t == HasType g e t }
-        -> { pf:_ | sizeOf p_e_t >= tdepth t } / [sizeOf p_e_t] @- }
-lem_typSize_lb :: Env -> Expr -> Type -> HasType -> Proof
-lem_typSize_lb g e t (TBC {})                     = ()
-lem_typSize_lb g e t (TIC {})                     = ()
-lem_typSize_lb g e t (TVar1 _ x t' k _)            
-    = () ? toProof ( tdepth (self t' (FV x) k) === tdepth t' )
-lem_typSize_lb g e t (TVar2 n g' _ _ p_x_b _ _)   = lem_typSize_lb g' e t p_x_b
-lem_typSize_lb g e t (TVar3 n g' _ _ p_x_b _ _)   = lem_typSize_lb g' e t p_x_b
-lem_typSize_lb g e t (TPrm {})                    = ()
-lem_typSize_lb g e t (TAbs _ _ t_x _ _ e' t' nms mk_p_e'_txt')
-    = lem_typSize_lb (Cons y t_x g) (unbind y e') (unbindT y t') (mk_p_e'_txt' y)
-        where
-          y = fresh_var nms g
-lem_typSize_lb g e t (TApp _ _ e1 t_x t' p_e1_txt' _ _)
-    = lem_typSize_lb g e1 (TFunc t_x t') p_e1_txt'
-    ? toProof (tdepth (TExists t_x t') === tdepth (TFunc t_x t') )
-lem_typSize_lb g e t (TAbsT _ _ k e' t' nms mk_p_e'_t')
-    = lem_typSize_lb (ConsT a k g) (unbind_tv a e') (unbind_tvT a t') (mk_p_e'_t' a)
-        where
-          a = fresh_var nms g
-lem_typSize_lb g e t (TAppT _ _ e' k s p_e_ks t' _)
-    = lem_typSize_lb g e' (TPoly k s) p_e_ks
-lem_typSize_lb g e t (TLet _ _ _ t_x _ e' t' _ _ nms mk_p_e'_t')
-    = lem_typSize_lb (Cons y t_x g) (unbind y e') (unbindT y t') (mk_p_e'_t' y)
-        where
-          y = fresh_var nms g
-lem_typSize_lb g e t (TAnn _ _ e' _ p_e'_t)       = lem_typSize_lb g e' t p_e'_t
-lem_typSize_lb g e t (TSub _ _ _ s p_e_s _ _ _ p_s_t) 
-    = lem_subtypSize_lb g s t p_s_t
--}
-
 {-@ reflect isTBC @-}
 isTBC :: HasType -> Bool
 isTBC (TBC {}) = True
@@ -393,38 +342,6 @@ data Subtype where
                            -> { pf0:Subtype | propOf pf0 == Subtype (ConsT a k g) (unbind_tvT a t1) (unbind_tvT a t2) &&
                                               subtypSize pf0 < subtypSize this } )
                    -> { pf:Subtype | propOf pf == Subtype g (TPoly k t1) (TPoly k t2) } @-}
-
-{- @ measure subtypSize @- }
-{-@ subtypSize :: pf:Subtype -> { v:Int | v == sizeOf pf && v >= 1 } @-}
-subtypSize :: Subtype -> Int
-subtypSize (SBase {})                   = 1
-subtypSize (SFunc n _ _ _ _ _ _ _ _)    = n + 1
-subtypSize (SWitn n _ _ _ _ _ _ _)      = n + 1
-subtypSize (SBind n _ t_x t _ _ _)      = max n (tdepth t_x) + 1
-subtypSize (SPoly n _ _ _ _ _ _)        = n + 1
-
-{-@ lem_subtypSize_lb :: g:Env -> s:Type -> t:Type
-        -> { p_s_t:Subtype | propOf p_s_t == Subtype g s t }
-        -> { pf:_ | sizeOf p_s_t >= tdepth t && sizeOf p_s_t >= tdepth s } / [sizeOf p_s_t] @-}
-lem_subtypSize_lb :: Env -> Type -> Type -> Subtype -> Proof
-lem_subtypSize_lb g s t (SBase {}) = ()
-lem_subtypSize_lb g s t (SFunc _ _ s1 s2 p_s2_s1 t1 t2 nms mk_p_t1_t2)
-    = () ? lem_subtypSize_lb g s2 s1 p_s2_s1
-         ? lem_subtypSize_lb (Cons y s2 g) (unbindT y t1) (unbindT y t2) (mk_p_t1_t2 y)
-             where
-               y = fresh_var nms g
-lem_subtypSize_lb g s t (SWitn _ _ v_x t_x p_vx_tx _ t' p_s_t'vx)
-    = () ? lem_subtypSize_lb g s (tsubBV v_x t') p_s_t'vx
-         ? lem_typSize_lb     g v_x t_x p_vx_tx
-lem_subtypSize_lb g s t (SBind _ _ s_x s' _ nms mk_p_s'_t)
-    = () ? lem_subtypSize_lb (Cons y s_x g) (unbindT y s') t (mk_p_s'_t y)
-             where
-               y = fresh_var nms g
-lem_subtypSize_lb g s t (SPoly _ _ k t1 t2 nms mk_p_t1_t2)
-    = () ? lem_subtypSize_lb (ConsT a k g) (unbind_tvT a t1) (unbind_tvT a t2) (mk_p_t1_t2 a)
-             where
-               a = fresh_var nms g
-               -}
 
 {-@ reflect isSBase @-}
 isSBase :: Subtype -> Bool

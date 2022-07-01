@@ -48,14 +48,12 @@ lem_wf_ty' c y   = undefined
 
 -- Lemma. Constants Have Exact Types
 {-@ lem_tybc_exact :: g:Env -> b:Bool 
-        -> { pf:Subtype | propOf pf == Subtype g (tybc b) (self (tybc b) (Bc b) Base) &&
-                          sizeOf pf == 0 } @-}
+        -> { pf:Subtype | propOf pf == Subtype g (tybc b) (self (tybc b) (Bc b) Base) } @-}
 lem_tybc_exact :: Env -> Bool -> Subtype
 lem_tybc_exact g b = undefined
 
 {-@ lem_tyic_exact :: g:Env -> n:Int
-        -> { pf:Subtype | propOf pf == Subtype g (tyic n) (self (tyic n) (Ic n) Base) &&
-                          sizeOf pf == 0 } @-}
+        -> { pf:Subtype | propOf pf == Subtype g (tyic n) (self (tyic n) (Ic n) Base) } @-}
 lem_tyic_exact :: Env -> Int -> Subtype
 lem_tyic_exact g n = undefined
 

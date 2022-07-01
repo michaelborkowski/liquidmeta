@@ -1283,11 +1283,6 @@ withProof x _ = x
 {-@ measure propOf :: a -> Proposition @-}
 {-@ type ProofOf E = { proofObj:_ | propOf proofObj = E } @-}
 
-{-@ measure sizeOf :: a -> { n:Int | n >= 0 } @-}
-{-@ type ProofOfN N E = { proofObj:_ | propOf proofObj = E && sizeOf proofObj <= N } @-}
-
--- {-@ measure this :: a @-}
-
   --- the Type of all Propositions
 
 data Proposition where
