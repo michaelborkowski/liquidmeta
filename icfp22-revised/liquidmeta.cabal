@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           liquidmeta
-version:        0.0.0
+version:        2.4.0
 build-type:     Simple
 
 library
@@ -44,6 +44,7 @@ library
   hs-source-dirs:
       src
   ghc-options:  -fplugin=LiquidHaskell 
+                -fplugin-opt=LiquidHaskell:--ple-with-undecided-guards
   build-depends:
       liquid-base
     , liquid-containers

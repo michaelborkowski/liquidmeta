@@ -7,7 +7,8 @@
 module Basics where
 
 import Prelude hiding (max)
-import Language.Haskell.Liquid.ProofCombinators hiding (withProof)
+import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
+import Language.Haskell.Liquid.This
 import qualified Data.Set as S
 
 ---------------------------------------------------------------------------
@@ -783,9 +784,11 @@ envsize Empty         = 0
 envsize (Cons  _ _ g) = envsize g + 1
 envsize (ConsT _ _ g) = envsize g + 1
 
-{-@ reflect max @-}
+{-@ inline max @-}
 max :: Int -> Int -> Int
 max x y = if x >= y then x else y
+
+
 
 {-@ reflect in_env @-}              -- any kind of variable
 in_env :: Vname -> Env -> Bool
@@ -1269,15 +1272,16 @@ lem_above_max_nms_ftypes x (_:xs) ys     zs     g = lem_above_max_nms_ftypes x x
 ---------------------------------------------------------------------------
 
 {-@ reflect withProof @-}
-{-@ withProof :: x:a -> b -> { v:a | v = x } @-}
-withProof :: a -> b -> a
+{-@ withProof :: x:a -> Proof -> { v:a | v = x } @-}
+withProof :: a -> Proof -> a
 withProof x _ = x
+
+{-@ (?) :: x:a -> Proof -> { v:a | v = x } @-}
+(?) :: a -> Proof -> a
+(?) x _ = x
 
 {-@ measure propOf :: a -> Proposition @-}
 {-@ type ProofOf E = { proofObj:_ | propOf proofObj = E } @-}
-
-{-@ measure sizeOf :: a -> { n:Int | n >= 0 } @-}
-{-@ type ProofOfN N E = { proofObj:_ | propOf proofObj = E && sizeOf proofObj <= N } @-}
 
   --- the Type of all Propositions
 
@@ -1285,6 +1289,7 @@ data Proposition where
     -- Operational Semantics
     Step :: Expr -> Expr -> Proposition         -- e ~> e'
     EvalsTo :: Expr -> Expr -> Proposition      -- e ~>* e'
+    PEvalsTrue :: Preds -> Proposition          -- ps => PEmpty
 
     -- System F Judgments
     WFFT :: FEnv -> FType -> Kind -> Proposition      --  G |- t : k
