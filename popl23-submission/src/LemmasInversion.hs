@@ -133,7 +133,7 @@ lem_invert_tabst g k e t' p_le_kt' p_g_wf = case p_le_kt' of
 
 {-@ lem_lambdaT_tpoly_same_kind :: g:Env -> k:Kind -> e:Expr -> k':Kind -> t':Type 
        -> { p_ke_k't':HasType | propOf p_ke_k't' == HasType g (LambdaT k e) (TPoly k' t') }
-       -> ProofOf(WFEnv g) -> { pf:_              | k == k' } / [typSize p_ke_k't'] @-}
+       -> ProofOf(WFEnv g) -> { pf:_              | k == k' } / [sizeOf p_ke_k't'] @-}
 lem_lambdaT_tpoly_same_kind :: Env -> Kind -> Expr -> Kind -> Type -> HasType -> WFEnv -> Proof
 lem_lambdaT_tpoly_same_kind g k e k' t' p_ke_k't' p_g_wf = case p_ke_k't' of
   (TAbsT {}) -> ()

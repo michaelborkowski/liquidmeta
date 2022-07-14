@@ -77,31 +77,31 @@ isPoly _       = False
 lem_prim_compat_in_ftapp :: Prim -> Expr -> FType -> HasFType -> Proof
 lem_prim_compat_in_ftapp And      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
-      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+      (FTPrm {}) -> lem_bool_values v p_v_tx
 lem_prim_compat_in_ftapp Or       v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
-      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+      (FTPrm {}) -> lem_bool_values v p_v_tx
 lem_prim_compat_in_ftapp Not      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
-      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+      (FTPrm {}) -> lem_bool_values v p_v_tx
 lem_prim_compat_in_ftapp Imp      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
-      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+      (FTPrm {}) -> lem_bool_values v p_v_tx
 lem_prim_compat_in_ftapp Eqv      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
-      (FTPrm {}) -> () ? lem_bool_values v p_v_tx
+      (FTPrm {}) -> lem_bool_values v p_v_tx
 lem_prim_compat_in_ftapp Leq      v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
-      (FTPrm {}) -> () ? lem_int_values v p_v_tx
+      (FTPrm {}) -> lem_int_values v p_v_tx
 lem_prim_compat_in_ftapp (Leqn _) v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
-      (FTPrm {}) -> () ? lem_int_values v p_v_tx
+      (FTPrm {}) -> lem_int_values v p_v_tx
 lem_prim_compat_in_ftapp Eq       v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
-      (FTPrm {}) -> () ? lem_int_values v p_v_tx
+      (FTPrm {}) -> lem_int_values v p_v_tx
 lem_prim_compat_in_ftapp (Eqn _)  v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
-      (FTPrm {}) -> () ? lem_int_values v p_v_tx
+      (FTPrm {}) -> lem_int_values v p_v_tx
 lem_prim_compat_in_ftapp Leql     v t (FTApp _ _ t_x _ p_p_txt _ p_v_tx)
   = case p_p_txt of
       (FTPrm {}) -> impossible ""

@@ -166,7 +166,7 @@ lem_typing_wf g e t (TSub _g _e s p_e_s _t k p_g_t p_s_t) p_wf_g
 
 {-@ lem_typing_hasftype :: g:Env -> e:Expr -> t:Type 
         -> { p_e_t:HasType | propOf p_e_t == HasType g e t }
-        -> ProofOf(WFEnv g) -> ProofOf(HasFType (erase_env g) e (erase t)) / [typSize p_e_t] @-}
+        -> ProofOf(WFEnv g) -> ProofOf(HasFType (erase_env g) e (erase t)) / [sizeOf p_e_t] @-}
 lem_typing_hasftype :: Env -> Expr -> Type -> HasType -> WFEnv -> HasFType
 lem_typing_hasftype g e t (TBC _g b) p_g_wf      = FTBC (erase_env g) b
 lem_typing_hasftype g e t (TIC _g n) p_g_wf      = FTIC (erase_env g) n

@@ -8,7 +8,6 @@ module Basics where
 
 import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
-import Language.Haskell.Liquid.This
 import qualified Data.Set as S
 
 ---------------------------------------------------------------------------

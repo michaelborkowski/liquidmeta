@@ -109,7 +109,7 @@ lem_witness_sub g v_x t_x p_vx_tx  t' k p_g_txt' p_g_wf
 {-@ lem_sub_pullback_wftype :: g:Env -> ProofOf(WFEnv g) -> s:Type -> t:Type 
         -> { p_s_t:Subtype | propOf p_s_t == Subtype g s t }
         -> ProofOf(WFType g s Star) -> ProofOf(WFType g t Base) -> ProofOf(WFType g s Base) 
-         / [ subtypSize p_s_t ] @-}
+         / [ sizeOf p_s_t ] @-}
 lem_sub_pullback_wftype :: Env -> WFEnv -> Type -> Type -> Subtype 
                                         -> WFType -> WFType -> WFType
 lem_sub_pullback_wftype g p_g_wf s t p_s_t@(SBase _ b ps qs nms mk_imp_ps_qs) p_g_s p_g_t
