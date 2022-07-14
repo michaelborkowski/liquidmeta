@@ -15,14 +15,14 @@ jobs:
       
       - restore_cache:
           keys: 
-             - z3 
+             - z3491 
             
       - run: 
           name: Install z3 
           command: |
-            if test -f "~/cachedflags/z3.flag"; then 
-              echo "z3 exists"
-              which z3 
+            if test -f "~/cachedflags/z3491.flag"; then 
+              echo "z3491 exists"
+              z3 --version 
             else 
               wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.9.1.tar.gz
               tar -xvzf z3-4.9.1.tar.gz
@@ -34,10 +34,11 @@ jobs:
               z3 --version
               ls 
               which z3
-              mkdir -p ~/cachedflags && touch ~/cachedflags/z3.flag
+              mkdir -p ~/cachedflags && touch ~/cachedflags/z3491.flag
             fi 
+            
       - save_cache: 
-          key: z3
+          key: z3491
           paths: 
             - /usr/bin
             - ~/cachedflags
@@ -45,20 +46,50 @@ jobs:
             
       - restore_cache:
           keys: 
+            - deps-fp
+            - deps-lh
             - deps
       
       - run:
-          name: Dependencies
+          name: Dependencies FP 
           command: |
             cd popl23-submission
             stack --no-terminal setup
-            stack --no-terminal build --only-dependencies          
+            stack --no-terminal build liquid-fixpoint       
+          
+      - save_cache: 
+          key: deps-fp 
+          paths: 
+            - ~/popl23-submission/.stack
+            - ./popl23-submission/.stack-work
+
+      - run:
+          name: Dependencies LH 
+          command: |
+            cd popl23-submission
+            stack --no-terminal setup
+            stack --no-terminal build liquidhaskell    
+          
+      - save_cache: 
+          key: deps-lh 
+          paths: 
+            - ~/popl23-submission/.stack
+            - ./popl23-submission/.stack-work
+
+      - run:
+          name: Dependencies  
+          command: |
+            cd popl23-submission
+            stack --no-terminal setup
+            stack --no-terminal build --only-dependencies    
           
       - save_cache: 
           key: deps 
           paths: 
             - ~/popl23-submission/.stack
             - ./popl23-submission/.stack-work
+
+
       - run:
           name: Test Examples 
           command: cd popl23-submission; stack setup && stack build
