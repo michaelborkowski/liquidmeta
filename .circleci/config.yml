@@ -2,28 +2,29 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: fpco/stack-build:lts-18.27
+      - image: fpco/stack-build:lts
         auth:
           username: mydockerhub-user
           password: $DOCKERHUB_PASSWORD 
-                                                          
+    
     steps:
-      - run: apt-get update && apt-get install -y curl git ssh unzip wget libtinfo-dev gcc make libstdc++6
-
+      - run: sudo apt-key del 7fa2af80 && sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/3bf863cc.pub
+      - run: apt-get update && apt-get install -y git ssh unzip
+      - checkout
+      - add_ssh_keys
+            
       - run: 
           name: Install z3 
           command: |
-            wget https://github.com/Z3Prover/z3/releases/download/z3-4.9.1/z3-4.9.1-x64-osx-10.16.zip
-            unzip z3-4.9.1-x64-osx-10.16.zip
-            rm -f z3-4.9.1-x64-osx-10.16.zip
-            cp z3-4.9.1-x64-osx-10.16/bin/libz3.a /usr/local/lib
-            cp z3-4.9.1-x64-osx-10.16/bin/z3 /usr/local/bin
-            cp z3-4.9.1-x64-osx-10.16/include/* /usr/local/include
-            rm -rf z3-4.9.1-x64-osx-10.16
+            wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.9.5.tar.gz
+            tar -xvzf z3-4.9.1.tar.gz
+            mkdir z3-z3-4.9.1/build
+            cd z3-z3-4.9.1/build 
+            cmake -G "Unix Makefiles" ../
+            make -j4
+            cp z3 /usr/bin/
             z3 --version
-      - checkout
-      - add_ssh_keys
 
       - run:
           name: Test Examples 
-          command: cd icfp22-submission; stack setup && stack build
+          command: cd popl23-submission; stack setup && stack build
