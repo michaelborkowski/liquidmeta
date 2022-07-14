@@ -20,21 +20,27 @@ jobs:
       - run: 
           name: Install z3 
           command: |
-            wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.9.1.tar.gz
-            tar -xvzf z3-4.9.1.tar.gz
-            mkdir z3-z3-4.9.1/build
-            cd z3-z3-4.9.1/build 
-            cmake -G "Unix Makefiles" ../
-            make -j4
-            cp z3 /usr/bin/
-            z3 --version
-            ls 
-            which z3
-            
+            if test -f "~/cachedflags/z3.flag"; then 
+              echo "z3 exists"
+              which z3 
+            else 
+              wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.9.1.tar.gz
+              tar -xvzf z3-4.9.1.tar.gz
+              mkdir z3-z3-4.9.1/build
+              cd z3-z3-4.9.1/build 
+              cmake -G "Unix Makefiles" ../
+              make -j4
+              cp z3 /usr/bin/
+              z3 --version
+              ls 
+              which z3
+              mkdir -p ~/cachedflags && touch ~/cachedflags/z3.flag
+            fi 
       - save_cache: 
           key: z3
           paths: 
             - /usr/bin
+            - ~/cachedflags
 
             
       - restore_cache:
