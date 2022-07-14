@@ -36,6 +36,23 @@ jobs:
           paths: 
             - /usr/bin
 
+            
+      - restore_cache:
+          keys: 
+            - deps
+      
+      - run:
+          name: Dependencies
+          command: |
+            cd popl23-submission
+            stack --no-terminal setup
+            stack --no-terminal build --only-dependencies          
+          
+      - save_cache: 
+          key: deps 
+          paths: 
+            - ~/popl23-submission/.stack
+            - ./popl23-submission/.stack-work
       - run:
           name: Test Examples 
           command: cd popl23-submission; stack setup && stack build
