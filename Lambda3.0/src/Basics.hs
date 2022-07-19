@@ -649,10 +649,10 @@ isBTV :: Basic -> Bool
 isBTV (BTV _) = True
 isBTV _       = False
 
-{-@ measure isData @-}
-isData :: Basic -> Bool
-isData (TData _ _) = True
-isData _           = False
+{-@ measure isTData @-}
+isTData :: Basic -> Bool
+isTData (TData _ _) = True
+isTData _           = False
 
   -- ONLY types with Base Kind may have non-trivial refinements. Star kinded type variables 
   --     may only have the refinement { x : [] }.
@@ -762,6 +762,17 @@ isTExists _            = False
 isTPoly :: Type -> Bool
 isTPoly (TPoly {}) = True
 isTPoly _          = False
+
+{-@ measure arrows @-}
+{-@ arrows :: t:Type -> { v:Int | v >= 0 } @-}
+arrows :: Type -> Int
+arrows (TFunc t_x t) = (arrows t) + 1
+arrows _             = 0
+
+{-@ measure quant_arrows @-}
+{-@ quant_arrows :: { t:Type | isTPoly } -> { v:Int | v >= 0 } @-}
+quant_arrows :: Type -> Int 
+quant_arrows (TPoly k t) = arrows t
 
 {-@ measure free @-} -- free TERM variables
 {-@ free :: t:Type -> S.Set Vname / [tsize t] @-}
@@ -971,13 +982,12 @@ tsubBTV_at j t_a (TPoly   k  t)     = TPoly k  (tsubBTV_at (j+1) t_a t)
 ----- | SYNTAX, continued
 ---------------------------------------------------------------------------
   
-  --- DEFINITIONAL ENVIRONMENTS ---
+  --- DEFINITIONAL ENVIRONMENTS ---  -- not currently enforced: but we assume that every
+                                     --     DCons id is globally unique
 
-{-@ data DDefn = DDef { ddid    :: Id,
-                        ddarity :: Arity,
+{-@ data DDefn = DDef { dddc    :: DCons
                         ddtype  :: Type }  @-}
-data DDefn = DDef { ddid    :: Id,
-                    ddarity :: Arity,
+data DDefn = DDef { dddc    :: DCons
                     ddtype  :: Type }                 
 
 data Polarity = Pos | Neg | Both | None
@@ -1139,6 +1149,17 @@ ftsize (FTBasic b)      = 1
 ftsize (FTData tc    t) = (ftsize t)   + 1
 ftsize (FTFunc t_x   t) = (ftsize t_x) + (ftsize t) + 1
 ftsize (FTPoly    k  t) = (ftsize t)   + 1
+
+{-@ measure arrowsF @-}
+{-@ arrowsF :: t:FType -> { v:Int | v >= 0 } @-}
+arrowsF :: FType -> Int
+arrowsF (FTFunc t_x t) = (arrowsF t) + 1
+arrowsF _              = 0
+
+{-@ measure isFTData @-}
+isFTData :: FType -> Bool
+isFTData (FTData _ _) = True
+isFTData _            = False
 
 --{-@ measure isBaseF @-}
 --isBaseF :: FType -> Bool
@@ -1389,6 +1410,7 @@ type Names = [Vname]   -- for cofinite quantification over free names
 {-@ predicate IsCupFEnv X Y Z  = listElts X = Set_cup (listElts Y) (bindsF Z)   @-}
 {-@ predicate Elem  X Ys   = Set_mem X (listElts Ys)                            @-}
 {-@ predicate NotElem X Ys = not (Elem X Ys)                                    @-}
+{-@ predicate Disjoint  Xs Ys  = Set_emp (Set_cap (listElts Xs) (listElts Ys))  @-}
 
 {-@ reflect union @-}
 {-@ union :: ys:Names -> zs:Names -> { xs:Names | IsCup xs ys zs } @-}
@@ -1577,13 +1599,14 @@ data Proposition where
     WFFT      :: FEnv -> Defs -> FType -> Kind -> Proposition    --  G,D |- t : k
     WFFE      :: FEnv -> Defs -> Proposition                     --  D   |- G
     HasFType  :: FEnv -> Defs -> Expr -> FType -> Proposition    --  G,D |- e : t
---    AHasFType :: FEnv -> Defs -> ... ... -> DCons -> Expr -> FType -> Proposition
+    AHasFType :: FEnv -> Defs -> Expr -> DDefns -> Alts 
+                      -> FType -> Proposition                    --  G,D, e, dds |- als : t
     PHasFType :: FEnv -> Defs -> Preds -> Proposition            --  G,D |- ps : [FTBasic TBool]
                                                                  --  G,D | .... |- D -> e' : t
     -- System RF Judgments
     WFType    :: Env -> Defs -> Type -> Kind -> Proposition
     WFEnv     :: Env -> Defs -> Proposition
     HasType   :: Env -> Defs -> Expr -> Type -> Proposition -- HasType G D e t means G,D |- e : t
---    AHasType  :: Env -> Defs -> .... .... -> DCons -> Expr -> Type -> Proposition
+    AHasType  :: Env -> Defs -> Expr -> DDefns -> Alts -> Type -> Proposition
     Subtype   :: Env -> Defs -> Type -> Type -> Proposition
     Implies   :: Env -> Defs -> Preds -> Preds -> Proposition   --  G |= p => q   ???

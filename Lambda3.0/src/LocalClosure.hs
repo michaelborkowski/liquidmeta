@@ -19,10 +19,7 @@ import Basics
 {-@ lem_islc_at_weaken :: j:Index -> k:Index -> { j':Index | j <= j' } -> { k':Index | k <= k' }
         -> { e:Expr | isLC_at j k e } -> { pf:_ | isLC_at j' k' e } / [esize e] @-}
 lem_islc_at_weaken :: Index -> Index -> Index -> Index -> Expr -> Proof
-lem_islc_at_weaken j k j' k' (Bc _)         = ()
-lem_islc_at_weaken j k j' k' (Ic _)         = ()
-lem_islc_at_weaken j k j' k' (Dc _)         = ()
-lem_islc_at_weaken j k j' k' (Prim _)       = ()
+lem_islc_at_weaken j k j' k' (C  _)         = ()
 lem_islc_at_weaken j k j' k' (BV i)         = ()
 lem_islc_at_weaken j k j' k' (FV x)         = ()
 lem_islc_at_weaken j k j' k' (Lambda e)     = () ? lem_islc_at_weaken (j+1) k (j'+1) k' e
@@ -70,10 +67,7 @@ lem_islct_at_weaken j k j' k' (TPoly   k0  t) = () ? lem_islct_at_weaken j (k+1)
 {-@ lem_islc_at_subFV :: j:Index -> k:Index -> x:Vname -> { v_x:Value | isLC v_x }
         -> { e:Expr | isLC_at j k e } -> { pf:_ | isLC_at j k (subFV x v_x e) } / [esize e] @-}
 lem_islc_at_subFV :: Index -> Index -> Vname -> Expr -> Expr -> Proof
-lem_islc_at_subFV j k x v_x (Bc _)         = ()
-lem_islc_at_subFV j k x v_x (Ic _)         = ()
-lem_islc_at_subFV j k x v_x (Dc _)         = ()
-lem_islc_at_subFV j k x v_x (Prim _)       = ()
+lem_islc_at_subFV j k x v_x (C  _)         = ()
 lem_islc_at_subFV j k x v_x (BV _)         = ()
 lem_islc_at_subFV j k x v_x (FV y)
     | x == y    = () ? lem_islc_at_weaken 0 0 j k v_x
@@ -94,10 +88,7 @@ lem_islc_at_subFV j k x v_x (Switch e cs)  = () ? lem_islc_at_subFV j     k x v_
 {-@ lem_islc_at_subFTV :: j:Index -> k:Index -> a:Vname -> { t_a:UserType | isLCT t_a }
         -> { e:Expr | isLC_at j k e } -> { pf:_ | isLC_at j k (subFTV a t_a e) } / [esize e] @-}
 lem_islc_at_subFTV :: Index -> Index -> Vname -> Type -> Expr -> Proof
-lem_islc_at_subFTV j k a t_a (Bc _)         = ()
-lem_islc_at_subFTV j k a t_a (Ic _)         = ()
-lem_islc_at_subFTV j k a t_a (Dc _)         = ()
-lem_islc_at_subFTV j k a t_a (Prim _)       = ()
+lem_islc_at_subFTV j k a t_a (C  _)         = ()
 lem_islc_at_subFTV j k a t_a (BV _)         = ()
 lem_islc_at_subFTV j k a t_a (FV y)         = ()
 lem_islc_at_subFTV j k a t_a (Lambda e)     = () ? lem_islc_at_subFTV (j+1) k a t_a e
@@ -194,10 +185,7 @@ lem_islct_at_tsubFTV j k a t_a (TPoly   k'  t) = () ? lem_islct_at_tsubFTV j (k+
 {-@ lem_islc_at_before_open_at :: j:Index -> k:Index -> y:Vname
         -> { e:Expr | isLC_at (j+1) k e } -> { pf:_| isLC_at j k (open_at j y e) } / [esize e] @-}
 lem_islc_at_before_open_at :: Index -> Index -> Vname -> Expr -> Proof
-lem_islc_at_before_open_at j k y (Bc _)         = ()
-lem_islc_at_before_open_at j k y (Ic _)         = ()
-lem_islc_at_before_open_at j k y (Dc _)         = ()
-lem_islc_at_before_open_at j k y (Prim _)       = ()
+lem_islc_at_before_open_at j k y (C  _)         = ()
 lem_islc_at_before_open_at j k y (FV _)         = ()
 lem_islc_at_before_open_at j k y (BV i)
   | i == j     = ()
@@ -219,10 +207,7 @@ lem_islc_at_before_open_at j k y (Switch e cs)  = () ? lem_islc_at_before_open_a
 {-@ lem_islc_at_after_open_at :: j:Index -> k:Index -> y:Vname
         -> { e:Expr | isLC_at j k (open_at j y e) } -> { pf:_ | isLC_at (j+1) k e } / [esize e] @-}
 lem_islc_at_after_open_at :: Index -> Index -> Vname -> Expr -> Proof
-lem_islc_at_after_open_at j k y (Bc _)         = ()
-lem_islc_at_after_open_at j k y (Ic _)         = ()
-lem_islc_at_after_open_at j k y (Dc _)         = ()
-lem_islc_at_after_open_at j k y (Prim _)       = ()
+lem_islc_at_after_open_at j k y (C  _)         = ()
 lem_islc_at_after_open_at j k y (FV _)         = ()
 lem_islc_at_after_open_at j k y (BV i)
   | i == j     = ()
@@ -244,10 +229,7 @@ lem_islc_at_after_open_at j k y (Switch e cs)  = () ? lem_islc_at_after_open_at 
 {-@ lem_islc_at_after_open_tv_at :: j:Index -> k:Index -> a:Vname
         -> { e:Expr | isLC_at j k (open_tv_at k a e) } -> { pf:_ | isLC_at j (k+1) e } / [esize e] @-}
 lem_islc_at_after_open_tv_at :: Index -> Index -> Vname -> Expr -> Proof
-lem_islc_at_after_open_tv_at j k a (Bc _)         = ()
-lem_islc_at_after_open_tv_at j k a (Ic _)         = ()
-lem_islc_at_after_open_tv_at j k a (Dc _)         = ()
-lem_islc_at_after_open_tv_at j k a (Prim _)       = ()
+lem_islc_at_after_open_tv_at j k a (C  _)         = ()
 lem_islc_at_after_open_tv_at j k a (FV _)         = ()
 lem_islc_at_after_open_tv_at j k a (BV i)         = ()
 lem_islc_at_after_open_tv_at j k a (Lambda e)     = () ? lem_islc_at_after_open_tv_at (j+1) k a e

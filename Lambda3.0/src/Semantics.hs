@@ -31,7 +31,7 @@ import Basics
 -- E-SwitchV switch (D v1 .. vn) as -> lookup()[v1/x1]...[vn/xn]
 
 {-@ reflect isCompat @-}
-isCompat :: Prim -> Expr -> Bool
+isCompat :: Prim -> Const -> Bool
 isCompat And  (Bc _)      = True
 isCompat Or   (Bc _)      = True
 isCompat Not  (Bc _)      = True
@@ -44,23 +44,23 @@ isCompat (Eqn _)   (Ic _) = True
 isCompat _         _      = False
 
 {-@ reflect delta @-}
-{-@ delta :: p:Prim -> { e:Value | isCompat p e } 
+{-@ delta :: p:Prim -> { e:Const | isCompat p e } 
                     -> { e':Value | Set_emp (fv e') && Set_emp (ftv e') } @-}
-delta :: Prim -> Expr -> Expr
+delta :: Prim -> Const -> Expr
 delta And  (Bc True)   = Lambda (BV 0)
-delta And  (Bc False)  = Lambda (Bc False)
-delta Or   (Bc True)   = Lambda (Bc True)
+delta And  (Bc False)  = Lambda (C (Bc False))
+delta Or   (Bc True)   = Lambda (C (Bc True))
 delta Or   (Bc False)  = Lambda (BV 0)
-delta Not  (Bc True)   = Bc False
-delta Not  (Bc False)  = Bc True
+delta Not  (Bc True)   = C (Bc False)
+delta Not  (Bc False)  = C (Bc True)
 delta Eqv  (Bc True)   = Lambda (BV 0)
-delta Eqv  (Bc False)  = Lambda (App (Prim Not) (BV 0))
+delta Eqv  (Bc False)  = Lambda (App (C (Prim Not)) (BV 0))
 delta Imp  (Bc True)   = Lambda (BV 0)
-delta Imp  (Bc False)  = Lambda (Bc True)
-delta Leq      (Ic n)  = Prim (Leqn n)
-delta (Leqn n) (Ic m)  = Bc (n <= m)
-delta Eq       (Ic n)  = Prim (Eqn n)
-delta (Eqn n)  (Ic m)  = Bc (n == m)
+delta Imp  (Bc False)  = Lambda (C (Bc True))
+delta Leq      (Ic n)  = C (Prim (Leqn n))
+delta (Leqn n) (Ic m)  = C (Bc (n <= m))
+delta Eq       (Ic n)  = C (Prim (Eqn n))
+delta (Eqn n)  (Ic m)  = C (Bc (n == m))
 
 {-@ reflect isCompatT @-}
 isCompatT :: Prim -> Type -> Bool
@@ -75,11 +75,11 @@ isCompatT _   _                               = False
                      -> { e':Value | Set_emp (fv e') && Set_emp (ftv e') } @-}
 deltaT :: Prim -> Type -> Expr
 deltaT  Eql    t = case (erase t) of
-  (FTBasic TBool)    -> Prim Eqv
-  (FTBasic TInt)     -> Prim Eq
+  (FTBasic TBool)    -> C (Prim Eqv)
+  (FTBasic TInt)     -> C (Prim Eq)
 deltaT  Leql   t = case (erase t) of
-  (FTBasic TBool)    -> Prim Imp
-  (FTBasic TInt)     -> Prim Leq
+  (FTBasic TBool)    -> C (Prim Imp) 
+  (FTBasic TInt)     -> C (Prim Leq)
 
   -- reflected functions for match scrutinees
 
@@ -111,11 +111,11 @@ subMatch dv as = subMany dv (getMatch dv as)
 {- @ subMany :: { dv:DataValue | argCount dv == arity (dvdc dv) } -> Expr -> Expr @-}
 {-@ subMany :: DataValue -> Expr -> Expr @-}
 subMany :: Expr -> Expr -> Expr
-subMany (Dc _)     e = e
+subMany (C (Dc _)) e = e
 subMany (App dv v) e = subBV v (subMany dv e)
 
 data Step where
-    EPrim    :: Prim -> Expr -> Step
+    EPrim    :: Prim -> Const -> Step
     EApp1    :: Expr -> Expr -> Step -> Expr -> Step
     EApp2    :: Expr -> Expr -> Step -> Expr -> Step
     EAppAbs  :: Expr -> Expr -> Step
@@ -130,15 +130,15 @@ data Step where
     ESwitchV :: Expr -> Alts -> Step
 
 {-@ data Step where 
-        EPrim    :: c:Prim -> { w:Value | isCompat c w }
-                      -> ProofOf( Step (App (Prim c) w) (delta c w) ) 
+        EPrim    :: c:Prim -> { w:Const | isCompat c w }
+                      -> ProofOf( Step (App (C (Prim c)) (C w)) (delta c w) ) 
         EApp1    :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
                       -> e1:Expr -> ProofOf( Step (App e e1) (App e' e1)) 
         EApp2    :: e:Expr -> e':Expr -> ProofOf( Step e e' )
                       -> v:Value -> ProofOf( Step (App v e) (App v e')) 
         EAppAbs  :: e:Expr -> v:Value -> ProofOf( Step (App (Lambda e) v) (subBV v e)) 
         EPrimT   :: c:Prim -> { t:Type | isCompatT c t }
-                      -> ProofOf( Step (AppT (Prim c) t) (deltaT c t) ) 
+                      -> ProofOf( Step (AppT (C (Prim c)) t) (deltaT c t) ) 
         EAppT    :: e:Expr -> e':Expr -> ProofOf( Step e e' ) 
                       -> t:UserType -> ProofOf( Step (AppT e t) (AppT e' t)) 
         EAppTAbs :: k:Kind -> e:Expr -> t:UserType 
