@@ -7,44 +7,44 @@ build-type:     Simple
 library
   exposed-modules:
       Basics,
-      LocalClosure,
-      Strengthenings,
-      Semantics,
-      SystemFWellFormedness
--- ,
---      SystemFTyping,
---      BasicPropsSubstitution,
---      PrimitivesFTyping,
---      BasicPropsEnvironments,
---      WellFormedness,
---      BasicPropsWellFormedness,
---      SystemFLemmasWellFormedness,
---      SystemFLemmasWeaken,
---      SystemFLemmasSubstitution,
---      SystemFSoundness,
---      Typing,
---      PrimitivesWFType,
---      LemmasWeakenWF,
---      LemmasWeakenWFTV,
---      LemmasWellFormedness,
---      SubstitutionLemmaWF
---      SubstitutionLemmaWFTV,
---      LemmasTyping, 
---      LemmasWeakenTyp,
---      LemmasWeakenTypTV,
---      LemmasSubtyping,
---      LemmasExactness,
---      LemmasExactnessSubst,
---      SubstitutionLemmaTyp,
---      SubstitutionLemmaTypTV,
---      LemmasNarrowingTyp,
---      LemmasTransitive,
---      LemmasInversion,
---      PrimitivesDeltaTyping,
---      MainTheorems
+    , Strengthenings
+    , LocalClosure
+    , Semantics
+    , SystemFWellFormedness
+    , SystemFTyping
+    , BasicPropsSubstitution
+    , PrimitivesFTyping
+    , BasicPropsEnvironments
+    , WellFormedness
+    , BasicPropsWellFormedness
+    , SystemFLemmasWellFormedness
+    , SystemFLemmasWeaken
+    , SystemFLemmasSubstitution
+    , SystemFSoundness
+    , LemmasWeakenWF
+    , LemmasWeakenWFTV
+    , Typing
+    , LemmasWellFormedness
+    , SubstitutionLemmaWF
+    , SubstitutionLemmaWFTV
+    , LemmasTyping
+    , LemmasWeakenTyp
+    , LemmasWeakenTypTV
+    , LemmasSubtyping
+    , LemmasExactness
+    , LemmasExactnessSubst
+    , SubstitutionLemmaTyp
+    , SubstitutionLemmaTypTV
+    , LemmasNarrowingTyp
+    , LemmasTransitive
+    , LemmasInversion
+    , PrimitivesWFType
+    , PrimitivesDeltaTyping
+    , MainTheorems
   hs-source-dirs:
       src
   ghc-options:  -fplugin=LiquidHaskell 
+                -fplugin-opt=LiquidHaskell:--ple-with-undecided-guards
   build-depends:
       liquid-base
     , liquid-containers
