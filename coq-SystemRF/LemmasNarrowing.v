@@ -193,6 +193,16 @@ Lemma lem_narrow_subtype :
 Proof. intros; pose proof lem_narrow_typ'; destruct H9 as [Htyp Hsub];
   apply Hsub with (concatE (Cons x t_x g) g') t_x k_sx k_tx; trivial. Qed.
 
+Lemma lem_narrow_typ_top : 
+  forall (g:env) (x:vname) (s_x t_x:type) (k_sx k_tx:kind) (e:expr) (t:type),
+    Hastype (Cons x t_x g) e t
+            -> unique g -> ~ (in_env x g) 
+            -> WFtype g s_x k_sx -> WFtype g t_x k_tx -> Subtype g s_x t_x -> WFEnv g
+            -> Hastype (Cons x s_x g) e t .
+Proof. intros; assert (Cons x s_x g = concatE (Cons x s_x g) Empty) by reflexivity;
+  rewrite H6; apply lem_narrow_typ with t_x k_sx k_tx; 
+  try apply intersect_empty_r; simpl; intuition. Qed.
+
 Lemma lem_narrow_subtype_top :
   forall (g:env) (x:vname) (s_x t_x:type) (k_sx k_tx:kind) (t : type) (t' : type),
     Subtype (Cons x t_x g) t t'
