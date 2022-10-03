@@ -81,7 +81,7 @@ Proof. intros. apply FTApp with (FTBasic b);
      = FTFunc (FTBasic b) (FTFunc (FTBasic b) (FTBasic TBool)) ) by reflexivity;
   try rewrite <- H2; try apply FTAppT with Base; try apply FTPrm;
   try apply FTVar; apply lem_ftyp_islc in H1 as H3;
-  assert (open_at 0 y e = e) by (apply lem_open_at_lc_at; assumption);
+  assert (open_at 0 y e = e) by (apply lem_open_at_lc_at with 0; assumption);
   fold open_at; try rewrite H4;
   assert (FCons y (FTBasic b) (erase_env g) = concatF (FCons y (FTBasic b) (erase_env g)) FEmpty)
     by reflexivity; try rewrite H5;

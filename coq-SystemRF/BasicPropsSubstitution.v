@@ -183,16 +183,16 @@ Lemma lem_tsubBV_lct : forall (v:expr) (t:type),
     isValue v -> isLCT t -> tsubBV v t = t.
 Proof. intros; apply lem_subBV_at_lc_at with 0 0; intuition. Qed.    
 
-Lemma lem_open_at_lc_at : (forall (e:expr) (j:index) (x:vname),
-    isLC e -> open_at j x e = e ) * ((
-  forall (t:type) (j:index) (x:vname),
-    isLCT t -> openT_at j x t = t ) * (
-  forall (ps:preds) (j:index) (x:vname),
-    isLCP ps -> openP_at j x ps = ps  )).
+Lemma lem_open_at_lc_at : (forall (e:expr) (j k:index) (x:vname),
+    isLC_at j k e -> open_at j x e = e ) * ((
+  forall (t:type) (j k:index) (x:vname),
+    isLCT_at j k t -> openT_at j x t = t ) * (
+  forall (ps:preds) (j k:index) (x:vname),
+    isLCP_at j k ps -> openP_at j x ps = ps  )).
 Proof. repeat split; intros; pose proof lem_open_at_is_subBV_at; 
   destruct H0 as [He Ht]; destruct Ht as [Ht Hps];
   rewrite He || rewrite Ht || rewrite Hps;
-  apply lem_subBV_at_lc_at with 0 0; simpl; intuition. Qed.
+  apply lem_subBV_at_lc_at with j k; simpl; intuition. Qed.
 
 Lemma lem_unbind_lc : forall (x:vname) (e:expr),
     isLC e -> unbind x e = e.

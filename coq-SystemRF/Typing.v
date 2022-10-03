@@ -64,9 +64,11 @@ Proof. intros t e k; apply lem_self_islct_at. Qed.
 Lemma lem_openT_at_self : forall (j:index) (y:vname) (t:type) (e:expr) (k:kind),
     isLC e ->  openT_at j y (self t e k) = self (openT_at j y t) e k.
 Proof. intros j y t; generalize dependent j; induction t; intros.
-  - (* TRefn *) destruct k; simpl; pose proof lem_open_at_lc_at; destruct H0;
-    try rewrite e0; try destruct (j + 1 =? 0) eqn:J; 
-    rewrite plus_comm in J; simpl in J; try discriminate J; intuition.
+  - (* TRefn *) destruct k; simpl; unfold eqlPred;
+    pose proof lem_open_at_lc_at; destruct H0;
+    try rewrite (e0 e (j+1) 0 y); try destruct (j + 1 =? 0) eqn:J; 
+    rewrite plus_comm in J; simpl in J; try discriminate J; 
+    try apply lem_islc_at_weaken with 0 0; intuition.
   - (* TFunc *) destruct k; simpl; reflexivity.
   - (* TExis *) destruct k; simpl; try rewrite IHt2; trivial.
   - (* TPoly *) destruct k0; simpl; reflexivity.
@@ -161,6 +163,7 @@ with Implies : env -> preds -> preds -> Prop :=
     | IRefl   : forall (g:env) (ps:preds), Implies g ps ps
     | ITrans  : forall (g:env) (ps:preds) (qs:preds) (rs:preds),
           Implies g ps qs -> Implies g qs rs -> Implies g ps rs
+    | IFaith  : forall (g:env) (ps:preds), Implies g ps PEmpty
     | IConj   : forall (g:env) (ps:preds) (qs:preds) (rs:preds),
           Implies g ps qs -> Implies g ps rs -> Implies g ps (strengthen qs rs)
     | ICons1  : forall (g:env) (p:expr) (ps:preds), Implies g (PCons p ps) (PCons p PEmpty)

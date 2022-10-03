@@ -2,21 +2,16 @@ Require Import Arith.
 
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
-(*import SystemFWellFormedness
-import SystemFTyping*)
 Require Import SystemRF.BasicPropsSubstitution.
 Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.BasicPropsWellFormedness.
-(*import SystemFLemmasSubstitution*)
 Require Import SystemRF.Typing.
 Require Import SystemRF.LemmasWeakenWF.
 Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.SubstitutionLemmaWF.
 Require Import SystemRF.LemmasTyping.
-(*import LemmasSubtyping*)
 Require Import SystemRF.LemmasWeakenTyp.
-(*import LemmasExactness*)
 Require Import SystemRF.SubstitutionLemmaTyp.
 Require Import SystemRF.LemmasNarrowing.
 

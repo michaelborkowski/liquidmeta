@@ -24,7 +24,7 @@ Definition eqlPred' (b:basic) (ps:preds) (e:expr) : expr :=
 Lemma lem_open_at_eqlPred' : forall (y:vname) (b:basic) (ps:preds) (e:expr),
     isLC e -> open_at 0 y (eqlPred' b ps e)
                 = App (App (AppT (Prim Eql) (TRefn b (openP_at 1 y ps))) (FV y)) e.
-Proof. intros; simpl; f_equal; apply lem_open_at_lc_at; apply H. Qed.
+Proof. intros; simpl; f_equal; apply lem_open_at_lc_at with 0; apply H. Qed.
 
 Lemma lem_eqlPred_sub : forall (g:env) (b:basic) (ps:preds) (qs:preds) (e:expr),
     isLC e -> Subtype g (TRefn b (PCons (eqlPred  b ps e) qs))

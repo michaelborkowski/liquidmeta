@@ -64,9 +64,9 @@ echo "Checking LemmasNarrowing.v ..."
 coqc -Q . SystemRF LemmasNarrowing.v
 echo "Checking LemmasTransitive.v ..."
 coqc -Q . SystemRF LemmasTransitive.v
-echo " ..."
-# coqc -Q . SystemRF LemmasInversion.v
-echo " ..."
-# coqc -Q . SystemRF PrimitivesDeltaTyping.v
-echo " ..."
-# coqc -Q . SystemRF
+echo "Checking LemmasInversion.v ..."
+coqc -Q . SystemRF LemmasInversion.v
+echo "Checking PrimitivesDeltaTyping.v ..."
+coqc -Q . SystemRF PrimitivesDeltaTyping.v
+echo "Checking MainTheorems.v ..."
+coqc -Q . SystemRF MainTheorems.v
