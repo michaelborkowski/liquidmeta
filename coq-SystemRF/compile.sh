@@ -1,72 +1,77 @@
+echo "Checking the SystemRF Mechanization"
+echo "-----------------------------------"
+
 echo "Checking BasicDefinitions.v ..."
-coqc -Q . SystemRF BasicDefinitions.v
+coqc -R SystemRF SystemRF SystemRF/BasicDefinitions.v
 echo "Checking Names.v ..."
-coqc -Q . SystemRF Names.v
+coqc -R SystemRF SystemRF SystemRF/Names.v
 echo "Checking Strengthenings.v ..."
-coqc -Q . SystemRF Strengthenings.v
+coqc -R SystemRF SystemRF SystemRF/Strengthenings.v
 echo "Checking LocalClosure.v ..."
-coqc -Q . SystemRF LocalClosure.v
+coqc -R SystemRF SystemRF SystemRF/LocalClosure.v
 echo "Checking Semantics.v ..."
-coqc -Q . SystemRF Semantics.v
+coqc -R SystemRF SystemRF SystemRF/Semantics.v
 echo "Checking SystemFWellFormedness.v ..."
-coqc -Q . SystemRF SystemFWellFormedness.v
+coqc -R SystemRF SystemRF SystemRF/SystemFWellFormedness.v
 echo "Checking SystemFTyping.v ..."
-coqc -Q . SystemRF SystemFTyping.v
+coqc -R SystemRF SystemRF SystemRF/SystemFTyping.v
 echo "Checking WellFormedness.v ..."
-coqc -Q . SystemRF WellFormedness.v
+coqc -R SystemRF SystemRF SystemRF/WellFormedness.v
 echo "Checking PrimitivesFTyping.v ..."
-coqc -Q . SystemRF PrimitivesFTyping.v
+coqc -R SystemRF SystemRF SystemRF/PrimitivesFTyping.v
 echo "Checking BasicPropsSubstitution.v ..."
-coqc -Q . SystemRF BasicPropsSubstitution.v
+coqc -R SystemRF SystemRF SystemRF/BasicPropsSubstitution.v
 echo "Checking BasicPropsEnvironments.v ..."
-coqc -Q . SystemRF BasicPropsEnvironments.v
+coqc -R SystemRF SystemRF SystemRF/BasicPropsEnvironments.v
 echo "Checking BasicPropsWellFormedness.v ..."
-coqc -Q . SystemRF BasicPropsWellFormedness.v
+coqc -R SystemRF SystemRF SystemRF/BasicPropsWellFormedness.v
 echo "Checking SystemFLemmasWellFormedness.v ..."
-coqc -Q . SystemRF SystemFLemmasWellFormedness.v
+coqc -R SystemRF SystemRF SystemRF/SystemFLemmasWellFormedness.v
 echo "Checking SystemFLemmasWeaken.v ..."
-coqc -Q . SystemRF SystemFLemmasWeaken.v
+coqc -R SystemRF SystemRF SystemRF/SystemFLemmasWeaken.v
 echo "Checking SystemFLemmasSubstitution.v ..."
-coqc -Q . SystemRF SystemFLemmasSubstitution.v
+coqc -R SystemRF SystemRF SystemRF/SystemFLemmasSubstitution.v
 echo "Checking SystemFSoundness.v ..."
-coqc -Q . SystemRF SystemFSoundness.v
+coqc -R SystemRF SystemRF SystemRF/SystemFSoundness.v
 echo "Checking LemmasWeakenWF.v ..."
-coqc -Q . SystemRF LemmasWeakenWF.v
+coqc -R SystemRF SystemRF SystemRF/LemmasWeakenWF.v
 echo "Checking LemmasWeakenWFTV.v ..."
-coqc -Q . SystemRF LemmasWeakenWFTV.v
+coqc -R SystemRF SystemRF SystemRF/LemmasWeakenWFTV.v
 echo "Checking Typing.v ..."
-coqc -Q . SystemRF Typing.v
+coqc -R SystemRF SystemRF SystemRF/Typing.v
 echo "Checking LemmasWellFormedness.v ..."
-coqc -Q . SystemRF LemmasWellFormedness.v
+coqc -R SystemRF SystemRF SystemRF/LemmasWellFormedness.v
 echo "Checking SubstitutionLemmaWF.v ..."
-coqc -Q . SystemRF SubstitutionLemmaWF.v
+coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaWF.v
 echo "Checking SubstitutionLemmaWFTV.v ..."
-coqc -Q . SystemRF SubstitutionLemmaWFTV.v
+coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaWFTV.v
 echo "Checking LemmasWeakenTyp.v ..."
-coqc -Q . SystemRF LemmasWeakenTyp.v
+coqc -R SystemRF SystemRF SystemRF/LemmasWeakenTyp.v
 echo "Checking LemmasWeakenTypTV.v ..."
-coqc -Q . SystemRF LemmasWeakenTypTV.v
+coqc -R SystemRF SystemRF SystemRF/LemmasWeakenTypTV.v
 echo "Checking PrimitivesWFType.v ..."
-coqc -Q . SystemRF PrimitivesWFType.v  
+coqc -R SystemRF SystemRF SystemRF/PrimitivesWFType.v  
 echo "Checking LemmasTyping.v ..."
-coqc -Q . SystemRF LemmasTyping.v
+coqc -R SystemRF SystemRF SystemRF/LemmasTyping.v
 echo "Checking LemmasSubtyping.v ..."
-coqc -Q . SystemRF LemmasSubtyping.v
+coqc -R SystemRF SystemRF SystemRF/LemmasSubtyping.v
 echo "Checking LemmasExactness.v ..."
-coqc -Q . SystemRF LemmasExactness.v  
+coqc -R SystemRF SystemRF SystemRF/LemmasExactness.v  
 echo "Checking LemmasExactnessSubst.v ..."
-coqc -Q . SystemRF LemmasExactnessSubst.v  
+coqc -R SystemRF SystemRF SystemRF/LemmasExactnessSubst.v  
 echo "Checking SubstitutionLemmaTyp.v ..."
-coqc -Q . SystemRF SubstitutionLemmaTyp.v
+coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaTyp.v
 echo "Checking SubstitutionLemmaTypTV.v ..."
-coqc -Q . SystemRF SubstitutionLemmaTypTV.v
+coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaTypTV.v
 echo "Checking LemmasNarrowing.v ..."
-coqc -Q . SystemRF LemmasNarrowing.v
+coqc -R SystemRF SystemRF SystemRF/LemmasNarrowing.v
 echo "Checking LemmasTransitive.v ..."
-coqc -Q . SystemRF LemmasTransitive.v
+coqc -R SystemRF SystemRF SystemRF/LemmasTransitive.v
 echo "Checking LemmasInversion.v ..."
-coqc -Q . SystemRF LemmasInversion.v
+coqc -R SystemRF SystemRF SystemRF/LemmasInversion.v
 echo "Checking PrimitivesDeltaTyping.v ..."
-coqc -Q . SystemRF PrimitivesDeltaTyping.v
+coqc -R SystemRF SystemRF SystemRF/PrimitivesDeltaTyping.v
 echo "Checking MainTheorems.v ..."
-coqc -Q . SystemRF MainTheorems.v
+coqc -R SystemRF SystemRF SystemRF/MainTheorems.v
+
+echo "Up next: Implement the Denotational Semantics Development"
