@@ -393,15 +393,3 @@ Proof. induction t; simpl.
       split; (apply IHt1 with a || apply IHt2 with a); assumption.
   - (* FTPoly k t *) intros j a. apply IHt.
   Qed. 
-
-(* I think we can do without this one - just use `unfold unbindP`
-  -- Local Closure of Predicates
-
-{-@ lem_islcp_at_after_unbindP :: k:Index -> y:Vname
-        -> { ps:Preds | isLCP_at 0 k (unbindP y ps) } -> { pf:_ | isLCP_at 1 k ps } 
-         / [predsize ps] @-}
-lem_islcp_at_after_unbindP :: Index -> Vname -> Preds -> Proof
-lem_islcp_at_after_unbindP k y PEmpty       = ()
-lem_islcp_at_after_unbindP k y (PCons p ps) = () ? lem_islc_at_after_open_at   0 k y p
-                                                 ? lem_islcp_at_after_unbindP    k y ps
-*)

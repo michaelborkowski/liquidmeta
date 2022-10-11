@@ -2,7 +2,7 @@ Require Import Arith.
 
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
-Require Import SystemRF.LocalClosure. (* orig 291 lines*)
+Require Import SystemRF.LocalClosure. 
 Require Import SystemRF.SystemFWellFormedness.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.BasicPropsSubstitution.

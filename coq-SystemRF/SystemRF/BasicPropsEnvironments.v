@@ -1,6 +1,6 @@
 Require Import Lists.ListSet.
 
-Require Import SystemRF.BasicDefinitions.  (* originally 350 lines*)
+Require Import SystemRF.BasicDefinitions. 
 Require Import SystemRF.Names.
 Require Import SystemRF.SystemFWellFormedness.
 Require Import SystemRF.SystemFTyping.

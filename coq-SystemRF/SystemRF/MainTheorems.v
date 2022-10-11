@@ -1,4 +1,4 @@
-Require Import SystemRF.BasicDefinitions. (* orig 211 lines*)
+Require Import SystemRF.BasicDefinitions. 
 Require Import SystemRF.Names.
 Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFTyping.
@@ -16,7 +16,7 @@ Require Import SystemRF.LemmasInversion.
 Require Import SystemRF.PrimitivesDeltaTyping.
 
 (*--------------------------------------------------------------------------------
---- | PROGRESS and PRESERVATION  234
+--- | PROGRESS and PRESERVATION  
 --------------------------------------------------------------------------------*)
 
 Theorem thm_progress' : forall (g:env) (e:expr) (t:type),

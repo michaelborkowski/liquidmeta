@@ -2,7 +2,7 @@ Require Import Arith.
 
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
-Require Import SystemRF.Strengthenings. (* 1184 lines *)
+Require Import SystemRF.Strengthenings. 
 
 (* Lemmas. The set of Values is closed under substitution. *)
 Lemma lem_subFV_value : forall (y:vname) (v_y v: expr),

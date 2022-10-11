@@ -17,7 +17,7 @@ Require Import SystemRF.LemmasTyping.
 Require Import SystemRF.LemmasWeakenTypTV.
 Require Import SystemRF.LemmasSubtyping.
 Require Import SystemRF.LemmasExactness.
-Require Import SystemRF.LemmasExactnessSubst. (* 565 *)
+Require Import SystemRF.LemmasExactnessSubst. 
 
 Lemma lem_subst_tv_typ' : ( forall (g'ag : env) (e : expr) (t : type),
     Hastype g'ag e t -> ( forall (g g':env) (a:vname) (t_a:type) (k_a:kind),

@@ -14,7 +14,7 @@ Require Import SystemRF.Typing.
 Require Import SystemRF.LemmasWellFormedness.
 
 (* -- -- -- -- -- -- -- -- -- -- -- ---
-   -- Part of the Substitution Lemma -- 256
+   -- Part of the Substitution Lemma -- 
    -- -- -- -- -- -- -- -- -- -- -- --- *)
 
 Lemma lem_subst_tv_wf'' : forall (g'ag : env) (t : type) (k_t : kind),

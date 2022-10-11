@@ -76,27 +76,26 @@ Proof. destruct c ; try apply WFPoly with Star empty
                   ; try apply PFTCons
                   ; try apply PFTEmp
                   ; try apply FTApp with (FTBasic TBool) 
+                  ; try apply FTApp with (FTBasic TBool) 
                   ; try ( apply FTApp with (FTBasic TBool) 
                         ; try apply FTApp with (FTBasic TBool)
-                        ; try apply FTApp with (FTBasic TBool)
-                        ; try apply FTApp with (FTBasic TBool)
-                        ; apply FTPrm || apply FTVar)
+                        ; apply FTPrm || apply FTVar ) 
                   ; try ( apply FTApp with (FTBasic TInt) 
                         ; try apply FTApp with (FTBasic TInt) 
-                        ; apply FTPrm || apply FTIC || apply FTVar)
+                        ; apply FTPrm || apply FTIC || apply FTVar ) 
                   ; try ( apply FTApp with (FTBasic (FTV a'))
                         ; try apply FTApp with (FTBasic (FTV a'))
                         ; assert ( FTFunc (FTBasic (FTV a')) (FTFunc (FTBasic (FTV a')) (FTBasic TBool))
                             = ftsubBV (erase (TRefn (FTV a') PEmpty)) 
                                 (FTFunc (FTBasic (BTV 0)) (FTFunc (FTBasic (BTV 0)) (FTBasic TBool))) )
                             as Heq by reflexivity ; try rewrite Heq
-                        ; try apply FTAppT with Base )
+                        ; try apply FTAppT with Base ) 
                   ; try apply FTPrm
-                  ; try apply FTVar
+                  ; try apply FTVar 
                   ; try apply WFFTFV
                   ; try apply subset_empty_l ; try apply subset_sing_add
-                  ; unfold isLCT
-                  ; simpl ; try discriminate ; intuition.
+                  ; unfold isLCT 
+                  ; simpl ; try discriminate ; intuition. 
                   Qed.
 
 Lemma lem_wf_intype : forall (g:env) (c:prim),  ~ isPoly c -> WFtype g (intype c) Base.

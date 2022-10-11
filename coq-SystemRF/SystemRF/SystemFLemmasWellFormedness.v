@@ -1,7 +1,7 @@
 Require Import Arith.
 Require Import Lists.ListSet.
 
-Require Import SystemRF.BasicDefinitions. (* orig 265 lines *)
+Require Import SystemRF.BasicDefinitions. 
 Require Import SystemRF.Names.
 Require Import SystemRF.SystemFWellFormedness.
 Require Import SystemRF.SystemFTyping.

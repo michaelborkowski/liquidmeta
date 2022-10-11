@@ -1,4 +1,4 @@
-Require Import SystemRF.BasicDefinitions. (* orig 211 lines*)
+Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFWellFormedness.

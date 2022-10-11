@@ -14,7 +14,7 @@ Require Import SystemRF.BasicPropsEnvironments.
 -----------------------------------------------------------------------------*)
 
 Definition eqlPred (b : basic) (ps : preds) (e : expr) : expr :=
-  App (App (AppT (Prim Eql) (TRefn b PEmpty)) (BV 0)) e.          (* fv  p' ==  (fv  e) } *)
+  App (App (AppT (Prim Eql) (TRefn b PEmpty)) e) (BV 0).     (* fv  p' ==  (fv  e) } *)
 
 Lemma lem_eqlPred_islc_at : forall (b : basic) (ps : preds) (e : expr),
     isLCT (TRefn b PEmpty) -> isLC e -> isLC_at 1 0 (eqlPred b ps e).
@@ -24,7 +24,7 @@ Proof. intros; simpl; intuition;
 
 Lemma lem_unbind_eqlPred : forall (y : vname) (b : basic) (ps : preds) (e : expr),
     isLC e -> unbind y (eqlPred b ps e) 
-                   = App (App (AppT (Prim Eql) (TRefn b PEmpty)) (FV y)) e.
+                   = App (App (AppT (Prim Eql) (TRefn b PEmpty)) e) (FV y).
 Proof. intros; unfold unbind; simpl; rewrite lem_unbind_lc; trivial. Qed.
 
 Lemma lem_tsubFTV_eqlPred : forall (a:vname) (t_a:type) (b:basic) (ps:preds) (e:expr),
@@ -32,7 +32,7 @@ Lemma lem_tsubFTV_eqlPred : forall (a:vname) (t_a:type) (b:basic) (ps:preds) (e:
                   -> subFTV a t_a (eqlPred b ps e) = eqlPred b ps e.
 Proof. intros; destruct b eqn:B; simpl; try destruct (a =? a0) eqn:A;
   try (apply Nat.eqb_eq in A; subst a0; contradiction);
-  unfold eqlPred; f_equal; apply lem_subFTV_notin; apply H1. Qed.
+  unfold eqlPred; repeat f_equal; apply lem_subFTV_notin; apply H1. Qed.
 
 Fixpoint self (t0 : type) (e : expr) (k : kind) : type :=
     match k with 
@@ -195,16 +195,16 @@ with Implies : env -> preds -> preds -> Prop :=
               -> Implies (concatE (ConsT a k_a g) g') ps qs
               -> Implies (concatE g (esubFTV a t_a g')) (psubFTV a t_a ps) (psubFTV a t_a qs)
     | IEqlSub : forall (g:env) (b:basic) (y:vname) (e:expr) (ps:preds),
-          Implies g (PCons (App (App (AppT (Prim Eql) (TRefn b PEmpty)) (FV y)) e) PEmpty)
-                    (PCons (App (App (AppT (Prim Eql) (TRefn b ps    )) (FV y)) e) PEmpty) 
+          Implies g (PCons (App (App (AppT (Prim Eql) (TRefn b PEmpty)) e) (FV y)) PEmpty)
+                    (PCons (App (App (AppT (Prim Eql) (TRefn b ps    )) e) (FV y)) PEmpty) 
     | IStren  : forall (y:vname) (b':basic) (qs:preds) (g:env) (p1s:preds) (p2s:preds),
           ~ in_env y g -> Implies (Cons y (TRefn b' qs)     g) p1s p2s
               -> Implies (Cons y (TRefn b' PEmpty) g) 
                          (strengthen p1s (unbindP y qs)) (strengthen p2s (unbindP y qs))
     | IEvals  : forall (g:env) (p p':expr) (ps:preds),
           EvalsTo p p' -> Implies g (PCons p ps) (PCons p' ps)
-    | IEvals2 : forall (g:env) (p q q':expr) (ps:preds),
-          EvalsTo q' q -> Implies g (PCons (App p q) ps) (PCons (App p q') ps).
+    | IEvals2 : forall (g:env) (p p':expr) (ps:preds),
+          EvalsTo p' p -> Implies g (PCons p ps) (PCons p' ps).
 
 Scheme Hastype_mutind  := Induction for Hastype  Sort Prop
 with   Subtype_mutind  := Induction for Subtype  Sort Prop.

@@ -8,7 +8,7 @@ Require Import SystemRF.LemmasWeakenWFTV.
 Require Import SystemRF.LemmasWeakenTyp.
 
 (*-----------------------------------------------------------
------ | METATHEORY Development: Some technical Lemmas   354 
+----- | METATHEORY Development: Some technical Lemmas   
 -----------------------------------------------------------*)
 
 Lemma lem_weaken_tv_typ' : ( forall (g'g : env) (e : expr) (t : type),

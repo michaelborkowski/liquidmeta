@@ -1,6 +1,5 @@
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
-(*import SystemFTyping*)
 Require Import SystemRF.BasicPropsSubstitution.
 Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.WellFormedness.
@@ -11,7 +10,7 @@ Require Import SystemRF.SubstitutionLemmaWF.
 Require Import SystemRF.LemmasTyping.
 
 (*------------------------------------------------------------------------------
------ | METATHEORY Development: Some technical Lemmas   174
+----- | METATHEORY Development: Some technical Lemmas   
 ------------------------------------------------------------------------------*)
 
 Lemma lem_sub_refl : forall (g:env) (t:type) (k:kind),

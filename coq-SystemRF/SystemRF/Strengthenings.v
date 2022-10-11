@@ -66,8 +66,8 @@ Lemma lem_psubBTV_at_strengthen : forall (j:index) (t_a:type) (ps rs:preds),
     psubBTV_at j t_a (strengthen ps rs) = 
       strengthen (psubBTV_at j t_a ps) (psubBTV_at j t_a rs).
 Proof. intros j t_a. induction ps. all : simpl.
-- (* PEmpty *) reflexivity.
-- (* PCons p ps *) intro rs. rewrite -> IHps. reflexivity. Qed.
+  - (* PEmpty *) reflexivity.
+  - (* PCons p ps *) intro rs. rewrite -> IHps. reflexivity. Qed.
 
 Lemma lem_psubBTV_strengthen : forall (t_a:type) (ps rs:preds),
     psubBTV t_a (strengthen ps rs) = strengthen (psubBTV t_a ps) (psubBTV t_a rs).

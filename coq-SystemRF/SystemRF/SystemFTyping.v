@@ -1,4 +1,4 @@
-Require Import SystemRF.BasicDefinitions. (* orig 234 lines*)
+Require Import SystemRF.BasicDefinitions. 
 Require Import SystemRF.Names.
 Require Import SystemRF.SystemFWellFormedness.
 
@@ -8,41 +8,37 @@ Require Import SystemRF.SystemFWellFormedness.
 
 Definition tybc (b:bool) : type := (*Set_emp (free t) && Set_emp (freeTV t) *)
     TRefn TBool (PCons (App (App (AppT (Prim Eql) (TRefn TBool PEmpty)) 
-                                 (BV 0)) (Bc b))  PEmpty).
+                                 (Bc b)) (BV 0))  PEmpty).
 
 Definition tyic (n:nat) : type := (* Set_emp (free t) && Set_emp (freeTV t) *)
     TRefn TInt  (PCons (App (App (AppT (Prim Eql) (TRefn TInt  PEmpty))
-                                 (BV 0)) (Ic n))  PEmpty).
+                                 (Ic n)) (BV 0))  PEmpty).
 
 Definition refn_pred (c:prim) : expr := (* Set_emp (fv p) && Set_emp (ftv p) *)
     match c with 
-    | And      => App (App (Prim Eqv) (BV 0)) 
-                      (App (App (Prim And) (BV 2)) (BV 1)) 
-    | Or       => App (App (Prim Eqv) (BV 0)) 
-                      (App (App (Prim Or)  (BV 2)) (BV 1)) 
-    | Not      => App (App (Prim Eqv) (BV 0)) 
-                      (App (Prim Not) (BV 1)) 
-    | Eqv      => App (App (Prim Eqv) (BV 0))
-                      (App (App (Prim Eqv) (BV 2)) (BV 1)) 
-(*                    (App (App (Prim Or) 
-                                (App (App (Prim And) (BV 2)) (BV 1)))
-                           (App (App (Prim And) (App (Prim Not) (BV 2)))
-                                (App (Prim Not) (BV 1)))) *)
-    | Imp      => App (App (Prim Eqv) (BV 0))
-                      (App (App (Prim Imp) (BV 2)) (BV 1))
-(*                      (App (App (Prim Or) (App (Prim Not) (BV 2))) (BV 1)) *)
-    | Leq      => App (App (Prim Eqv) (BV 0))
-                      (App (App (Prim Leq) (BV 2)) (BV 1)) 
-    | (Leqn n) => App (App (Prim Eqv) (BV 0))
-                      (App (App (Prim Leq) (Ic n)) (BV 1)) 
-    | Eq       => App (App (Prim Eqv) (BV 0))
-                      (App (App (Prim Eq)  (BV 2)) (BV 1))
-    | (Eqn n)  => App (App (Prim Eqv) (BV 0))
-                      (App (App (Prim Eq)  (Ic n)) (BV 1))
-    | Leql     => App (App (Prim Eqv) (BV 0))
-                      (App (App (AppT (Prim Leql) (TRefn (BTV 0) PEmpty)) (BV 2)) (BV 1))
-    | Eql      => App (App (Prim Eqv) (BV 0))
-                      (App (App (AppT (Prim Eql)  (TRefn (BTV 0) PEmpty)) (BV 2)) (BV 1))
+    | And      => App (App (Prim Eqv) 
+                           (App (App (Prim And) (BV 2)) (BV 1))) (BV 0)
+    | Or       => App (App (Prim Eqv) 
+                           (App (App (Prim Or)  (BV 2)) (BV 1))) (BV 0)
+    | Not      => App (App (Prim Eqv) (App (Prim Not) (BV 1))) (BV 0)
+    | Eqv      => App (App (Prim Eqv) 
+                           (App (App (Prim Eqv) (BV 2)) (BV 1))) (BV 0)
+    | Imp      => App (App (Prim Eqv)
+                           (App (App (Prim Imp) (BV 2)) (BV 1))) (BV 0)
+    | Leq      => App (App (Prim Eqv) 
+                           (App (App (Prim Leq) (BV 2)) (BV 1))) (BV 0)
+    | (Leqn n) => App (App (Prim Eqv) 
+                           (App (App (Prim Leq) (Ic n)) (BV 1))) (BV 0)
+    | Eq       => App (App (Prim Eqv) 
+                           (App (App (Prim Eq)  (BV 2)) (BV 1))) (BV 0)
+    | (Eqn n)  => App (App (Prim Eqv) 
+                           (App (App (Prim Eq)  (Ic n)) (BV 1))) (BV 0)
+    | Leql     => App (App (Prim Eqv) 
+                           (App (App (AppT (Prim Leql) (TRefn (BTV 0) PEmpty)) 
+                                     (BV 2)) (BV 1))) (BV 0)
+    | Eql      => App (App (Prim Eqv) 
+                           (App (App (AppT (Prim Eql)  (TRefn (BTV 0) PEmpty)) 
+                                     (BV 2)) (BV 1))) (BV 0)
     end.
          
 Definition intype (c:prim ) : type := (* Set_emp (free t) && Set_emp (freeTV t) *)

@@ -10,7 +10,7 @@ Require Import SystemRF.SystemFLemmasSubstitution.
 Require Import SystemRF.BasicPropsWellFormedness.
 
 (* -- -- -- -- -- -- -- -- -- -- -- ---
-   -- Part of the Substitution Lemma -- 201
+   -- Part of the Substitution Lemma -- 
    -- -- -- -- -- -- -- -- -- -- -- --- *)
 
 Lemma lem_subst_wf' : forall (g'xg : env) (t : type) (k_t : kind),
@@ -33,10 +33,8 @@ Proof. apply ( WFtype_ind
   - (* WFBase *) intros; destruct b; simpl;
     (apply WFBase; assumption) || (simpl in H; contradiction).
   - (* WFRefn *) intro env; intros; destruct b eqn:B; simpl; simpl in H0;
-    (*try destruct (a =? a0) eqn:Ha0;*)
     try apply WFRefn with (names_add x (union nms (binds (concatE g g'))));
     try apply H0 with t_x;
-    (*try (pose proof (H0 g g' a t_a k_a) as H0'; rewrite Ha0 in H0'; apply H0');*)
     try (destruct ps; simpl; contradiction || discriminate); try assumption;
     (* TBool / TInt / FTV a *) try ( 
       intros; apply not_elem_names_add_elim in H11; try destruct H11;

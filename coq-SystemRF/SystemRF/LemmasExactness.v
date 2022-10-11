@@ -13,7 +13,7 @@ Require Import SystemRF.LemmasWeakenWF.
 Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.SubstitutionLemmaWF.
 Require Import SystemRF.LemmasTyping.
-Require Import SystemRF.LemmasSubtyping. (* 223 *)
+Require Import SystemRF.LemmasSubtyping. 
 
 Lemma lem_self_idempotent_upper : forall (g:env) (t:type) (k:kind) (e:expr),
     WFtype g t k -> HasFtype (erase_env g) e (erase t)

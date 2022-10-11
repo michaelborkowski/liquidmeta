@@ -1,4 +1,4 @@
-Require Import SystemRF.BasicDefinitions. (* originally 300 lines *)
+Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFWellFormedness.
@@ -107,7 +107,6 @@ Proof. intros c v t_x t' val p_c_txt' p_v_tx.
          ; try (apply FTBC)
          ; simpl; auto.
   Qed.
-         
 
 Lemma lem_base_types : forall (t:ftype),
     WFFT FEmpty t Base -> isClosedBaseF t.

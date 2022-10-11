@@ -13,18 +13,18 @@ Require Import SystemRF.SystemFLemmasWeaken.
 Require Import SystemRF.Typing.
 Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.LemmasTyping.
-Require Import SystemRF.LemmasSubtyping. (* 153 *)
+Require Import SystemRF.LemmasSubtyping. 
 
 (*  -- We need to show "equivalence" between eqlPred and eqlPred' because 
     --   eqlPred doesn't commute well with subFTV *)
 
 Definition eqlPred' (b:basic) (ps:preds) (e:expr) : expr := 
-  App (App (AppT (Prim Eql) (TRefn b ps)) (BV 0)) e.
+  App (App (AppT (Prim Eql) (TRefn b ps)) e) (BV 0).
 
 Lemma lem_open_at_eqlPred' : forall (y:vname) (b:basic) (ps:preds) (e:expr),
     isLC e -> open_at 0 y (eqlPred' b ps e)
-                = App (App (AppT (Prim Eql) (TRefn b (openP_at 1 y ps))) (FV y)) e.
-Proof. intros; simpl; f_equal; apply lem_open_at_lc_at with 0; apply H. Qed.
+                = App (App (AppT (Prim Eql) (TRefn b (openP_at 1 y ps))) e) (FV y).
+Proof. intros; simpl; repeat f_equal; apply lem_open_at_lc_at with 0; apply H. Qed.
 
 Lemma lem_eqlPred_sub : forall (g:env) (b:basic) (ps:preds) (qs:preds) (e:expr),
     isLC e -> Subtype g (TRefn b (PCons (eqlPred  b ps e) qs))

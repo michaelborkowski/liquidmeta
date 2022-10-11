@@ -1,4 +1,4 @@
-Require Import SystemRF.BasicDefinitions. (* orig 189 lines*)
+Require Import SystemRF.BasicDefinitions. 
 Require Import SystemRF.Names.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.BasicPropsEnvironments.

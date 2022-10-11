@@ -16,7 +16,7 @@ Require Import SystemRF.SubstitutionLemmaWF.
 Require Import SystemRF.LemmasTyping.
 Require Import SystemRF.LemmasWeakenTyp.
 Require Import SystemRF.LemmasWeakenTypTV.
-Require Import SystemRF.LemmasExactness. (* 503 *)
+Require Import SystemRF.LemmasExactness. 
 
 Lemma lem_subst_typ' : ( forall (g'xg : env) (e : expr) (t : type),
     Hastype g'xg e t -> ( forall (g g':env) (x:vname) (v_x:expr) (t_x:type),

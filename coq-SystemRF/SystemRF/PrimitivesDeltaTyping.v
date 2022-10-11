@@ -16,7 +16,7 @@ Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.SubstitutionLemmaWF.
 Require Import SystemRF.LemmasTyping.
 Require Import SystemRF.LemmasSubtyping.
-Require Import SystemRF.LemmasExactness. (* poss remove *)
+Require Import SystemRF.LemmasExactness. 
 Require Import SystemRF.SubstitutionLemmaTyp.
 Require Import SystemRF.SubstitutionLemmaTypTV.
 Require Import SystemRF.LemmasTransitive.
@@ -34,7 +34,6 @@ Proof. intros c v np val p_v_inc; destruct c eqn:C;
   try apply (lem_int_values v val) in Hv;
   destruct v eqn:V; simpl in Hv; try contradiction;
   assert (isCompat c v) as pf by (rewrite C; rewrite V; constructor);
-    rewrite C in pf; rewrite V in pf;
   assert (forall m:nat, isCompat Leq (Ic m)) as pfL by constructor;
   assert (forall m:nat, isCompat Eq  (Ic m)) as pfE by constructor;
   assert (isCompatT Eql (TRefn TBool PEmpty)) as pfB by (apply isCptT_EqlB; trivial);
@@ -50,339 +49,99 @@ Proof. intros c v np val p_v_inc; destruct c eqn:C;
         simpl in D; injection D; trivial );
   assert ( Prim Eq  = deltaT Eql (TRefn TInt PEmpty) pfZ ) as delTZ
     by (pose proof (deltaT_deltaT' Eql (TRefn TInt PEmpty) pfZ) as D;
-        simpl in D; injection D; trivial );        
+        simpl in D; injection D; trivial );         
   try destruct b; unfold tsubBV;  simpl;
   ( match goal with
-    | [ |- exists _, Some _ = Some ?term /\ _ ] => exists term
-    end )
-          ; split ; try reflexivity.
-  - (* And true *) 
-    assert (delta And (Bc true) pf = Lambda (BV 0)) as del
-      by (pose proof (delta_delta' And (Bc true) pf) as D; simpl in D; injection D; trivial);
-    apply TAbs with Base empty;
-    try apply WFBase; trivial; intros; 
-    unfold unbind; unfold unbindT; simpl;
-    apply TSub 
-      with (self (TRefn TBool PEmpty) (App (App (Prim And) (Bc true)) (FV y)) Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty) (FV y)  Base) Base;
-    try apply SBase with (singleton y); intros; unfold unbindP;
-    try ( apply IEvals2;
-          apply AddStep with (App (delta And (Bc true) pf) (FV y)); 
-          try apply EApp1; try apply EPrim; try rewrite del; 
-          try apply lem_step_evals; try apply EAppAbs; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TVar; 
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.
-  - (* And false *)
-    assert (delta And (Bc false) pf = Lambda (Bc false)) as del
-      by (pose proof (delta_delta' And (Bc false) pf) as D; simpl in D; injection D; trivial);
-    apply TAbs with Base empty;
-    try apply WFBase; trivial; intros; 
-    unfold unbind; unfold unbindT; simpl;
-    apply TSub 
-      with (self (TRefn TBool PEmpty) (App (App (Prim And) (Bc false)) (FV y)) Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty)    (Bc false)     Base) Base;
-    try apply SBase with (singleton y); intros; unfold unbindP; 
-    try ( apply IEvals2;
-          apply AddStep with (App (delta And (Bc false) pf) (FV y)); 
-          try apply EApp1; try apply EPrim; try rewrite del; 
-          try apply lem_step_evals; try apply EAppAbs; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TVar; try apply TBC;
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.
-  - (* Or true *)
-    assert (delta Or (Bc true) pf = Lambda (Bc true)) as del
-      by (pose proof (delta_delta' Or (Bc true) pf) as D; simpl in D; injection D; trivial);
-    apply TAbs with Base empty;
-    try apply WFBase; trivial; intros; 
-    unfold unbind; unfold unbindT; simpl;
-    apply TSub 
-      with (self (TRefn TBool PEmpty) (App (App (Prim Or) (Bc true)) (FV y)) Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty)    (Bc true)     Base) Base;
-    try apply SBase with (singleton y); intros; unfold unbindP; 
-    try ( apply IEvals2;
-          apply AddStep with (App (delta Or (Bc true) pf) (FV y)); 
-          try apply EApp1; try apply EPrim; try rewrite del; 
-          try apply lem_step_evals; try apply EAppAbs; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TVar; try apply TBC;
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.
-  - (* Or false *)
-    assert (delta Or (Bc false) pf = Lambda (BV 0)) as del
-      by (pose proof (delta_delta' Or (Bc false) pf) as D; simpl in D; injection D; trivial);
-    apply TAbs with Base empty;
-    try apply WFBase; trivial; intros; 
-    unfold unbind; unfold unbindT; simpl;
-    apply TSub 
-      with (self (TRefn TBool PEmpty) (App (App (Prim Or) (Bc false)) (FV y)) Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty)    (FV y)     Base) Base;
-    try apply SBase with (singleton y); intros; unfold unbindP; 
-    try ( apply IEvals2;
-          apply AddStep with (App (delta Or (Bc false) pf) (FV y)); 
-          try apply EApp1; try apply EPrim; try rewrite del; 
-          try apply lem_step_evals; try apply EAppAbs; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TVar; try apply TBC;
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.
-  - (* Not true *)
-    assert (delta Not (Bc true) pf = Bc false) as del
-      by (pose proof (delta_delta' Not (Bc true) pf) as D; simpl in D; injection D; trivial);
-    apply TSub 
-      with (self (TRefn TBool PEmpty) (App (Prim Not) (Bc true))  Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty)    (Bc false)     Base) Base;
-    try apply SBase with empty; intros; unfold unbindP;
-    try ( apply IEvals2; rewrite <- del; 
-          apply lem_step_evals; apply EPrim; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TVar; try apply TBC;
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with empty;
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.        
-  - (* Not false *)
-    assert (delta Not (Bc false) pf = Bc true) as del
-      by (pose proof (delta_delta' Not (Bc false) pf) as D; simpl in D; injection D; trivial);
-    apply TSub 
-      with (self (TRefn TBool PEmpty) (App (Prim Not) (Bc false))  Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty)    (Bc true)     Base) Base;
-    try apply SBase with empty; intros; unfold unbindP;
-    try ( apply IEvals2; rewrite <- del; 
-          apply lem_step_evals; apply EPrim; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TVar; try apply TBC;
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with empty;
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.
-  - (* Eqv True *)    
-    assert (delta Eqv (Bc true) pf = Lambda (BV 0)) as del
-      by (pose proof (delta_delta' Eqv (Bc true) pf) as D; simpl in D; injection D; trivial);
-    apply TAbs with Base empty;
-    try apply WFBase; trivial; intros; 
-    unfold unbind; unfold unbindT; simpl;
-    apply TSub 
-      with (self (TRefn TBool PEmpty) (App (App (Prim Eqv) (Bc true)) (FV y)) Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty) (FV y)  Base) Base;
-    try apply SBase with (singleton y); intros; unfold unbindP;
-    try ( apply IEvals2;
-          apply AddStep with (App (delta Eqv (Bc true) pf) (FV y)); 
-          try apply EApp1; try apply EPrim; try rewrite del; 
-          try apply lem_step_evals; try apply EAppAbs; intuition ) ;
-    try ( apply IEvals; rewrite delTB at 2; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TVar; 
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.
-  - (* Eqv False *)
-    assert (delta Eqv (Bc false) pf = Prim Not) as del
-      by (pose proof (delta_delta' Eqv (Bc false) pf) as D; simpl in D; injection D; trivial);
-    apply TSub with (ty Not) Star; try apply SFunc with empty; unfold intype;
-    try apply lem_sub_refl with Base; intros;
-    try apply SBase with (singleton y); intros; unfold unbindP;
-    try ( apply IEvals2;
-          apply AddStep with (App (delta Eqv (Bc false) pf) (FV y));
-          try apply EApp1; try apply EPrim; try rewrite del; 
-          try apply Refl; intuition );
-    try apply TPrm; 
-    try apply WFFunc with Base Base empty; intros;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.
-  - (* Imp True *)
-    assert (delta Imp (Bc true) pf = Lambda (BV 0)) as del
-      by (pose proof (delta_delta' Imp (Bc true) pf) as D; simpl in D; injection D; trivial);
-    apply TAbs with Base empty;
-    try apply WFBase; trivial; intros; 
-    unfold unbind; unfold unbindT; simpl;
-    apply TSub 
-      with (self (TRefn TBool PEmpty) (App (App (Prim Imp) (Bc true)) (FV y)) Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty) (FV y)  Base) Base;
-    try apply SBase with (singleton y); intros; unfold unbindP;
-    try ( apply IEvals2;
-          apply AddStep with (App (delta Imp (Bc true) pf) (FV y)); 
-          try apply EApp1; try apply EPrim; try rewrite del; 
-          try apply lem_step_evals; try apply EAppAbs; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TVar; 
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.
-  - (* Imp False *)
-    assert (delta Imp (Bc false) pf = Lambda (Bc true)) as del
-      by (pose proof (delta_delta' Imp (Bc false) pf) as D; simpl in D; injection D; trivial);
-    apply TAbs with Base empty;
-    try apply WFBase; trivial; intros; 
-    unfold unbind; unfold unbindT; simpl;
-    apply TSub 
-      with (self (TRefn TBool PEmpty) (App (App (Prim Imp) (Bc false)) (FV y)) Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty)  (Bc true)  Base) Base;
-    try apply SBase with (singleton y); intros; unfold unbindP;
-    try ( apply IEvals2;
-          apply AddStep with (App (delta Imp (Bc false) pf) (FV y)); 
-          try apply EApp1; try apply EPrim; try rewrite del; 
-          try apply lem_step_evals; try apply EAppAbs; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TVar; try apply TBC;
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool); try apply FTApp with (FTBasic TBool);
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try apply FTBC;
-    try discriminate; simpl; intuition.
-  - (* Leq *)
-    assert (delta Leq (Ic n) pf = Prim (Leqn n) ) as del
-      by (pose proof (delta_delta' Leq (Ic n) pf) as D; simpl in D; injection D; trivial);
-    apply TSub with (ty (Leqn n)) Star; try apply SFunc with empty; unfold intype;
-    try apply lem_sub_refl with Base; intros;
-    try apply SBase with (singleton y); intros; unfold unbindP;  
-    try apply IRefl;
-    try apply TPrm;
-    try apply WFFunc with Base Base empty; intros;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool);
-    try ( apply FTApp with (FTBasic TBool); 
-          apply FTPrm || apply FTVar; simpl; intuition );
-    try apply FTApp with (FTBasic TInt);
-    try apply FTApp with (FTBasic TInt);
-    try apply FTPrm; try apply FTVar; try apply FTIC;
-    try discriminate; simpl; intuition.
-  - (* Leqn *)
-    assert (delta (Leqn n) (Ic n0) pf = Bc (Nat.leb n n0) ) as del
-      by (pose proof (delta_delta' (Leqn n) (Ic n0) pf) as D; simpl in D; injection D; trivial).
-    apply TSub 
-      with (self (TRefn TBool PEmpty)  (App (App (Prim Leq) (Ic n)) (Ic n0))  Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty)    (Bc (Nat.leb n n0))    Base) Base;
-    try apply SBase with empty; intros; unfold unbindP ;
-    try ( apply IEvals2; rewrite <- del; 
-          apply AddStep with (App (Prim (Leqn n)) (Ic n0));
-          try (rewrite <- delL; apply EApp1; apply EPrim);
-          try apply lem_step_evals; try apply EPrim; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TBC;
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with empty;
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try ( apply FTApp with (FTBasic TInt); 
-          try apply FTApp with (FTBasic TInt); 
-          apply FTPrm || apply FTIC );
-    try apply FTApp with (FTBasic TBool);
-    try ( apply FTApp with (FTBasic TInt); 
-          try apply FTApp with (FTBasic TInt); 
-          apply FTPrm || apply FTIC );
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; 
-    try discriminate; simpl; intuition.
-  - (* Eq *)
-    assert (delta Eq (Ic n) pf = Prim (Eqn n) ) as del
-      by (pose proof (delta_delta' Eq (Ic n) pf) as D; simpl in D; injection D; trivial);
-    apply TSub with (ty (Eqn n)) Star; try apply SFunc with empty; unfold intype;
-    try apply lem_sub_refl with Base; intros;
-    try apply SBase with (singleton y); intros; unfold unbindP;  
-    try apply IRefl;
-    try apply TPrm;
-    try apply WFFunc with Base Base empty; intros;
-    try apply WFRefn with (singleton y);
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try apply FTApp with (FTBasic TBool);
-    try ( apply FTApp with (FTBasic TBool); 
-          apply FTPrm || apply FTVar; simpl; intuition );
-    try apply FTApp with (FTBasic TInt);
-    try apply FTApp with (FTBasic TInt);
-    try apply FTPrm; try apply FTVar; try apply FTIC;
-    try discriminate; simpl; intuition.
-  - (* Eqn *)
-    assert (delta (Eqn n) (Ic n0) pf = Bc (Nat.eqb n n0) ) as del
-      by (pose proof (delta_delta' (Eqn n) (Ic n0) pf) as D; simpl in D; injection D; trivial).
-    apply TSub 
-      with (self (TRefn TBool PEmpty)  (App (App (Prim Eq) (Ic n)) (Ic n0))  Base) Base;
-    try apply TSub with (self (TRefn TBool PEmpty)    (Bc (Nat.eqb n n0))    Base) Base;
-    try apply SBase with empty; intros; unfold unbindP ;
-    try ( apply IEvals2; rewrite <- del; 
-          apply AddStep with (App (Prim (Eqn n)) (Ic n0));
-          try (rewrite <- delE; apply EApp1; apply EPrim);
-          try apply lem_step_evals; try apply EPrim; intuition ) ;
-    try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
-          apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
-    try apply TBC;
-    try apply lem_selfify_wf; try apply WFBase;
-    try apply WFRefn with empty;
-    try apply WFBase; intros; unfold unbindP; simpl;
-    try apply PFTCons; try apply PFTEmp;
-    try ( apply FTApp with (FTBasic TInt); 
-          try apply FTApp with (FTBasic TInt); 
-          apply FTPrm || apply FTIC );
-    try apply FTApp with (FTBasic TBool);
-    try ( apply FTApp with (FTBasic TInt); 
-          try apply FTApp with (FTBasic TInt); 
-          apply FTPrm || apply FTIC );
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; try discriminate; simpl; intuition.
+    | [ |- exists _, Some _ = Some ?term /\ _ ] 
+           => assert (delta c v pf = term) as del
+                by ( pose proof (delta_delta' c v pf) as D; 
+                     subst c; subst v; simpl in D; injection D; trivial ) ; 
+              exists term
+    end )  
+          ; split ; try reflexivity 
+          ; try apply TAbs with Base empty
+          ; try apply WFBase; trivial; intros       (* remove? *)
+          ; unfold unbind; unfold unbindT; simpl ;  (* remove? *) 
+  ( try match goal with
+    | [ |- Hastype _ (FV ?yy) _ ] =>
+            apply TSub 
+              with (TRefn TBool (PCons (App (App (Prim Eqv) (FV yy)) (BV 0)) 
+                                       PEmpty)) Base
+          ; try apply TSub with (self (TRefn TBool PEmpty) (FV yy)  Base) Base
+          ; try apply SBase with (singleton y); intros; unfold unbindP ;
+          try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
+                apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
+          try ( apply IEvals2;
+                apply AddStep 
+                  with (App (App (Prim Eqv) (App (delta c v pf) (FV y))) (FV y0));
+                subst c; subst v;
+                try apply EApp1; try apply EApp2; 
+                  try apply EApp1; try apply EPrim; try rewrite del; 
+                try apply lem_step_evals; try apply EApp1; 
+                  try apply EApp2; try apply EAppAbs; intuition ) ;
+          try apply TVar
+    | [ |- Hastype (Cons _ _ _) (Bc ?bb) _ ] =>
+            apply TSub 
+              with (TRefn TBool (PCons (App (App (Prim Eqv) (Bc bb)) (BV 0)) 
+                                       PEmpty)) Base
+          ; try apply TSub with (self (TRefn TBool PEmpty)    (Bc bb)     Base) Base 
+          ; try apply SBase with (singleton y); intros; unfold unbindP; 
+          try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
+                apply EApp1; apply EApp1; apply EPrimT; trivial ) ;
+          try ( apply IEvals2;
+                apply AddStep 
+                  with (App (App (Prim Eqv) (App (delta c v pf) (FV y))) (FV y0));
+                subst c; subst v;
+                try apply EApp1; try apply EApp2; 
+                  try apply EApp1; try apply EPrim; try rewrite del; 
+                try apply lem_step_evals; try apply EApp1; 
+                  try apply EApp2; try apply EAppAbs; intuition ) ;
+          try apply TBC
+    | [ |- Hastype Empty (Bc ?bb) _ ] =>
+            apply TSub 
+              with (TRefn TBool (PCons (App (App (Prim Eqv) (Bc bb)) (BV 0)) 
+                                       PEmpty)) Base
+          ; try apply TSub with (self (TRefn TBool PEmpty)    (Bc bb)     Base) Base
+          ; try apply SBase with empty; intros; unfold unbindP
+          ; try ( apply IEvals; rewrite delTB; apply lem_step_evals; 
+                  apply EApp1; apply EApp1; apply EPrimT; trivial ) 
+          ; try ( apply IEvals2; rewrite <- del; 
+                  ( match goal with
+                    | [ |- EvalsTo (App (App _ (App _ (Ic _))) _) _] 
+                            => try apply AddStep with (App (App (Prim Eqv) (App (Prim c) v)) (FV y))
+                    | [ |- _ ] => trivial
+                    end
+                  ) ; subst c; subst v;
+                  try apply lem_step_evals; apply EApp1; apply EApp2; try apply EApp1; 
+                  try (apply EPrim || (rewrite <- delL; try apply EPrim)
+                                   || (rewrite <- delE; try apply EPrim)); 
+                  intuition ) 
+          ; try apply TBC
+    | [ |- Hastype _ (Prim ?c') _ ] =>
+            apply TSub with (ty c') Star; try apply SFunc with empty; unfold intype;
+          try apply lem_sub_refl with Base; intros;
+          try apply SBase with (singleton y); intros; unfold unbindP; 
+          try apply IRefl;
+          try ( apply IEvals2; apply lem_step_evals; apply EApp1; apply EApp2;
+                try apply EApp1; try rewrite <- del; subst c; subst v; 
+                try apply EPrim; intuition );
+          try apply TPrm; 
+          try apply WFFunc with Base Base empty; intros
+    end )  
+          ; try apply WFBase
+          ; try (apply WFRefn with (singleton y); try apply WFBase)
+          ; try apply WFRefn with empty
+          ; try apply WFBase; intros; unfold unbindP; simpl
+          ; try apply PFTCons; try apply PFTEmp
+          ; try apply FTApp with (FTBasic TBool)
+          ; try apply FTApp with (FTBasic TBool)
+          ; try ( apply FTApp with (FTBasic TInt); 
+                  try apply FTApp with (FTBasic TInt); 
+                  apply FTPrm || apply FTIC || apply FTVar) 
+          ; try apply FTApp with (FTBasic TBool) 
+          ; try apply FTApp with (FTBasic TBool)
+          ; try apply FTPrm; try apply FTVar; try apply FTBC
+          ; try discriminate; simpl; intuition. 
   Qed.
 
 Lemma lem_deltaT_ty'c : forall (c:prim) (t:type),
@@ -404,12 +163,17 @@ Proof. intros c t ispo noex p_emp_t; destruct c eqn:C;
                   end ) 
           ; try apply TPrm
           ; try apply WFFunc with Base Star empty; intros
-          ; try apply WFFunc with Base Base (singleton y) ; intros ; fold openP_at
+          ; try apply WFFunc with Base Base (singleton y) ; intros ; fold openP_at 
           ; try assert (openP_at (0 + 1) y ps = ps) as Hps
               by ( apply lem_wftype_islct in p_emp_t as lct;  
                    unfold isLCT in lct; simpl in lct;         
                    apply lem_open_at_lc_at with 0; assumption )
-          ; try rewrite Hps ; try reflexivity
+          ; try assert (openP_at (0 + 1 + 1 + 1) y ps = ps) as Hps3
+              by ( apply lem_wftype_islct in p_emp_t as lct;  
+                   unfold isLCT in lct; simpl in lct;         
+                   apply lem_open_at_lc_at with 0; 
+                   apply lem_islc_at_weaken with 1 0; intuition )              
+          ; try rewrite Hps ; try rewrite Hps3; try reflexivity 
 
           ; try apply WFRefn with (names_add y0 (singleton y))
           ; try apply WFBase; fold openP_at; fold open_at 
@@ -417,39 +181,36 @@ Proof. intros c t ispo noex p_emp_t; destruct c eqn:C;
           ; destruct (Nat.eqb (0 + 1 + 1) 0) eqn:E0
           ; destruct (Nat.eqb (0 + 1 + 1) 1) eqn:E1
           ; destruct (Nat.eqb (0 + 1 + 1) 2) eqn:E2
-          ; unfold unbindP; simpl; try assumption
-          ; try set (qs := (openP_at 1 y1 (openP_at 2 y0 (openP_at 3 y ps))))
-          ; try assert (openP_at 1 y1 ps = ps) as Hps1
-              by ( apply lem_wftype_islct in p_emp_t as lct;  
-                   unfold isLCT in lct; simpl in lct;         
-                   apply lem_open_at_lc_at with 0; assumption  )
+          ; try (simpl in E0; discriminate E0)
+          ; try (simpl in E1; discriminate E1)
+          ; try (simpl in E2; discriminate E2)
+          ; unfold unbindP; simpl; try assumption 
           ; try assert (openP_at 2 y0 ps = ps) as Hps2
               by ( apply lem_wftype_islct in p_emp_t as lct;  
                    unfold isLCT in lct; simpl in lct;         
                    apply lem_open_at_lc_at with 0; 
                    apply lem_islc_at_weaken with 1 0; intuition  )
-          ; try assert (openP_at 3 y ps = ps) as Hps3
+          ; try assert (openP_at 1 y1 ps = ps) as Hps1
               by ( apply lem_wftype_islct in p_emp_t as lct;  
                    unfold isLCT in lct; simpl in lct;         
-                   apply lem_open_at_lc_at with 0; 
-                   apply lem_islc_at_weaken with 1 0; intuition )
-          ; try assert (qs = ps) as Hqs
-              by ( subst qs; rewrite Hps3; rewrite Hps2; rewrite Hps1; reflexivity )
+                   apply lem_open_at_lc_at with 0; assumption  ) 
+          ; try rewrite Hps2; try rewrite Hps1
 
-          ; try apply PFTCons; try apply PFTEmp; try discriminate
-          ; try apply FTApp with (FTBasic TBool)
+          ; try apply PFTCons; try apply PFTEmp; try discriminate 
+          ; try apply FTApp with (FTBasic TBool) 
+          ; try apply FTApp with (FTBasic TBool) 
           ; try ( apply FTApp with (FTBasic TBool); apply FTPrm || apply FTVar; 
-                  simpl; intuition )
+                  simpl; intuition ) 
           ; try apply FTApp with (FTBasic b)
-          ; try apply FTApp with (FTBasic b)
+          ; try apply FTApp with (FTBasic b) 
           ; try assert ( FTFunc (FTBasic b) (FTFunc (FTBasic b) (FTBasic TBool)) 
-                          = ftsubBV (erase (TRefn b qs)) 
+                          = ftsubBV (erase (TRefn b ps)) 
                                     (FTFunc (FTBasic (BTV 0)) 
                                             (FTFunc (FTBasic (BTV 0)) (FTBasic TBool))))
               as H' by reflexivity
-          ; try rewrite H' ; try rewrite B ; try rewrite Hqs 
+          ; try rewrite H' ; try rewrite B 
           ; try apply FTAppT with Base
-          ; try apply FTVar ; try apply FTPrm
+          ; try apply FTVar ; try apply FTPrm 
           ; try apply WFFTBasic
 
           ; try pose proof (lem_free_subset_binds Empty (TRefn TBool ps) Base p_emp_t) as Hf
@@ -459,30 +220,31 @@ Proof. intros c t ispo noex p_emp_t; destruct c eqn:C;
           ; try apply subset_empty_l
           ; try apply lem_wftype_islct with Empty Base
           ; try discriminate
-          ; simpl ; try rewrite B ; intuition
+          ; simpl ; try rewrite B ; intuition 
 
-          ; apply SFunc with empty
+          ; apply SFunc with empty 
           ; try apply SBase with empty; intros; try apply IFaith
-          ; intros; unfold unbindT; simpl
+          ; intros; unfold unbindT; simpl 
           ; apply SFunc with (singleton y)
           ; try apply SBase with (singleton y); intros; try apply IFaith
           ; intros; unfold unbindT; simpl
-          ; apply SBase with (names_add y0 (singleton y))
-          ; intros; unfold unbindP; simpl
+          ; apply SBase with (names_add y0 (singleton y)) 
+          ; intros; unfold unbindP; simpl 
           ; apply IEvals2
-          ; try set (qs := (openP_at 1 y1 (openP_at 2 y0 (openP_at 3 y ps))))
+          ; try set (qs := (openP_at 1 y1 (openP_at 2 y0 (openP_at 3 y ps)))) 
           ; ( match goal with 
-              | [ |- EvalsTo (App (App (AppT (Prim ?c) (TRefn ?b _)) _) _) 
-                             (App (App (Prim ?c') _) _) ]
+              | [ |- EvalsTo (App (App (Prim Eqv)
+                                  (App (App (AppT (Prim ?c) (TRefn ?b _)) _) _)) _) 
+                             (App (App (Prim Eqv) (App (App (Prim ?c') _) _)) _) ] 
                         => assert (isCompatT c (TRefn b qs)) 
-                              as pf by (constructor; trivial);
+                              as pf by (constructor; trivial) ;
                            assert ( Prim c' = deltaT c (TRefn b qs) pf ) as delT
                               by (pose proof (deltaT_deltaT' c (TRefn b qs) pf) as D;
-                                  simpl in D; injection D; trivial ); 
-                           apply AddStep with (App (App (deltaT c (TRefn b qs) pf) (FV y)) (FV y0))
+                                  simpl in D; injection D; trivial ) 
               end )
-          ; try apply EApp1; try apply EApp1; try apply EPrimT
-          ; try rewrite <- delT; try apply Refl; trivial.
+          ; apply lem_step_evals
+          ; apply EApp1; apply EApp2; try apply EApp1; try apply EApp1
+          ; trivial ; try rewrite delT ; try apply EPrimT ; trivial.
   Qed.
 
 Lemma lem_prim_compat_in_tapp : forall (p:prim) (v:expr) (t:type),
@@ -566,9 +328,7 @@ Proof. intros c v t_x t' val p_c_txt' p_v_tx. inversion p_c_txt';
     try apply lem_subtype_in_exists with Star (union nms nms');
     try (intros y0 Hy0; apply not_elem_union_elim in Hy0;
          destruct Hy0; apply H10; assumption);    
-    (*try (apply lem_typing_wf with v; assumption);*)
     try apply lem_wftype_islct with Empty Star;
-    (*try (apply lem_typing_wf with (App (Prim c) v); assumption);*)
     try rewrite lem_tsubFV_unbindT with y v (ty' c);
     try (destruct c; simpl; unfold not; intro ff; apply ff);
     try apply lem_subst_wf_top with (intype c); try apply Hty';
