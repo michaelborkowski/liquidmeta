@@ -1,0 +1,1 @@
+coq_makefile -R SystemRF SystemRF SystemRF/*.v -o Makefile 
