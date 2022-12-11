@@ -237,6 +237,9 @@ Fixpoint tcKind (tc : tcons) (tds : defs) : option kind :=
                                             else tcKind tc tds
     end.
 
+    (*
+Fixpoint isValid (tds : defs) : Prop :=
+*)
 
 Fixpoint isLC_at (j_x : index) (j_a : index) (e : expr) : Prop  :=
     match e with
@@ -640,6 +643,7 @@ Inductive ftype : Set :=
         | _            => False
         end.
 
+(* are both of these needed? *)
 Fixpoint arrowsF (t:ftype) : nat := 
     match t with 
     | (FTFunc t_x t)  => 1 + (arrowsF t)
