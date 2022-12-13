@@ -107,12 +107,13 @@ Proof. destruct c; simpl; reflexivity. Qed.
 ----- | JUDGEMENTS : the Bare-Typing Relation
 -----------------------------------------------------------------------------*)
 
-Inductive HasFtype : fenv -> expr -> ftype -> Prop := 
+Inductive HasFtype : fenv -> defs -> expr -> ftype -> Prop := 
     | FTBC   : forall (g:fenv) (b:bool),  HasFtype g (Bc b) (FTBasic TBool)
     | FTIC   : forall (g:fenv) (n:nat),   HasFtype g (Ic n) (FTBasic TInt)
     | FTVar  : forall (g:fenv) (x:vname) (b:ftype),
           bound_inF x b g -> HasFtype g (FV x) b
     | FTPrm  : forall (g:fenv) (c:prim), HasFtype g (Prim c) (erase_ty c)
+    | FTData : forall (g:fenv) (ds:defs), 
     | FTAbs  : forall (g:fenv) (b:ftype) (k:kind) (e:expr) (b':ftype) (nms:names),
           WFFT g b k 
               -> (forall (y:vname), ~ Elem y nms -> HasFtype (FCons y b g) (unbind y e) b' )
@@ -132,12 +133,16 @@ Inductive HasFtype : fenv -> expr -> ftype -> Prop :=
           HasFtype g e_x b 
               -> (forall (y:vname), ~ Elem y nms -> HasFtype (FCons y b g) (unbind y e) b' )
               -> HasFtype g (Let e_x e) b'
-    | FTAnn  : forall (g:fenv) (e:expr) (b:ftype) (t1:type),
+    | FTAnn  : forall (g:fenv) (ds:defs) (e:expr) (b:ftype) (t1:type),
           erase t1 = b  -> Subset (free t1) (vbindsF g) 
                         -> Subset (freeTV t1) (tvbindsF g) -> isLCT t1 
-              -> HasFtype g e b -> HasFtype g (Annot e t1) b.
+              -> HasFtype g e b -> HasFtype g (Annot e t1) b
+    | FTSwit
 
-Inductive PHasFtype : fenv -> preds -> Prop := 
-    | PFTEmp  : forall (g:fenv), PHasFtype g PEmpty
-    | PFTCons : forall (g:fenv) (p:expr) (ps:preds),
-          HasFtype g p (FTBasic TBool) -> PHasFtype g ps -> PHasFtype g (PCons p ps).
+with AHasFtype : fenv -> defs ...
+
+Inductive PHasFtype : fenv -> defs -> preds -> Prop := 
+    | PFTEmp  : forall (g:fenv) (ds:defs), PHasFtype g ds PEmpty
+    | PFTCons : forall (g:fenv) (ds:defs) (p:expr) (ps:preds),
+          HasFtype g ds p (FTBasic TBool) -> PHasFtype g ds ps 
+              -> PHasFtype g ds (PCons p ps).

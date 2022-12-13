@@ -119,6 +119,7 @@ Inductive isValue : expr -> Set := (* can't use Prop here *)
     | val_Bc   : forall b,   isValue (Bc b)
     | val_Ic   : forall n,   isValue (Ic n)
     | val_Prm  : forall c,   isValue (Prim c)
+    | val_Dc   : forall dc,  isValue (Dc dc)
     | val_BV   : forall i,   isValue (BV i)
     | val_FV   : forall x,   isValue (FV x)
     | val_Lam  : forall e,   isValue (Lambda e)
@@ -126,7 +127,7 @@ Inductive isValue : expr -> Set := (* can't use Prop here *)
     | val_dv   : forall dv,  dataValue dv -> isValue dv
 
 with dataValue : expr -> Set :=
-    | dval_Dc  : forall dc,   dataValue (Dc dc)
+    | dval_Dc : forall dc t, dataValue (AppT (Dc dc) t)
     | dval_App : forall dv v, dataValue dv -> isValue v -> dataValue (App dv v).
 
 Fixpoint dvdc (dv : expr) (pf : dataValue dv) : dcons :=
@@ -190,7 +191,7 @@ Fixpoint noExists (t0 : type) : Prop :=
         noExists (TExists t_x t) -> False.
     Proof. simpl. contradiction. Qed.
 
-Fixpoint arrows (t:type) : nat := 
+Fixpoint arrows (t : type) : nat := 
     match t with 
     | (TFunc t_x t)  => 1 + (arrows t)
     | _              => 0
@@ -200,6 +201,19 @@ Definition quant_arrows (t : type) : nat :=
     match t with 
     | (TPoly k t) => arrows t
     | _           => 0
+    end.
+
+Fixpoint quants (t : type) : nat :=
+    match t with
+    | (TPoly k t) => 1 + (quants t)
+    | _e          => 0
+    end.
+
+Fixpoint outTC (t : type) : option tcons :=
+    match t with 
+    | (TFunc tx t)    => outTC t 
+    | (TData tc t ps) => Some tc
+    | _               => None
     end.
 
   (* --- DEFINITIONAL ENVIRONMENTS ---  
@@ -217,9 +231,9 @@ Inductive polarity : Set :=
     | Both 
     | Neither.
 
-Inductive ddefns : Set :=  
-    | DDEmpty 
-    | DDCons (dd : ddefn) (dds : ddefns).
+Definition (*Inductive*) ddefns (*: Set*) := list ddefn.
+    (*| DDEmpty 
+    | DDCons (dd : ddefn) (dds : ddefns).*)
 
 Record tdefn := TDefn { 
     tdid     : id;
@@ -237,9 +251,14 @@ Fixpoint tcKind (tc : tcons) (tds : defs) : option kind :=
                                             else tcKind tc tds
     end.
 
-    (*
-Fixpoint isValid (tds : defs) : Prop :=
-*)
+Definition ddTypeMatch (tc : tcons) (dd : ddefn) :=
+    quants (ddtype dd) = 1 /\ outTC (ddtype dd) = Some tc.
+
+Definition tdIsValid (td : tdefn) : Prop := 
+    Forall (ddTypeMatch (TCons (tdid td))) (tddcons td).
+
+Definition isValid (tds : defs) : Prop := Forall tdIsValid tds.
+
 
 Fixpoint isLC_at (j_x : index) (j_a : index) (e : expr) : Prop  :=
     match e with
