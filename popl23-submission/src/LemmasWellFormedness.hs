@@ -42,30 +42,30 @@ lem_openFT_at_equals j a (FTBasic b) (FTBasic _) = case b of
   (BTV i) | i == j -> ()
   _                -> ()
 lem_openFT_at_equals j a (FTFunc t11 t12) (FTFunc t21 t22)
-  = () ? lem_openFT_at_equals j a t11 t21
+  = lem_openFT_at_equals j a t11 t21
        ? lem_openFT_at_equals j a t12 t22
 lem_openFT_at_equals j a (FTPoly k t1') (FTPoly _ t2')
-  = () ? lem_openFT_at_equals (j+1) a t1' t2'
+  = lem_openFT_at_equals (j+1) a t1' t2'
 
 -- LEMMA 6. If G |- s <: t, then if we erase the types then (erase s) == (erase t)
 {-@ lem_erase_subtype :: g:Env -> t1:Type -> t2:Type 
         -> { p_t1_t2:Subtype | propOf p_t1_t2 == Subtype g t1 t2 }
-        -> { pf:_ | erase t1 == erase t2 } / [subtypSize p_t1_t2] @-}
+        -> { pf:_ | erase t1 == erase t2 } / [sizeOf p_t1_t2] @-}
 lem_erase_subtype :: Env -> Type -> Type  -> Subtype -> Proof
 lem_erase_subtype g t1 t2 (SBase _g b p1 p2 _ _) = ()
 lem_erase_subtype g s  t  (SFunc _g s1 t1 p_t1_s1 s2 t2 nms mk_p_s2_t2)
-  = () ? lem_erase_subtype  g t1  s1  p_t1_s1
-       ? lem_erase_subtype (Cons y t1 g) (unbindT y s2) (unbindT y t2)  (mk_p_s2_t2 y)
+  = lem_erase_subtype  g t1  s1  p_t1_s1
+  ? lem_erase_subtype (Cons y t1 g) (unbindT y s2) (unbindT y t2)  (mk_p_s2_t2 y)
       where 
         y         = fresh_var nms g
 lem_erase_subtype g t1  t2 (SWitn _g v t_x p_v_tx _t1 t' p_t1_t'v)
-  = () ? lem_erase_subtype g t1 (tsubBV v t')  p_t1_t'v 
+  = lem_erase_subtype g t1 (tsubBV v t')  p_t1_t'v 
 lem_erase_subtype g t1  t2 (SBind _g t_x t _t2 nms mk_p_t_t')
-  = () ? lem_erase_subtype (Cons y t_x g) (unbindT y t)  t2  (mk_p_t_t' y)
+  = lem_erase_subtype (Cons y t_x g) (unbindT y t)  t2  (mk_p_t_t' y)
       where
         y         = fresh_var nms g 
 lem_erase_subtype g t1 t2  (SPoly _g k t1' t2' nms mk_p_ag_t1'_t2')
-  = () ? lem_erase_subtype (ConsT a k g) 
+  = lem_erase_subtype (ConsT a k g) 
                       (unbind_tvT a t1'   ? lem_erase_unbind_tvT a t1')
                       (unbind_tvT a t2'   ? lem_erase_unbind_tvT a t2')
                       (mk_p_ag_t1'_t2' a) ? lem_unbindFT_equals a (erase t1') (erase t2')

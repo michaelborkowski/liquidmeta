@@ -79,7 +79,7 @@ lem_self_idempotent_upper g t                  Star p_g_t e p_e_t
         -> k:Kind -> ProofOf(WFType g t k) -> { e:Expr | isLC e } 
         -> ProofOf(HasFType (erase_env g) e (erase t))
         -> { p_s'_t':Subtype | propOf p_s'_t' == Subtype g (self s e k) (self t e k) }
-         / [subtypSize p_s_t] @-}
+         / [sizeOf p_s_t] @-}
 lem_exact_subtype :: Env -> WFEnv -> Type -> Kind -> WFType -> Type -> Subtype -> Kind -> WFType
                          -> Expr -> HasFType -> Subtype
 lem_exact_subtype g p_g_wf s k_s p_g_s t p_s_t@(SBase _ b ps qs nms mk_imp_yg_ps_qs) Base p_g_t e p_e_t 

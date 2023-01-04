@@ -414,28 +414,28 @@ lem_ftyp_islc g e t (FTVar3 g' x _ p_x_t a k) = case e of
 lem_ftyp_islc g e t (FTPrm _g c)   = case e of
   (Prim _) -> ()
 lem_ftyp_islc g e t (FTAbs _g t_x k_x p_g_tx e' t' nms mk_p_yg_e'_t') = case e of
-  (Lambda _) -> () ? lem_islc_at_after_open_at 0 0 y 
+  (Lambda _) ->  lem_islc_at_after_open_at 0 0 y 
                          (e' ? lem_ftyp_islc (FCons y t_x g) (unbind y e') t' (mk_p_yg_e'_t' y))
     where
       y = fresh_varF nms g
 lem_ftyp_islc g e t (FTApp _g e' t_x t' p_e'_txt' e_x p_ex_tx) = case e of
-  (App _ _) -> () ? lem_ftyp_islc g e' (FTFunc t_x t') p_e'_txt'
+  (App _ _) -> lem_ftyp_islc g e' (FTFunc t_x t') p_e'_txt'
                   ? lem_ftyp_islc g e_x t_x p_ex_tx
 lem_ftyp_islc g e t (FTAbsT _g k e' t' nms mk_p_e'_t') = case e of 
-  (LambdaT {}) -> () ? lem_islc_at_after_open_tv_at 0 0 a
+  (LambdaT {}) -> lem_islc_at_after_open_tv_at 0 0 a
                            (e' ? lem_ftyp_islc (FConsT a k g) (unbind_tv a e') (unbindFT a t') (mk_p_e'_t' a))
     where
       a = fresh_varF nms g
 lem_ftyp_islc g e t (FTAppT _g e' k t' p_e_at' liqt p_g_ert) = case e of
   (AppT _ _)   -> () ? lem_ftyp_islc g e' (FTPoly k t') p_e_at'
 lem_ftyp_islc g e t (FTLet _g e_x t_x p_ex_tx e' t' nms mk_p_yg_e'_t') = case e of
-  (Let {}) -> () ? lem_ftyp_islc g e_x t_x p_ex_tx
+  (Let {}) -> lem_ftyp_islc g e_x t_x p_ex_tx
                  ? lem_islc_at_after_open_at 0 0 y 
                        (e' ? lem_ftyp_islc (FCons y t_x g) (unbind y e') t' (mk_p_yg_e'_t' y))
     where
       y = fresh_varF nms g
 lem_ftyp_islc g e t (FTAnn _g e' _t t1 p_e'_t) = case e of
-  (Annot _ _)  -> () ? lem_ftyp_islc g e' t p_e'_t
+  (Annot _ _)  -> lem_ftyp_islc g e' t p_e'_t
 
 {-@ lem_pftyp_islcp :: g:FEnv -> ps:Preds -> ProofOf(PHasFType g ps)
                               -> { pf:_ | isLCP ps && isLCP_at 0 0 ps } / [predsize ps] @-}

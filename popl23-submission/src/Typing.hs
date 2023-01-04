@@ -8,7 +8,6 @@ module Typing where
 
 import Prelude hiding (max)
 import Language.Haskell.Liquid.ProofCombinators hiding (withProof,(?))
-import Language.Haskell.Liquid.This
 import qualified Data.Set as S
 
 import Basics
@@ -162,70 +161,59 @@ data HasType where
     TAnn  :: Env -> Expr -> Type -> HasType -> HasType
     TSub  :: Env -> Expr -> Type -> HasType -> Type -> Kind -> WFType -> Subtype -> HasType
 
-{-@ measure typSize :: HasType -> Nat @-}
-{-@ invariant { pf:HasType | 0 <= typSize pf } @-}
+{-@ measure sizeOf :: a -> Nat @-}
+
+{-@ data size (Subtype, HasType) sizeOf @-}
 
 {-@ data HasType where
         TBC   :: g:Env -> b:Bool -> { pf:HasType | propOf pf == HasType g (Bc b) (tybc b) &&
-                                                   typSize pf == 1  }
+                                                   sizeOf pf == 1  }
         TIC   :: g:Env -> m:Int  -> { pf:HasType | propOf pf == HasType g (Ic m) (tyic m) &&
-                                                   typSize pf == 1 }
+                                                   sizeOf pf == 1 }
         TVar1 :: g:Env -> { x:Vname | not (in_env x g) } 
                     -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
                     -> { pf:HasType | propOf pf == HasType (Cons x t g) (FV x) (self t (FV x) k) &&
-                                      typSize pf == tdepth t }
+                                      sizeOf pf == tdepth t }
         TVar2 :: g:Env -> { x:Vname | in_env x g } -> t:Type 
-                    -> { pf0:HasType | propOf  pf0 == (HasType g (FV x) t) &&
-                                       typSize pf0 < typSize this } 
+                    -> { pf0:HasType | propOf  pf0 == (HasType g (FV x) t)} 
                     -> { y:Vname | y != x && not (in_env y g) } -> s:Type
                     -> { pf:HasType | propOf  pf == HasType (Cons y s g) (FV x) t }
         TVar3 :: g:Env -> { x:Vname | in_env x g } -> t:Type 
-                    -> { pf0:HasType | propOf  pf0 == (HasType g (FV x) t) &&
-                                       typSize pf0 < typSize this } 
+                    -> { pf0:HasType | propOf  pf0 == (HasType g (FV x) t) } 
                     -> { a:Vname | a != x && not (in_env a g) } -> k:Kind
                     -> { pf:HasType | propOf pf == HasType (ConsT a k g) (FV x) t }
         TPrm  :: g:Env -> c:Prim -> { pf:HasType | propOf pf == HasType g (Prim c) (ty c) &&
-                                                   typSize pf == tdepth (ty c) }
+                                                   sizeOf pf == tdepth (ty c) }
         TAbs  :: g:Env -> t_x:Type -> k_x:Kind -> ProofOf(WFType g t_x k_x)
                   -> e:Expr -> t:Type -> nms:Names
                   -> ( { y:Vname | NotElem y nms } 
-                           -> { pf0:HasType | propOf  pf0 == HasType (Cons y t_x g) (unbind y e) (unbindT y t) &&
-                                              typSize pf0 < typSize this } )
+                           -> { pf0:HasType | propOf  pf0 == HasType (Cons y t_x g) (unbind y e) (unbindT y t) } )
                   -> { pf:HasType | propOf  pf == HasType g (Lambda e) (TFunc t_x t) }
         TApp  :: g:Env -> e:Expr -> t_x:Type -> t:Type
-                  -> { pf0:HasType | propOf pf0  == HasType g e (TFunc t_x t) &&
-                                     typSize pf0 < typSize this }
-                  -> e':Expr -> { pf1:HasType | propOf pf1 == HasType g e' t_x &&
-                                                typSize pf1 < typSize this }
+                  -> { pf0:HasType | propOf pf0  == HasType g e (TFunc t_x t) }
+                  -> e':Expr -> { pf1:HasType | propOf pf1 == HasType g e' t_x }
                   -> { pf:HasType | propOf  pf == HasType g (App e e') (TExists t_x t) }
         TAbsT :: g:Env -> k:Kind -> e:Expr -> t:Type -> nms:Names
                   -> ({ a':Vname | NotElem a' nms }
-                           -> { pf0:HasType | propOf  pf0 == HasType (ConsT a' k g) (unbind_tv a' e) (unbind_tvT a' t) &&
-                                              typSize pf0 < typSize this } )
+                           -> { pf0:HasType | propOf  pf0 == HasType (ConsT a' k g) (unbind_tv a' e) (unbind_tvT a' t) } )
                   -> { pf:HasType | propOf  pf == HasType g (LambdaT k e) (TPoly k t) }
         TAppT :: g:Env -> e:Expr -> k:Kind -> s:Type 
-                  -> { pf0:HasType | propOf  pf0 == HasType g e (TPoly k s) &&
-                                     typSize pf0 < typSize this }
+                  -> { pf0:HasType | propOf  pf0 == HasType g e (TPoly k s) }
                   -> t:UserType -> ProofOf(WFType g t k)
                   -> { pf:HasType | propOf  pf == HasType g (AppT e t) (tsubBTV t s) }
         TLet  :: g:Env -> e_x:Expr -> t_x:Type 
-                  -> { pf0:HasType | propOf  pf0 == HasType g e_x t_x &&
-                                     typSize pf0 < typSize this }
+                  -> { pf0:HasType | propOf  pf0 == HasType g e_x t_x }
                   -> e:Expr -> t:Type -> k:Kind -> ProofOf(WFType g t k) -> nms:Names
                   -> ({ y:Vname | NotElem y nms }
-                          -> { pf1:HasType | propOf  pf1 == HasType (Cons y t_x g) (unbind y e) (unbindT y t) &&
-                                             typSize pf1 < typSize this } )
+                          -> { pf1:HasType | propOf  pf1 == HasType (Cons y t_x g) (unbind y e) (unbindT y t) } )
                   -> { pf:HasType | propOf  pf == HasType g (Let e_x e) t }
         TAnn  :: g:Env -> e:Expr -> t:UserType 
-                  -> { pf0:HasType | propOf  pf0 == HasType g e t &&
-                                     typSize pf0 < typSize this }
+                  -> { pf0:HasType | propOf  pf0 == HasType g e t }
                   -> { pf:HasType | propOf  pf == HasType g (Annot e t) t }
         TSub  :: g:Env -> e:Expr -> s:Type 
-                  -> { pf0:HasType | propOf  pf0 == HasType g e s &&
-                                     typSize pf0 < typSize this }
+                  -> { pf0:HasType | propOf  pf0 == HasType g e s }
                   -> t:Type -> k:Kind -> ProofOf(WFType g t k) 
-                  -> { pf1:Subtype | propOf  pf1 == Subtype g s t &&
-                                     subtypSize pf1 < typSize this }
+                  -> { pf1:Subtype | propOf  pf1 == Subtype g s t }
                   -> { pf:HasType | propOf pf == HasType g e t } @-} 
 
 {-@ reflect isTBC @-}
@@ -307,40 +295,36 @@ data Subtype where
     SBind :: Env -> Type -> Type -> Type -> Names -> (Vname -> Subtype) -> Subtype
     SPoly :: Env -> Kind -> Type -> Type -> Names -> (Vname -> Subtype) -> Subtype
 
-{-@ measure subtypSize :: Subtype -> Nat @-}
-{-@ invariant { pf:Subtype | 0 <= subtypSize pf } @-}
-
 {-@ data Subtype where
         SBase :: g:Env -> b:Basic -> p1:Preds -> p2:Preds -> nms:Names
                    -> ({ y:Vname | NotElem y nms} 
                            -> ProofOf(Implies (Cons y (TRefn b PEmpty) g) 
                                               (unbindP y p1) (unbindP y p2)) )
                    -> { pf:Subtype | propOf pf == Subtype g (TRefn b p1) (TRefn b p2) &&
-                                     subtypSize pf == 1 }
+                                     sizeOf pf == 1 }
         SFunc :: g:Env -> s1:Type -> s2:Type 
                    -> { pf0:Subtype | propOf pf0 == Subtype g s2 s1 &&
-                                      subtypSize pf0 < subtypSize this }
+                                      true }
                    -> t1:Type -> t2:Type -> nms:Names
                    -> ({ y:Vname | NotElem y nms} 
                           -> { pf1:Subtype | propOf pf1 == Subtype (Cons y s2 g) (unbindT y t1) (unbindT y t2) &&
-                                             subtypSize pf1 < subtypSize this } )
+                                             true } )
                    -> { pf:Subtype | propOf pf == Subtype g (TFunc s1 t1) (TFunc s2 t2) }
         SWitn :: g:Env -> v_x:Value  -> t_x:Type 
                    -> { pf0:HasType | propOf  pf0 == HasType g v_x t_x &&
-                                      typSize pf0 < subtypSize this }
+                                      true }
                    -> t:Type -> t':Type 
                    -> { pf1:Subtype | propOf pf1 == Subtype g t (tsubBV v_x t') &&
-                                      subtypSize pf1 < subtypSize this }
+                                      true }
                    -> { pf:Subtype | propOf pf == Subtype g t (TExists t_x t') }
         SBind :: g:Env -> t_x:Type -> t:Type -> {t':Type | isLCT t'} -> nms:Names
                    -> ({ y:Vname | NotElem y nms }
-                           -> { pf0:Subtype | propOf pf0 == Subtype (Cons y t_x g) (unbindT y t) t' &&
-                                              subtypSize pf0 < subtypSize this } )
+                           -> { pf0:Subtype | propOf pf0 == Subtype (Cons y t_x g) (unbindT y t) t' } )
                    -> { pf:Subtype | propOf pf == Subtype g (TExists t_x t) t' }
         SPoly :: g:Env -> k:Kind -> t1:Type -> t2:Type -> nms:Names
                    -> ({ a:Vname | NotElem a nms }
                            -> { pf0:Subtype | propOf pf0 == Subtype (ConsT a k g) (unbind_tvT a t1) (unbind_tvT a t2) &&
-                                              subtypSize pf0 < subtypSize this } )
+                                              true } )
                    -> { pf:Subtype | propOf pf == Subtype g (TPoly k t1) (TPoly k t2) } @-}
 
 {-@ reflect isSBase @-}

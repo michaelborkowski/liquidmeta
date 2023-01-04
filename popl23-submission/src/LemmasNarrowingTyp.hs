@@ -71,7 +71,7 @@ lem_narrow_typ_tvar1 g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t p_e_t@(TVar1 
         -> ProofOf(WFEnv  g ) -> e:Expr -> t:Type 
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (Cons x t_x g) g') e t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x s_x g) g') e t }
-         / [typSize p_e_t, 1] @-}
+         / [sizeOf p_e_t, 1] @-}
 lem_narrow_typ :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t (TBC _env b) 
@@ -168,7 +168,7 @@ lem_narrow_typ g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf e t
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSBase p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) }
-         / [ subtypSize p_s_t, 0] @-}
+         / [ sizeOf p_s_t, 0] @-}
 lem_narrow_sub_sbase :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                             -> Type -> Type -> Subtype -> Subtype
 lem_narrow_sub_sbase g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf s t 
@@ -189,7 +189,7 @@ lem_narrow_sub_sbase g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf s t
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSFunc p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) }
-         / [ subtypSize p_s_t, 0] @-}
+         / [ sizeOf p_s_t, 0] @-}
 lem_narrow_sub_sfunc :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                             -> Type -> Type -> Subtype -> Subtype
 lem_narrow_sub_sfunc g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf ty1 ty2 
@@ -211,7 +211,7 @@ lem_narrow_sub_sfunc g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf ty1 ty2
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSWitn p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) }
-         / [ subtypSize p_s_t, 0] @-}
+         / [ sizeOf p_s_t, 0] @-}
 lem_narrow_sub_switn :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                             -> Type -> Type -> Subtype -> Subtype
 lem_narrow_sub_switn g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t t2 
@@ -230,7 +230,7 @@ lem_narrow_sub_switn g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t t2
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSBind p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) }
-         / [ subtypSize p_s_t, 0] @-}
+         / [ sizeOf p_s_t, 0] @-}
 lem_narrow_sub_sbind :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                             -> Type -> Type -> Subtype -> Subtype
 lem_narrow_sub_sbind g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 t' 
@@ -251,7 +251,7 @@ lem_narrow_sub_sbind g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 t'
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSPoly p_s_t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) }
-         / [ subtypSize p_s_t, 0] @-}
+         / [ sizeOf p_s_t, 0] @-}
 lem_narrow_sub_spoly :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                             -> Type -> Type -> Subtype -> Subtype
 lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 t2 
@@ -272,7 +272,7 @@ lem_narrow_sub_spoly g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf t1 t2
         -> ProofOf(WFEnv g) -> s:Type  -> t:Type 
         -> { p_s_t:Subtype  | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t }
         -> { p'_s_t:Subtype | propOf p'_s_t == (Subtype (concatE (Cons x s_x g) g') s t) }
-         / [ subtypSize p_s_t, 1] @-}
+         / [ sizeOf p_s_t, 1] @-}
 lem_narrow_sub :: Env -> Env -> Vname -> Type -> Kind -> WFType -> Type -> Subtype -> WFEnv
                       -> Type -> Type -> Subtype -> Subtype
 lem_narrow_sub g g' x s_x k_sx p_g_sx t_x p_sx_tx p_g_wf s t p_s_t@(SBase {}) 

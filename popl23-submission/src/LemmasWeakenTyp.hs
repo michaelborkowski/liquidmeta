@@ -28,7 +28,7 @@ import LemmasWeakenWF
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTVar1 p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t } 
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tvar1 :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType
 lem_weaken_typ_tvar1 g g' e t p_y_t@(TVar1 gg y t_y k_y p_gg_ty) x t_x
     = case g' of     -- env == concatE g (Cons y t_y g'')
@@ -43,7 +43,7 @@ lem_weaken_typ_tvar1 g g' e t p_y_t@(TVar1 gg y t_y k_y p_gg_ty) x t_x
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTVar2 p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t } 
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tvar2 :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType
 lem_weaken_typ_tvar2 g g' e t p_y_ty@(TVar2 gg y t_y p_gg_y_ty z t_z) x t_x
     = case g' of
@@ -59,7 +59,7 @@ lem_weaken_typ_tvar2 g g' e t p_y_ty@(TVar2 gg y t_y p_gg_y_ty z t_z) x t_x
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTVar3 p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tvar3 :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType
 lem_weaken_typ_tvar3 g g' e t p_z_tz@(TVar3 gg z t_z p_z_t a' k_a') x t_x 
     = case g' of
@@ -75,7 +75,7 @@ lem_weaken_typ_tvar3 g g' e t p_z_tz@(TVar3 gg z t_z p_z_t a' k_a') x t_x
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTAbs p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tabs :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType 
 lem_weaken_typ_tabs g g' e t p_e_t@(TAbs env t_y k_y p_gg'_ty e' t' nms mk_p_y_e'_t') x t_x
     = TAbs (concatE (Cons x t_x g) g') t_y k_y p_gxg'_ty e' t' nms' mk_p_yx_e'_t'
@@ -93,7 +93,7 @@ lem_weaken_typ_tabs g g' e t p_e_t@(TAbs env t_y k_y p_gg'_ty e' t' nms mk_p_y_e
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTApp p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tapp :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType
 lem_weaken_typ_tapp g g' e t (TApp env e1 s s' p_env_e1_ss' e2 p_env_e2_s) x t_x 
     = TApp (concatE (Cons x t_x g) g') e1 s s' p_env'_e1_ss' e2 p_env'_e2_s
@@ -106,7 +106,7 @@ lem_weaken_typ_tapp g g' e t (TApp env e1 s s' p_env_e1_ss' e2 p_env_e2_s) x t_x
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTAbsT p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tabst :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType
 lem_weaken_typ_tabst g g' e t p_e_t@(TAbsT env k1 e' t' nms mk_p_ag_e'_t') x t_x 
     = TAbsT (concatE (Cons x t_x g) g') k1 e' t' nms' mk_p_ax_e'_t'
@@ -123,7 +123,7 @@ lem_weaken_typ_tabst g g' e t p_e_t@(TAbsT env k1 e' t' nms mk_p_ag_e'_t') x t_x
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTAppT p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tappt :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType
 lem_weaken_typ_tappt g g' e t p_e_t@(TAppT env e' k1 s p_e'_a1s t' p_env_t') x t_x 
     = TAppT (concatE (Cons x t_x g) g') e' k1 s p_env'_e'_a1s t' p_env'_t'
@@ -136,7 +136,7 @@ lem_weaken_typ_tappt g g' e t p_e_t@(TAppT env e' k1 s p_e'_a1s t' p_env_t') x t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTLet p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tlet :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType
 lem_weaken_typ_tlet g g' e t 
                p_e_t@(TLet env e_y t_y p_env_ey_ty e' t' k' p_env_t' nms mk_p_yenv_e'_t') x t_x
@@ -157,7 +157,7 @@ lem_weaken_typ_tlet g g' e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTAnn p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tann :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType 
 lem_weaken_typ_tann g g' e t (TAnn env e' _t p_env_e'_t) x t_x
     = TAnn (concatE (Cons x t_x g) g') e' t p_env'_e'_t
@@ -169,7 +169,7 @@ lem_weaken_typ_tann g g' e t (TAnn env e' _t p_env_e'_t) x t_x
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTSub p_e_t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_weaken_typ_tsub :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType
 lem_weaken_typ_tsub g g' e t (TSub env _e s p_env_e_s _t k p_env_t p_env_s_t) x t_x
     = TSub (concatE (Cons x t_x g) g') e s p_env'_e_s t k p_env'_t p_env'_s_t 
@@ -183,7 +183,7 @@ lem_weaken_typ_tsub g g' e t (TSub env _e s p_env_e_s _t k p_env_t p_env_s_t) x 
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t }
         -> { x:Vname | (not (in_env x g)) && (not (in_env x g')) } -> t_x:Type 
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (Cons x t_x g) g') e t }
-         / [ typSize p_e_t, 1 ] @-}
+         / [ sizeOf p_e_t, 1 ] @-}
 lem_weaken_typ :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Type -> HasType 
 lem_weaken_typ g g' e t (TBC _g b)  x t_x = TBC (concatE (Cons x t_x g) g') b
 lem_weaken_typ g g' e t (TIC _g m)  x t_x = TIC (concatE (Cons x t_x g) g') m
@@ -215,7 +215,7 @@ lem_weaken_typ g g' e t p_e_t@(TSub {}) x t_x
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t'&& isSBase p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' }
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_subtype_sbase :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_sbase g g' t t' (SBase env b p1 p2 nms mk_pf_yenv_p1_p2) x t_x
     = SBase env' b p1 p2 nms' mk_pf_yenv'_p1_p2 
@@ -233,7 +233,7 @@ lem_weaken_subtype_sbase g g' t t' (SBase env b p1 p2 nms mk_pf_yenv_p1_p2) x t_
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSFunc p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' }
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_subtype_sfunc :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_sfunc g g' ft1 ft2 
                        (SFunc env s1 s2 p_env_s2_s1 t1 t2 nms mk_p_wenv_t1_t2) x t_x
@@ -253,7 +253,7 @@ lem_weaken_subtype_sfunc g g' ft1 ft2
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSWitn p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' }
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_subtype_switn :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_switn g g' t t2 (SWitn env v_z t_z p_env_vz_tz _t t' p_env_t_t'vz) x t_x
     = SWitn env' v_z t_z p_env'_vz_tz t t' p_env'_t_t'vz
@@ -267,7 +267,7 @@ lem_weaken_subtype_switn g g' t t2 (SWitn env v_z t_z p_env_vz_tz _t t' p_env_t_
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSBind p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' }
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_subtype_sbind :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_sbind g g' t1 t' (SBind env t_z t _t' nms mk_p_zenv_t_t') x t_x
     = SBind env' t_z t t' nms' mk_p_zenv'_t_t'
@@ -285,7 +285,7 @@ lem_weaken_subtype_sbind g g' t1 t' (SBind env t_z t _t' nms mk_p_zenv_t_t') x t
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSPoly p_t_t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' }
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_subtype_spoly :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype_spoly g g' t1 t2 (SPoly env k' t1' t2' nms mk_p_a1g_t1'_t2') x t_x
     = SPoly (concatE (Cons x t_x g) g') k' t1' t2' nms' mk_p_a1x_t1'_t2'
@@ -299,10 +299,10 @@ lem_weaken_subtype_spoly g g' t1 t2 (SPoly env k' t1' t2' nms mk_p_a1g_t1'_t2') 
           nms'              = x:(unionEnv nms (concatE g g'))
 
 {-@ lem_weaken_subtype :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
-      -> t:Type -> t':Type -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' }
+      -> t:Type -> t':Type -> p_t_t':{Subtype | propOf p_t_t' == Subtype (concatE g g') t t' }
       -> { x:Vname | not (in_env x g) && not (in_env x g') } -> t_x:Type
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (Cons x t_x g) g') t t' }
-       / [ subtypSize p_t_t', 1 ] @-}
+       / [ sizeOf p_t_t', 1 ] @-}
 lem_weaken_subtype :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Type -> Subtype
 lem_weaken_subtype g g' t   t'   p_t_t'@(SBase {}) x_ t_x
     = lem_weaken_subtype_sbase g g' t  t'  p_t_t' x_ t_x 

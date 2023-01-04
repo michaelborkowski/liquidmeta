@@ -7,11 +7,11 @@ extra-deps:
   #    - Diff-0.3.4
     - location:
       git: https://github.com/ucsd-progsys/liquidhaskell
-      commit: 3a630817c636f24feb6751892a7433c175a3b4c0
+      commit: 622337bec393a4cdea14f5b63ce1189b936a6f25
               # 65cce2897e012f57a36ec43a039a426c3c8089fd
     - location:
       git: https://github.com/ucsd-progsys/liquidhaskell
-      commit: 3a630817c636f24feb6751892a7433c175a3b4c0
+      commit: 622337bec393a4cdea14f5b63ce1189b936a6f25
       subdirs:
           - liquid-prelude
     - location: 
