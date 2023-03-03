@@ -517,7 +517,7 @@ Proof. intros g e t p_e_t. induction p_e_t; simpl;
   (* Bc Ic Pr *) try (split; apply subset_empty_l);
   (* FTVar *)    try (split; apply subset_sing_l || apply subset_empty_l; 
                       apply lem_boundin_inenvF with b; assumption );
-  (* App/AppT/Ann*) try (intuition; apply subset_union_intro_l; assumption).
+  (* App/AppT/Ann*) try (intuition; repeat apply subset_union_intro_l; assumption).
   - (* FTAbs *) simpl in H1; 
     pose proof (fresh_varFE_not_elem  nms g e) as Hfr; destruct Hfr as [Hfv Hfr]; 
     destruct Hfr as [Hftv Hfr]; destruct Hfr as [Hnms Hg];

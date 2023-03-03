@@ -1,5 +1,7 @@
 echo "Checking the SystemRF Mechanization"
-echo "-----------------------------------"
+echo "-----------------------------------------------"
+echo "Version 1.1: Full 2022 RF proof + If Statements"
+echo "-----------------------------------------------"
 
 echo "Checking BasicDefinitions.v ..."
 coqc -R SystemRF SystemRF SystemRF/BasicDefinitions.v
@@ -19,26 +21,26 @@ echo "Checking WellFormedness.v ..."
 coqc -R SystemRF SystemRF SystemRF/WellFormedness.v
 echo "Checking PrimitivesFTyping.v ..."
 coqc -R SystemRF SystemRF SystemRF/PrimitivesFTyping.v
-#echo "Checking BasicPropsSubstitution.v ..."
-#coqc -R SystemRF SystemRF SystemRF/BasicPropsSubstitution.v
-#echo "Checking BasicPropsEnvironments.v ..."
-#coqc -R SystemRF SystemRF SystemRF/BasicPropsEnvironments.v
-#echo "Checking BasicPropsWellFormedness.v ..."
-#coqc -R SystemRF SystemRF SystemRF/BasicPropsWellFormedness.v
-#echo "Checking SystemFLemmasWellFormedness.v ..."
-#coqc -R SystemRF SystemRF SystemRF/SystemFLemmasWellFormedness.v
-#echo "Checking SystemFLemmasWeaken.v ..."
-#coqc -R SystemRF SystemRF SystemRF/SystemFLemmasWeaken.v
-#echo "Checking SystemFLemmasSubstitution.v ..."
-#coqc -R SystemRF SystemRF SystemRF/SystemFLemmasSubstitution.v
-#echo "Checking SystemFSoundness.v ..."
-#coqc -R SystemRF SystemRF SystemRF/SystemFSoundness.v
-#echo "Checking LemmasWeakenWF.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasWeakenWF.v
-#echo "Checking LemmasWeakenWFTV.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasWeakenWFTV.v
-#echo "Checking Typing.v ..."
-#coqc -R SystemRF SystemRF SystemRF/Typing.v
+echo "Checking BasicPropsSubstitution.v ..."
+coqc -R SystemRF SystemRF SystemRF/BasicPropsSubstitution.v
+echo "Checking BasicPropsEnvironments.v ..."
+coqc -R SystemRF SystemRF SystemRF/BasicPropsEnvironments.v
+echo "Checking BasicPropsWellFormedness.v ..."
+coqc -R SystemRF SystemRF SystemRF/BasicPropsWellFormedness.v
+echo "Checking SystemFLemmasWellFormedness.v ..."
+coqc -R SystemRF SystemRF SystemRF/SystemFLemmasWellFormedness.v
+echo "Checking SystemFLemmasWeaken.v ..."
+coqc -R SystemRF SystemRF SystemRF/SystemFLemmasWeaken.v
+echo "Checking SystemFLemmasSubstitution.v ..."
+coqc -R SystemRF SystemRF SystemRF/SystemFLemmasSubstitution.v
+echo "Checking SystemFSoundness.v ..."
+coqc -R SystemRF SystemRF SystemRF/SystemFSoundness.v
+echo "Checking LemmasWeakenWF.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasWeakenWF.v
+echo "Checking LemmasWeakenWFTV.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasWeakenWFTV.v
+echo "Checking Typing.v ..."
+coqc -R SystemRF SystemRF SystemRF/Typing.v
 #echo "Checking LemmasWellFormedness.v ..."
 #coqc -R SystemRF SystemRF SystemRF/LemmasWellFormedness.v
 #echo "Checking SubstitutionLemmaWF.v ..."

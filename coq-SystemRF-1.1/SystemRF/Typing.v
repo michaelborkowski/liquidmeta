@@ -53,7 +53,7 @@ Lemma lem_self_islct_at : forall (t:type) (e:expr) (k:kind) (j:index),
     isLCT_at j 0 t -> isLC e -> isLCT_at j 0 (self t e k).
 Proof. induction t; intros; destruct k0 || destruct k; unfold self; try assumption.
   - (* TRefn b ps, Base *) destruct b eqn:B; simpl in H;
-    (* no BTV *) try (destruct H; unfold lt in H; apply le_n_0_eq in H; discriminate);
+    (* no BTV *) try (destruct H; unfold lt in H; apply Nat.le_0_r in H; discriminate);
     simpl; intuition; apply lem_islc_at_weaken with 0 0; intuition.
   - (* TExists, Base *) fold self; simpl; simpl in H; intuition. Qed.
 
@@ -67,7 +67,7 @@ Proof. intros j y t; generalize dependent j; induction t; intros.
   - (* TRefn *) destruct k; simpl; unfold eqlPred;
     pose proof lem_open_at_lc_at; destruct H0;
     try rewrite (e0 e (j+1) 0 y); try destruct (j + 1 =? 0) eqn:J; 
-    rewrite plus_comm in J; simpl in J; try discriminate J; 
+    rewrite Nat.add_comm in J; simpl in J; try discriminate J; 
     try apply lem_islc_at_weaken with 0 0; intuition.
   - (* TFunc *) destruct k; simpl; reflexivity.
   - (* TExis *) destruct k; simpl; try rewrite IHt2; trivial.
@@ -88,7 +88,7 @@ Lemma lem_tsubBV_at_self : forall (j:index) (v_z:expr) (t:type) (e:expr) (k:kind
 Proof. intros j v_z t; generalize dependent j; induction t; intros.
   - (* TRefn *) destruct k; simpl; pose proof lem_subBV_at_lc_at; destruct H1;
     try rewrite e0 with e (j+1) v_z 0 0; try destruct (j + 1 =? 0) eqn:J;
-    rewrite plus_comm in J; simpl in J; try discriminate J; intuition.
+    rewrite Nat.add_comm in J; simpl in J; try discriminate J; intuition.
   - (* TFunc *) destruct k; simpl; reflexivity.
   - (* TExis *) destruct k; simpl; try rewrite IHt2; trivial.
   - (* TPoly *) destruct k0; simpl; reflexivity.
@@ -137,6 +137,13 @@ Inductive Hastype : env -> expr -> type -> Prop :=
           noExists t -> Hastype g e t -> Hastype g (Annot e t) t
     | TSub  : forall (g:env) (e:expr) (s:type) (t:type) (k:kind),
           Hastype g e s -> WFtype g t k -> Subtype g s t -> Hastype g e t
+    | TIf   : forall (g:env) (e0 e1 e2 : expr) (ps: preds) (t:type) (k:kind) (nms:names),
+          Hastype g e0 (TRefn TBool ps) -> WFtype  g t k 
+            -> (forall (y:vname), ~ Elem y nms
+                  -> Hastype (Cons y (TRefn TBool (PCons (BV 0) ps)) g) e1 t )
+            -> (forall (y:vname), ~ Elem y nms
+                  -> Hastype (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) g) e2 t )
+            -> Hastype g (If e0 e1 e2) t
 
 with Subtype : env -> type -> type -> Prop :=
     | SBase : forall (g:env) (b:basic) (p1:preds) (p2:preds) (nms:names),

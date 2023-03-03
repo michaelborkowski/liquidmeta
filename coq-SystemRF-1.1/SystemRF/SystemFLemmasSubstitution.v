@@ -138,6 +138,8 @@ Proof. apply ( HasFtype_ind
     try apply freeTV_tsubFV_bounded;
     try apply lem_islc_at_subFV;
     try apply lem_ftyp_islc with g t_x;  intuition.
+  - (* FTIf *) apply FTIf; 
+    apply H0 with t_x || apply H2 with t_x || apply H4 with t_x; trivial.
   Qed.
 
 Lemma lem_subst_ftyp : 
@@ -281,6 +283,8 @@ Proof. apply ( HasFtype_ind
     try apply freeTV_tsubFTV_bounded;
     try apply lem_islc_at_subFTV;
     assumption || reflexivity.
+  - (* FTIf *) apply FTIf; 
+    apply H0 with k_a || apply H2 with k_a || apply H4 with k_a; trivial.
   Qed.   
     
 Lemma lem_subst_tv_ftyp : 

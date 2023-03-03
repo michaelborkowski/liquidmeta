@@ -203,7 +203,7 @@ Proof. intros; induction H; unfold isLCT; simpl; intuition.
     apply lem_pftyp_islcp in H2; revert H2;
     destruct b; try apply lem_islc_at_after_open_at.
     (* BTV *) unfold isLCT in IHWFtype; simpl in IHWFtype;
-      destruct IHWFtype; unfold lt in H2; apply le_n_0_eq in H2; discriminate H2.
+      destruct IHWFtype; unfold lt in H2; apply Nat.le_0_r in H2; discriminate H2.
   - (* WFFunc *) pose proof (fresh_not_elem nms);
     set (y := fresh nms) in H2; apply H1 in H2; revert H2;
     apply lem_islc_at_after_open_at.

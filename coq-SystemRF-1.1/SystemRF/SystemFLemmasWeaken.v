@@ -68,6 +68,7 @@ Proof. apply ( HasFtype_ind
     try (apply subset_trans with (tvbindsF (concatF g g'));    
          apply lem_tvbinds_cons_concatF || assumption);
     try assumption; try reflexivity.
+  - (* FTIf *) apply FTIf; apply H0 || apply H2 || apply H4; assumption.
   Qed.
 
 Lemma lem_weaken_ftyp : forall (g g' : fenv) (e : expr) (t : ftype) (x:vname) (t_x:ftype),
@@ -140,6 +141,7 @@ Proof. apply ( HasFtype_ind
     try (apply subset_trans with (tvbindsF (concatF g g'));    
          apply lem_tvbinds_consT_concatF || assumption);
     try assumption; try reflexivity.
+  - (* If *) apply FTIf; apply H0 || apply H2 || apply H4; assumption.
   Qed.
 
 Lemma lem_weaken_tv_ftyp : forall (g g' : fenv) (e : expr) (t : ftype) (a:vname) (k:kind),

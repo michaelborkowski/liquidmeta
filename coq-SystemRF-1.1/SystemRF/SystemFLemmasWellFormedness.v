@@ -224,6 +224,7 @@ Proof. intros g e t p_e_t p_g. induction p_e_t.
     try (apply H1); 
     try (apply WFFBind with k);
     try (apply wffe_uniqueF);
+
     try (apply intersect_empty_r);
     intuition.
   - (* FTApp *) apply IHp_e_t1 in p_g as p_g_bb'; inversion p_g_bb'.
@@ -252,4 +253,5 @@ Proof. intros g e t p_e_t p_g. induction p_e_t.
       try apply wffe_uniqueF;
       try apply intersect_empty_r; intuition.
   - (* FTAnn *) apply IHp_e_t in p_g; assumption.
+  - (* FTIf *) apply IHp_e_t2; assumption.
   Qed.

@@ -289,6 +289,9 @@ Proof. apply ( syntax_mutind
     reflexivity.
   - (* FV *) simpl in H0; intuition; apply Nat.neq_sym in H1; 
     apply Nat.eqb_neq in H1; rewrite H1; reflexivity.
+  - (* If *) apply f_equal3; apply H || apply H0 || apply H1;
+      apply not_elem_union_elim in H3; destruct H3;
+      apply not_elem_union_elim in H4; destruct H4; assumption.
   Qed.
 
 Lemma lem_subFV_unbind : forall (y:vname) (v:expr) (e:expr),
@@ -326,6 +329,9 @@ Proof. apply ( syntax_mutind
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0;
     apply not_elem_union_elim in H2; destruct H2; assumption ).
+  - (* If *) apply f_equal3; apply H || apply H0 || apply H1;
+      apply not_elem_union_elim in H3; destruct H3;
+      apply not_elem_union_elim in H4; destruct H4; assumption.
   - (* TRefn *) destruct b; simpl;
     try ( apply f_equal; apply H; assumption).
     * (* BTV *) destruct (j =? i); simpl;
@@ -421,7 +427,9 @@ Proof. apply ( syntax_mutind
   - (* BV *) destruct (j =? i); simpl; reflexivity.
   - (* FV *) destruct (y =? x); try reflexivity. 
     apply lem_subFV_value with y v_y v in H; try assumption; symmetry.
-    apply lem_subBV_at_lc_at with 0 0; intuition. Qed.
+    apply lem_subBV_at_lc_at with 0 0; intuition. 
+  - (* If *) rewrite H; try rewrite H0; try rewrite H1; trivial.
+  Qed.
     
 Lemma lem_commute_subFV_subBV : forall (v:expr) (y:vname) (v_y:expr) (e:expr),
     isValue v -> isValue v_y -> isLC v_y 
@@ -491,6 +499,7 @@ Proof. apply ( syntax_mutind
   - (* FV *) destruct (y =? x); try reflexivity. 
     apply lemma_tsubFV_noExists with y v_y t_a in H; try assumption; symmetry.
     apply lem_subBTV_at_lc_at with 0 0; intuition.
+  - (* If *) rewrite H; try rewrite H0; try rewrite H1; trivial.
   - (* TRefn *) destruct b; try destruct (j =? i) eqn:J; simpl;
     try apply f_equal; try apply H; try assumption.
     * (* BTV j *) rewrite <- H; try rewrite lem_subFV_push; trivial.
@@ -562,6 +571,7 @@ Proof. apply ( syntax_mutind
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0; assumption ).
   - (* BV *) destruct (j =? i); reflexivity.
+  - (* If *) apply f_equal3; apply H || apply H0 || apply H1; assumption.
   - (* TRefn *) destruct b; try destruct (a =? a0) eqn:A; simpl;
     try apply f_equal; try apply H; try assumption.
     (* FTV a *) symmetry; rewrite lem_subBV_at_push; try rewrite <- H;
@@ -634,6 +644,7 @@ Proof. apply ( syntax_mutind
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0; assumption ).
+  - (* If *) apply f_equal3; apply H || apply H0 || apply H1; assumption.
   - (* TRefn *) destruct b eqn:B; simpl; try destruct (j =? i); try destruct (a =? a0); 
     simpl; try apply f_equal; try apply H; try assumption.
     * (* BTV j *) symmetry; rewrite lem_subFTV_push; try rewrite <- H; trivial.
@@ -713,13 +724,13 @@ Lemma lem_islcft_at_ftsubBV_at : forall (t:ftype) (j:index) (t_j:ftype) (k:index
     k <= j -> isLCFT_at k t ->  ftsubBV_at j t_j t = t. 
 Proof. intros t; induction t; intros; simpl.
   - (* FTBasic *) destruct b; simpl in H0; try reflexivity. 
-    apply lt_le_trans with i k j in H0; try assumption. 
+    apply Nat.lt_le_trans with i k j in H0; try assumption. 
     apply Nat.lt_neq in H0; apply Nat.neq_sym in H0;
     apply Nat.eqb_neq in H0; rewrite H0; reflexivity.
   - (* FTFunc *) simpl in H0; destruct H0.  
     apply (IHt1 j t_j k H) in H0; apply (IHt2 j t_j k H) in H1; 
     rewrite H0; rewrite H1; reflexivity.
-  - (* FTPoly *) simpl in H0. apply plus_le_compat_r with k0 j 1 in H.
+  - (* FTPoly *) simpl in H0. apply Nat.add_le_mono_r with k0 j 1 in H.
     apply (IHt (j+1) t_j (k0+1) H) in H0; rewrite H0; reflexivity.
   Qed.
 

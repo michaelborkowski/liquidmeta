@@ -46,6 +46,12 @@ Proof. intros g e t p_e_t emp; induction p_e_t; simpl; subst g;
   - (* Annot e t1 *) destruct IHp_e_t; try reflexivity.
       * (* e val *) exists e; apply EAnnV; apply H3.
       * (* other *) destruct H3 as [e'' H3]; exists (Annot e'' t1); apply EAnn; apply H3.
+  - (* If e0 e1 e2 *) destruct IHp_e_t1; try reflexivity.
+      * (* e0 val *) apply lem_bool_values in p_e_t1 as H_bool; try assumption.
+        destruct e0; simpl in H_bool; try contradiction;
+        destruct b; (exists e1; apply EIfT) || (exists e2; apply EIfF).
+      * (* otherw *) destruct H as [e0' st_e0_e0']; exists (If e0' e1 e2); 
+        apply EIf; apply st_e0_e0'.
   Qed.
 
 Theorem lemma_progress : forall (e:expr) (t:ftype),
@@ -176,6 +182,21 @@ Proof. intros g e; induction e; intros t0 e' p_e_t emp st_e_e'; simpl; subst g;
     * (* otherw *) destruct H8 as [e'' H8]; assert (e' = Annot e'' t)
         by (apply lem_sem_det with (Annot e t); try apply EAnn; assumption);
       subst e'; apply FTAnn; try apply IHe; assumption || reflexivity.
+  - (* FTIf *) inversion p_e_t; apply lemma_progress in H3 as Hprog; 
+    destruct Hprog.
+    * (* e0 value *) apply lem_bool_values in H3 as H_bool; try assumption;
+      destruct e1; simpl in H_bool; try contradiction;
+      destruct b.
+      + (* True  *) assert (e' = e2) 
+          by (apply lem_sem_det with (If (Bc true) e2 e3); try apply EIfT; assumption);
+        subst e'; apply H5.
+      + (* False *) assert (e' = e3) 
+          by (apply lem_sem_det with (If (Bc false) e2 e3); try apply EIfF; assumption);
+        subst e'; apply H6.
+    * (* otherw *) destruct H7 as [e1' st_e1_e1']; assert (e' = If e1' e2 e3)
+        by (apply lem_sem_det with (If e1 e2 e3); try apply EIf; assumption);
+      subst e'; apply FTIf; try assumption; apply IHe1; trivial.
+  - (* Error *) inversion p_e_t.
   Qed.
 
 Theorem lemma_preservation : forall (e:expr) (t:ftype) (e':expr),
