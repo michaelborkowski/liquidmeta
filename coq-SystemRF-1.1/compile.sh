@@ -43,16 +43,16 @@ echo "Checking LemmasWeakenWFTV.v ..."
 coqc -R SystemRF SystemRF SystemRF/LemmasWeakenWFTV.v
 echo "Checking LemmasWeakenTyp.v ..."
 coqc -R SystemRF SystemRF SystemRF/LemmasWeakenTyp.v
-#echo "Checking LemmasWeakenTypTV.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasWeakenTypTV.v
-#echo "Checking LemmasWellFormedness.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasWellFormedness.v
-#echo "Checking SubstitutionLemmaWF.v ..."
-#coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaWF.v
-#echo "Checking SubstitutionLemmaWFTV.v ..."
-#coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaWFTV.v
-#echo "Checking PrimitivesWFType.v ..."
-#coqc -R SystemRF SystemRF SystemRF/PrimitivesWFType.v  
+echo "Checking LemmasWeakenTypTV.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasWeakenTypTV.v
+echo "Checking LemmasWellFormedness.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasWellFormedness.v
+echo "Checking PrimitivesWFType.v ..."
+coqc -R SystemRF SystemRF SystemRF/PrimitivesWFType.v  
+echo "Checking SubstitutionLemmaWF.v ..."
+coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaWF.v
+echo "Checking SubstitutionLemmaWFTV.v ..."
+coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaWFTV.v
 #echo "Checking LemmasTyping.v ..."
 #coqc -R SystemRF SystemRF SystemRF/LemmasTyping.v
 #echo "Checking LemmasSubtyping.v ..."

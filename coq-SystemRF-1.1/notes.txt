@@ -12,3 +12,20 @@ To try Circular Judgments
   [ ] move LemmasWeakenWFTV.v into LemmasWeakenTypTV.v (mut. recursion)
 
   [ ] Weakening immediately after Typing and BasicPropsWellFormedness
+
+  [ ] LemmasWellFormedness.v then PrimitivesWFType.v after Weakening
+
+  [ ] Here we can do a subtyping file with
+	* lem_sub_refl				Sub
+	* lem_subtype_in_exists			Sub
+	* lem_self_idempotent_upper		Exact
+	* all of LemmasExactnessSubsst		ExactSubst
+
+  [ ] Possibly need to do tiny helper lemmas from LemmasTyping
+
+  [ ] Next combine SubstitutionLemmaWFTV/TypTV into one module
+	- no but this needs LemmasSubt, LemmasExact, LemmasExactSubst
+
+  [ ] Then do the rest of LemmasTyping, LemmasSubtyping, LemmasExactness
+
+  [ ] Then do SubstitutionLemmaWF/Typ as one file
