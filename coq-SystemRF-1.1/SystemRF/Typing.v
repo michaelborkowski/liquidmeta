@@ -135,8 +135,6 @@ Inductive Hastype : env -> expr -> type -> Prop :=
               -> Hastype g (Let e_x e) t 
     | TAnn  : forall (g:env) (e:expr) (t:type), 
           noExists t -> Hastype g e t -> Hastype g (Annot e t) t
-    | TSub  : forall (g:env) (e:expr) (s:type) (t:type) (k:kind),
-          Hastype g e s -> WFtype g t k -> Subtype g s t -> Hastype g e t
     | TIf   : forall (g:env) (e0 e1 e2 : expr) (ps: preds) (t:type) (k:kind) (nms:names),
           Hastype g e0 (TRefn TBool ps) -> WFtype  g t k 
             -> (forall (y:vname), ~ Elem y nms
@@ -144,6 +142,8 @@ Inductive Hastype : env -> expr -> type -> Prop :=
             -> (forall (y:vname), ~ Elem y nms
                   -> Hastype (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) g) e2 t )
             -> Hastype g (If e0 e1 e2) t
+    | TSub  : forall (g:env) (e:expr) (s:type) (t:type) (k:kind),
+          Hastype g e s -> WFtype g t k -> Subtype g s t -> Hastype g e t
 
 with Subtype : env -> type -> type -> Prop :=
     | SBase : forall (g:env) (b:basic) (p1:preds) (p2:preds) (nms:names),

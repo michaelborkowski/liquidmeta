@@ -74,6 +74,21 @@ Proof. apply ( judgments_mutind
     try apply intersect_names_add_intro_r;
     try apply not_elem_names_add_intro; intuition.
   - (* TAnn *) apply TAnn; try apply H; trivial.
+  - (* TIf *) apply TIf with ps k (names_add x (union nms (binds (concatE g g')))); 
+    try apply H; try apply lem_weaken_wf; trivial; intros;
+    assert (Cons y (TRefn TBool (PCons (BV 0) ps)) (concatE (Cons x t_x g) g') 
+              = concatE (Cons x t_x g) (Cons y (TRefn TBool (PCons (BV 0) ps)) g'))
+      by reflexivity; try rewrite H8;
+    assert (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) (concatE (Cons x t_x g) g') 
+              = concatE (Cons x t_x g) (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) g'))
+      by reflexivity; try rewrite H9;
+    apply H0 with y || apply H1 with y; 
+    unfold in_env; simpl; try split;
+    apply not_elem_names_add_elim in H2; destruct H2; 
+    apply not_elem_union_elim in H10; destruct H10;
+    apply not_elem_concat_elim in H11; destruct H11;
+    try apply intersect_names_add_intro_r;
+    try apply not_elem_names_add_intro; intuition.
   - (* TSub *) apply TSub with s k; try apply H; try apply lem_weaken_wf;
     try apply H0; trivial.
   - (* SBase *) apply SBase with (names_add x (union nms (binds (concatE g g')))); intros;
