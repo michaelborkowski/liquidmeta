@@ -119,6 +119,7 @@ Proof. intros g v t k Hv p_v_t; induction p_v_t; intros p_g_t p_g.
   - (* TAppT *) simpl in Hv; contradiction.
   - (* TLet *) simpl in Hv; contradiction.
   - (* TAnn *) simpl in Hv; contradiction.
+  - (* TIf *) simpl in Hv; contradiction.
   - (* TSub *) apply TSub with (self s e k) Star; try apply IHp_v_t;
     try apply lem_exact_subtype with k; try apply lem_typ_islc with g s;
     apply lem_typing_wf in p_v_t as p_g_s; trivial;

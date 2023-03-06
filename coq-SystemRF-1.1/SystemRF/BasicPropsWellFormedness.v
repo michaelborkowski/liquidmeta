@@ -51,6 +51,97 @@ Lemma lem_strengthen_wfft :
 Proof. intros; apply lem_strengthen_wfft' with (concatF (FCons x t_x g) g') x t_x;
   intuition. Qed.
 
+Lemma lem_strengthen_hasftype' : forall (g'xg : fenv) (e : expr) (t : ftype),
+    HasFtype g'xg e t -> ( forall (g:fenv) (x:vname) (t_x:ftype) (g':fenv),
+        g'xg = concatF (FCons x t_x g) g' 
+                           -> intersect (bindsF g) (bindsF g') = empty
+                           -> ~ (in_envF x g) -> ~ (in_envF x g') 
+                           -> ~ Elem x (fv e)
+                           -> HasFtype (concatF g g') e t ).
+Proof. apply ( HasFtype_ind
+  (fun (g'xg : fenv) (e : expr) (t : ftype) => 
+      forall (g:fenv) (x:vname) (t_x:ftype) (g':fenv),
+          g'xg = concatF (FCons x t_x g) g' 
+                         -> intersect (bindsF g) (bindsF g') = empty
+                         -> ~ (in_envF x g) -> ~ (in_envF x g') 
+                         -> ~ Elem x (fv e)
+                         -> HasFtype (concatF g g') e t ));
+  intro env; intros; subst env.
+  - (* FTBC *) apply FTBC.
+  - (* FTIC *) apply FTIC.
+  - (* FTVar *) apply FTVar; apply lem_boundinF_concatF in H;
+    simpl in H; rewrite or_assoc in H; destruct H.
+    * (* x = x0 *) destruct H; subst x0; simpl in H4; intuition.
+    * (* otherw *) apply lem_boundinF_concatF in H; apply H.
+  - (* FTPrm *) apply FTPrm.
+  - (* FTAbs *) apply FTAbs with k (names_add x (union nms (bindsF (concatF g g'))));
+    try apply lem_strengthen_wfft with x t_x; try assumption; intros;
+    apply not_elem_names_add_elim in H2; destruct H2;
+    apply not_elem_union_elim in H7; destruct H7;
+    apply not_elem_concatF_elim in H8; destruct H8;
+    assert (FCons y b (concatF g g') = concatF g (FCons y b g')) by reflexivity;
+    rewrite H10; apply H1 with x t_x; unfold in_envF; simpl;
+    try (apply not_elem_names_add_intro); try split; trivial;
+    try apply not_elem_subset with (names_add y (fv e));
+    try (apply not_elem_names_add_intro); try split; 
+    try (apply intersect_names_add_intro_r); try apply fv_unbind_elim; intuition.
+  - (* FTApp *) apply FTApp with b; apply H0 with x t_x || apply H2 with x t_x;
+    simpl in H7; apply not_elem_union_elim in H7; destruct H7; trivial.
+  - (* FTAbsT *) apply FTAbsT with (names_add x (union nms (bindsF (concatF g g'))));
+    intros; apply not_elem_names_add_elim in H1; destruct H1;
+    apply not_elem_union_elim in H6; destruct H6;
+    apply not_elem_concatF_elim in H7; destruct H7;
+    assert (FConsT a' k (concatF g g') = concatF g (FConsT a' k g')) by reflexivity;
+    rewrite H9; apply H0 with x t_x; unfold in_envF; simpl;
+    try (apply not_elem_names_add_intro); try split; trivial;
+    try apply not_elem_subset with (names_add a' (fv e));
+    try (apply not_elem_names_add_intro);
+    try (apply intersect_names_add_intro_r); try apply fv_unbind_tv_elim; intuition.
+  - (* FTAppT *) apply FTAppT with k; try apply H0 with x t_x;
+    try apply lem_strengthen_wfft with x t_x; simpl in H10;
+    apply not_elem_union_elim in H10; destruct H10;
+    pose proof (lem_vbinds_cons_concatF g g' x t_x) as Hv; destruct Hv as [Hv Hvx];
+    pose proof (lem_tvbinds_cons_concatF g g' x t_x) as Htv; destruct Htv as [Htv Htvx];
+    trivial.
+      * apply subset_add_elim with x; 
+        try apply subset_trans with (vbindsF (concatF (FCons x t_x g) g')); trivial.
+      * apply subset_trans with (tvbindsF (concatF (FCons x t_x g) g')); trivial.
+  - (* FTLet *) apply FTLet with b (names_add x (union nms (bindsF (concatF g g'))));
+    try apply H0 with x t_x; simpl in H7; 
+    apply not_elem_union_elim in H7; destruct H7; trivial; intros;
+    apply not_elem_names_add_elim in H8; destruct H8;
+    apply not_elem_union_elim in H9; destruct H9;
+    apply not_elem_concatF_elim in H10; destruct H10;
+    assert (FCons y b (concatF g g') = concatF g (FCons y b g')) by reflexivity;
+    rewrite H12; apply H2 with x t_x; unfold in_envF; simpl;
+    try (apply not_elem_names_add_intro); try split; trivial;
+    try apply not_elem_subset with (names_add y (fv e));
+    try (apply not_elem_names_add_intro); try split; 
+    try (apply intersect_names_add_intro_r); try apply fv_unbind_elim; intuition.
+  - (* FTAnn *) apply FTAnn; try apply H4 with x t_x;
+    simpl in H9; apply not_elem_union_elim in H9; destruct H9;
+    pose proof (lem_vbinds_cons_concatF g g' x t_x) as Hv; destruct Hv as [Hv Hvx];
+    pose proof (lem_tvbinds_cons_concatF g g' x t_x) as Htv; destruct Htv as [Htv Htvx];
+    trivial.
+    * apply subset_add_elim with x; 
+      try apply subset_trans with (vbindsF (concatF (FCons x t_x g) g')); trivial.
+    * apply subset_trans with (tvbindsF (concatF (FCons x t_x g) g')); trivial.
+  - (* FTIf  *) apply FTIf; 
+    apply H0 with x t_x || apply H2 with x t_x || apply H4 with x t_x;
+    simpl in H9; apply not_elem_union_elim in H9; destruct H9;
+    apply not_elem_union_elim in H9; destruct H9; trivial.
+  Qed.
+
+Lemma lem_strengthen_hasftype : 
+  forall (g:fenv) (x:vname) (t_x:ftype) (g':fenv) (e:expr) (t:ftype),
+    HasFtype (concatF (FCons x t_x g) g') e t 
+                            -> intersect (bindsF g) (bindsF g') = empty
+                            -> ~ (in_envF x g) -> ~ (in_envF x g') 
+                            -> ~ Elem x (fv e)
+                            -> HasFtype (concatF g g') e t.
+Proof. intros; apply lem_strengthen_hasftype' with (concatF (FCons x t_x g) g') x t_x;
+  intuition. Qed.
+
 Lemma lem_erase_wftype : forall (g:env) (t:type) (k:kind),
     WFtype g t k -> WFFT (erase_env g) (erase t) k.
 Proof. intros g t k p_g_t ; induction p_g_t; simpl.

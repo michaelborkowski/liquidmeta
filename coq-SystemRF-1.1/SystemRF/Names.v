@@ -373,6 +373,53 @@ Lemma fv_unbind_intro : ( forall (e:expr) (y:vname) ,
 Proof. unfold unbind; unfold unbindT; unfold unbindP; repeat split; 
   intros; apply fv_open_at_intro. Qed. 
 
+Lemma fv_open_at_elim : ( forall (e:expr) (j:index) (y:vname) ,
+    Subset (fv (open_at j y e)) (names_add y (fv e)) ) * ((
+  forall (t:type) (j:index) (y:vname) ,
+    Subset (free (openT_at j y t)) (names_add y (free t))) * (
+  forall (ps:preds) (j:index) (y:vname) ,
+    Subset (fvP (openP_at j y ps)) (names_add y (fvP ps)))).
+Proof. apply ( syntax_mutind
+  ( fun e : expr => forall (j:index) (y:vname) ,
+    Subset (fv (open_at j y e)) (names_add y (fv e)) )
+  ( fun t : type => forall (j:index) (y:vname) ,
+    Subset (free (openT_at j y t)) (names_add y (free t)))
+  ( fun ps : preds => forall (j:index) (y:vname) ,
+    Subset (fvP (openP_at j y ps)) (names_add y (fvP ps))))
+  ; simpl; intros
+       ; try (apply subset_empty_l)
+       ; (* one IH *) try ( apply H )
+       ; (* two IH *) try ( apply subset_trans 
+              with (union (names_add y (fv e1)) (names_add y (fv e2))) ||
+            apply subset_trans  
+              with (union (names_add y (fv e)) (names_add y (free t))) ||
+            apply subset_trans 
+              with (union (names_add y (free tx)) (names_add y (free t))) ||
+            apply subset_trans 
+              with (union (names_add y (fv p)) (names_add y (fvP ps)));
+          try apply subset_union_both; 
+          try apply subset_union_names_add_both; apply H || apply H0).
+       - (* BV *) destruct (j =? i); simpl;
+          apply subset_empty_l || apply subset_sing_l; simpl; left; reflexivity.
+       - (* FV *) destruct (Nat.eq_dec y x); apply subset_sing_l;
+          simpl; left; reflexivity.
+       - (* If *) apply subset_trans3 
+            with (union (names_add y (fv e0)) (union (names_add y (fv e1)) (names_add y (fv e2))))
+                 (union (names_add y (fv e0)) (names_add y (union (fv e1) (fv e2))));
+          try apply subset_union_both; try apply subset_union_both;
+          try apply subset_union_names_add_both; try apply subset_refl;
+          apply H || apply H0 || apply H1.
+  Qed.
+
+Lemma fv_unbind_elim : ( forall (e:expr) (y:vname) ,
+    Subset (fv (unbind y e)) (names_add y (fv e)) ) * ((
+  forall (t:type) (y:vname) ,
+    Subset (free (unbindT y t)) (names_add y (free t))) * (
+  forall (ps:preds) (y:vname) ,
+    Subset (fvP (unbindP y ps)) (names_add y (fvP ps)))).
+Proof. unfold unbind; unfold unbindT; unfold unbindP; repeat split; 
+  intros; apply fv_open_at_elim. Qed. 
+
 Lemma ftv_open_at_intro : ( forall (e:expr) (j:index) (y:vname) ,
     Subset (ftv e) (ftv (open_at j y e))  ) * ((
   forall (t:type) (j:index) (y:vname) ,
@@ -437,6 +484,52 @@ Lemma fv_unbind_tv_intro : ( forall (e:expr) (a:vname) ,
     Subset (fvP ps) (fvP (unbind_tvP a ps)) )).
 Proof. unfold unbind_tv; unfold unbind_tvT; unfold unbind_tvP; repeat split; 
   intros; apply fv_open_tv_at_intro. Qed. 
+
+Lemma fv_open_tv_at_elim : ( forall (e:expr) (j:index) (a:vname) ,
+    Subset (fv (open_tv_at j a e)) (names_add a (fv e)) ) * ((
+  forall (t:type) (j:index) (a:vname) ,
+    Subset (free (open_tvT_at j a t)) (names_add a (free t))) * (
+  forall (ps:preds) (j:index) (a:vname) ,
+    Subset (fvP (open_tvP_at j a ps)) (names_add a (fvP ps)))).
+Proof. apply ( syntax_mutind
+  ( fun e : expr => forall (j:index) (a:vname) ,
+    Subset (fv (open_tv_at j a e)) (names_add a (fv e)) )
+  ( fun t : type => forall (j:index) (a:vname) ,
+    Subset (free (open_tvT_at j a t)) (names_add a (free t)))
+  ( fun ps : preds => forall (j:index) (a:vname) ,
+    Subset (fvP (open_tvP_at j a ps)) (names_add a (fvP ps))))
+  ; simpl; intros
+       ; try (apply subset_empty_l)
+       ; (* one IH *) try ( apply H )
+       ; (* two IH *) try ( apply subset_trans 
+              with (union (names_add a (fv e1)) (names_add a (fv e2))) ||
+            apply subset_trans  
+              with (union (names_add a (fv e)) (names_add a (free t))) ||
+            apply subset_trans 
+              with (union (names_add a (free tx)) (names_add a (free t))) ||
+            apply subset_trans 
+              with (union (names_add a (fv p)) (names_add a (fvP ps)));
+          try apply subset_union_both; 
+          try apply subset_union_names_add_both; apply H || apply H0).
+       - (* FV *) destruct (Nat.eq_dec a x); apply subset_sing_l;
+          simpl; left; reflexivity.
+       - (* If *) apply subset_trans3 
+            with (union (names_add a (fv e0)) (union (names_add a (fv e1)) (names_add a (fv e2))))
+                 (union (names_add a (fv e0)) (names_add a (union (fv e1) (fv e2))));
+          try apply subset_union_both; try apply subset_union_both;
+          try apply subset_union_names_add_both; try apply subset_refl;
+          apply H || apply H0 || apply H1.
+       - (* TRefn *) destruct b; try destruct (j =? i); simpl; apply H.
+  Qed.
+
+Lemma fv_unbind_tv_elim : ( forall (e:expr) (a:vname) ,
+    Subset (fv (unbind_tv a e)) (names_add a (fv e)) ) * ((
+  forall (t:type) (a:vname) ,
+    Subset (free (unbind_tvT a t)) (names_add a (free t))) * (
+  forall (ps:preds) (a:vname) ,
+    Subset (fvP (unbind_tvP a ps)) (names_add a (fvP ps)))).
+Proof. unfold unbind_tv; unfold unbind_tvT; unfold unbind_tvP; 
+  repeat split; intros; apply fv_open_tv_at_elim. Qed. 
 
 Lemma ftv_open_tv_at_intro : ( forall (e:expr) (j:index) (a:vname) ,
     Subset (ftv e) (ftv (open_tv_at j a e))  ) * ((

@@ -53,14 +53,14 @@ echo "Checking SubstitutionLemmaWF.v ..."
 coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaWF.v
 echo "Checking SubstitutionLemmaWFTV.v ..."
 coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaWFTV.v
-#echo "Checking LemmasTyping.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasTyping.v
-#echo "Checking LemmasSubtyping.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasSubtyping.v
-#echo "Checking LemmasExactness.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasExactness.v  
-#echo "Checking LemmasExactnessSubst.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasExactnessSubst.v  
+echo "Checking LemmasTyping.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasTyping.v
+echo "Checking LemmasSubtyping.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasSubtyping.v
+echo "Checking LemmasExactness.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasExactness.v  
+echo "Checking LemmasExactnessSubst.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasExactnessSubst.v  
 #echo "Checking SubstitutionLemmaTyp.v ..."
 #coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaTyp.v
 #echo "Checking SubstitutionLemmaTypTV.v ..."

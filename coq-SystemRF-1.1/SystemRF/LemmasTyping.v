@@ -71,6 +71,7 @@ Proof. intros g e t p_e_t; induction p_e_t; intro p_g.
     try apply (lem_free_bound_in_env g (TPoly k s) Star a IH'); intuition.
   - (* TLet *) destruct k; apply H || (apply WFKind; apply H).
   - (* TAnn *) apply IHp_e_t; apply p_g.
+  - (* TIf  *) destruct k; apply H || (apply WFKind; apply H).
   - (* TSub *) destruct k; apply H || (apply WFKind; apply H).
   Qed.
 
@@ -106,6 +107,30 @@ Proof. intros g e t p_e_t; induction p_e_t; intro p_g.
     try rewrite <- vbinds_erase_env; try rewrite <- tvbinds_erase_env;
     try apply lem_free_subset_binds with Star; try apply lem_wftype_islct with g Star;
     try apply lem_typing_wf with e; try apply IHp_e_t; trivial.
+  - (* TIf  *) simpl in IHp_e_t; apply FTIf; try apply IHp_e_t; try apply p_g;
+    simpl in H1; simpl in H3; 
+    assert (erase_env g = concatF (erase_env g) FEmpty) by reflexivity;
+    rewrite H4; pose proof (fresh_varE_not_elem nms g (If e0 e1 e2)); 
+    set (y := fresh_varE nms g (If e0 e1 e2));
+    apply lem_strengthen_hasftype with y (FTBasic TBool);
+    try apply H1; try apply H3; unfold in_envF; 
+    try apply WFEBind with Base;
+    apply lem_typing_wf in p_e_t as Hps; 
+    try rewrite <- binds_erase_env;
+    destruct H5; destruct H6; destruct H7; simpl in H5;
+    apply not_elem_union_elim in H5; destruct H5;
+    apply not_elem_union_elim in H9; destruct H9;
+    try apply intersect_empty_r;
+    try inversion Hps; try inversion H11;
+    intuition;
+    apply WFRefn with (union nms0 (binds g)) || apply WFRefn with nms;
+    try discriminate; try apply WFBase; unfold unbindP;
+    simpl; trivial; intros; 
+    apply PFTCons; try apply PFTEmp; 
+    try apply H19; try apply not_elem_union_elim in H21; try destruct H21;
+    try apply FTApp with (FTBasic TBool);
+    try apply FTPrm; try apply FTVar; simpl; try left; try split;
+    trivial. 
   - (* TSub *) rewrite <- lem_erase_subtype with g s t; try apply IHp_e_t; trivial.
   Qed.
 
