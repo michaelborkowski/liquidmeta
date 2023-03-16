@@ -12,6 +12,7 @@ Require Import SystemRF.LemmasTyping.
 Require Import SystemRF.LemmasSubtyping.
 Require Import SystemRF.SubstitutionLemmaTyp.
 Require Import SystemRF.SubstitutionLemmaTypTV.
+Require Import SystemRF.LemmasNarrowing.
 Require Import SystemRF.LemmasInversion.
 Require Import SystemRF.PrimitivesDeltaTyping.
 
@@ -83,6 +84,14 @@ Proof. intros g e t p_e_t; induction p_e_t; intro emp; simpl; subst g;
   - (* Annot e t1 *) destruct IHp_e_t; try reflexivity.
       * (* e val *) exists e; apply EAnnV; apply H0.
       * (* other *) destruct H0 as [e'' H0]; exists (Annot e'' t); apply EAnn; apply H0.
+  - (* If e1 e2 e3 *) destruct IHp_e_t; try reflexivity.
+      * (* e0 val *) apply lem_typing_hasftype in p_e_t as p_e_ert;
+        try apply lem_bool_values in p_e_ert as H_bool; 
+        try assumption; try apply WFEEmpty.
+        destruct e0; simpl in H_bool; try contradiction;
+        destruct b; (exists e1; apply EIfT) || (exists e2; apply EIfF).
+      * (* otherw *) destruct H4 as [e0' st_e0_e0']; exists (If e0' e1 e2); 
+        apply EIf; apply st_e0_e0'.
   Qed.
 
 Theorem thm_progress : forall (e:expr) (t:type),
@@ -228,6 +237,51 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
       apply lem_sem_det with (Annot e t) e'' (Annot e' t) in st_e_e'';
       try apply EAnn; try apply Hstep; subst e'';
       apply TAnn; try apply IHp_e_t; trivial.
+  - (* FTIf *) apply thm_progress in p_e_t as Hprog; destruct Hprog.
+    * (* e0 value *) apply lem_typing_hasftype in p_e_t as p_e_ert;
+      (*try apply lem_typing_wf in p_e_t as p_emp_t;*)
+      try apply lem_bool_values in p_e_ert as H_bool; 
+      try assumption; try apply WFEEmpty.
+      destruct e0; simpl in H_bool; try contradiction;
+      pose proof (fresh_not_elem nms) as Hy; set (y := fresh nms) in Hy;
+      pose proof lem_subFV_notin as Hnot; destruct Hnot as [Hnot_e Hnot_t];
+      destruct Hnot_t as [Hnot_t _];
+      rewrite <- Hnot_e with e'' y (Bc true); 
+      try rewrite <- Hnot_t with t y (Bc true).
+      destruct b.
+      + (* True  *) assert (e'' = e1) 
+          by (apply lem_sem_det with (If (Bc true) e1 e2); try apply EIfT; assumption);
+        subst e''. 
+        
+        Eval simpl in (self (TRefn TBool ps) (Bc true) Base).
+        Eval simpl in (eqlPred TBool ps (Bc true)).
+        
+        apply lem_self
+        
+        
+        apply lem_subst_typ_top with (TRefn TBool ps);
+
+        try apply lem_narrow_typ_top with (TRefn TBool (PCons (BV 0) ps)) Base Base;
+        try apply H0; try apply WFEEmpty;
+
+        
+        trivial. 
+        apply TSub with (TRefn TBool ps) Base; try apply p_e_t.
+        Focus 2.
+        apply SBase with nms; intros; simpl.
+        assert ( strengthen (PCons (FV y0) PEmpty) (unbindP y0 ps)
+                 = unbindP y0 (PCons (BV 0) ps)) by reflexivity;
+        rewrite <- H6.
+        apply IConj.
+        
+        apply H0.
+      + (* False *) assert (e'' = e2) 
+          by (apply lem_sem_det with (If (Bc false) e1 e2); try apply EIfF; assumption);
+        subst e''; apply H6.
+    * (* otherw *) destruct H7 as [e1' st_e1_e1']; assert (e' = If e1' e2 e3)
+        by (apply lem_sem_det with (If e1 e2 e3); try apply EIf; assumption);
+      subst e'; apply FTIf; try assumption; apply IHe1; trivial.
+  - (* Error *) inversion p_e_t.      
   - (* TSub e, s <: t *) apply TSub with s k; try apply IHp_e_t; trivial.
   Qed.
   

@@ -61,18 +61,18 @@ echo "Checking LemmasExactness.v ..."
 coqc -R SystemRF SystemRF SystemRF/LemmasExactness.v  
 echo "Checking LemmasExactnessSubst.v ..."
 coqc -R SystemRF SystemRF SystemRF/LemmasExactnessSubst.v  
-#echo "Checking SubstitutionLemmaTyp.v ..."
-#coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaTyp.v
-#echo "Checking SubstitutionLemmaTypTV.v ..."
-#coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaTypTV.v
-#echo "Checking LemmasNarrowing.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasNarrowing.v
-#echo "Checking LemmasTransitive.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasTransitive.v
-#echo "Checking LemmasInversion.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasInversion.v
-#echo "Checking PrimitivesDeltaTyping.v ..."
-#coqc -R SystemRF SystemRF SystemRF/PrimitivesDeltaTyping.v
+echo "Checking SubstitutionLemmaTyp.v ..."
+coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaTyp.v
+echo "Checking SubstitutionLemmaTypTV.v ..."
+coqc -R SystemRF SystemRF SystemRF/SubstitutionLemmaTypTV.v
+echo "Checking LemmasNarrowing.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasNarrowing.v
+echo "Checking LemmasTransitive.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasTransitive.v
+echo "Checking LemmasInversion.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasInversion.v
+echo "Checking PrimitivesDeltaTyping.v ..."
+coqc -R SystemRF SystemRF SystemRF/PrimitivesDeltaTyping.v
 #echo "Checking MainTheorems.v ..."
 #coqc -R SystemRF SystemRF SystemRF/MainTheorems.v
 #

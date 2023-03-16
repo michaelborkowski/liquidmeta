@@ -60,7 +60,7 @@ Lemma lem_sub_trans' : forall (n:nat) (g:env) (t t' t'':type) (k k' k'':kind),
                     -> Subtype g t t''.
 Proof. intros n; induction n.
   - (* Base *) intros; assert (depth t + depth t' + depth t'' = 0) by intuition.
-    repeat (apply plus_is_O in H6; destruct H6);
+    repeat (apply Nat.eq_add_0 in H6; destruct H6);
     destruct t;   simpl in H6; try discriminate H6;
     destruct t';  simpl in H8; try discriminate H8;
     destruct t''; simpl in H7; try discriminate H7;
@@ -77,9 +77,9 @@ Proof. intros n; induction n.
       repeat rewrite <- plus_n_Sm in H; rewrite <- Nat.succ_le_mono in H;
       assert (depth t'0 <= max (depth t_x) (depth t'0)) 
         as Hdep by apply Nat.le_max_r;
-      apply plus_le_compat_l with (depth t'0) (max (depth t_x) (depth t'0))
+      apply Nat.add_le_mono_l with (depth t'0) (max (depth t_x) (depth t'0))
                                   (depth t + depth t') in Hdep;
-      try apply le_trans with (depth t + depth t' + Init.Nat.max (depth t_x) 
+      try apply Nat.le_trans with (depth t + depth t' + Init.Nat.max (depth t_x) 
                                                                  (depth t'0));
       trivial; inversion H3; 
       try inversion H16; try inversion H15; try apply WFKind;
@@ -102,10 +102,10 @@ Proof. intros n; induction n.
       rewrite <- Nat.succ_le_mono in H;
       assert (depth t0 <= max (depth t_x) (depth t0)) 
         as Hdep by apply Nat.le_max_r;
-      apply plus_le_compat_r with (depth t0) (max (depth t_x) (depth t0))
+      apply Nat.add_le_mono_r with (depth t0) (max (depth t_x) (depth t0))
                                   (depth t' + depth t'') in Hdep;
-      repeat rewrite plus_assoc in Hdep;
-      try apply le_trans with (max (depth t_x) (depth t0) + depth t' + depth t'');
+      repeat rewrite Nat.add_assoc in Hdep;
+      try apply Nat.le_trans with (max (depth t_x) (depth t0) + depth t' + depth t'');
       trivial; try apply WFEBind with k_x;
       try apply H19; try apply H20; try apply H21;
       try (destruct k; apply H23 || (apply WFKind; apply H23)); 
@@ -133,8 +133,8 @@ Proof. intros n; induction n.
                                                     nms1) nms2) nms3) (binds g));
       assert (Subtype g s3 s1) as p_s3_s1
       (* s3 <: s2 <: s1 *) by (apply IHn with s2 k_x1 k_x0 k_x;
-        try rewrite plus_comm; try rewrite (plus_comm (depth s3) (depth s2));
-        try rewrite plus_assoc;
+        try rewrite Nat.add_comm; try rewrite (Nat.add_comm (depth s3) (depth s2));
+        try rewrite Nat.add_assoc;
         assert (depth s1 <= max (depth s1) (depth t1)) 
           as Hdep1 by apply Nat.le_max_l;
         assert (depth s2 <= max (depth s2) (depth t2)) 
@@ -142,12 +142,12 @@ Proof. intros n; induction n.
         assert (depth s3 <= max (depth s3) (depth t3)) 
           as Hdep3 by apply Nat.le_max_l;
         repeat rewrite <- plus_n_Sm in H; simpl in H; 
-        apply le_Sn_le in H; apply le_Sn_le in H;
+        apply Nat.lt_le_incl in H; apply Nat.lt_le_incl in H;
         assert (depth s1 + depth s2 + depth s3 <=
                   max (depth s1) (depth t1) + max (depth s2) (depth t2) +
                   max (depth s3) (depth t3)) as H'
-          by (apply plus_le_compat; try apply plus_le_compat; trivial);
-        try apply le_trans with (max (depth s1) (depth t1) + max (depth s2) (depth t2) +
+          by (apply Nat.add_le_mono; try apply Nat.add_le_mono; trivial);
+        try apply Nat.le_trans with (max (depth s1) (depth t1) + max (depth s2) (depth t2) +
                                  max (depth s3) (depth t3)); trivial ). apply p_s3_s1.
       + (* t1 <: t2 <: t3 *) intros; apply IHn with (unbindT y t2) k0 k k1;
         try (rewrite depth_unbindT; repeat rewrite depth_unbindT);
@@ -158,12 +158,12 @@ Proof. intros n; induction n.
         assert (depth t3 <= max (depth s3) (depth t3)) 
           as Hdep3 by apply Nat.le_max_r;
         repeat rewrite <- plus_n_Sm in H; simpl in H; 
-        apply le_Sn_le in H; apply le_Sn_le in H;
+        apply Nat.lt_le_incl in H; apply Nat.lt_le_incl in H;
         assert (depth t1 + depth t2 + depth t3 <=
                   max (depth s1) (depth t1) + max (depth s2) (depth t2) +
                   max (depth s3) (depth t3)) as H'
-          by (apply plus_le_compat; try apply plus_le_compat; trivial);
-        try apply le_trans with (max (depth s1) (depth t1) + max (depth s2) (depth t2) +
+          by (apply Nat.add_le_mono; try apply Nat.add_le_mono; trivial);
+        try apply Nat.le_trans with (max (depth s1) (depth t1) + max (depth s2) (depth t2) +
                                  max (depth s3) (depth t3)); 
         try apply WFEBind with k_x1; try apply H24;
         try apply lem_narrow_wf_top with s2; try apply H21;
@@ -179,9 +179,9 @@ Proof. intros n; induction n.
       repeat rewrite <- plus_n_Sm in H; rewrite <- Nat.succ_le_mono in H;
       assert (depth t'1 <= max (depth t_x0) (depth t'1)) 
         as Hdep by apply Nat.le_max_r;
-      apply plus_le_compat_l with (depth t'1) (max (depth t_x0) (depth t'1))
+      apply Nat.add_le_mono_l with (depth t'1) (max (depth t_x0) (depth t'1))
                                   (depth t + depth t') in Hdep;
-      try apply le_trans with (depth t + depth t' + max (depth t_x0) 
+      try apply Nat.le_trans with (depth t + depth t' + max (depth t_x0) 
                                                         (depth t'1));
       trivial; inversion H3;
       try inversion H17; try apply WFKind;
@@ -199,12 +199,12 @@ Proof. intros n; induction n.
       rewrite <- plus_n_Sm in H; simpl in H; rewrite <- Nat.succ_le_mono in H;
       assert (depth t'0 <= max (depth t_x) (depth t'0)) 
         as Hdep by apply Nat.le_max_r;
-      apply plus_le_compat_l with (depth t'0) (max (depth t_x) (depth t'0))
+      apply Nat.add_le_mono_l with (depth t'0) (max (depth t_x) (depth t'0))
                                   (depth t) in Hdep;
-      apply plus_le_compat_r with (depth t + depth t'0) 
+      apply Nat.add_le_mono_r with (depth t + depth t'0) 
                                   (depth t + max (depth t_x) (depth t'0))
                                   (depth t'') in Hdep;
-      try apply le_trans with (depth t + max (depth t_x) (depth t'0) + depth t'');
+      try apply Nat.le_trans with (depth t + max (depth t_x) (depth t'0) + depth t'');
       trivial; inversion H2; try inversion H11;
       injection H15 as Htx0 Ht1; subst t_x0; subst t1;
       pose proof (fresh_var_not_elem (union nms nms0) g) as Hy;
@@ -234,7 +234,7 @@ Proof. intros n; induction n.
       try (rewrite depth_unbind_tvT; repeat rewrite depth_unbind_tvT);
       simpl in H; repeat rewrite <- plus_n_Sm in H;
       rewrite <- Nat.succ_le_mono in H;
-      apply le_Sn_le in H; simpl in H; apply le_Sn_le in H; try apply H;
+      apply Nat.lt_le_incl in H; simpl in H; apply Nat.lt_le_incl in H; try apply H;
       try apply WFEBindT;
       try apply H6; try apply H10;
       destruct k_t;  try (apply H14 || (apply WFKind; apply H14));

@@ -125,6 +125,22 @@ Proof. apply ( judgments_mutind
     try apply intersect_names_add_intro_r; 
     try apply not_elem_names_add_intro; simpl; intuition.
   - (* TAnn *) apply TAnn; try apply H with t_x k_sx k_tx; trivial.
+  - (* TIf *) apply TIf with ps k (names_add x (union nms (binds (concatE g g'))));
+    try apply H with t_x k_sx k_tx; 
+    try apply lem_narrow_wf with t_x; intros;
+    try apply not_elem_names_add_elim in H2; try destruct H2;
+    try apply not_elem_union_elim in H12; try destruct H12;
+    try apply not_elem_concat_elim in H13; try destruct H13;
+    try assert (Cons y (TRefn TBool (PCons (BV 0) ps)) (concatE (Cons x s_x g) g') 
+                  = concatE (Cons x s_x g) (Cons y (TRefn TBool (PCons (BV 0) ps)) g'))
+      as Henv1 by reflexivity; try rewrite Henv1; 
+    try assert (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) (concatE (Cons x s_x g) g') 
+                  = concatE (Cons x s_x g) (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) g'))
+      as Henv2 by reflexivity; try rewrite Henv2;     
+    try apply H0 with y t_x k_sx k_tx; try apply H1 with y t_x k_sx k_tx;
+    try apply intersect_names_add_intro_r; 
+    try apply not_elem_names_add_intro;
+    simpl; try split; auto. 
   - (* TSub *) apply TSub with s k; try apply H with t_x k_sx k_tx;
     try apply H0 with t_x k_sx k_tx; 
     try apply lem_narrow_wf with t_x; trivial.
