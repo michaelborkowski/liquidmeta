@@ -138,9 +138,9 @@ Inductive Hastype : env -> expr -> type -> Prop :=
     | TIf   : forall (g:env) (e0 e1 e2 : expr) (ps: preds) (t:type) (k:kind) (nms:names),
           Hastype g e0 (TRefn TBool ps) -> WFtype  g t k 
             -> (forall (y:vname), ~ Elem y nms
-                  -> Hastype (Cons y (TRefn TBool (PCons (BV 0) ps)) g) e1 t )
+                  -> Hastype (Cons y (self (TRefn TBool ps) (Bc true)  Base) g) e1 t )
             -> (forall (y:vname), ~ Elem y nms
-                  -> Hastype (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) g) e2 t )
+                  -> Hastype (Cons y (self (TRefn TBool ps) (Bc false) Base) g) e2 t )
             -> Hastype g (If e0 e1 e2) t
     | TSub  : forall (g:env) (e:expr) (s:type) (t:type) (k:kind),
           Hastype g e s -> WFtype g t k -> Subtype g s t -> Hastype g e t

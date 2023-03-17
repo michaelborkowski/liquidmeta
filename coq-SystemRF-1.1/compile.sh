@@ -73,8 +73,8 @@ echo "Checking LemmasInversion.v ..."
 coqc -R SystemRF SystemRF SystemRF/LemmasInversion.v
 echo "Checking PrimitivesDeltaTyping.v ..."
 coqc -R SystemRF SystemRF SystemRF/PrimitivesDeltaTyping.v
-#echo "Checking MainTheorems.v ..."
-#coqc -R SystemRF SystemRF SystemRF/MainTheorems.v
-#
+echo "Checking MainTheorems.v ..."
+coqc -R SystemRF SystemRF SystemRF/MainTheorems.v
+
 #echo "Up next: Circular Judgments?"
 #echo "Up next: Implement the Denotational Semantics Development"

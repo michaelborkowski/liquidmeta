@@ -120,17 +120,12 @@ Proof. intros g e t p_e_t; induction p_e_t; intro p_g.
     destruct H5; destruct H6; destruct H7; simpl in H5;
     apply not_elem_union_elim in H5; destruct H5;
     apply not_elem_union_elim in H9; destruct H9;
-    try apply intersect_empty_r;
-    try inversion Hps; try inversion H11;
-    intuition;
-    apply WFRefn with (union nms0 (binds g)) || apply WFRefn with nms;
-    try discriminate; try apply WFBase; unfold unbindP;
-    simpl; trivial; intros; 
-    apply PFTCons; try apply PFTEmp; 
-    try apply H19; try apply not_elem_union_elim in H21; try destruct H21;
-    try apply FTApp with (FTBasic TBool);
-    try apply FTPrm; try apply FTVar; simpl; try left; try split;
-    trivial. 
+    try apply intersect_empty_r; intuition; 
+    assert ( forall b : bool, (self (TRefn TBool ps) (Bc b) Base) 
+                = TRefn TBool (PCons (eqlPred TBool ps (Bc b)) ps))
+      as Hself by reflexivity; rewrite <- Hself;
+    apply lem_selfify_wf; simpl; try apply FTBC;
+    try inversion Hps; apply H12.
   - (* TSub *) rewrite <- lem_erase_subtype with g s t; try apply IHp_e_t; trivial.
   Qed.
 

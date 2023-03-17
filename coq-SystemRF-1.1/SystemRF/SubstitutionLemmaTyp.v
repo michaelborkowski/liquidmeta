@@ -146,11 +146,11 @@ Proof. apply ( judgments_mutind
     try apply not_elem_names_add_elim in H2; try destruct H2;
     try apply not_elem_union_elim in H11; try destruct H11; 
     try apply not_elem_concat_elim in H12; try destruct H12;
-    try assert (Cons y (TRefn TBool (PCons (BV 0) (psubFV x v_x ps))) (concatE g (esubFV x v_x g')) 
-            = concatE g (esubFV x v_x (Cons y (TRefn TBool (PCons (BV 0) ps)) g')))
+    try assert (Cons y (self (TRefn TBool (psubFV x v_x ps)) (Bc true) Base) (concatE g (esubFV x v_x g')) 
+            = concatE g (esubFV x v_x (Cons y (self (TRefn TBool ps) (Bc true) Base) g')))
       by reflexivity; try rewrite H14;
-    try assert (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) (psubFV x v_x ps))) (concatE g (esubFV x v_x g')) 
-            = concatE g (esubFV x v_x (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) g')))
+    try assert (Cons y (self (TRefn TBool (psubFV x v_x ps)) (Bc false) Base) (concatE g (esubFV x v_x g')) 
+            = concatE g (esubFV x v_x (Cons y (self (TRefn TBool ps) (Bc false) Base) g')))
       by reflexivity; try rewrite H15; 
     try apply H0 with y t_x; try apply H1 with y t_x; 
     try apply not_elem_names_add_intro;

@@ -77,11 +77,11 @@ Proof. apply ( judgments_mutind
   - (* TAnn *) apply TAnn; try apply H; trivial.
   - (* TIf *) apply TIf with ps k (names_add a (union nms (binds (concatE g g'))));
     try apply H; try apply lem_weaken_tv_wf; trivial; intros;
-    assert (Cons y (TRefn TBool (PCons (BV 0) ps)) (concatE (ConsT a k_a g) g') 
-              = concatE (ConsT a k_a g) (Cons y (TRefn TBool (PCons (BV 0) ps)) g'))
+    assert (Cons y (self (TRefn TBool ps) (Bc true)  Base) (concatE (ConsT a k_a g) g') 
+              = concatE (ConsT a k_a g) (Cons y (self (TRefn TBool ps) (Bc true)  Base) g'))
       by reflexivity; try rewrite H8;
-    assert (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) (concatE (ConsT a k_a g) g') 
-              = concatE (ConsT a k_a g) (Cons y (TRefn TBool (PCons (App (Prim Not) (BV 0)) ps)) g'))
+    assert (Cons y (self (TRefn TBool ps) (Bc false) Base) (concatE (ConsT a k_a g) g') 
+              = concatE (ConsT a k_a g) (Cons y (self (TRefn TBool ps) (Bc false) Base) g'))
       by reflexivity; try rewrite H9;
     apply H0 with y || apply H1 with y; 
     unfold in_env; simpl; try split;
