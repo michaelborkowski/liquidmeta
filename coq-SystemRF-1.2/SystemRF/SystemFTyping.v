@@ -139,8 +139,9 @@ Inductive HasFtype : fenv -> expr -> ftype -> Prop :=
     | FTIf   : forall (g : fenv) (e0 e1 e2 : expr) (t : ftype),
           HasFtype g e0 (FTBasic TBool) -> HasFtype g e1 t -> HasFtype g e2 t
               -> HasFtype g (If e0 e1 e2) t.
-
+(*
 Inductive PHasFtype : fenv -> preds -> Prop := 
     | PFTEmp  : forall (g:fenv), PHasFtype g PEmpty
     | PFTCons : forall (g:fenv) (p:expr) (ps:preds),
           HasFtype g p (FTBasic TBool) -> PHasFtype g ps -> PHasFtype g (PCons p ps).
+          *)

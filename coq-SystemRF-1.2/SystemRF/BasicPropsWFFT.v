@@ -162,11 +162,12 @@ Proof. intros; induction H; unfold isLC; simpl; intuition.
     apply lem_islc_at_after_open_at.
   Qed.
 
+  (*
 Lemma lem_pftyp_islcp : forall (g:fenv) (ps:preds),
     PHasFtype g ps -> isLCP ps.
 Proof. intros; induction H; unfold isLCP; simpl; try split.
   apply lem_ftyp_islc with g (FTBasic TBool); apply H.
-  apply IHPHasFtype. Qed.
+  apply IHPHasFtype. Qed.*)
 
 Lemma lem_wfft_islcft : forall (g:fenv) (t:ftype) (k:kind),
     WFFT g t k -> isLCFT t.

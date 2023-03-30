@@ -150,22 +150,6 @@ Lemma lem_weaken_tv_ftyp : forall (g g' : fenv) (e : expr) (t : ftype) (a:vname)
                               -> HasFtype (concatF (FConsT a k g) g') e t.
 Proof. intros; apply lem_weaken_tv_ftyp' with (concatF g g'); intuition. Qed.
 
-Lemma lem_weaken_pftyp' : forall (g'g : fenv) (ps : preds),
-    PHasFtype g'g ps -> ( forall (g g':fenv) (x:vname) (t_x:ftype),
-        g'g = concatF g g' -> intersect (bindsF g) (bindsF g') = empty
-                           -> ~ (in_envF x g) -> ~ (in_envF x g') 
-                           -> PHasFtype (concatF (FCons x t_x g) g') ps ).
-Proof. apply ( PHasFtype_ind 
-  (fun (g'g : fenv) (ps : preds) => forall (g g':fenv) (x:vname) (t_x:ftype),
-      g'g = concatF g g' -> intersect (bindsF g) (bindsF g') = empty
-                         -> ~ (in_envF x g) -> ~ (in_envF x g') 
-                         -> PHasFtype (concatF (FCons x t_x g) g') ps ));
-  intro env; intros.
-  - apply PFTEmp.
-  - apply PFTCons; subst env; try apply lem_weaken_ftyp;
-    try apply H1; intuition.
-  Qed.
-
 Lemma lem_weaken_many_ftyp : forall (g g':fenv) (e:expr) (t:ftype),
     HasFtype g e t -> uniqueF g -> uniqueF g'
                    -> intersect (bindsF g) (bindsF g') = empty
@@ -182,12 +166,7 @@ Proof. intros; induction g'; simpl; try assumption;
   try (apply not_elem_concatF_intro; assumption);  
   intuition. Qed.
 
-Lemma lem_weaken_pftyp : forall (g g' : fenv) (ps : preds) (x:vname) (t_x:ftype),
-  PHasFtype (concatF g g') ps -> intersect (bindsF g) (bindsF g') = empty
-                              -> ~ (in_envF x g) -> ~ (in_envF x g') 
-                              -> PHasFtype (concatF (FCons x t_x g) g') ps.
-Proof. intros; apply lem_weaken_pftyp' with (concatF g g'); intuition. Qed.
-
+  (*
 Lemma lem_weaken_tv_pftyp' : forall (g'g : fenv) (ps : preds),
     PHasFtype g'g ps -> ( forall (g g':fenv) (a:vname) (k:kind),
         g'g = concatF g g' -> intersect (bindsF g) (bindsF g') = empty
@@ -209,3 +188,4 @@ Lemma lem_weaken_tv_pftyp : forall (g g' : fenv) (ps : preds) (a:vname) (k:kind)
                               -> ~ (in_envF a g) -> ~ (in_envF a g') 
                               -> PHasFtype (concatF (FConsT a k g) g') ps.
 Proof. intros; apply lem_weaken_tv_pftyp' with (concatF g g'); intuition. Qed.
+*)

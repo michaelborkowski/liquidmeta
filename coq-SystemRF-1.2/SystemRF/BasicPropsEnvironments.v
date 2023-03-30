@@ -555,6 +555,7 @@ Proof. intros; unfold in_envF in H0;
   pose proof (tvbindsF_subset g) as Htv;
   apply lem_fv_subset_bindsF in H; intuition. Qed.
 
+  (*
 Lemma lem_fvp_subset_bindsF : forall (g : fenv) (ps : preds),  
     PHasFtype g ps -> Subset (fvP ps) (vbindsF g) /\ Subset (ftvP ps) (tvbindsF g).
 Proof. intros g ps p_ps_bl. induction p_ps_bl; simpl.
@@ -570,6 +571,7 @@ Proof. intros; unfold in_envF in H0;
   pose proof (vbindsF_subset g) as Hv;
   pose proof (tvbindsF_subset g) as Htv;
   apply lem_fvp_subset_bindsF in H; intuition. Qed.
+*)
 
 Lemma lem_ffreeTV_bound_in_fenv : forall (g:fenv) (t:ftype) (k:kind) (a:vname),
     WFFT g t k -> ~ (in_envF a g) -> ~ Elem a (ffreeTV t).

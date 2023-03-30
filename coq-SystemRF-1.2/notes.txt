@@ -1,13 +1,15 @@
 To try Circular Judgments
 
-  [ ] need to defer contents of WellFormedness.v into Typing.v
+  [X] need to defer contents of WellFormedness.v into Typing.v
 
   [X] Rename BasicPropsWellFormedness.v -> BasicPropsWFFT.v 
 
-  [ ] move stuff in BasicPropsWFFT.v related to WFtype/WFEnv 
+  [X] move stuff in BasicPropsWFFT.v related to WFtype/WFEnv 
 	into BasicPropsWellFormedness.v *after* Typing.v
 
-  [ ] move LemmasWeakenWF.v into LemmasWeakenTyp.v for mutually recursion
+  [ ] move free_subset and wftype_islct back to LemmasTyping.v
+
+  [X] move LemmasWeakenWF.v into LemmasWeakenTyp.v for mutually recursion
 
   [ ] move LemmasWeakenWFTV.v into LemmasWeakenTypTV.v (mut. recursion)
 

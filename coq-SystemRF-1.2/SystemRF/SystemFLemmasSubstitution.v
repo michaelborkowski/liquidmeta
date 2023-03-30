@@ -286,7 +286,7 @@ Proof. apply ( HasFtype_ind
   - (* FTIf *) apply FTIf; 
     apply H0 with k_a || apply H2 with k_a || apply H4 with k_a; trivial.
   Qed.   
-    
+
 Lemma lem_subst_tv_ftyp : 
     forall (g g': fenv) (e : expr) (t : ftype) (a:vname) (t_a:type) (k_a:kind),
       HasFtype (concatF (FConsT a k_a g) g') e t 
@@ -302,6 +302,7 @@ Lemma lem_subst_tv_ftyp :
 Proof. intros; apply lem_subst_tv_ftyp' with (concatF (FConsT a k_a g) g') k_a;
   trivial. Qed.
 
+  (*  
 Lemma lem_subst_pftyp' : forall (g'xg : fenv) (ps : preds),
     PHasFtype g'xg ps -> ( forall (g g':fenv) (x:vname) (v_x:expr) (t_x:ftype),
        g'xg = concatF (FCons x t_x g) g' 
@@ -376,4 +377,4 @@ Lemma lem_subst_tv_pftyp :
             -> WFFT g (erase t_a) k_a -> WFFE g 
             -> PHasFtype (concatF g (fesubFV a (erase t_a) g')) (psubFTV a t_a ps).
 Proof. intros; apply lem_subst_tv_pftyp' with (concatF (FConsT a k_a g) g') k_a;
-  trivial. Qed.
+  trivial. Qed.*)

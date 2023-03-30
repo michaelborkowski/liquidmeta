@@ -36,20 +36,18 @@ coqc -R SystemRF SystemRF SystemRF/SystemFSoundness.v
 
 #echo "Checking WellFormedness.v ..."
 #coqc -R SystemRF SystemRF SystemRF/WellFormedness.v
-
-#echo "Checking BasicPropsWellFormedness.v ..."
-#coqc -R SystemRF SystemRF SystemRF/BasicPropsWellFormedness.v
-
-#echo "Checking Typing.v ..."
-#coqc -R SystemRF SystemRF SystemRF/Typing.v
+echo "(16) Checking Typing.v ..."
+coqc -R SystemRF SystemRF SystemRF/Typing.v
+echo "(17) Checking BasicPropsWellFormedness.v ..."
+coqc -R SystemRF SystemRF SystemRF/BasicPropsWellFormedness.v
 #echo "Checking LemmasWeakenWF.v ..."
 #coqc -R SystemRF SystemRF SystemRF/LemmasWeakenWF.v
 #echo "Checking LemmasWeakenWFTV.v ..."
 #coqc -R SystemRF SystemRF SystemRF/LemmasWeakenWFTV.v
-#echo "Checking LemmasWeakenTyp.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasWeakenTyp.v
-#echo "Checking LemmasWeakenTypTV.v ..."
-#coqc -R SystemRF SystemRF SystemRF/LemmasWeakenTypTV.v
+echo "(18) Checking LemmasWeaken.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasWeaken.v
+#echo "(19) Checking LemmasWeakenTV.v ..."
+#coqc -R SystemRF SystemRF SystemRF/LemmasWeakenTV.v
 #echo "Checking LemmasWellFormedness.v ..."
 #coqc -R SystemRF SystemRF SystemRF/LemmasWellFormedness.v
 #echo "Checking PrimitivesWFType.v ..."
