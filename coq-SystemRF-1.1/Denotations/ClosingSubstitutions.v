@@ -1,0 +1,109 @@
+Require Import SystemRF.BasicDefinitions.
+Require Import SystemRF.Names.
+
+(*------------------------------------------------------------------------- 
+----- | CLOSING SUBSTITUTIONS 
+-------------------------------------------------------------------------*)
+
+(* closing substitutions (i.e. th(x), th(e), th(t)) proceed from the top/right of
+ *   the typing env downwards/leftwards. In order for a closing substitution to be
+ *   "well formed" it must be an element of the denotation 
+ *   of the corresponding enivornment *)
+
+Inductive csub : Set :=
+    | CEmpty
+    | CCons  (x : vname) (v_x : expr) (th : csub)
+    | CConsT (a : vname) (t_a : type) (th : csub).
+  
+Fixpoint bindsC (th : csub) : names := 
+    match th with 
+    | CEmpty            => empty
+    | (CCons  x v_x th) => names_add x (bindsC th)
+    | (CConsT a t_a th) => names_add a (bindsC th)
+    end.
+
+Fixpoint vbindsC (th : csub) : names := 
+    match th with 
+    | CEmpty            => empty
+    | (CCons  x v_x th) => names_add x (vbindsC th)
+    | (CConsT a t_a th) => vbindsC th
+    end.
+
+Fixpoint tvbindsC (th : csub) : names := 
+    match th with 
+    | CEmpty            => empty
+    | (CCons  x v_x th) => tvbindsC th
+    | (CConsT a t_a th) => names_add a (tvbindsC th)
+    end.
+
+Definition in_csubst (x : vname) (th : csub) : Prop := Elem x (bindsC th).
+
+Lemma vbindsC_subset : forall (th : csub), Subset (vbindsC th) (bindsC th).
+Proof. unfold Subset; induction th; simpl.
+  - trivial.
+  - apply subset_add_both_intro; assumption.
+  - apply subset_add_intro; assumption. Qed.
+  
+Lemma tvbindsC_subset : forall (th : csub), Subset (tvbindsC th) (bindsC th).
+Proof. unfold Subset; induction th; simpl.
+  - trivial.
+  - apply subset_add_intro; assumption.
+  - apply subset_add_both_intro; assumption. Qed. 
+
+(* Should we add Fixpoint uniqueC ? *)
+(* Should we add Lemma in_env_CCons ? *)  (* Should we add Lemma in_env_CConsT ? *)
+
+Fixpoint bound_inC (x : vname) (v_x : expr) (th : csub) : Prop := 
+    match th with
+    | CEmpty             => False
+    | (CCons  y v_y th)  => (x = y /\ v_x = v_y) \/ bound_inC x v_x th
+    | (CConsT a t_a th)  => bound_inC x v_x th
+    end.
+
+Fixpoint tv_bound_inC (a : vname) (t_a : type) (th : csub) : Prop :=
+    match th with
+    | CEmpty               => False
+    | (CCons  y  v_y  th)  => tv_bound_inC a t_a th
+    | (CConsT a' t_a' th)  => (a = a' /\ t_a = t_a') \/ tv_bound_inC a t_a th
+    end.
+
+Fixpoint csubst (th : csub) (e : expr) : expr := 
+    match th with
+    | CEmpty            => e
+    | (CCons  x v_x th) => csubst th (subFV  x v_x e)
+    | (CConsT a t_a th) => csubst th (subFTV a t_a e)
+    end.
+
+Fixpoint ctsubst (th : csub) (t : type) : type :=
+    match th with
+    | CEmpty           => t
+    | (CCons  x v  th) => ctsubst th (tsubFV x v t)
+    | (CConsT a t' th) => ctsubst th (tsubFTV a t' t)
+    end.
+
+(*
+{-@ reflect csubst_tv @-}
+{-@ csubst_tv :: th:csub -> { a:vname | tv_in_csubst a th } 
+        -> { t':UserType | Set_emp (free t') && Set_emp (freeTV t') &&
+                           Set_emp (tfreeBV t') && Set_emp (tfreeBTV t') }@-}
+csubst_tv :: csub -> vname -> Type
+csubst_tv (CCons  x  v  th) a             = csubst_tv th a
+csubst_tv (CConsT a' t' th) a | a' == a   = t'
+                              | otherwise = csubst_tv th a
+*)
+
+Fixpoint concatCS (th th'0 : csub) : csub :=
+    match th'0 with
+    | CEmpty           => th
+    | (CCons  x v th') => CCons  x v (concatCS th th')
+    | (CConsT a t th') => CConsT a t (concatCS th th')
+    end.
+
+(*@ reflect remove_fromCS @-}
+{-@ remove_fromCS :: th:csub -> { x:vname | in_csubst x th}
+        -> { th':csub | bindsC th' == Set_dif (bindsC th) (Set_sng x) } @-}
+remove_fromCS :: csub -> vname -> csub
+remove_fromCS (CCons  z v_z th) x | ( x == z ) = th
+                                  | otherwise  = CCons  z v_z (remove_fromCS th x)
+remove_fromCS (CConsT a t_a th) x | ( x == a ) = th
+                                  | otherwise  = CConsT a t_a (remove_fromCS th x) *)

@@ -76,5 +76,6 @@ coqc -R SystemRF SystemRF SystemRF/PrimitivesDeltaTyping.v
 echo "Checking MainTheorems.v ..."
 coqc -R SystemRF SystemRF SystemRF/MainTheorems.v
 
-#echo "Up next: Circular Judgments?"
-#echo "Up next: Implement the Denotational Semantics Development"
+echo "Up next: Implement the Denotational Semantics Development"
+echo "Checking ClosingSubstitutions.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/ClosingSubstitutions.v
