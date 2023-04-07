@@ -27,14 +27,14 @@ Fixpoint depth (t : type) : nat :=
     end.
 
 Lemma depth_tsubBV_at : forall (j:index) (v:expr) (t:type),
-    isValue v -> depth (tsubBV_at j v t) = depth t.
+    depth (tsubBV_at j v t) = depth t.
 Proof. intros j v t; revert v; revert j; induction t; intros;
   simpl; reflexivity || f_equal; apply IHt || f_equal;
-  try apply IHt1; try apply IHt2; apply H. Qed.
+  try apply IHt1; try apply IHt2. Qed.
 
 Lemma depth_tsubBV : forall (v:expr) (t:type),
-    isValue v -> depth (tsubBV v t) = depth t.
-Proof. intros; apply depth_tsubBV_at; assumption. Qed.
+    depth (tsubBV v t) = depth t.
+Proof. intros; apply depth_tsubBV_at. Qed.
 
 Lemma depth_open_tvT_at : forall (j:index) (a:vname) (t:type),
     depth (open_tvT_at j a t) = depth t.

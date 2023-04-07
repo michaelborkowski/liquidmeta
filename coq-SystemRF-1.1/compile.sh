@@ -79,3 +79,5 @@ coqc -R SystemRF SystemRF SystemRF/MainTheorems.v
 echo "Up next: Implement the Denotational Semantics Development"
 echo "Checking ClosingSubstitutions.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/ClosingSubstitutions.v
+echo "Checking Denotations.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/Denotations.v
