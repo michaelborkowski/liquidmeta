@@ -38,6 +38,14 @@ Fixpoint tvbindsC (th : csub) : names :=
 
 Definition in_csubst (x : vname) (th : csub) : Prop := Elem x (bindsC th).
 
+(* Should we add Fixpoint uniqueC ? *)
+(*Fixpoint uniqueC (th0 : csub) : Prop :=
+    match th0 with
+    | CEmpty         => True
+    | (CCons  x v_x th) => ~ in_csubst x th /\ uniqueC th
+    | (CConsT a t_a th) => ~ in_csubst a th /\ uniqueC th
+    end.    *)
+
 Lemma vbindsC_subset : forall (th : csub), Subset (vbindsC th) (bindsC th).
 Proof. unfold Subset; induction th; simpl.
   - trivial.
@@ -50,7 +58,6 @@ Proof. unfold Subset; induction th; simpl.
   - apply subset_add_intro; assumption.
   - apply subset_add_both_intro; assumption. Qed. 
 
-(* Should we add Fixpoint uniqueC ? *)
 (* Should we add Lemma in_env_CCons ? *)  (* Should we add Lemma in_env_CConsT ? *)
 
 Fixpoint bound_inC (x : vname) (v_x : expr) (th : csub) : Prop := 
@@ -72,6 +79,13 @@ Fixpoint csubst (th : csub) (e : expr) : expr :=
     | CEmpty            => e
     | (CCons  x v_x th) => csubst th (subFV  x v_x e)
     | (CConsT a t_a th) => csubst th (subFTV a t_a e)
+    end.
+
+Fixpoint cpsubst (th : csub) (ps : preds) : preds := 
+    match th with
+    | CEmpty            => ps
+    | (CCons  x v_x th) => cpsubst th (psubFV  x v_x ps)
+    | (CConsT a t_a th) => cpsubst th (psubFTV a t_a ps)
     end.
 
 Fixpoint ctsubst (th : csub) (t : type) : type :=

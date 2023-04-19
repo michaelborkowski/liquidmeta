@@ -3,13 +3,12 @@ Require Import SystemRF.Names.
 Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.WellFormedness.
+Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.LemmasTransitive.
 Require Import Denotations.ClosingSubstitutions.
 
 Require Import Arith Program.
 Require Import Coq.Wellfounded.Inverse_Image.
-(*Require Import Coq.Arith.Wf_nat.*)
-(*Require Import Coq.Relations.Relation_Operators.*)
 
 Fixpoint isMono (t0 : type) : Prop := 
     match t0 with         
@@ -133,7 +132,7 @@ Program Fixpoint Denotes (t : type) (v : expr)
         noExists t_a ->  WFtype Empty t_a k -> (exists (v' : expr),
           isValue v' -> EvalsTo (AppT v t_a) v' /\ Denotes (tsubBTV t_a t') v')
     end
-  ).  
+  ). 
   Obligation 1.  (* quants_depth t_x "<" quants_depth t *) intros.
     pose proof Nat.le_max_l (quants t_x) (quants t') as Hq;
     pose proof Nat.le_max_l (depth  t_x) (depth  t') as Hd.
@@ -169,10 +168,76 @@ Program Fixpoint Denotes (t : type) (v : expr)
   Qed.
   Obligation 6.   (* well_foundedness *) 
     unfold MR. apply wf_inverse_image; apply wf_lexico_lt.
+  Qed. (* Defined. *)
+
+Example zero_den_tint : Denotes (TRefn TInt PEmpty) (Ic 0).
+Proof. unfold Denotes at 1; unfold Denotes_func. unfold Fix_sub. 
+  destruct Denotes_func_obligation_6. simpl.
+  repeat split; try apply FTIC; unfold psubBV; simpl; apply PEEmp.
   Qed.
+
+Lemma lem_den_isvalue : forall (v:expr) (t:type),
+    Denotes t v -> isValue v.
+Proof. unfold Denotes; unfold Denotes_func; unfold Fix_sub; intros v t.
+  destruct (Denotes_func_obligation_6 (existT (fun _ : type => expr) t v)); 
+  simpl; intros H; destruct H; assumption. Qed.
+
+Lemma lem_den_hasftype : forall (v:expr) (t:type),
+    Denotes t v -> HasFtype FEmpty v (erase t).
+Proof. unfold Denotes; unfold Denotes_func; unfold Fix_sub; intros v t.
+  destruct (Denotes_func_obligation_6 (existT (fun _ : type => expr) t v)); 
+  simpl; intros; destruct H; destruct H0; assumption.
+Qed.
+
+(* Denotations of Environments, [[g]]. There are two cases:
+--   1. [[ Empty ]] = { CEmpty }.
+--   2. [[ Cons x t g ]] = { CCons x v_x th | Denotes th(t) v_x && th \in [[ g ]] } *)
+Inductive DenotesEnv : env -> csub -> Prop :=
+    | DEmp  : DenotesEnv Empty CEmpty
+    | DExt  : forall (g:env) (th:csub) (x:vname) (t:type) (v:expr), 
+        DenotesEnv g th -> ~ in_env x g -> Denotes (ctsubst th t) v
+              -> DenotesEnv (Cons x t g) (CCons x v th)
+    | DExtT : forall (g:env) (th:csub) (a:vname) (k:kind) (t:type),
+        DenotesEnv g th -> ~ in_env a g -> noExists t -> WFtype Empty t k
+              -> DenotesEnv (ConsT a k g) (CConsT a t th).
+(* the following spec. in the LH follow from Denotes th(t) v:
+    - isValue v
+    - Set_emp (fv v) && Set_emp (ftv v) && Set_emp (freeBV v) && Set_emp (freeBTV v) 
+   and the following follow from WFType Empty t k:
+    - Set_emp (free t) && Set_emp (freeTV t) && Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) *)
+
+Lemma lem_binds_env_th : forall (g:env) (th:csub), 
+    DenotesEnv g th -> binds g = bindsC th.
+Proof. intros g th den_g_th; induction den_g_th; simpl;
+  try rewrite IHden_g_th; reflexivity. Qed.
+
+Lemma lem_vbinds_env_th : forall (g:env) (th:csub), 
+    DenotesEnv g th -> vbinds g = vbindsC th.
+Proof. intros g th den_g_th; induction den_g_th; simpl;
+  try rewrite IHden_g_th; reflexivity. Qed.
   
-(* lem_den_nofv :: v:Value -> t:Type -> ProofOf(Denotes t v) 
-        -> { pf:_ | Set_emp (fv v) && Set_emp (ftv v) } @-}
+Lemma lem_tvbinds_env_th : forall (g:env) (th:csub), 
+    DenotesEnv g th -> tvbinds g = tvbindsC th.
+Proof. intros g th den_g_th; induction den_g_th; simpl;
+  try rewrite IHden_g_th; reflexivity. Qed.  
+
+(*------------------------------------------------------------------------------
+----- | IMPILICATION from DENOTATIONAL SEMANTICS 
+------------------------------------------------------------------------------*)
+
+Inductive DImplies : env -> preds -> preds -> Prop :=
+    | DImp : forall (g:env) (ps qs : preds),
+        (forall (th:csub), DenotesEnv g th -> PEvalsTrue (cpsubst th ps) 
+                                           -> PEvalsTrue (cpsubst th qs) )
+            -> DImplies g ps qs.
+
+(* Is this really neccessary?   
+Lemma lem_den_nofv : forall (v:expr) (t:type),
+    Denotes t v -> fv v = empty /\ ftv v = empty.
+Proof. intros v t den_t_v; apply lem_den_hasftype in den_t_v;
+  apply lem_fv_subset_bindsF in den_t_v; simpl in den_t_v.
+  .....  *)
+(*
 lem_den_nofv :: Expr -> Type -> Denotes -> Proof
 lem_den_nofv v t den_t_v = lem_fv_subset_bindsF FEmpty v (erase t) pf_v_bt
   where
@@ -185,42 +250,6 @@ lem_den_nobv v t den_t_v = lem_freeBV_emptyB FEmpty v (erase t) pf_v_bt
   where
     pf_v_bt = get_ftyp_from_den t v den_t_v *)
 
-(* Denotations of Environments, [[g]]. There are two cases:
---   1. [[ Empty ]] = { CEmpty }.
---   2. [[ Cons x t g ]] = { CCons x v_x th | Denotes th(t) v_x && th \in [[ g ]] }
-data DenotesEnv where
-    DEmp :: DenotesEnv
-    DExt :: Env -> CSub -> DenotesEnv -> Vname -> Type -> Expr -> Denotes -> DenotesEnv
-    DExtT :: Env -> CSub -> DenotesEnv -> Vname -> Kind -> Type -> WFType -> DenotesEnv
-{-@ data DenotesEnv where 
-        DEmp  :: ProofOf(DenotesEnv Empty CEmpty)
-        DExt  :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
-                 -> { x:Vname | not (in_env x g) } -> t:Type 
-                 -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) && Set_emp (freeBV v) && Set_emp (freeBTV v) }
-                 -> ProofOf(Denotes (ctsubst th t) v)
-                 -> ProofOf(DenotesEnv (Cons x t g) (CCons x v th))
-        DExtT :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th)
-                   -> { a:Vname | not (in_env a g) } -> k:Kind
-                   -> { t:UserType  | Set_emp (free t) && Set_emp (freeTV t) &&
-                                      Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
-                   -> ProofOf(WFType Empty t k)
-                   -> ProofOf(DenotesEnv (ConsT a k g) (CConsT a t th)) @-}
 
-{-@ lem_binds_env_th :: g:Env -> th:CSub -> ProofOf(DenotesEnv g th) 
-        -> { pf:_ | binds g == bindsC th && vbinds g == vbindsC th && tvbinds g == tvbindsC th } @-}
-lem_binds_env_th :: Env -> CSub -> DenotesEnv -> Proof
-lem_binds_env_th g th DEmp                                       = ()
-lem_binds_env_th g th (DExt  g' th' den_g'_th' x t v den_th't_v) = () ? lem_binds_env_th g' th' den_g'_th'
-lem_binds_env_th g th (DExtT g' th' den_g'_th' a k t p_emp_tha)  = () ? lem_binds_env_th g' th' den_g'_th'
-*)
 
-(*------------------------------------------------------------------------------
------ | ENTAILMENT 
---------------------------------------------------------------------------------
-
-{-@ data DImplies where
-        DImp :: g:Env -> ps:Pred -> qs:Pred
-                   -> (th:CSub -> ProofOf(DenotesEnv g th) 
-                               -> ProofOf(PEvalsTrue (csubst th ps) (Bc True)) 
-                               -> ProofOf(PEvalsTrue (csubst th qs) (Bc True)) )
-                   -> ProofOf(DImplies g ps qs) @-}                    *)
+            
