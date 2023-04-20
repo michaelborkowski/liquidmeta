@@ -32,28 +32,28 @@ Proof. intros a t_a t noexta noext; induction t;
   simpl; intuition. Qed.
 
 Lemma lem_subFV_notin : ( forall (e:expr) (x:vname) (v:expr) ,
-    isValue v -> ~ Elem x (fv e) -> subFV x v e = e ) * ((
+    (*isValue v ->*) ~ Elem x (fv e) -> subFV x v e = e ) * ((
   forall (t:type) (x:vname) (v:expr),
-    isValue v -> ~ Elem x (free t) -> tsubFV x v t = t ) * (
+    (*isValue v ->*) ~ Elem x (free t) -> tsubFV x v t = t ) * (
   forall (ps:preds) (x:vname) (v:expr),
-    isValue v -> ~ Elem x (fvP ps) -> psubFV x v ps = ps )).
+    (*isValue v ->*) ~ Elem x (fvP ps) -> psubFV x v ps = ps )).
 Proof.  apply ( syntax_mutind
   ( fun e:expr => forall (x:vname) (v:expr) ,
-      isValue v -> ~ Elem x (fv e) -> subFV x v e = e )
+      (*isValue v ->*) ~ Elem x (fv e) -> subFV x v e = e )
   ( fun t:type => forall (x:vname) (v:expr),
-      isValue v -> ~ Elem x (free t) -> tsubFV x v t = t)
+      (*isValue v ->*) ~ Elem x (free t) -> tsubFV x v t = t)
   ( fun ps:preds => forall (x:vname) (v:expr),
-      isValue v -> ~ Elem x (fvP ps) -> psubFV x v ps = ps) )
+      (*isValue v ->*) ~ Elem x (fvP ps) -> psubFV x v ps = ps) )
   ; simpl; try reflexivity; intros
-  ; (* 1 IH *) try ( apply f_equal; apply H; assumption )
+  ; (* 1 IH *) try ( apply f_equal; apply H )
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0;
-      apply not_elem_union_elim in H2; destruct H2; assumption )
+      apply not_elem_union_elim in H1; destruct H1; assumption )
   ; (* FV *) try (intuition; destruct (Nat.eqb x0 x) eqn:Eq;
       (apply Nat.eqb_eq in Eq; symmetry in Eq; contradiction) 
-      || reflexivity ).
+      || reflexivity ). 
   - (* 3 IH *) apply f_equal3; apply H || apply H0 || apply H1;
-      apply not_elem_union_elim in H3; destruct H3;
-      apply not_elem_union_elim in H4; destruct H4; assumption.
+      apply not_elem_union_elim in H2; destruct H2;
+      apply not_elem_union_elim in H3; destruct H3; assumption.
   Qed.
 
 Lemma lem_subFTV_notin : (forall (e:expr) (a:vname) (t_a:type),
