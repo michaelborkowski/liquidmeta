@@ -81,3 +81,5 @@ echo "Checking ClosingSubstitutions.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/ClosingSubstitutions.v
 echo "Checking Denotations.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/Denotations.v
+echo "Checking BasicPropsCSubst.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsCSubst.v

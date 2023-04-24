@@ -7,8 +7,9 @@ Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.LemmasTransitive.
 Require Import Denotations.ClosingSubstitutions.
 
-Require Import Arith Program.
-Require Import Coq.Wellfounded.Inverse_Image.
+From Equations Require Import Equations.
+
+Require Import Arith.
 
 Fixpoint isMono (t0 : type) : Prop := 
     match t0 with         
@@ -27,52 +28,6 @@ Fixpoint quants (t : type) : nat :=
     end.
 
 Definition quants_depth (t : type) : nat*nat := (quants t, depth t).
-
-Definition lexico_lt (ns : nat*nat) (ms : nat*nat) : Prop :=
-    match ns with
-    | (n1, n2) => match ms with
-                  | (m1, m2) => n1 < m1 \/ (n1 = m1 /\ n2 < m2)
-                  end
-    end.
-
-Lemma strong_ind' (P : nat -> Prop) :
-    (forall m, (forall (k : nat), lt k m -> P k) -> P m) 
-        -> forall n, (forall (k : nat), lt k n -> P k).
-Proof. intros H n; induction n.
-  - (* 0 *) intros; unfold lt in H0. apply Nat.nle_succ_0 in H0; contradiction.
-  - (* S n *) unfold lt; intros. apply Nat.succ_le_mono in H0.
-    apply Nat.lt_eq_cases in H0; destruct H0.
-      * apply IHn; assumption.
-      * subst k; apply H; apply IHn.
-  Qed. 
-
-Lemma strong_ind (P : nat -> Prop) :
-  (forall m, (forall (k : nat), lt k m -> P k) -> P m) -> forall n, P n.
-Proof. intros; apply strong_ind' with P (S n) n in H; intuition. Qed.
-
-Lemma lexico_ind (P : nat*nat -> Prop) :
-  (forall ms, (forall (ks : nat*nat), lexico_lt ks ms -> P ks) -> P ms) -> forall ns, P ns.
-Proof. intros H ns; destruct ns as [n1 n2]. revert n2; revert n1. 
-  pose proof strong_ind (fun n => forall n', P (n,n')) as Ind1; simpl in Ind1.
-  apply Ind1; intro n1.
-  pose proof strong_ind (fun n' => P (n1, n')) as Ind2; simpl in Ind2.
-  intro IH1; apply Ind2; intros n2 IH2.
-  apply H; intros ks Hks; destruct ks as [k1 k2].
-  unfold lexico_lt in Hks; destruct Hks as [Hk1 | Hks].
-  - (* k1 < n1 *) apply IH1; apply Hk1.
-  - (* k1 = n1 /\ k2 < n2*) destruct Hks as [Hk1 Hk2];
-    subst k1; apply IH2; apply Hk2.
-  Qed. 
-
-Lemma wf_lexico_lt : well_founded lexico_lt.
-Proof. (*pose proof lt_wf; unfold well_founded in H.*)
-  unfold well_founded; intros; destruct a as [n1 n2]. 
-  apply Acc_intro. 
-  pose proof lexico_ind (Acc lexico_lt) as H.
-  intros ks Hks. apply H. intros.
-  apply Acc_intro; apply H0.
-Qed.
-  
 
 Lemma quants_tsubBV_at : forall (j:index) (v:expr) (t:type),
     quants (tsubBV_at j v t) = quants t.
@@ -117,77 +72,89 @@ Inductive PEvalsTrue : preds -> Prop :=
     | PECons : forall (p : expr) (ps : preds),
         EvalsTo p (Bc true) -> PEvalsTrue ps -> PEvalsTrue (PCons p ps).
 
-Program Fixpoint Denotes (t : type) (v : expr) 
-                         {measure (quants_depth t) lexico_lt} : Prop :=
-  isValue v /\ HasFtype FEmpty v (erase t) /\ (
-    match t with
-    | (TRefn   b   ps) => PEvalsTrue (psubBV v ps) 
-    | (TFunc   t_x t') => forall (v_x : expr),
-        isValue v_x -> Denotes t_x v_x /\ (exists (v' : expr), 
+Equations Denotes  (t : type) (v : expr) : Prop
+  by wf (quants_depth t) (lexprod _ _ lt lt)  :=
+Denotes (TRefn   b   ps) v := 
+    isValue v /\ HasFtype FEmpty v (erase (TRefn   b   ps)) /\ 
+        PEvalsTrue (psubBV v ps) ;
+Denotes (TFunc   t_x t') v := 
+    isValue v /\ HasFtype FEmpty v (erase (TFunc   t_x t')) /\ 
+        forall (v_x : expr), 
+          isValue v_x -> Denotes t_x v_x /\ (exists (v' : expr), 
             isValue v' /\ EvalsTo (App v v_x) v' /\ Denotes (tsubBV v_x t') v'
-        )
-    | (TExists t_x t') => exists (v_x : expr),
-        isValue v_x /\ Denotes t_x v_x /\ Denotes (tsubBV v_x t') v
-    | (TPoly   k   t') => forall (t_a : type) (pf : isMono t_a), 
+        );
+Denotes (TExists t_x t') v := 
+    isValue v /\ HasFtype FEmpty v (erase (TExists t_x t')) /\ 
+      exists (v_x : expr),
+        isValue v_x /\ Denotes t_x v_x /\ Denotes (tsubBV v_x t') v;
+Denotes (TPoly   k   t') v :=  
+    isValue v /\ HasFtype FEmpty v (erase (TPoly   k   t')) /\ 
+      forall (t_a : type) (pf : isMono t_a),
         noExists t_a ->  WFtype Empty t_a k -> (exists (v' : expr),
-          isValue v' -> EvalsTo (AppT v t_a) v' /\ Denotes (tsubBTV t_a t') v')
-    end
-  ). 
-  Obligation 1.  (* quants_depth t_x "<" quants_depth t *) intros.
+          isValue v' -> EvalsTo (AppT v t_a) v' /\ Denotes (tsubBTV t_a t') v').
+  Obligation 1. (* quants_depth t_x "<" quants_depth t *) 
     pose proof Nat.le_max_l (quants t_x) (quants t') as Hq;
     pose proof Nat.le_max_l (depth  t_x) (depth  t') as Hd.
     apply Nat.lt_eq_cases in Hq; destruct Hq as [Hq|Hq]; simpl.
       * left. apply Hq.
-      * right; split; try apply Hq. apply Nat.lt_succ_r; apply Hd.
-  Qed.
+      * unfold quants_depth; rewrite Hq. right; simpl;
+        apply Nat.lt_succ_r; apply Hd.
+  Defined.
   Obligation 2.  (* quants_depth (tsubBV v_x t') "<" quants_depth t *)
     pose proof Nat.le_max_r (quants t_x) (quants t') as Hq;
-    pose proof Nat.le_max_r (depth  t_x) (depth  t') as Hd.
+    pose proof Nat.le_max_r (depth  t_x) (depth  t') as Hd;
+    unfold quants_depth.
     rewrite depth_tsubBV; rewrite quants_tsubBV. 
     apply Nat.lt_eq_cases in Hq; destruct Hq as [Hq|Hq]; simpl.
       * left. apply Hq.
-      * right; split; try apply Hq. apply Nat.lt_succ_r; apply Hd.
-  Qed.
+      * rewrite <- Hq. right. apply Nat.lt_succ_r; apply Hd.
+  Defined. (*Qed.*)
   Obligation 3.   (* quants_depth t_x "<" quants_depth t *)
     pose proof Nat.le_max_l (quants t_x) (quants t') as Hq;
-    pose proof Nat.le_max_l (depth  t_x) (depth  t') as Hd.
+    pose proof Nat.le_max_l (depth  t_x) (depth  t') as Hd;
+    unfold quants_depth;
     apply Nat.lt_eq_cases in Hq; destruct Hq as [Hq|Hq]; simpl.
       * left. apply Hq.
-      * right; split; try apply Hq. apply Nat.lt_succ_r; apply Hd.
-  Qed.
+      * rewrite <- Hq; right; apply Nat.lt_succ_r; apply Hd.
+  Defined. (*Qed.*)
   Obligation 4.   (* quants_depth (tsubBV v_x t') "<" quants_depth t *)
     pose proof Nat.le_max_r (quants t_x) (quants t') as Hq;
-    pose proof Nat.le_max_r (depth  t_x) (depth  t') as Hd.
+    pose proof Nat.le_max_r (depth  t_x) (depth  t') as Hd;
+    unfold quants_depth.
     rewrite depth_tsubBV; rewrite quants_tsubBV. 
     apply Nat.lt_eq_cases in Hq; destruct Hq as [Hq|Hq]; simpl.
       * left. apply Hq.
-      * right; split; try apply Hq. apply Nat.lt_succ_r; apply Hd.
-  Qed.
+      * rewrite <- Hq; right; apply Nat.lt_succ_r; apply Hd.
+  Defined. (*Qed.*)
   Obligation 5.   (* quants_depth (tsubBTV t_a t') "<" quants_depth t *)
     left; rewrite quants_tsubBTV; intuition. 
-  Qed.
-  Obligation 6.   (* well_foundedness *) 
-    unfold MR. apply wf_inverse_image; apply wf_lexico_lt.
-  Qed. (* Defined. *)
+  Defined. 
 
 Example zero_den_tint : Denotes (TRefn TInt PEmpty) (Ic 0).
-Proof. unfold Denotes at 1; unfold Denotes_func. unfold Fix_sub. 
-  destruct Denotes_func_obligation_6. simpl.
+Proof. rewrite Denotes_equation_1; simpl;
   repeat split; try apply FTIC; unfold psubBV; simpl; apply PEEmp.
   Qed.
 
 Lemma lem_den_isvalue : forall (v:expr) (t:type),
     Denotes t v -> isValue v.
-Proof. unfold Denotes; unfold Denotes_func; unfold Fix_sub; intros v t.
-  destruct (Denotes_func_obligation_6 (existT (fun _ : type => expr) t v)); 
-  simpl; intros H; destruct H; assumption. Qed.
+Proof. intros; destruct t.
+  - rewrite Denotes_equation_1 in H; intuition.
+  - rewrite Denotes_equation_2 in H; intuition.
+  - rewrite Denotes_equation_3 in H; intuition.
+  - rewrite Denotes_equation_4 in H; intuition.
+  Qed.
 
 Lemma lem_den_hasftype : forall (v:expr) (t:type),
     Denotes t v -> HasFtype FEmpty v (erase t).
-Proof. unfold Denotes; unfold Denotes_func; unfold Fix_sub; intros v t.
-  destruct (Denotes_func_obligation_6 (existT (fun _ : type => expr) t v)); 
-  simpl; intros; destruct H; destruct H0; assumption.
-Qed.
+Proof. intros; destruct t.
+  - rewrite Denotes_equation_1 in H; intuition.
+  - rewrite Denotes_equation_2 in H; intuition.
+  - rewrite Denotes_equation_3 in H; intuition.
+  - rewrite Denotes_equation_4 in H; intuition.
+  Qed.
+  
+Definition EvalsDenotes (t : type) (e : expr) : Prop :=
+  exists v, isValue v /\ EvalsTo e v /\ Denotes t v.
 
 (* Denotations of Environments, [[g]]. There are two cases:
 --   1. [[ Empty ]] = { CEmpty }.
@@ -249,7 +216,4 @@ lem_den_nobv :: Expr -> Type -> Denotes -> Proof
 lem_den_nobv v t den_t_v = lem_freeBV_emptyB FEmpty v (erase t) pf_v_bt
   where
     pf_v_bt = get_ftyp_from_den t v den_t_v *)
-
-
-
-            
+   

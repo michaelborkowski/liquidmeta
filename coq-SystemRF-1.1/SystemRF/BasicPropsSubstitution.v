@@ -369,9 +369,9 @@ Proof. intros; destruct t; simpl in H; try contradiction;
   simpl; try rewrite lem_strengthen_assoc; reflexivity. Qed.
 
 Lemma lem_subFV_push : forall (x:vname) (v:expr) (ps:preds) (t:type), 
-    isValue v -> noExists t 
+    noExists t 
         -> tsubFV x v (push ps t) = push (psubFV x v ps) (tsubFV x v t).
-Proof. intros; destruct t; simpl in H0; try contradiction;
+Proof. intros; destruct t; simpl in H; try contradiction;
   simpl; try rewrite lem_psubFV_strengthen; reflexivity. Qed.
 
 Lemma lem_subBV_at_push : forall (j:index) (v:expr) (ps:preds) (t:type),

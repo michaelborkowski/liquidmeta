@@ -74,6 +74,20 @@ Fixpoint tv_bound_inC (a : vname) (t_a : type) (th : csub) : Prop :=
     | (CConsT a' t_a' th)  => (a = a' /\ t_a = t_a') \/ tv_bound_inC a t_a th
     end.
 
+Fixpoint closed (th0 : csub) : Prop :=
+    match th0 with
+    | CEmpty            => True
+    | (CCons  x v_x th) => fv v_x = empty /\ ftv v_x = empty /\ closed th
+    | (CConsT a t   th) => free t = empty /\ freeTV t = empty /\ closed th
+    end.  
+
+Fixpoint substitutable (th0 : csub) : Prop :=
+    match th0 with
+    | CEmpty            => True
+    | (CCons  x v_x th) => isValue v_x /\ substitutable th
+    | (CConsT a t   th) => noExists t  /\ substitutable th
+    end.  
+    
 Fixpoint csubst (th : csub) (e : expr) : expr := 
     match th with
     | CEmpty            => e
