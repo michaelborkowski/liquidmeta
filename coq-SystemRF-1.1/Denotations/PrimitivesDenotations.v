@@ -1,12 +1,41 @@
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 Require Import SystemRF.Semantics.
+Require Import SystemRF.SystemFWellFormedness.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.PrimitivesFTyping.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.Typing.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
+
+Lemma lem_step_and_tt : Step (App (Prim And) (Bc true)) (Lambda (BV 0)).
+Proof. assert (isCompat And (Bc true)) as pfB by apply isCpt_And;
+  assert (delta And (Bc true) pfB = Lambda (BV 0))
+      by (pose proof (delta_delta' And (Bc true) pfB) as D;
+          simpl in D; injection D; trivial ); 
+  rewrite <- H; apply EPrim; simpl; exact I. Qed.
+
+Lemma lem_step_and_ff : Step (App (Prim And) (Bc false)) (Lambda (Bc false)).
+Proof. assert (isCompat And (Bc false)) as pfB by apply isCpt_And;
+  assert (delta And (Bc false) pfB = Lambda (Bc false))
+      by (pose proof (delta_delta' And (Bc false) pfB) as D;
+          simpl in D; injection D; trivial ); 
+  rewrite <- H; apply EPrim; simpl; exact I. Qed.
+
+Lemma lem_step_or_tt : Step (App (Prim Or) (Bc true)) (Lambda (Bc true)).
+Proof. assert (isCompat Or (Bc true)) as pfB by apply isCpt_Or;
+  assert (delta Or (Bc true) pfB = Lambda (Bc true))
+      by (pose proof (delta_delta' Or (Bc true) pfB) as D;
+          simpl in D; injection D; trivial ); 
+  rewrite <- H; apply EPrim; simpl; exact I. Qed.
+  
+Lemma lem_step_or_ff : Step (App (Prim Or) (Bc false)) (Lambda (BV 0)).
+Proof. assert (isCompat Or (Bc false)) as pfB by apply isCpt_Or;
+  assert (delta Or (Bc false) pfB = Lambda (BV 0))
+      by (pose proof (delta_delta' Or (Bc false) pfB) as D;
+          simpl in D; injection D; trivial ); 
+  rewrite <- H; apply EPrim; simpl; exact I. Qed.
 
 Lemma lem_step_not : forall (b:bool), 
     Step (App (Prim Not) (Bc b)) (Bc (negb b)).
@@ -51,6 +80,20 @@ Proof. intro ps;
   rewrite H; apply EPrimT; simpl; exact I. Qed.
 
 
+{-@ lemma_and_semantics :: p:Expr -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
+                        -> q:Expr -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
+                        -> ProofOf(EvalsTo (App (App (Prim And) p) q) (Bc (blAnd b b'))) @-}
+lemma_and_semantics :: Expr -> Bool -> EvalsTo -> Expr -> Bool -> EvalsTo -> EvalsTo
+lemma_and_semantics p b ev_p_b q b' ev_q_b' = ev_andpq
+  where
+    ev_andp    = lemma_reduce_to_delta And p (Bc b) ev_p_b
+    ev_andpq_1 = lemma_app_both_many (App (Prim And) p) (delta And (Bc b)) ev_andp q (Bc b') ev_q_b'
+    {-@ st_andpq_2 :: ProofOf(Step (App (delta And (Bc b)) (Bc b')) (Bc (blAnd b b'))) @-}
+    st_andpq_2 = if b then ( EAppAbs 1 (BV 1)     (Bc b') )
+                      else ( EAppAbs 1 (Bc False) (Bc b') )
+    ev_andpq   = lemma_add_step_after (App (App (Prim And) p) q) (App (delta And (Bc b)) (Bc b'))
+                                      ev_andpq_1 (Bc (b && b')) st_andpq_2
+
 Lemma lemma_eqv_semantics : forall (p q:expr) (b b':bool),
     EvalsTo p (Bc b) -> EvalsTo q (Bc b') 
         -> EvalsTo (App (App (Prim Eqv) p) q) (Bc (Bool.eqb b b')).
@@ -74,6 +117,59 @@ Proof. intros. apply lemma_evals_trans with (App (App (Prim Eqv) p) q).
     apply lem_step_eql_tbool.
   - apply lemma_eqv_semantics; trivial.
   Qed.
+
+
+Lemma lemma_semantics_refn_and : forall (b b' b'' : bool), 
+    EvalsTo (App (App (Prim Eqv) (Bc b'')) (App (App (Prim And) (Bc b)) (Bc b'))) 
+            (Bc (Bool.eqb b'' (andb b b'))).
+Proof. intros. apply lemma_eqv_semantics; apply lemma_and_semantics.
+lemma_semantics_refn_and :: Bool -> Bool -> Bool -> EvalsTo
+lemma_semantics_refn_and b b' b'' = reduce_eqv
+  where
+    reduce_and = lemma_and_semantics (Bc b) b (Refl (Bc b)) (Bc b') b' (Refl (Bc b'))
+    reduce_eqv = lemma_eqv_semantics (Bc b'') b'' (Refl (Bc b'')) 
+                                     (App (App (Prim And) (Bc b)) (Bc b')) (blAnd b b') reduce_and
+
+{-@ reduce_and_tt :: b:Bool -> b':Bool -> { pf:_ | propOf pf == 
+      EvalsTo (subBV 0 (Bc (blAnd b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred And)))) (Bc True) } @-}
+reduce_and_tt :: Bool -> Bool -> EvalsTo
+reduce_and_tt b b' = lemma_semantics_refn_and b b' (b && b') -- (Bc b) b (Refl (Bc b)) (Bc b') b' (Refl (Bc b'))
+                                             -- (Bc (blAnd b b')) (b && b') (Refl (Bc (b && b'))) 
+
+{-@ lemma_semantics_refn_or :: b:Bool -> b':Bool -> b'':Bool 
+                -> ProofOf(EvalsTo (App (App (Prim Eqv) (Bc b'')) (App (App (Prim Or) (Bc b)) (Bc b'))) 
+                                   (Bc (blIff b'' (blOr b b'))) ) @-}
+lemma_semantics_refn_or :: Bool -> Bool -> Bool -> EvalsTo
+lemma_semantics_refn_or b b' b'' = reduce_eqv
+  where
+    reduce_or  = lemma_or_semantics (Bc b) b (Refl (Bc b)) (Bc b') b' (Refl (Bc b'))
+    reduce_eqv = lemma_eqv_semantics (Bc b'') b'' (Refl (Bc b'')) 
+                                     (App (App (Prim Or) (Bc b)) (Bc b')) (blOr b b') reduce_or
+
+{-@ reduce_or_tt :: b:Bool -> b':Bool -> { pf:_ | propOf pf == 
+      EvalsTo (subBV 0 (Bc (blOr b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred Or)))) (Bc True) } @-}
+reduce_or_tt :: Bool -> Bool -> EvalsTo
+reduce_or_tt b b' = lemma_semantics_refn_or b b' (b || b')
+
+{-@ reduce_or_tt' :: b:Bool -> b':Bool -> { pf:_ | propOf pf == 
+      EvalsTo (subBV 0 (Bc (blOr b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) 
+                (App (App (Prim Eqv) (BV 0)) (App (App (Prim Or) (BV 1)) (BV 2)))))) (Bc True) } @-}
+reduce_or_tt' :: Bool -> Bool -> EvalsTo
+reduce_or_tt' b b' = lemma_semantics_refn_or b b' (b || b')
+
+{-@ lemma_semantics_refn_not :: b:Bool -> b':Bool
+                -> ProofOf(EvalsTo (App (App (Prim Eqv) (Bc b')) (App (Prim Not) (Bc b))) 
+                                   (Bc (blIff b' (blNot b)))) @-}
+lemma_semantics_refn_not :: Bool -> Bool -> EvalsTo
+lemma_semantics_refn_not b b' = reduce_eqv
+  where
+    reduce_not = lemma_not_semantics (Bc b) b (Refl (Bc b))
+    reduce_eqv = lemma_eqv_semantics (Bc b') b' (Refl (Bc b')) (App (Prim Not) (Bc b)) (blNot b) reduce_not
+
+{-@ reduce_not_tt :: b:Bool -> { pf:_ | propOf pf ==
+      EvalsTo (subBV 0 (Bc (blNot b)) (subBV 2 (Bc b) (refn_pred Not))) (Bc True) } @-}
+reduce_not_tt :: Bool -> EvalsTo
+reduce_not_tt b = lemma_semantics_refn_not b (blNot b)  
 
 (*------------------------------------------------------------------------
   -- | Inverting Denotations of the Basic Types
@@ -106,9 +202,24 @@ Proof. unfold ty; rewrite Denotes_equation_2;
     by (apply lem_den_bools with (TRefn TBool PEmpty); simpl; trivial).
   destruct v_x eqn:E; simpl in H1; try contradiction.
   destruct b eqn:B.
-  - (* Bc true *) exists (Lambda (BV 0)); split; try split.
+  - (* Bc true *) exists (Lambda (BV 0)); split; try split;
+    try apply lem_step_evals; try apply lem_step_and_tt.
+    rewrite Denotes_equation_2; simpl; repeat split;
+    try apply FTAbs with Base empty; try apply WFFTBasic;
+    unfold unbind; unfold tsubBV; simpl; intros;
+    try apply FTVar; unfold bound_inF; auto;
+    assert (isBool v_x0)
+      by (apply lem_den_bools with (TRefn TBool PEmpty); simpl; trivial);
+    destruct v_x0 eqn:E0; try contradiction.
+    exists (Bc b0); repeat split; unfold psubBV; simpl;
+    try apply lem_step_evals; try apply EAppAbs;
+    try apply FTBC; try apply PECons; try apply PEEmp;
 
-    Focus 2. rewrite Denotes_equation_2; simpl.
+    auto.
+    
+
+    destruct b0 eqn:B0.
+    * (* Bc true *) exists (V)
 
     (*
     {-@ val_den_func_and :: v_x:Value -> ProofOf(Denotes (TRefn TBool Z (Bc True)) v_x) 
@@ -453,30 +564,6 @@ lem_exact_type_tic g e t p_e_t       Star p_g_t p_g_wf = p_e_t ? ( self t e Star
 (* PrimitiveSemantics.hs *)
 
 (*
-{-@ reflect blAnd @-}
-blAnd :: Bool -> Bool -> Bool
-blAnd b b' = b && b'
-
-{-@ lem_blAnd_assoc :: b1:Bool -> b2:Bool -> b3:Bool
-        -> { pf:_ | blAnd b1 (blAnd b2 b3) == blAnd (blAnd b1 b2) b3 } @-}
-lem_blAnd_assoc :: Bool -> Bool -> Bool -> Proof
-lem_blAnd_assoc True  True  True  = ()
-lem_blAnd_assoc False _     _     = ()
-lem_blAnd_assoc _     False _     = ()
-lem_blAnd_assoc _     _     False = ()
-
-{-@ reflect blOr @-}
-blOr :: Bool -> Bool -> Bool
-blOr b b' = b || b'
-
-{-@ reflect blNot @-}
-blNot :: Bool -> Bool
-blNot b = not b
-
-{-@ reflect blIff @-}
-blIff :: Bool -> Bool -> Bool
-blIff b b' = b == b'
-
 {-@ reflect intLeq @-}
 intLeq :: Int -> Int -> Bool
 intLeq n m = n <= m
@@ -484,16 +571,6 @@ intLeq n m = n <= m
 {-@ reflect intEq @-}
 intEq :: Int -> Int -> Bool
 intEq n m = n == m
-
-{-@ lemma_conj_semantics :: p:Expr -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
-                         -> q:Expr -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
-                        -> ProofOf(EvalsTo (Conj p q) (Bc (blAnd b b'))) @-}
-lemma_conj_semantics :: Expr -> Bool -> EvalsTo -> Expr -> Bool -> EvalsTo -> EvalsTo
-lemma_conj_semantics p b ev_p_b q b' ev_q_b' = ev_andpq
-  where
-    ev_andpq_1 = lemma_conj_both_many p (Bc b) ev_p_b q (Bc b') ev_q_b'
-    ev_andpq   = lemma_add_step_after (Conj p q) (Conj (Bc b) (Bc b'))
-                                      ev_andpq_1 (Bc (b && b')) (EConjV (Bc b) (Bc b'))
 
 {-@ lemma_strengthen_semantics :: p:Pred -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
                                -> q:Pred -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
@@ -533,20 +610,6 @@ lemma_reduce_to_delta c p v ev_p_v = ev_appcp
     st_appcp_2 = EPrim c v
     ev_appcp   = lemma_add_step_after (App (Prim c) p) (App (Prim c) v) ev_appcp_1 (delta c v) st_appcp_2
   
-{-@ lemma_and_semantics :: p:Expr -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
-                        -> q:Expr -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
-                        -> ProofOf(EvalsTo (App (App (Prim And) p) q) (Bc (blAnd b b'))) @-}
-lemma_and_semantics :: Expr -> Bool -> EvalsTo -> Expr -> Bool -> EvalsTo -> EvalsTo
-lemma_and_semantics p b ev_p_b q b' ev_q_b' = ev_andpq
-  where
-    ev_andp    = lemma_reduce_to_delta And p (Bc b) ev_p_b
-    ev_andpq_1 = lemma_app_both_many (App (Prim And) p) (delta And (Bc b)) ev_andp q (Bc b') ev_q_b'
-    {-@ st_andpq_2 :: ProofOf(Step (App (delta And (Bc b)) (Bc b')) (Bc (blAnd b b'))) @-}
-    st_andpq_2 = if b then ( EAppAbs 1 (BV 1)     (Bc b') )
-                      else ( EAppAbs 1 (Bc False) (Bc b') )
-    ev_andpq   = lemma_add_step_after (App (App (Prim And) p) q) (App (delta And (Bc b)) (Bc b'))
-                                      ev_andpq_1 (Bc (b && b')) st_andpq_2
-
 {-@ lemma_or_semantics :: p:Expr -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
                        -> q:Expr -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
                        -> ProofOf(EvalsTo (App (App (Prim Or) p) q) (Bc (blOr b b'))) @-}
@@ -603,56 +666,6 @@ lemma_eqn_semantics n q m ev_q_m = lemma_reduce_to_delta (Eqn n) q (Ic m) ev_q_m
 -- | BUILT-IN PRIMITIVES : Big-Step-style SEMANTICS for ty(c)'s refinement 
 ---------------------------------------------------------------------------
 
-{-@ lemma_semantics_refn_and :: b:Bool -> b':Bool -> b'':Bool 
-                -> ProofOf(EvalsTo (App (App (Prim Eqv) (Bc b'')) (App (App (Prim And) (Bc b)) (Bc b'))) 
-                                   (Bc (blIff b'' (blAnd b b'))) ) @-}
-lemma_semantics_refn_and :: Bool -> Bool -> Bool -> EvalsTo
-lemma_semantics_refn_and b b' b'' = reduce_eqv
-  where
-    reduce_and = lemma_and_semantics (Bc b) b (Refl (Bc b)) (Bc b') b' (Refl (Bc b'))
-    reduce_eqv = lemma_eqv_semantics (Bc b'') b'' (Refl (Bc b'')) 
-                                     (App (App (Prim And) (Bc b)) (Bc b')) (blAnd b b') reduce_and
-
-{-@ reduce_and_tt :: b:Bool -> b':Bool -> { pf:_ | propOf pf == 
-      EvalsTo (subBV 0 (Bc (blAnd b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred And)))) (Bc True) } @-}
-reduce_and_tt :: Bool -> Bool -> EvalsTo
-reduce_and_tt b b' = lemma_semantics_refn_and b b' (b && b') -- (Bc b) b (Refl (Bc b)) (Bc b') b' (Refl (Bc b'))
-                                             -- (Bc (blAnd b b')) (b && b') (Refl (Bc (b && b'))) 
-
-{-@ lemma_semantics_refn_or :: b:Bool -> b':Bool -> b'':Bool 
-                -> ProofOf(EvalsTo (App (App (Prim Eqv) (Bc b'')) (App (App (Prim Or) (Bc b)) (Bc b'))) 
-                                   (Bc (blIff b'' (blOr b b'))) ) @-}
-lemma_semantics_refn_or :: Bool -> Bool -> Bool -> EvalsTo
-lemma_semantics_refn_or b b' b'' = reduce_eqv
-  where
-    reduce_or  = lemma_or_semantics (Bc b) b (Refl (Bc b)) (Bc b') b' (Refl (Bc b'))
-    reduce_eqv = lemma_eqv_semantics (Bc b'') b'' (Refl (Bc b'')) 
-                                     (App (App (Prim Or) (Bc b)) (Bc b')) (blOr b b') reduce_or
-
-{-@ reduce_or_tt :: b:Bool -> b':Bool -> { pf:_ | propOf pf == 
-      EvalsTo (subBV 0 (Bc (blOr b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) (refn_pred Or)))) (Bc True) } @-}
-reduce_or_tt :: Bool -> Bool -> EvalsTo
-reduce_or_tt b b' = lemma_semantics_refn_or b b' (b || b')
-
-{-@ reduce_or_tt' :: b:Bool -> b':Bool -> { pf:_ | propOf pf == 
-      EvalsTo (subBV 0 (Bc (blOr b b')) (subBV 2 (Bc b') (subBV 1 (Bc b) 
-                (App (App (Prim Eqv) (BV 0)) (App (App (Prim Or) (BV 1)) (BV 2)))))) (Bc True) } @-}
-reduce_or_tt' :: Bool -> Bool -> EvalsTo
-reduce_or_tt' b b' = lemma_semantics_refn_or b b' (b || b')
-
-{-@ lemma_semantics_refn_not :: b:Bool -> b':Bool
-                -> ProofOf(EvalsTo (App (App (Prim Eqv) (Bc b')) (App (Prim Not) (Bc b))) 
-                                   (Bc (blIff b' (blNot b)))) @-}
-lemma_semantics_refn_not :: Bool -> Bool -> EvalsTo
-lemma_semantics_refn_not b b' = reduce_eqv
-  where
-    reduce_not = lemma_not_semantics (Bc b) b (Refl (Bc b))
-    reduce_eqv = lemma_eqv_semantics (Bc b') b' (Refl (Bc b')) (App (Prim Not) (Bc b)) (blNot b) reduce_not
-
-{-@ reduce_not_tt :: b:Bool -> { pf:_ | propOf pf ==
-      EvalsTo (subBV 0 (Bc (blNot b)) (subBV 2 (Bc b) (refn_pred Not))) (Bc True) } @-}
-reduce_not_tt :: Bool -> EvalsTo
-reduce_not_tt b = lemma_semantics_refn_not b (blNot b)
 
 {-@ lemma_semantics_refn_eqv :: b:Bool -> b':Bool -> b'':Bool
                 -> ProofOf(EvalsTo (App (App (Prim Eqv) (Bc b'')) (App (App (Prim Or) 
