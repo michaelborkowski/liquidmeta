@@ -427,7 +427,7 @@ Proof. apply ( syntax_mutind
   - (* BV *) destruct (j =? i); simpl; reflexivity.
   - (* FV *) destruct (y =? x); try reflexivity. 
     apply lem_subFV_value with y v_y v in H; try assumption; symmetry.
-    apply lem_subBV_at_lc_at with 0 0; intuition. 
+    apply lem_subBV_at_lc_at with 0 0; auto with *. 
   - (* If *) rewrite H; try rewrite H0; try rewrite H1; trivial.
   Qed.
     
@@ -498,7 +498,7 @@ Proof. apply ( syntax_mutind
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0; assumption ).
   - (* FV *) destruct (y =? x); try reflexivity. 
     apply lemma_tsubFV_noExists with y v_y t_a in H; try assumption; symmetry.
-    apply lem_subBTV_at_lc_at with 0 0; intuition.
+    apply lem_subBTV_at_lc_at with 0 0; auto with *.
   - (* If *) rewrite H; try rewrite H0; try rewrite H1; trivial.
   - (* TRefn *) destruct b; try destruct (j =? i) eqn:J; simpl;
     try apply f_equal; try apply H; try assumption.
@@ -576,7 +576,7 @@ Proof. apply ( syntax_mutind
     try apply f_equal; try apply H; try assumption.
     (* FTV a *) symmetry; rewrite lem_subBV_at_push; try rewrite <- H;
       try apply f_equal; try apply lem_subBV_at_lc_at with 0 0;
-      try apply lem_subFTV_value; intuition. 
+      try apply lem_subFTV_value; auto with *. 
   Qed.
     
 Lemma lem_commute_subFTV_subBV : forall (v:expr) (a:vname) (t_a:type) (e:expr),
@@ -650,7 +650,7 @@ Proof. apply ( syntax_mutind
     * (* BTV j *) symmetry; rewrite lem_subFTV_push; try rewrite <- H; trivial.
     * (* FTV a *) symmetry; rewrite lem_subBTV_at_push; try rewrite <- H;
       try apply f_equal; try apply lem_subBTV_at_lc_at with 0 0;
-      try apply lemma_tsubFTV_noExists; intuition.
+      try apply lemma_tsubFTV_noExists; auto with *.
   Qed.
   
 Lemma lem_commute_subFTV_subBTV : forall (t':type) (a:vname) (t_a:type) (e:expr),
@@ -766,7 +766,7 @@ Proof. induction t; intros; simpl.
   - (* FTBasic *) destruct b; simpl; try reflexivity.
       * destruct (j =? i); simpl; reflexivity.
       * destruct (a =? a0); simpl;       
-        try symmetry; try apply lem_islcft_at_ftsubBV_at with 0; intuition.
+        try symmetry; try apply lem_islcft_at_ftsubBV_at with 0; auto with *.
   - (* FTFunc *) simpl; rewrite IHt1; try (rewrite IHt2); trivial.
   - (* FTPoly *) simpl. rewrite IHt; trivial.
   Qed. 

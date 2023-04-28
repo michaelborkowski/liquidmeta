@@ -80,7 +80,7 @@ Denotes (TRefn   b   ps) v :=
 Denotes (TFunc   t_x t') v := 
     isValue v /\ HasFtype FEmpty v (erase (TFunc   t_x t')) /\ 
         forall (v_x : expr), 
-          isValue v_x -> Denotes t_x v_x /\ (exists (v' : expr), 
+          isValue v_x -> Denotes t_x v_x -> (exists (v' : expr), 
             isValue v' /\ EvalsTo (App v v_x) v' /\ Denotes (tsubBV v_x t') v'
         );
 Denotes (TExists t_x t') v := 
