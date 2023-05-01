@@ -29,6 +29,7 @@ Lemma lem_dimplies_faithful : forall (g:env) (ps:preds), DImplies g ps PEmpty.
 Proof. intros; apply DImp; intros; 
   rewrite lem_cpsubst_pempty; apply PEEmp. Qed. 
 
+  (*
     | IConj   : forall (g:env) (ps:preds) (qs:preds) (rs:preds),
           Implies g ps qs -> Implies g ps rs -> Implies g ps (strengthen qs rs)
     | ICons1  : forall (g:env) (p:expr) (ps:preds), Implies g (PCons p ps) (PCons p PEmpty)
@@ -69,9 +70,4 @@ Proof. intros; apply DImp; intros;
     | IEvals  : forall (g:env) (p p':expr) (ps:preds),
           EvalsTo p p' -> Implies g (PCons p ps) (PCons p' ps)
     | IEvals2 : forall (g:env) (p p':expr) (ps:preds),
-          EvalsTo p' p -> Implies g (PCons p ps) (PCons p' ps).
-
-Scheme Hastype_mutind  := Induction for Hastype  Sort Prop
-with   Subtype_mutind  := Induction for Subtype  Sort Prop.
-Combined Scheme judgments_mutind from Hastype_mutind, Subtype_mutind.                               
-
+          EvalsTo p' p -> Implies g (PCons p ps) (PCons p' ps).*)
