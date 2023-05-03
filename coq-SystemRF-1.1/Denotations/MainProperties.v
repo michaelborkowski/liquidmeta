@@ -49,6 +49,7 @@ Proof. intros; apply DImp; intro th;
   repeat rewrite lem_cpsubst_pcons; intros;
   repeat apply PECons; inversion H0; assumption. Qed.
 
+(*
 Lemma lem_dimplies_evals : forall (g:env) (p p':expr) (ps:preds),
     EvalsTo p p' -> DImplies g (PCons p ps) (PCons p' ps)
                     /\ DImplies g (PCons p' ps) (PCons p ps).
@@ -57,8 +58,9 @@ Proof. intros; split; apply DImp; intro th;
   inversion H1; apply PECons;
   
   try assumption. Focus 2. 
+*)
 
-
+(* TODO: convert these to Lemmas and prove all needed helpers
     | INarrow : forall (g:env) (g':env) (x:vname) (s_x:type) (t_x:type) (ps:preds) (qs:preds),
           intersect (binds g) (binds g') = empty -> unique g -> unique g'
               -> ~ in_env x g -> ~ in_env x g'  -> Subtype g s_x t_x
@@ -91,3 +93,4 @@ Proof. intros; split; apply DImp; intro th;
           ~ in_env y g -> Implies (Cons y (TRefn b' qs)     g) p1s p2s
               -> Implies (Cons y (TRefn b' PEmpty) g) 
                          (strengthen p1s (unbindP y qs)) (strengthen p2s (unbindP y qs))
+*)
