@@ -8,6 +8,7 @@ Require Import SystemRF.Typing.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
+Require Import Denotations.BasicPropsPEvalsTrue.
 (*Require Import Denotations.PrimitivesDenotations.*)
 
 (* Reminder: Inductive DImplies : env -> preds -> preds -> Prop :=
@@ -29,12 +30,35 @@ Lemma lem_dimplies_faithful : forall (g:env) (ps:preds), DImplies g ps PEmpty.
 Proof. intros; apply DImp; intros; 
   rewrite lem_cpsubst_pempty; apply PEEmp. Qed. 
 
-  (*
-    | IConj   : forall (g:env) (ps:preds) (qs:preds) (rs:preds),
-          Implies g ps qs -> Implies g ps rs -> Implies g ps (strengthen qs rs)
-    | ICons1  : forall (g:env) (p:expr) (ps:preds), Implies g (PCons p ps) (PCons p PEmpty)
-    | ICons2  : forall (g:env) (p:expr) (ps:preds), Implies g (PCons p ps) ps
-    | IRepeat : forall (g:env) (p:expr) (ps:preds), Implies g (PCons p ps) (PCons p (PCons p ps))
+Lemma lem_dimplies_strengthen : forall (g:env) (ps qs rs:preds),
+    DImplies g ps qs -> DImplies g ps rs -> DImplies g ps (strengthen qs rs).
+Proof. intros; apply DImp; intros; rewrite lem_cpsubst_strengthen;
+  apply lemma_strengthen_semantics; 
+  inversion H; inversion H0; apply H3 || apply H7; assumption. Qed.
+
+Lemma lem_dimplies_cons_elim : forall (g:env) (p:expr) (ps:preds), 
+    DImplies g (PCons p ps) (PCons p PEmpty) /\ DImplies g (PCons p ps) ps.
+Proof. intros; split; apply DImp; intros; 
+    rewrite lem_cpsubst_pcons in H0; try rewrite lem_cpsubst_pcons;
+    inversion H0; try apply PECons; 
+    try rewrite lem_cpsubst_pempty; try assumption; apply PEEmp. Qed.
+
+Lemma lem_dimplies_repetition : forall (g:env) (p:expr) (ps:preds), 
+    DImplies g (PCons p ps) (PCons p (PCons p ps)).
+Proof. intros; apply DImp; intro th; 
+  repeat rewrite lem_cpsubst_pcons; intros;
+  repeat apply PECons; inversion H0; assumption. Qed.
+
+Lemma lem_dimplies_evals : forall (g:env) (p p':expr) (ps:preds),
+    EvalsTo p p' -> DImplies g (PCons p ps) (PCons p' ps)
+                    /\ DImplies g (PCons p' ps) (PCons p ps).
+Proof. intros; split; apply DImp; intro th;
+  repeat rewrite lem_cpsubst_pcons; intros;
+  inversion H1; apply PECons;
+  
+  try assumption. Focus 2. 
+
+
     | INarrow : forall (g:env) (g':env) (x:vname) (s_x:type) (t_x:type) (ps:preds) (qs:preds),
           intersect (binds g) (binds g') = empty -> unique g -> unique g'
               -> ~ in_env x g -> ~ in_env x g'  -> Subtype g s_x t_x
@@ -67,7 +91,3 @@ Proof. intros; apply DImp; intros;
           ~ in_env y g -> Implies (Cons y (TRefn b' qs)     g) p1s p2s
               -> Implies (Cons y (TRefn b' PEmpty) g) 
                          (strengthen p1s (unbindP y qs)) (strengthen p2s (unbindP y qs))
-    | IEvals  : forall (g:env) (p p':expr) (ps:preds),
-          EvalsTo p p' -> Implies g (PCons p ps) (PCons p' ps)
-    | IEvals2 : forall (g:env) (p p':expr) (ps:preds),
-          EvalsTo p' p -> Implies g (PCons p ps) (PCons p' ps).*)

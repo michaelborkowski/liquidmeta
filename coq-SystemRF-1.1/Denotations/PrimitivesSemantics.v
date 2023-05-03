@@ -340,34 +340,3 @@ Lemma lemma_semantics_refn_eqn : forall (n m : nat) (b'':bool),
             (Bc (Bool.eqb (n =? m) b'')).
 Proof. intros. apply lemma_eqv_semantics; try apply lemma_eqn_semantics;
   apply Refl. Qed.
-
-(*
-{-@ lemma_strengthen_semantics :: p:Pred -> b:Bool  -> ProofOf(EvalsTo p (Bc b))
-                               -> q:Pred -> b':Bool -> ProofOf(EvalsTo q (Bc b'))
-                               -> ProofOf(HasFType FEmpty p (FTBasic TBool))
-                               -> ProofOf(EvalsTo (strengthen p q) (Bc (blAnd b b'))) / [esize p] @-}
-lemma_strengthen_semantics :: Expr -> Bool -> EvalsTo -> Expr -> Bool -> EvalsTo 
-                                   -> HasFType -> EvalsTo
-lemma_strengthen_semantics (Conj p1 p2) b ev_p_b q b' ev_q_b' pf_p_bl = ev_pq_bb'
-                           ? lem_evals_val_det (Conj p1 p2) (Bc b) ev_p_b (Bc (blAnd b1 b2)) ev_p_b1b2
-                           ? lem_blAnd_assoc b1 b2 b'
-  where
-    (ConjRed _p1 v1 ev_p1_v1 _p2 v2 ev_p2_v2)
-                = lemma_evals_conj_value p1 p2 (Bc b) ev_p_b
-    (FTConj _ _ pf_p1_bl _ pf_p2_bl) = pf_p_bl
-    pf_v1_bl    = lemma_many_preservation p1 (v1  ? lem_evals_pred p1 v1 ev_p1_v1)
-                                  ev_p1_v1 (FTBasic TBool) pf_p1_bl
-    pf_v2_bl    = lemma_many_preservation p2 (v2  ? lem_evals_pred p2 v2 ev_p2_v2)
-                                  ev_p2_v2 (FTBasic TBool) pf_p2_bl
-    (Bc b1)     = v1 ? lem_bool_values v1  pf_v1_bl
-    (Bc b2)     = v2 ? lem_bool_values v2  pf_v2_bl
-    ev_p_b1b2   = lemma_conj_semantics p1 b1 ev_p1_v1 p2 b2 ev_p2_v2 
-    ev_p2q_b2b' = lemma_strengthen_semantics p2 b2 ev_p2_v2 q b' ev_q_b' pf_p2_bl
-    ev_pq_bb'   = lemma_strengthen_semantics p1 b1 ev_p1_v1 (strengthen p2 q) (blAnd b2 b') 
-                                             ev_p2q_b2b' pf_p1_bl
-lemma_strengthen_semantics p            b ev_p_b q b' ev_q_b' pf_p_bl = ev_andpq
-  where
-    ev_andpq_1 = lemma_conj_both_many p (Bc b) ev_p_b q (Bc b') ev_q_b'
-    ev_andpq   = lemma_add_step_after (Conj p q) (Conj (Bc b) (Bc b'))
-                                      ev_andpq_1 (Bc (b && b')) (EConjV (Bc b) (Bc b'))
-*)

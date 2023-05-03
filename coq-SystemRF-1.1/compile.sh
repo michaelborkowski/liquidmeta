@@ -83,6 +83,8 @@ echo "Checking Denotations.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/Denotations.v
 echo "Checking BasicPropsCSubst.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsCSubst.v
+echo "Checking BasicPropsSemantics.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsSemantics.v
 echo "Checking PrimitivesSemantics.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/PrimitivesSemantics.v
 echo "Checking PrimitivesDenotations.v ..."
