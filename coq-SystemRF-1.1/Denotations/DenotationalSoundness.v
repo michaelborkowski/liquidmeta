@@ -7,6 +7,8 @@ Require Import SystemRF.Typing.
 Require Import SystemRF.BasicPropsEnvironments.*)
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
+Require Import Denotations.BasicPropsCSubst.
+Require Import Denotations.PrimitivesDenotations.
 
 Lemma lem_denote_sound : ( forall (g:env) (e:expr) (t:type),
     Hastype g e t -> forall (th:csub),
@@ -27,21 +29,15 @@ Proof. apply ( judgments_mutind
         -> (forall (v:expr), isValue v
               -> Denotes (ctsubst th t1) v -> Denotes (ctsubst th t2) v) ));
   intros.
-  - (* Bc *) 
+  - (* TBC *) rewrite lem_csubst_bc; rewrite lem_ctsubst_nofree;
+    try apply lem_den_evalsdenotes; try apply lem_den_tybc;
+    unfold tybc; simpl; reflexivity.
+  - (* TIC *) rewrite lem_csubst_ic; rewrite lem_ctsubst_nofree;
+    try apply lem_den_evalsdenotes; try apply lem_den_tyic;
+    unfold tyic; simpl; reflexivity.
+  - (* TVar *) inversion H0; try (subst g; simpl in b; contradiction).
 
   (*
-lem_denote_sound_typ g e t p_e_t p_g_wf th den_g_th = case p_e_t of
-  (TBC _g b) -> ValDen (csubst th e) (ctsubst th t) (e ? val_pf) ev_the_v' den_bl_b
-      where
-        ev_the_v' = Refl e `withProof` lem_csubst_bc th b
-        den_bl_b  = lem_den_tybc b ? lem_ctsubst_nofree th (tybc b) --g th den_g_th b 
-        val_pf    = toProof ( isValue (Bc b) === True )
-  (TIC _g n) -> ValDen (csubst th e) (ctsubst th t) (Ic n ? term_pf ? val_pf) ev_the_v' den_int_n
-      where
-        ev_the_v' = Refl e `withProof` lem_csubst_ic th n
-        den_int_n = lem_den_tyic n ? lem_ctsubst_nofree th (tyic n) --g th den_g_th n 
-        term_pf   = toProof ( isTerm (Ic n) === True )
-        val_pf    = toProof ( isValue (Ic n) === True )
 lem_denote_sound_typ_tvar1 g e t (TVar1 g' x t' k' p_g'_t') (WFEBind _ wf_g' _ _ _ _p_g'_t') th den_g_th  
   = case den_g_th of              -- e == FV x, t == self t x 
       (DExt _g' th' den_g'_th' _x _t' w den_th't'_w)  -- w = th(x)

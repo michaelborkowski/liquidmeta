@@ -4,11 +4,13 @@ Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.PrimitivesFTyping.
 Require Import SystemRF.WellFormedness.
+Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.Typing.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
-Require Import Denotations.BasicPropsPEvalsTrue.
+Require Import Denotations.BasicPropsDenotes.
+Require Import Denotations.BasicPropsSemantics.
 (*Require Import Denotations.PrimitivesDenotations.*)
 
 (* Reminder: Inductive DImplies : env -> preds -> preds -> Prop :=
@@ -17,11 +19,11 @@ Require Import Denotations.BasicPropsPEvalsTrue.
                                            -> PEvalsTrue (cpsubst th qs) )
             -> DImplies g ps qs.  *)
 
-Lemma lem_dimplies_refl : forall (g:env) (ps:preds), DImplies g ps ps.
+Lemma lem_dimplies_refl : forall (g:env) (ps:preds), DImplies g ps ps. 
 Proof. intros; apply DImp; intros; apply H0. Qed.
 
 Lemma lem_dimplies_trans : forall (g:env) (ps:preds) (qs:preds) (rs:preds),
-    DImplies g ps qs -> DImplies g qs rs -> DImplies g ps rs.
+    DImplies g ps qs -> DImplies g qs rs -> DImplies g ps rs. 
 Proof. intros g ps qs rs imp_ps_qs imp_qs_rs; 
   apply DImp; intros. inversion imp_ps_qs; inversion imp_qs_rs.
   apply H5; try apply H1; assumption. Qed.
@@ -49,23 +51,26 @@ Proof. intros; apply DImp; intro th;
   repeat rewrite lem_cpsubst_pcons; intros;
   repeat apply PECons; inversion H0; assumption. Qed.
 
-(*
 Lemma lem_dimplies_evals : forall (g:env) (p p':expr) (ps:preds),
     EvalsTo p p' -> DImplies g (PCons p ps) (PCons p' ps)
                     /\ DImplies g (PCons p' ps) (PCons p ps).
 Proof. intros; split; apply DImp; intro th;
   repeat rewrite lem_cpsubst_pcons; intros;
-  inversion H1; apply PECons;
-  
-  try assumption. Focus 2. 
-*)
+  inversion H1; apply PECons; apply (lem_csubst_evals th) in H;
+  try apply lem_denotesenv_loc_closed with g;
+  try apply lem_denotesenv_substitutable with g; try assumption.
+  - apply lem_decompose_evals with (csubst th p); simpl; trivial.
+  - apply lemma_evals_trans with (csubst th p'); assumption.
+  Qed.
+
+Lemma lem_narrow_dimplies : forall (g g':env) (x:vname) (s_x t_x:type) (ps qs:preds),
+    intersect (binds g) (binds g') = empty -> unique g -> unique g'
+        -> ~ in_env x g -> ~ in_env x g'  -> Subtype g s_x t_x
+        -> DImplies (concatE (Cons x t_x g) g') ps qs
+        -> DImplies (concatE (Cons x s_x g) g') ps qs.
+Proof. intros; apply DImp; intros; inversion H5; apply H8. (* need LemmasWidening! and DenoteSound*)
 
 (* TODO: convert these to Lemmas and prove all needed helpers
-    | INarrow : forall (g:env) (g':env) (x:vname) (s_x:type) (t_x:type) (ps:preds) (qs:preds),
-          intersect (binds g) (binds g') = empty -> unique g -> unique g'
-              -> ~ in_env x g -> ~ in_env x g'  -> Subtype g s_x t_x
-              -> Implies (concatE (Cons x t_x g) g') ps qs
-              -> Implies (concatE (Cons x s_x g) g') ps qs 
     | IWeak   : forall (g:env) (g':env) (ps:preds) (qs:preds) (x:vname) (t_x:type),
           intersect (binds g) (binds g') = empty -> unique g -> unique g' 
               -> ~ in_env x g -> ~ in_env x g'

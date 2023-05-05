@@ -91,7 +91,7 @@ Denotes (TPoly   k   t') v :=
     isValue v /\ HasFtype FEmpty v (erase (TPoly   k   t')) /\ 
       forall (t_a : type) (pf : isMono t_a),
         noExists t_a ->  WFtype Empty t_a k -> (exists (v' : expr),
-          isValue v' -> EvalsTo (AppT v t_a) v' /\ Denotes (tsubBTV t_a t') v').
+          isValue v' /\ EvalsTo (AppT v t_a) v' /\ Denotes (tsubBTV t_a t') v').
   Obligation 1. (* quants_depth t_x "<" quants_depth t *) 
     pose proof Nat.le_max_l (quants t_x) (quants t') as Hq;
     pose proof Nat.le_max_l (depth  t_x) (depth  t') as Hd.
@@ -155,6 +155,11 @@ Proof. intros; destruct t.
   
 Definition EvalsDenotes (t : type) (e : expr) : Prop :=
   exists v, isValue v /\ EvalsTo e v /\ Denotes t v.
+
+Lemma lem_den_evalsdenotes : forall (t:type) (v:expr),
+    Denotes t v -> EvalsDenotes t v.
+Proof. intros; unfold EvalsDenotes; exists v; repeat split;
+  try apply lem_den_isvalue with t; try apply Refl; apply H. Qed.
 
 (* Denotations of Environments, [[g]]. There are two cases:
 --   1. [[ Empty ]] = { CEmpty }.

@@ -18,8 +18,8 @@ Proof. intros a t_a v val_v.
   simpl; try (destruct (Nat.eqb y x)); simpl; assumption. Qed.
 
 Lemma lemma_tsubFV_noExists : forall (y:vname) (v_y:expr) (t:type),
-    isValue v_y -> noExists t -> noExists (tsubFV y v_y t).
-Proof. intros y v_y t val noex; induction t;
+    (*isValue v_y ->*) noExists t -> noExists (tsubFV y v_y t).
+Proof. intros y v_y t noex; induction t;
   simpl in noex; try contradiction;
   simpl; intuition. Qed.
 
@@ -155,43 +155,43 @@ Proof. intros; apply lem_open_tv_at_is_subBTV_at. Qed.
 ---------------------------------------------------------------------------*)
 
 Lemma lem_subBV_at_lc_at : (forall (e:expr) (j:index) (v:expr) (kx:index) (ka:index),
-    isValue v -> kx <= j -> isLC_at kx ka e -> subBV_at j v e = e ) * ((
+    (*isValue v ->*) kx <= j -> isLC_at kx ka e -> subBV_at j v e = e ) * ((
   forall (t:type) (j:index) (v:expr) (kx:index) (ka:index),
-    isValue v -> kx <= j -> isLCT_at kx ka t -> tsubBV_at j v t = t ) * (
+    (*isValue v ->*) kx <= j -> isLCT_at kx ka t -> tsubBV_at j v t = t ) * (
   forall (ps:preds) (j:index) (v:expr) (kx:index) (ka:index),
-    isValue v -> kx <= j -> isLCP_at kx ka ps -> psubBV_at j v ps = ps )).
+    (*isValue v ->*) kx <= j -> isLCP_at kx ka ps -> psubBV_at j v ps = ps )).
 Proof. apply ( syntax_mutind
   (fun e:expr => forall (j:index) (v:expr) (kx:index) (ka:index),
-     isValue v -> kx <= j -> isLC_at kx ka e -> subBV_at j v e = e  )
+     (*isValue v ->*) kx <= j -> isLC_at kx ka e -> subBV_at j v e = e  )
   (fun t:type => forall (j:index) (v:expr) (kx:index) (ka:index),
-     isValue v -> kx <= j -> isLCT_at kx ka t -> tsubBV_at j v t = t  )
+     (*isValue v ->*) kx <= j -> isLCT_at kx ka t -> tsubBV_at j v t = t  )
   (fun ps:preds => forall (j:index) (v:expr) (kx:index) (ka:index),
-     isValue v -> kx <= j -> isLCP_at kx ka ps -> psubBV_at j v ps = ps  ))
+     (*isValue v ->*) kx <= j -> isLCP_at kx ka ps -> psubBV_at j v ps = ps  ))
   ; intros; simpl; try reflexivity
-  ; (* 1 IH *) try ( apply f_equal; revert H2; simpl; 
+  ; (* 1 IH *) try ( apply f_equal; revert H1; simpl; 
                      apply H; try apply Nat.add_le_mono_r; assumption)
-  ; (* 2 IH *) try ( apply f_equal2; simpl in H3; destruct H3; 
-                     (revert H3; apply H) || (revert H4; apply H0); 
+  ; (* 2 IH *) try ( apply f_equal2; simpl in H2; destruct H2; 
+                     (revert H2; apply H) || (revert H3; apply H0); 
                      try apply Nat.add_le_mono_r; assumption ).
-  - (* BV *) destruct (j =? i) eqn:J; simpl in H1.
-      * apply Nat.lt_le_trans with i kx j in H1; try assumption.
-        apply Nat.lt_neq in H1; apply Nat.neq_sym in H1;
-        apply Nat.eqb_neq in H1. rewrite J in H1. discriminate.
+  - (* BV *) destruct (j =? i) eqn:J; simpl in H0.
+      * apply Nat.lt_le_trans with i kx j in H0; try assumption.
+        apply Nat.lt_neq in H0; apply Nat.neq_sym in H0;
+        apply Nat.eqb_neq in H0. rewrite J in H0. discriminate.
       * reflexivity.
-  - (* If *) apply f_equal3; simpl in H4; destruct H4; destruct H5;
-    (revert H4; apply H) || (revert H5; apply H0) 
-      || (revert H6; apply H1); assumption.
+  - (* If *) apply f_equal3; simpl in H3; destruct H3; destruct H4;
+    (revert H3; apply H) || (revert H4; apply H0) 
+      || (revert H5; apply H1); assumption.
   - (* TRefn *) apply f_equal2; try reflexivity;
-    destruct b; simpl in H2; try destruct H2; revert H3 || revert H2;
+    destruct b; simpl in H1; try destruct H1; revert H2 || revert H1;
     apply H; try apply Nat.add_le_mono_r; assumption.
   Qed.
   
 Lemma lem_subBV_lc : forall (v:expr) (e:expr),
-    isValue v -> isLC e -> subBV v e = e.
+    (*isValue v ->*) isLC e -> subBV v e = e.
 Proof. intros; apply lem_subBV_at_lc_at with 0 0; intuition. Qed.
 
 Lemma lem_tsubBV_lct : forall (v:expr) (t:type),
-    isValue v -> isLCT t -> tsubBV v t = t.
+    (*isValue v ->*) isLCT t -> tsubBV v t = t.
 Proof. intros; apply lem_subBV_at_lc_at with 0 0; intuition. Qed.    
 
 Lemma lem_open_at_lc_at : (forall (e:expr) (j k:index) (x:vname),
@@ -216,41 +216,41 @@ Proof. intros; rewrite lem_unbindT_is_tsubBV; apply lem_tsubBV_lct;
   simpl; trivial. Qed.
 
 Lemma lem_subBTV_at_lc_at : (forall (e:expr) (j:index) (t_a:type) (kx:index) (ka:index),
-    noExists t_a -> ka <= j -> isLC_at kx ka e -> subBTV_at j t_a e = e ) * ((
+    (*noExists t_a ->*) ka <= j -> isLC_at kx ka e -> subBTV_at j t_a e = e ) * ((
   forall (t:type) (j:index) (t_a:type) (kx:index) (ka:index),
-    noExists t_a -> ka <= j -> isLCT_at kx ka t -> tsubBTV_at j t_a t = t ) * (
+    (*noExists t_a ->*) ka <= j -> isLCT_at kx ka t -> tsubBTV_at j t_a t = t ) * (
   forall (ps:preds) (j:index) (t_a:type) (kx:index) (ka:index),
-    noExists t_a -> ka <= j -> isLCP_at kx ka ps -> psubBTV_at j t_a ps = ps )).
+    (*noExists t_a ->*) ka <= j -> isLCP_at kx ka ps -> psubBTV_at j t_a ps = ps )).
 Proof. apply ( syntax_mutind
   (fun e:expr => forall (j:index) (t_a:type) (kx:index) (ka:index),
-     noExists t_a -> ka <= j -> isLC_at kx ka e -> subBTV_at j t_a e = e  )
+     (*noExists t_a ->*) ka <= j -> isLC_at kx ka e -> subBTV_at j t_a e = e  )
   (fun t:type => forall (j:index) (t_a:type) (kx:index) (ka:index),
-     noExists t_a -> ka <= j -> isLCT_at kx ka t -> tsubBTV_at j t_a t = t  )
+     (*noExists t_a ->*) ka <= j -> isLCT_at kx ka t -> tsubBTV_at j t_a t = t  )
   (fun ps:preds => forall (j:index) (t_a:type) (kx:index) (ka:index),
-     noExists t_a -> ka <= j -> isLCP_at kx ka ps -> psubBTV_at j t_a ps = ps  ))
+     (*noExists t_a ->*) ka <= j -> isLCP_at kx ka ps -> psubBTV_at j t_a ps = ps  ))
   ; intros; simpl; try reflexivity
-  ; (* 1 IH *) try ( apply f_equal; revert H2; simpl; 
+  ; (* 1 IH *) try ( apply f_equal; revert H1; simpl; 
                      apply H; try apply Nat.add_le_mono_r; assumption)
-  ; (* 2 IH *) try ( apply f_equal2; simpl in H3; destruct H3; 
-                     (revert H3; apply H) || (revert H4; apply H0); 
+  ; (* 2 IH *) try ( apply f_equal2; simpl in H2; destruct H2; 
+                     (revert H2; apply H) || (revert H3; apply H0); 
                      try apply Nat.add_le_mono_r; assumption ).
-  - (* 3 IH *) apply f_equal3; simpl in H4; destruct H4; destruct H5;
-    (revert H4; apply H) || (revert H5; apply H0) 
-      || (revert H6; apply H1); assumption.
+  - (* 3 IH *) apply f_equal3; simpl in H3; destruct H3; destruct H4;
+    (revert H3; apply H) || (revert H4; apply H0) 
+      || (revert H5; apply H1); assumption.
   - (* TRefn *) destruct b; try destruct (j =? i) eqn:J; 
     try apply f_equal2; 
-    try apply H with (kx+1) ka; simpl in H2; intuition.
-    apply Nat.lt_le_trans with i ka j in H3; try assumption.
-    apply Nat.lt_neq in H3; apply Nat.neq_sym in H3;
-    apply Nat.eqb_neq in H3; rewrite H3 in J; discriminate.
+    try apply H with (kx+1) ka; simpl in H1; intuition.
+    apply Nat.lt_le_trans with i ka j in H2; try assumption.
+    apply Nat.lt_neq in H2; apply Nat.neq_sym in H2;
+    apply Nat.eqb_neq in H2; rewrite H2 in J; discriminate.
   Qed.
 
 Lemma lem_subBTV_lc : forall (t_a:type) (e:expr),
-    noExists t_a -> isLC e -> subBTV t_a e = e.
+    (*noExists t_a ->*) isLC e -> subBTV t_a e = e.
 Proof. intros; apply lem_subBTV_at_lc_at with 0 0; intuition. Qed.
 
 Lemma lem_tsubBTV_lct : forall (t_a:type) (t:type),
-    noExists t_a -> isLCT t -> tsubBTV t_a t = t.
+    (*noExists t_a ->*) isLCT t -> tsubBTV t_a t = t.
 Proof. intros; apply lem_subBTV_at_lc_at with 0 0; intuition. Qed.    
 
 Lemma lem_unbind_tv_lc : forall (a:vname) (e:expr),
@@ -268,90 +268,90 @@ Proof. intros; rewrite lem_unbind_tvT_is_tsubBTV; apply lem_tsubBTV_lct;
 ---------------------------------------------------------------------------*)
 
 Lemma lem_subFV_open_at : (forall (e:expr) (j:index) (y:vname) (v:expr),
-    isValue v -> ~ Elem y (fv e) -> subBV_at j v e = subFV y v (open_at j y e) ) * ((
+    (*isValue v ->*) ~ Elem y (fv e) -> subBV_at j v e = subFV y v (open_at j y e) ) * ((
   forall (t:type) (j:index) (y:vname) (v:expr),
-    isValue v -> ~ Elem y (free t) -> tsubBV_at j v t = tsubFV y v (openT_at j y t) ) * (
+    (*isValue v ->*) ~ Elem y (free t) -> tsubBV_at j v t = tsubFV y v (openT_at j y t) ) * (
   forall (ps:preds) (j:index) (y:vname) (v:expr),
-    isValue v -> ~ Elem y (fvP ps) -> psubBV_at j v ps = psubFV y v (openP_at j y ps) )).
+    (*isValue v ->*) ~ Elem y (fvP ps) -> psubBV_at j v ps = psubFV y v (openP_at j y ps) )).
 Proof. apply ( syntax_mutind
   (fun e : expr => forall (j:index) (y:vname) (v:expr),
-      isValue v -> ~ Elem y (fv e) -> subBV_at j v e = subFV y v (open_at j y e) )
+      (*isValue v ->*) ~ Elem y (fv e) -> subBV_at j v e = subFV y v (open_at j y e) )
   (fun t : type => forall (j:index) (y:vname) (v:expr),
-      isValue v -> ~ Elem y (free t) -> tsubBV_at j v t = tsubFV y v (openT_at j y t) )
+      (*isValue v ->*) ~ Elem y (free t) -> tsubBV_at j v t = tsubFV y v (openT_at j y t) )
   (fun ps : preds => forall (j:index) (y:vname) (v:expr),
-      isValue v -> ~ Elem y (fvP ps) -> psubBV_at j v ps = psubFV y v (openP_at j y ps) ))
+      (*isValue v ->*) ~ Elem y (fvP ps) -> psubBV_at j v ps = psubFV y v (openP_at j y ps) ))
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0;
-    apply not_elem_union_elim in H2; destruct H2; assumption ).
+    apply not_elem_union_elim in H1; destruct H1; assumption ).
   - (* BV *) destruct (j =? i); simpl; 
-    assert (y =? y = true) by (apply Nat.eqb_eq; reflexivity); try rewrite H1;
+    assert (y =? y = true) by (apply Nat.eqb_eq; reflexivity); try rewrite H0;
     reflexivity.
-  - (* FV *) simpl in H0; intuition; apply Nat.neq_sym in H1; 
-    apply Nat.eqb_neq in H1; rewrite H1; reflexivity.
+  - (* FV *) simpl in H; intuition; apply Nat.neq_sym in H0; 
+    apply Nat.eqb_neq in H0; rewrite H0; reflexivity.
   - (* If *) apply f_equal3; apply H || apply H0 || apply H1;
-      apply not_elem_union_elim in H3; destruct H3;
-      apply not_elem_union_elim in H4; destruct H4; assumption.
+      apply not_elem_union_elim in H2; destruct H2;
+      apply not_elem_union_elim in H3; destruct H3; assumption.
   Qed.
 
 Lemma lem_subFV_unbind : forall (y:vname) (v:expr) (e:expr),
-    isValue v -> ~ Elem y (fv e) -> subBV v e = subFV y v (unbind y e).
+    (*isValue v ->*) ~ Elem y (fv e) -> subBV v e = subFV y v (unbind y e).
 Proof. intros; apply lem_subFV_open_at; assumption. Qed.
 
 Lemma lem_tsubFV_unbindT : forall (y:vname) (v:expr) (t:type),
-    isValue v -> ~ Elem y (free t) -> tsubBV v t = tsubFV y v (unbindT y t).
+    (*isValue v ->*) ~ Elem y (free t) -> tsubBV v t = tsubFV y v (unbindT y t).
 Proof. intros; apply lem_subFV_open_at; assumption. Qed.
 
 Lemma lem_psubFV_unbindP : forall (y:vname) (v:expr) (ps:preds),
-    isValue v -> ~ Elem y (fvP ps) -> psubBV v ps = psubFV y v (unbindP y ps).
+    (*isValue v ->*) ~ Elem y (fvP ps) -> psubBV v ps = psubFV y v (unbindP y ps).
 Proof. intros; apply lem_subFV_open_at; assumption. Qed.
 
 Lemma lem_subFTV_open_tv_at : (forall (e:expr) (j:index) (a:vname) (t_a:type),
-    noExists t_a -> ~ Elem a (ftv e) 
+    (*noExists t_a ->*) ~ Elem a (ftv e) 
                  -> subBTV_at j t_a e = subFTV a t_a (open_tv_at j a e) ) * ((
   forall (t:type) (j:index) (a:vname) (t_a:type),
-    noExists t_a -> ~ Elem a (freeTV t) 
+    (*noExists t_a ->*) ~ Elem a (freeTV t) 
                  -> tsubBTV_at j t_a t = tsubFTV a t_a (open_tvT_at j a t) ) * (
   forall (ps:preds) (j:index) (a:vname) (t_a:type),
-    noExists t_a -> ~ Elem a (ftvP ps) 
+    (*noExists t_a ->*) ~ Elem a (ftvP ps) 
                  -> psubBTV_at j t_a ps = psubFTV a t_a (open_tvP_at j a ps) )).
 Proof. apply ( syntax_mutind
   (fun e : expr => forall (j:index) (a:vname) (t_a:type),
-      noExists t_a -> ~ Elem a (ftv e) 
+      (*noExists t_a ->*) ~ Elem a (ftv e) 
                    -> subBTV_at j t_a e = subFTV a t_a (open_tv_at j a e))
   (fun t : type => forall (j:index) (a:vname) (t_a:type),
-      noExists t_a -> ~ Elem a (freeTV t) 
+      (*noExists t_a ->*) ~ Elem a (freeTV t) 
                    -> tsubBTV_at j t_a t = tsubFTV a t_a (open_tvT_at j a t))
   (fun ps: preds => forall (j:index) (a:vname) (t_a:type),
-      noExists t_a -> ~ Elem a (ftvP ps) 
+      (*noExists t_a ->*) ~ Elem a (ftvP ps) 
                    -> psubBTV_at j t_a ps = psubFTV a t_a (open_tvP_at j a ps)))
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0;
-    apply not_elem_union_elim in H2; destruct H2; assumption ).
+    apply not_elem_union_elim in H1; destruct H1; assumption ).
   - (* If *) apply f_equal3; apply H || apply H0 || apply H1;
-      apply not_elem_union_elim in H3; destruct H3;
-      apply not_elem_union_elim in H4; destruct H4; assumption.
+      apply not_elem_union_elim in H2; destruct H2;
+      apply not_elem_union_elim in H3; destruct H3; assumption.
   - (* TRefn *) destruct b; simpl;
     try ( apply f_equal; apply H; assumption).
     * (* BTV *) destruct (j =? i); simpl;
-      assert (a =? a = true) by (apply Nat.eqb_eq; reflexivity); try rewrite H2;
+      assert (a =? a = true) by (apply Nat.eqb_eq; reflexivity); try rewrite H1;
       apply f_equal2; try apply H; intuition.
-    * (* FTV *) simpl in H1; apply not_elem_names_add_elim in H1;
-      destruct H1; apply Nat.eqb_neq in H1; rewrite H1;
+    * (* FTV *) simpl in H0; apply not_elem_names_add_elim in H0;
+      destruct H0; apply Nat.eqb_neq in H0; rewrite H0;
       apply f_equal2; try apply H; intuition.
   Qed.
 
 Lemma lem_subFTV_unbind_tv : forall (a:vname) (t_a:type) (e:expr),
-    noExists t_a -> ~ Elem a (ftv e) -> subBTV t_a e = subFTV a t_a (unbind_tv a e).
+    (*noExists t_a ->*) ~ Elem a (ftv e) -> subBTV t_a e = subFTV a t_a (unbind_tv a e).
 Proof. intros; apply lem_subFTV_open_tv_at; assumption. Qed.
 
 Lemma lem_tsubFTV_unbind_tvT : forall (a:vname) (t_a:type) (t:type),
-    noExists t_a -> ~ Elem a (freeTV t) -> tsubBTV t_a t = tsubFTV a t_a (unbind_tvT a t).
+    (*noExists t_a ->*) ~ Elem a (freeTV t) -> tsubBTV t_a t = tsubFTV a t_a (unbind_tvT a t).
 Proof. intros; apply lem_subFTV_open_tv_at; assumption. Qed.
 
 Lemma lem_psubFTV_unbind_tvP : forall (a:vname) (t_a:type) (ps:preds),
-    noExists t_a -> ~ Elem a (ftvP ps) -> psubBTV t_a ps = psubFTV a t_a (unbind_tvP a ps).
+    (*noExists t_a ->*) ~ Elem a (ftvP ps) -> psubBTV t_a ps = psubFTV a t_a (unbind_tvP a ps).
 Proof. intros; apply lem_subFTV_open_tv_at; assumption. Qed.
 
 (*---------------------------------------------------------------------------
@@ -375,9 +375,9 @@ Proof. intros; destruct t; simpl in H; try contradiction;
   simpl; try rewrite lem_psubFV_strengthen; reflexivity. Qed.
 
 Lemma lem_subBV_at_push : forall (j:index) (v:expr) (ps:preds) (t:type),
-    isValue v -> noExists t
+    (*isValue v ->*) noExists t
         -> tsubBV_at j v (push ps t) = push (psubBV_at (j+1) v ps) (tsubBV_at j v t).
-Proof. intros; destruct t; simpl in H0; try contradiction;
+Proof. intros; destruct t; simpl in H; try contradiction;
   simpl; try rewrite lem_psubBV_at_strengthen; reflexivity. Qed.
 
 Lemma lem_subFTV_push : forall (a:vname) (t_a:type) (ps:preds) (t:type),
@@ -403,51 +403,50 @@ Proof. intros; destruct t; simpl in H0; try contradiction;
 ---------------------------------------------------------------------------*)
 
 Lemma lem_commute_subFV_subBV_at : (forall (e:expr) (j:index) (v:expr) (y:vname) (v_y:expr),
-    isValue v -> isValue v_y -> isLC v_y 
+    (*isValue v -> isValue v_y ->*) isLC v_y 
       -> subFV y v_y (subBV_at j v e) = subBV_at j (subFV y v_y v) (subFV y v_y e) ) * ((
   forall (t:type) (j:index) (v:expr) (y:vname) (v_y:expr),
-    isValue v -> isValue v_y -> isLC v_y 
+    (*isValue v -> isValue v_y ->*) isLC v_y 
       -> tsubFV y v_y (tsubBV_at j v t) = tsubBV_at j (subFV y v_y v) (tsubFV y v_y t) ) * (
   forall (ps:preds) (j:index) (v:expr) (y:vname) (v_y:expr),
-    isValue v -> isValue v_y -> isLC v_y 
+    (*isValue v -> isValue v_y ->*) isLC v_y 
       -> psubFV y v_y (psubBV_at j v ps) = psubBV_at j (subFV y v_y v) (psubFV y v_y ps) )).
 Proof. apply ( syntax_mutind
   (fun e : expr => forall (j:index) (v:expr) (y:vname) (v_y:expr),
-    isValue v -> isValue v_y -> isLC v_y 
+    (*isValue v -> isValue v_y ->*) isLC v_y 
       -> subFV y v_y (subBV_at j v e) = subBV_at j (subFV y v_y v) (subFV y v_y e) )
   (fun t : type => forall (j:index) (v:expr) (y:vname) (v_y:expr),
-    isValue v -> isValue v_y -> isLC v_y 
+    (*isValue v -> isValue v_y ->*) isLC v_y 
       -> tsubFV y v_y (tsubBV_at j v t) = tsubBV_at j (subFV y v_y v) (tsubFV y v_y t) )
   (fun ps : preds => forall (j:index) (v:expr) (y:vname) (v_y:expr),
-    isValue v -> isValue v_y -> isLC v_y 
+    (*isValue v -> isValue v_y ->*) isLC v_y 
       -> psubFV y v_y (psubBV_at j v ps) = psubBV_at j (subFV y v_y v) (psubFV y v_y ps) ))
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0; assumption ).
   - (* BV *) destruct (j =? i); simpl; reflexivity.
-  - (* FV *) destruct (y =? x); try reflexivity. 
-    apply lem_subFV_value with y v_y v in H; try assumption; symmetry.
+  - (* FV *) destruct (y =? x); try reflexivity; symmetry.
     apply lem_subBV_at_lc_at with 0 0; auto with *. 
   - (* If *) rewrite H; try rewrite H0; try rewrite H1; trivial.
   Qed.
     
 Lemma lem_commute_subFV_subBV : forall (v:expr) (y:vname) (v_y:expr) (e:expr),
-    isValue v -> isValue v_y -> isLC v_y 
+    (*isValue v -> isValue v_y ->*) isLC v_y 
       -> subFV y v_y (subBV v e) = subBV (subFV y v_y v) (subFV y v_y e).
 Proof. intros. apply lem_commute_subFV_subBV_at; assumption. Qed.
       
 Lemma lem_commute_tsubFV_tsubBV : forall (v:expr) (y:vname) (v_y:expr) (t:type),
-    isValue v -> isValue v_y -> isLC v_y 
+    (*isValue v -> isValue v_y ->*) isLC v_y 
       -> tsubFV y v_y (tsubBV v t) = tsubBV (subFV y v_y v) (tsubFV y v_y t).
 Proof. intros. apply lem_commute_subFV_subBV_at; assumption. Qed.
 
 Lemma lem_commute_psubFV_psubBV : forall (v:expr) (y:vname) (v_y:expr) (ps:preds),
-    isValue v -> isValue v_y -> isLC v_y 
+    (*isValue v -> isValue v_y ->*) isLC v_y 
       -> psubFV y v_y (psubBV v ps) = psubBV (subFV y v_y v) (psubFV y v_y ps).
 Proof. intros. apply lem_commute_subFV_subBV_at; assumption. Qed.
 
 Lemma lem_commute_subFV_unbind : forall (y:vname) (x:vname) (v:expr) (e:expr),
-    x <> y -> isValue v -> isLC v 
+    x <> y (*-> isValue v*) -> isLC v 
       -> subFV x v (unbind y e) = unbind y (subFV x v e).
 Proof. intros; repeat rewrite lem_unbind_is_subBV.
   apply Nat.eqb_neq in H.
@@ -456,7 +455,7 @@ Proof. intros; repeat rewrite lem_unbind_is_subBV.
   Qed.
 
 Lemma lem_commute_tsubFV_unbindT : forall (y:vname) (x:vname) (v:expr) (t:type),
-  x <> y -> isValue v -> isLC v 
+  x <> y (*-> isValue v*) -> isLC v 
     -> tsubFV x v (unbindT y t) = unbindT y (tsubFV x v t).
 Proof. intros; repeat rewrite lem_unbindT_is_tsubBV.
   apply Nat.eqb_neq in H.
@@ -465,7 +464,7 @@ Proof. intros; repeat rewrite lem_unbindT_is_tsubBV.
   Qed.
 
 Lemma lem_commute_psubFV_unbindP : forall (y:vname) (x:vname) (v:expr) (ps:preds),
-  x <> y -> isValue v -> isLC v 
+  x <> y (*-> isValue v*) -> isLC v 
     -> psubFV x v (unbindP y ps) = unbindP y (psubFV x v ps).
 Proof. intros; repeat rewrite lem_unbindP_is_psubBV.
   apply Nat.eqb_neq in H.
@@ -475,23 +474,23 @@ Proof. intros; repeat rewrite lem_unbindP_is_psubBV.
 
 
 Lemma lem_commute_subFV_subBTV_at : (forall (e:expr) (j:index) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> isLC v_y 
+    noExists t_a -> (*isValue v_y ->*) isLC v_y 
       -> subFV y v_y (subBTV_at j t_a e) = subBTV_at j (tsubFV y v_y t_a) (subFV y v_y e) ) * ((
   forall (t:type) (j:index) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> isLC v_y 
+    noExists t_a -> (*isValue v_y ->*) isLC v_y 
       -> tsubFV y v_y (tsubBTV_at j t_a t) = tsubBTV_at j (tsubFV y v_y t_a) (tsubFV y v_y t) ) * (
   forall (ps:preds) (j:index) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> isLC v_y 
+    noExists t_a -> (*isValue v_y ->*) isLC v_y 
       -> psubFV y v_y (psubBTV_at j t_a ps) = psubBTV_at j (tsubFV y v_y t_a) (psubFV y v_y ps) )).
 Proof. apply ( syntax_mutind
   (fun e : expr => forall (j:index) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> isLC v_y 
+    noExists t_a -> (*isValue v_y ->*) isLC v_y 
       -> subFV y v_y (subBTV_at j t_a e) = subBTV_at j (tsubFV y v_y t_a) (subFV y v_y e) )
   (fun t : type => forall (j:index) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> isLC v_y 
+    noExists t_a -> (*isValue v_y ->*) isLC v_y 
       -> tsubFV y v_y (tsubBTV_at j t_a t) = tsubBTV_at j (tsubFV y v_y t_a) (tsubFV y v_y t) )
   (fun ps : preds => forall (j:index) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> isLC v_y 
+    noExists t_a -> (*isValue v_y ->*) isLC v_y 
       -> psubFV y v_y (psubBTV_at j t_a ps) = psubBTV_at j (tsubFV y v_y t_a) (psubFV y v_y ps) ))
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
@@ -506,22 +505,22 @@ Proof. apply ( syntax_mutind
   Qed.
 
 Lemma lem_commute_subFV_subBTV : forall (t_a:type) (y:vname) (v_y:expr) (e:expr),
-    noExists t_a -> isValue v_y -> isLC v_y 
+    noExists t_a (*-> isValue v_y*) -> isLC v_y 
         -> subFV y v_y (subBTV t_a e) = subBTV (tsubFV y v_y t_a) (subFV y v_y e).
 Proof. intros; apply lem_commute_subFV_subBTV_at; assumption. Qed.
 
 Lemma lem_commute_tsubFV_tsubBTV : forall (t_a:type) (y:vname) (v_y:expr) (t:type),
-    noExists t_a -> isValue v_y -> isLC v_y 
+    noExists t_a (*-> isValue v_y*) -> isLC v_y 
         -> tsubFV y v_y (tsubBTV t_a t) = tsubBTV (tsubFV y v_y t_a) (tsubFV y v_y t).
 Proof. intros; apply lem_commute_subFV_subBTV_at; assumption. Qed.
 
 Lemma lem_commute_psubFV_psubBTV : forall (t_a:type) (y:vname) (v_y:expr) (ps:preds),
-    noExists t_a -> isValue v_y -> isLC v_y 
+    noExists t_a (*-> isValue v_y*) -> isLC v_y 
         -> psubFV y v_y (psubBTV t_a ps) = psubBTV (tsubFV y v_y t_a) (psubFV y v_y ps).
 Proof. intros; apply lem_commute_subFV_subBTV_at; assumption. Qed.
 
 Lemma lem_commute_subFV_unbind_tv : forall (a:vname) (x:vname) (v:expr) (e:expr),
-    x <> a -> isValue v -> isLC v 
+    x <> a (*-> isValue v*) -> isLC v 
         -> subFV x v (unbind_tv a e) = unbind_tv a (subFV x v e).
 Proof. intros; repeat rewrite lem_unbind_tv_is_subBTV.
   apply Nat.eqb_neq in H.
@@ -530,7 +529,7 @@ Proof. intros; repeat rewrite lem_unbind_tv_is_subBTV.
   Qed. 
 
 Lemma lem_commute_tsubFV_unbind_tvT : forall (a:vname) (x:vname) (v:expr) (t:type),
-    x <> a -> isValue v -> isLC v 
+    x <> a (*-> isValue v*) -> isLC v 
         -> tsubFV x v (unbind_tvT a t) = unbind_tvT a (tsubFV x v t).
 Proof. intros; repeat rewrite lem_unbind_tvT_is_tsubBTV.
   apply Nat.eqb_neq in H.
@@ -539,7 +538,7 @@ Proof. intros; repeat rewrite lem_unbind_tvT_is_tsubBTV.
   Qed. 
 
 Lemma lem_commute_psubFV_unbind_tvP : forall (a:vname) (x:vname) (v:expr) (ps:preds),
-    x <> a -> isValue v -> isLC v 
+    x <> a (*-> isValue v*) -> isLC v 
         -> psubFV x v (unbind_tvP a ps) = unbind_tvP a (psubFV x v ps).
 Proof. intros; repeat rewrite lem_unbind_tvP_is_psubBTV.
   apply Nat.eqb_neq in H.
@@ -549,23 +548,23 @@ Proof. intros; repeat rewrite lem_unbind_tvP_is_psubBTV.
 
 
 Lemma lem_commute_subFTV_subBV_at : (forall (e:expr) (j:index) (v:expr) (a:vname) (t_a:type),
-    isValue v -> noExists t_a -> isLCT t_a
+    (*isValue v ->*) noExists t_a -> isLCT t_a
       -> subFTV a t_a (subBV_at j v e) = subBV_at j (subFTV a t_a v) (subFTV a t_a e) ) * ((
   forall (t:type) (j:index) (v:expr) (a:vname) (t_a:type),
-    isValue v -> noExists t_a -> isLCT t_a 
+    (*isValue v ->*) noExists t_a -> isLCT t_a 
       -> tsubFTV a t_a (tsubBV_at j v t) = tsubBV_at j (subFTV a t_a v) (tsubFTV a t_a t) ) * (
   forall (ps:preds) (j:index) (v:expr) (a:vname) (t_a:type),
-    isValue v -> noExists t_a -> isLCT t_a
+    (*isValue v ->*) noExists t_a -> isLCT t_a
       -> psubFTV a t_a (psubBV_at j v ps) = psubBV_at j (subFTV a t_a v) (psubFTV a t_a ps) )).
 Proof. apply ( syntax_mutind
   (fun e : expr => forall (j:index) (v:expr) (a:vname) (t_a:type),
-    isValue v -> noExists t_a -> isLCT t_a
+    (*isValue v ->*) noExists t_a -> isLCT t_a
       -> subFTV a t_a (subBV_at j v e) = subBV_at j (subFTV a t_a v) (subFTV a t_a e) )
   (fun t : type => forall (j:index) (v:expr) (a:vname) (t_a:type),
-    isValue v -> noExists t_a -> isLCT t_a
+    (*isValue v ->*) noExists t_a -> isLCT t_a
       -> tsubFTV a t_a (tsubBV_at j v t) = tsubBV_at j (subFTV a t_a v) (tsubFTV a t_a t) )
   (fun ps : preds => forall (j:index) (v:expr) (a:vname) (t_a:type),
-    isValue v -> noExists t_a -> isLCT t_a
+    (*isValue v ->*) noExists t_a -> isLCT t_a
       -> psubFTV a t_a (psubBV_at j v ps) = psubBV_at j (subFTV a t_a v) (psubFTV a t_a ps) ))
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
@@ -575,22 +574,21 @@ Proof. apply ( syntax_mutind
   - (* TRefn *) destruct b; try destruct (a =? a0) eqn:A; simpl;
     try apply f_equal; try apply H; try assumption.
     (* FTV a *) symmetry; rewrite lem_subBV_at_push; try rewrite <- H;
-      try apply f_equal; try apply lem_subBV_at_lc_at with 0 0;
-      try apply lem_subFTV_value; auto with *. 
+      try apply f_equal; try apply lem_subBV_at_lc_at with 0 0; auto with *.
   Qed.
     
 Lemma lem_commute_subFTV_subBV : forall (v:expr) (a:vname) (t_a:type) (e:expr),
-    isValue v -> noExists t_a -> isLCT t_a 
+    (*isValue v ->*) noExists t_a -> isLCT t_a 
         -> subFTV a t_a (subBV v e) = subBV (subFTV a t_a v) (subFTV a t_a e).
 Proof. intros; apply lem_commute_subFTV_subBV_at; assumption. Qed.
 
 Lemma lem_commute_tsubFTV_tsubBV : forall (v:expr) (a:vname) (t_a:type) (t:type),
-    isValue v -> noExists t_a -> isLCT t_a 
+    (*isValue v ->*) noExists t_a -> isLCT t_a 
         -> tsubFTV a t_a (tsubBV v t) = tsubBV (subFTV a t_a v) (tsubFTV a t_a t).
 Proof. intros; apply lem_commute_subFTV_subBV_at; assumption. Qed.
 
 Lemma lem_commute_psubFTV_psubBV : forall (v:expr) (a:vname) (t_a:type) (ps:preds),
-    isValue v -> noExists t_a -> isLCT t_a 
+    (*isValue v ->*) noExists t_a -> isLCT t_a 
         -> psubFTV a t_a (psubBV v ps) = psubBV (subFTV a t_a v) (psubFTV a t_a ps).
 Proof. intros; apply lem_commute_subFTV_subBV_at; assumption. Qed.
 

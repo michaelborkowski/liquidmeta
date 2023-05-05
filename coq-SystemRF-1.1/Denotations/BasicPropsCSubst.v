@@ -255,7 +255,6 @@ Lemma lem_ctsubst_refn : forall (th:csub) (b:basic) (ps:preds),
         -> ctsubst th (TRefn b ps) = TRefn b (cpsubst th ps).
 Proof. induction th; intros b ps Hb; simpl;
   destruct b; simpl in Hb; try rewrite IHth; intuition. Qed.
-(* 33 *)
 (*
 {-@ lem_ctsubst_refn_tv :: th:csub -> { a:vname | tv_in_csubst a th } -> x:RVname -> p:preds
         -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == push (csubst th p) (csubst_tv th a) } @-}
@@ -299,47 +298,29 @@ lem_ctsubst_refn_usertype g th den_g_th b x p p_g_t = case b of
     (TFunc {})     -> () ? lem_ctsubst_refn_tv th a x p
     (TPoly {})     -> () ? lem_ctsubst_refn_tv th a x p 
   _       -> () ? lem_ctsubst_refn    th b x p 
+*)
 
-{-@ lem_ctsubst_func :: th:csub -> x:vname -> t_x:type -> t:type
-        -> { pf:_ | ctsubst th (TFunc x t_x t) == TFunc x (ctsubst th t_x) (ctsubst th t) } @-}  
-lem_ctsubst_func :: csub -> vname -> type -> type -> Proof
-lem_ctsubst_func (CEmpty)       x t_x t = ()
-lem_ctsubst_func (CCons y v th) x t_x t 
-    = () ? lem_ctsubst_func th x (tsubFV y v t_x) (tsubFV y v t) 
-lem_ctsubst_func (CConsT a t_a th) x t_x t 
-    = () ? lem_ctsubst_func th x (tsubFTV a t_a t_x) (tsubFTV a t_a t)
-
-{-@ lem_ctsubst_exis :: th:csub -> x:vname -> t_x:type -> t:type
-        -> {pf:_ | ctsubst th (TExists x t_x t) == TExists x (ctsubst th t_x) (ctsubst th t)} @-}  
-lem_ctsubst_exis :: csub -> vname -> type -> type -> Proof
-lem_ctsubst_exis (CEmpty)       x t_x t = ()
-lem_ctsubst_exis (CCons y v th) x t_x t 
-    = () ? lem_ctsubst_exis th x (tsubFV y v t_x) (tsubFV y v t) 
-lem_ctsubst_exis (CConsT a t_a th) x t_x t 
-    = () ? lem_ctsubst_exis th x (tsubFTV a t_a t_x) (tsubFTV a t_a t)
-
-{-@ lem_ctsubst_poly :: th:csub -> a:vname -> k:kind -> t:type
-        -> { pf:_ | ctsubst th (TPoly a k t) == TPoly a k (ctsubst th t) } @-}  
-lem_ctsubst_poly :: csub -> vname -> kind -> type -> Proof
-lem_ctsubst_poly (CEmpty)           a k t = ()
-lem_ctsubst_poly (CCons  y  v   th) a k t  
-    = () ? lem_ctsubst_poly th a k (tsubFV y v t) 
-lem_ctsubst_poly (CConsT a' t'  th) a k t 
-    = () ? lem_ctsubst_poly th a k (tsubFTV a' t' t)
+Lemma lem_ctsubst_func : forall (th:csub) (t_x t:type),
+    ctsubst th (TFunc t_x t) = TFunc (ctsubst th t_x) (ctsubst th t).
+Proof. induction th; simpl; intros; apply IHth || reflexivity. Qed.
+  
+Lemma lem_ctsubst_exis : forall (th:csub) (t_x t:type),
+    ctsubst th (TExists t_x t) = TExists (ctsubst th t_x) (ctsubst th t).
+Proof. induction th; simpl; intros; apply IHth || reflexivity. Qed.
+  
+Lemma lem_ctsubst_poly : forall (th:csub) (k:kind) (t:type),
+    ctsubst th (TPoly k t) = TPoly k (ctsubst th t).
+Proof. induction th; simpl; intros; apply IHth || reflexivity. Qed.
 
 Lemma lem_ctsubst_erase_basic : forall (th:csub) (t:type) (b:basic), 
     erase t = FTBasic b -> isClosedBasic b \/ isBTV b 
         -> erase (ctsubst th t) = FTBasic b.
 Proof. intro th; induction t; simpl; intros; try discriminate;
-  rewrite <- H; rewrite lem_ctsubst_refn || rewrite lem_ctsubst_exis.
-lem_ctsubst_erase_basic th (TRefn _b z p) b = case b of
-  TBool -> () ? lem_ctsubst_refn th TBool z p
-  TInt  -> () ? lem_ctsubst_refn th TInt  z p 
-lem_ctsubst_erase_basic th (TExists z t_z t) b 
-  = () ? lem_ctsubst_exis th z t_z t 
-       ? lem_ctsubst_erase_basic th t b
+  try injection H as H; try subst b0;
+  rewrite lem_ctsubst_refn || rewrite lem_ctsubst_exis;
+  simpl; try apply IHt2; trivial. Qed.
 
-    
+(*   
 {-@ lem_ctsubst_self :: th:csub -> t:type -> e:Term -> k:kind 
       -> { pf:_ | ctsubst th (self t e k) == self (ctsubst th t) (csubst th e) k } / [csubstSize th] @-}
 lem_ctsubst_self :: csub -> type -> expr -> kind -> Proof
@@ -361,16 +342,18 @@ lem_csubst_nofv (CCons x v th) e    = () ? lem_csubst_nofv th e
                                          ? lem_subFV_notin x v e
 lem_csubst_nofv (CConsT a t_a th) e = () ? lem_csubst_nofv th e
                                          ? lem_subFTV_notin a t_a e 
-
-{-@ lem_ctsubst_nofree :: th:csub -> { t:type | Set_emp (free t) && Set_emp (freeTV t) }
-        -> { pf:_ | ctsubst th t == t } @-}
-lem_ctsubst_nofree :: csub -> type -> Proof
-lem_ctsubst_nofree (CEmpty)          t = ()
-lem_ctsubst_nofree (CCons x v th)    t = () ? lem_ctsubst_nofree th t
-                                            ? lem_tsubFV_notin x v t 
-lem_ctsubst_nofree (CConsT a t_a th) t = () ? lem_ctsubst_nofree th t
-                                            ? lem_tsubFTV_notin a t_a t 
-
+*)
+Lemma lem_ctsubst_nofree : forall (th:csub) (t:type),
+    free t = empty -> freeTV t = empty -> ctsubst th t = t.
+Proof. induction th; intros; simpl; try reflexivity;
+  rewrite IHth;
+  try assert (tsubFV x v_x t = t)
+    by (apply lem_subFV_notin; apply empty_no_elem; apply H);
+  try assert (tsubFTV a t_a t = t)
+    by (apply lem_subFTV_notin; apply empty_no_elem; apply H0);
+  rewrite H1; trivial. Qed.
+ 
+(*
 {-{-@ lem_csubst_freeBV :: th:csub -> e:expr
         -> { pf:_ | freeBV (csubst th e) == freeBV e } @-}
 lem_csubst_freeBV :: csub -> expr -> Proof
@@ -388,63 +371,41 @@ lem_ctsubst_nofreeBV (CConsT a t_a th) t = () ? lem_ctsubst_nofreeBV th (tsubFTV
                                                     ? lem_tsubFTV_tfreeBV a t_a t)
 *)
 Lemma lem_csubst_value : forall (th:csub) (v:expr),
-    isValue v -> isValue (csubst th v).
-Proof. induction th; intros; simpl. apply H.
-  try apply lem_subFV_value with y v_y in H.
+    isValue v -> substitutable th -> isValue (csubst th v).
+Proof. induction th; simpl; intros; try apply H; destruct H0;
+  try apply lem_subFV_value with x v_x v in H as H';
+  try apply lem_subFTV_value with a t_a v in H as H';
+  try apply IHth; assumption. Qed.
 
-lem_csubst_value (CEmpty)          v = ()
-lem_csubst_value (CCons y v_y th)  v = () ? lem_csubst_value th (subFV y v_y v)
-lem_csubst_value (CConsT a t_a th) v = () ? lem_csubst_value th (subFTV a t_a v)
+Lemma lem_ctsubst_noExists : forall (th:csub) (t_a:type),
+    noExists t_a -> substitutable th -> noExists (ctsubst th t_a).
+Proof. induction th; simpl; intros; try apply H; destruct H0;
+  try apply lemma_tsubFV_noExists with x v_x t_a in H as H';
+  try apply lemma_tsubFTV_noExists with a t_a t_a0 in H as H';
+  try apply IHth; assumption. Qed.
+
+  (* --- Commutative laws relating csubst/ctsubst and substitution operations *)
+
+Lemma lem_csubst_subBV : forall (th:csub) (v e:expr),
+    loc_closed th -> substitutable th
+        -> csubst th (subBV v e) = subBV (csubst th v) (csubst th e).
+Proof. induction th; simpl; intros; try reflexivity;
+  try rewrite lem_commute_subFV_subBV;
+  try rewrite lem_commute_subFTV_subBV;
+  try apply IHth; destruct H; destruct H0; assumption. Qed.
+
+Lemma lem_csubst_subBTV : forall (th:csub) (t_a:type) (e:expr),
+    loc_closed th -> substitutable th -> noExists t_a
+          -> csubst th (subBTV t_a e) = subBTV (ctsubst th t_a) (csubst th e).
+Proof. induction th; simpl; intros; try reflexivity;
+  try rewrite lem_commute_subFV_subBTV;
+  try rewrite lem_commute_subFTV_subBTV;
+  destruct H; destruct H0; try apply IHth; 
+  try apply lemma_tsubFV_noExists;
+  try apply lemma_tsubFTV_noExists; try assumption. Qed.
+
 (*
-{-@ lem_ctsubst_usertype :: th:csub -> t_a:UserType -> { pf:_ | noExists (ctsubst th t_a) } @-}
-lem_ctsubst_usertype :: csub -> type -> Proof
-lem_ctsubst_usertype (CEmpty)          t = ()
-lem_ctsubst_usertype (CCons y v_y th)  t = () ? lem_ctsubst_usertype th (tsubFV y v_y t)
-lem_ctsubst_usertype (CConsT a t_a th) t = () ? lem_ctsubst_usertype th (tsubFTV a t_a t)
-
-{-@ lem_ctsubst_head_not_free :: x:vname 
-        -> { v_x:Value | Set_emp (fv v_x) && Set_emp (ftv v_x) &&
-                         Set_emp (freeBV v_x) && Set_emp (freeBTV v_x) } 
-        -> { th:csub | not (Set_mem x (bindsC th)) }
-        -> { t:type | not (Set_mem x (free t)) } 
-        -> { pf:_ | ctsubst (CCons x v_x th) t == ctsubst th t } @-}
-lem_ctsubst_head_not_free :: vname -> expr -> csub -> type -> Proof
-lem_ctsubst_head_not_free x v_x th t = toProof ( ctsubst (CCons x v_x th) t
-                                             === ctsubst th (tsubFV x v_x t)
-                                             === ctsubst th t )
-
-  --- Commutative laws relating csubst/ctsubst and substitution operations
-  --- The first set of these laws involve [v/x] or [t_a/a] where v or t_a have no free vars
-
-{-@ lem_csubst_subBV :: x:vname -> v:Value -> bt:FType 
-           -> ProofOf(HasFType FEmpty v bt) -> th:csub -> p:expr
-           -> { pf:_ | csubst th (subBV x v p) == subBV x v (csubst th p) } @-}
-lem_csubst_subBV :: vname -> expr -> FType -> HasFType -> csub -> expr -> Proof
-lem_csubst_subBV x v bt pf_v_b (CEmpty)         p = ()
-lem_csubst_subBV x v bt pf_v_b (CCons y v_y th) p 
-    = () ? lem_commute_subFV_subBV1 x v 
-                   (y `withProof` lem_fv_bound_in_fenv FEmpty v bt pf_v_b y) v_y p
-         ? lem_csubst_subBV x v bt pf_v_b th (subFV y v_y p)
-lem_csubst_subBV x v bt pf_v_b (CConsT a t_a th) p
-    = () ? lem_commute_subFTV_subBV1 x v
-                   (a `withProof` lem_fv_bound_in_fenv FEmpty v bt pf_v_b a) t_a p
-         ? lem_csubst_subBV x v bt pf_v_b th (subFTV a t_a p)
-
-{-@ lem_csubst_subBTV :: a:vname -> t_a:UserType -> k:kind 
-           -> ProofOf(WFType Empty t_a k) -> th:csub -> p:expr
-           -> { pf:_ | csubst th (subBTV a t_a p) == subBTV a t_a (csubst th p) } @-}
-lem_csubst_subBTV :: vname -> type -> kind -> WFType -> csub -> expr -> Proof
-lem_csubst_subBTV a t_a k p_emp_ta (CEmpty)          p = ()
-lem_csubst_subBTV a t_a k p_emp_ta (CCons y v_y th)  p 
-  = () ? lem_commute_subFV_subBTV1 a t_a 
-             (y ? lem_free_bound_in_env Empty t_a k p_emp_ta y) v_y p
-       ? lem_csubst_subBTV a t_a k p_emp_ta th (subFV y v_y p)
-lem_csubst_subBTV a t_a k p_emp_ta (CConsT a1 t1 th) p
-  = () ? lem_commute_subFTV_subBTV1 a t_a 
-             (a1 ? lem_free_bound_in_env Empty t_a k p_emp_ta a1) t1 p
-       ? lem_csubst_subBTV a t_a k p_emp_ta th (subFTV a1 t1 p)
-
-{-@ lem_ctsubst_tsubBV :: x:vname -> v:Value -> bt:FType
+  {-@ lem_ctsubst_tsubBV :: x:vname -> v:Value -> bt:FType
            -> ProofOf(HasFType FEmpty v bt) -> th:csub -> t:type
            -> { pf:_ | ctsubst th (tsubBV x v t) == tsubBV x v (ctsubst th t) } @-}
 lem_ctsubst_tsubBV :: vname -> expr -> FType -> HasFType -> csub -> type -> Proof
@@ -471,30 +432,6 @@ lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CConsT a' t_a' th) t
     = () ? lem_commute_tsubFTV_tsubBTV1 a1 t_a
                    (a' ? lem_free_bound_in_env Empty t_a k p_emp_ta a') t_a' t 
          ? lem_ctsubst_tsubBTV a1 t_a k p_emp_ta th (tsubFTV a' t_a' t)
-
-  --- The second set of these laws are more general for [v/x] or [t_a/a] incl free vars
-
-{-@ lem_commute_csubst_subBV :: th:csub -> x:vname -> v:Value -> e:expr
-           -> { pf:_ | csubst th (subBV x v e) == subBV x (csubst th v) (csubst th e) } @-} 
-lem_commute_csubst_subBV :: csub -> vname -> expr -> expr -> Proof
-lem_commute_csubst_subBV (CEmpty)         x v e = () 
-lem_commute_csubst_subBV (CCons y v_y th) x v e 
-    = () ? lem_commute_subFV_subBV x v y v_y e
-         ? lem_commute_csubst_subBV th x (subFV y v_y v) (subFV y v_y e)
-lem_commute_csubst_subBV (CConsT a t_a th) x v e 
-    = () ? lem_commute_subFTV_subBV x v a t_a e
-         ? lem_commute_csubst_subBV th x (subFTV a t_a v) (subFTV a t_a e)
-
-{-@ lem_commute_csubst_subBTV :: th:csub -> a:vname -> t_a:UserType -> e:expr
-            -> { pf:_ | csubst th (subBTV a t_a e) == subBTV a (ctsubst th t_a) (csubst th e) } @-}
-lem_commute_csubst_subBTV :: csub -> vname -> type -> expr -> Proof
-lem_commute_csubst_subBTV (CEmpty)          a t_a e = ()
-lem_commute_csubst_subBTV (CCons  y v_y th) a t_a e
-    = () ? lem_commute_subFV_subBTV a t_a y v_y e
-         ? lem_commute_csubst_subBTV th a (tsubFV y v_y t_a) (subFV y v_y e)
-lem_commute_csubst_subBTV (CConsT a' t' th) a t_a e
-    = () ? lem_commute_subFTV_subBTV a t_a a' t' e
-         ? lem_commute_csubst_subBTV th a (tsubFTV a' t' t_a) (subFTV a' t' e)
 
 {-@ lem_commute_ctsubst_tsubBV :: th:csub -> x:vname -> v:Value -> t:type
            -> { pf:_ | ctsubst th (tsubBV x v t) == tsubBV x (csubst th v) (ctsubst th t) } @-} 

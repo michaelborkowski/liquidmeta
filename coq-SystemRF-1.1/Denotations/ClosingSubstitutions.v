@@ -81,6 +81,13 @@ Fixpoint closed (th0 : csub) : Prop :=
     | (CConsT a t   th) => free t = empty /\ freeTV t = empty /\ closed th
     end.  
 
+Fixpoint loc_closed (th0 : csub) : Prop :=
+    match th0 with
+    | CEmpty            => True
+    | (CCons  x v_x th) => isLC v_x /\ loc_closed th
+    | (CConsT a t   th) => isLCT t  /\ loc_closed th
+    end.  
+
 Fixpoint substitutable (th0 : csub) : Prop :=
     match th0 with
     | CEmpty            => True
