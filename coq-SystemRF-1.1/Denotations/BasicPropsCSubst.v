@@ -5,6 +5,7 @@ Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.BasicPropsSubstitution.
 Require Import SystemRF.BasicPropsEnvironments.
+Require Import SystemRF.Typing.
 Require Import Denotations.ClosingSubstitutions.
 
 Require Import Arith.
@@ -73,6 +74,12 @@ Proof. apply ( syntax_mutind
     destruct (a =? a0); simpl; try rewrite lem_subFV_push;
     try rewrite H; try f_equal; try apply lem_subFV_notin; trivial.
   Qed. 
+
+Lemma lem_commute_tsubFV_tsubFTV : 
+  forall (t:type) (a:vname) (t_a:type) (y:vname) (v_y:expr),
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
+      -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a t_a (tsubFV y v_y t).
+Proof.  intros; apply lem_commute_subFV_subFTV; assumption. Qed.
 
 Lemma lem_commute_subFTV : (
   forall (e:expr) (a:vname) (t_a:type) (a':vname) (t_a':type),
@@ -320,20 +327,100 @@ Proof. intro th; induction t; simpl; intros; try discriminate;
   rewrite lem_ctsubst_refn || rewrite lem_ctsubst_exis;
   simpl; try apply IHt2; trivial. Qed.
 
-(*   
-{-@ lem_ctsubst_self :: th:csub -> t:type -> e:Term -> k:kind 
-      -> { pf:_ | ctsubst th (self t e k) == self (ctsubst th t) (csubst th e) k } / [csubstSize th] @-}
-lem_ctsubst_self :: csub -> type -> expr -> kind -> Proof
-lem_ctsubst_self (CEmpty)          t e k = ()
-lem_ctsubst_self (CCons  y v_y th) t e k
-  = () ? lem_tsubFV_self  y v_y t e k 
-       ? lem_ctsubst_self th (tsubFV y v_y t) (subFV y v_y e) k
-lem_ctsubst_self (CConsT a t_a th) t e k
-  = () ? lem_tsubFTV_self a t_a t e k
-       ? lem_ctsubst_self th (tsubFTV a t_a t) (subFTV a t_a e) k
+Fixpoint isExFTV (t : type) : Prop :=
+    match t with
+    | (TRefn b ps)    => match b with
+                         | (FTV a) => True
+                         | _       => False
+    end
+    | (TFunc tx t')   => False
+    | (TExists tx t') => isExFTV t'
+    | (TPoly k t')    => False
+    end.
 
-  --- Various properties of csubst/ctsubst and free/bound variables
+Fixpoint matchesExFTV (a : vname) (t : type) : Prop :=
+    match t with
+    | (TRefn b ps)    => match b with
+                         | (FTV a0) => a = a0
+                         | _        => False
+    end
+    | (TFunc tx t')   => False
+    | (TExists tx t') => matchesExFTV a t'
+    | (TPoly k t')    => False
+    end.
 
+Lemma matchesExFTV_dec : forall (a:vname) (t:type),
+    matchesExFTV a t \/ ~ matchesExFTV a t.
+Proof. intro a; induction t; 
+  try destruct b; try destruct (a =? a0) eqn:A;
+  simpl; unfold not; intuition.
+  - apply Nat.eqb_eq in A; left; apply A.
+  - apply Nat.eqb_neq in A; right; apply A. Qed. 
+
+Lemma lem_isNotExFTV_no_match : forall (a:vname) (t:type),
+    ~ isExFTV t -> ~ matchesExFTV a t.
+Proof. intro a; induction t; simpl; try destruct b; intuition. Qed.
+
+Lemma lem_tsubFV_isNotExFTV : forall (x:vname) (v_x:expr) (t:type),
+    ~ isExFTV t -> ~ isExFTV (tsubFV x v_x t).
+Proof. intros x v_x; induction t; simpl;
+  try destruct b; trivial. Qed.
+
+Lemma lem_tsubFTV_isNotExFTV : forall (a:vname) (t_a:type) (t:type),
+    ~ isExFTV t -> ~ isExFTV (tsubFTV a t_a t).
+Proof. intros a t_a; induction t; simpl;
+  try destruct b; intuition. Qed.
+
+Lemma lem_push_isNotExFTV : forall (ps:preds) (t_a:type),
+    freeTV t_a = empty -> noExists t_a -> ~ isExFTV (push ps t_a).
+Proof. intros ps; destruct t_a; simpl; 
+  try destruct b; auto; intro H. 
+  apply empty_no_elem with (names_add a (ftvP ps0)) a in H;
+  apply not_elem_names_add_elim in H; intuition. Qed.
+
+Lemma lem_tsubFTV_matches : forall (a:vname) (t_a t:type),
+    freeTV t_a = empty -> noExists t_a
+        -> matchesExFTV a t -> ~ isExFTV (tsubFTV a t_a t).
+Proof. intros a t_a; induction t; simpl; 
+  try destruct b; try apply IHt2;
+  intros; try contradiction. 
+  apply Nat.eqb_eq in H1; rewrite H1; 
+  apply lem_push_isNotExFTV; assumption. Qed.
+
+Lemma lem_tsubFTV_self_noFTV : forall (a:vname) (t_a t:type) (v:expr) (k:kind),
+    ~ matchesExFTV a t 
+      -> tsubFTV a t_a (self t v k) = self (tsubFTV a t_a t) (subFTV a t_a v) k.
+Proof. intros a t_a; induction t; intros v k'; destruct k';
+  try destruct b; simpl; try destruct (a =? a0) eqn:A; intro H;
+  unfold eqlPred; f_equal; try apply IHt2; trivial;
+  apply Nat.eqb_eq in A; subst a0; contradiction. Qed.
+
+Lemma lem_ctsubst_self_noFTV : forall (th:csub) (t:type) (v:expr) (k:kind),
+    ~ isExFTV t -> ctsubst th (self t v k) = self (ctsubst th t) (csubst th v) k.
+Proof. induction th; simpl; intros; try reflexivity.
+  - (* CCons *) rewrite lem_tsubFV_self; apply IHth.
+    destruct t; try destruct b; simpl; simpl in H; trivial.
+    apply lem_tsubFV_isNotExFTV; apply H. 
+  - (* CConsT *) destruct t; destruct k; try destruct b; 
+    simpl; simpl in H; try contradiction;
+    try repeat rewrite lem_ctsubst_refn; 
+    try        rewrite lem_ctsubst_func;
+    try repeat rewrite lem_ctsubst_exis;
+    try rewrite lem_ctsubst_poly; simpl; unfold eqlPred; 
+    try rewrite lem_cpsubst_pcons;
+    try repeat rewrite lem_csubst_app;
+    try rewrite lem_csubst_appT; 
+    try rewrite lem_csubst_prim;
+    try rewrite lem_ctsubst_refn; 
+    try rewrite lem_cpsubst_pempty;
+    try rewrite lem_csubst_bv; simpl; auto; f_equal.
+    rewrite lem_tsubFTV_self_noFTV; try apply IHth;
+    try apply lem_tsubFTV_isNotExFTV;
+    try apply lem_isNotExFTV_no_match; apply H. Qed.
+
+
+  (* --- Various properties of csubst/ctsubst and free/bound variables *)
+(*
 {-@ lem_csubst_nofv :: th:csub -> { e:expr | Set_emp (fv e) && Set_emp (ftv e) }
         -> { pf:_ | csubst th e == e } @-}
 lem_csubst_nofv :: csub -> expr -> Proof

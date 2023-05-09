@@ -35,7 +35,9 @@ Proof. apply ( judgments_mutind
   - (* TIC *) rewrite lem_csubst_ic; rewrite lem_ctsubst_nofree;
     try apply lem_den_evalsdenotes; try apply lem_den_tyic;
     unfold tyic; simpl; reflexivity.
-  - (* TVar *) inversion H0; try (subst g; simpl in b; contradiction).
+  - (* TVar *) unfold EvalsDenotes.
+  
+  inversion H0; try (subst g; simpl in b; contradiction).
 
   (*
 lem_denote_sound_typ_tvar1 g e t (TVar1 g' x t' k' p_g'_t') (WFEBind _ wf_g' _ _ _ _p_g'_t') th den_g_th  
