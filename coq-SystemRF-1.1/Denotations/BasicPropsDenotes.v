@@ -135,159 +135,57 @@ Proof. intros a t_a t v v' k.
 
 Lemma lem_denotes_ctsubst_self : 
   forall (th:csub) (t:type) (v v':expr) (k:kind),
-    closed th -> loc_closed th -> substitutable th
+    closed th -> loc_closed th -> substitutable th -> uniqueC th 
+        -> isLC v -> ftv v = empty
         -> Denotes (self (ctsubst th t) (csubst th v) k) v'
         -> Denotes (ctsubst th (self t v k)) v'.
-Proof. induction th; intros t v v' k H1 H2 H3; simpl; trivial.
-  - (* CCons *) rewrite lem_tsubFV_self; apply IHth; auto with *.
-  - (* CConsT *) intros; simpl in H1; simpl in H2; simpl in H3;
-    destruct H1; destruct H1; destruct H2; destruct H3;
+Proof. induction th; intros t v v' k H1 H2 H3 H4 H5 H6; trivial;
+  simpl in H1; simpl in H2; simpl in H3; simpl in H4;
+  destruct H1; destruct H0; destruct H2; destruct H3; destruct H4.
+  - (* CCons *) simpl; rewrite lem_tsubFV_self; apply IHth; 
+    try apply lem_islc_at_subFV; auto with *.
+    assert (Subset (ftv (subFV x v_x v)) (union (ftv v) (ftv v_x)))
+      by apply ftv_subFV_elim;
+    rewrite H0 in H10; rewrite H6 in H10;
+    apply no_elem_empty; unfold not; intros;
+    apply H10 in H11; intuition. 
+  - (* CConsT *) intros;  
     pose proof (matchesExFTV_dec a t) as Hm; destruct Hm.
-    * (* Yes *) destruct t; try destruct b; simpl in H7;
-      try contradiction; try subst a0.
-
-    * (* No *)
-
-
-Lemma lem_tsubFTV_matches : forall (a:vname) (t_a t:type),
-    freeTV t_a = empty -> noExists t_a
-        -> matchesExFTV a t -> ~ isExFTV (tsubFTV a t_a t).
-Lemma lem_tsubFTV_self_noFTV : forall (a:vname) (t_a t:type) (v:expr) (k:kind),
-    ~ matchesExFTV a t 
-      -> tsubFTV a t_a (self t v k) = self (tsubFTV a t_a t) (subFTV a t_a v) k.
-Lemma lem_ctsubst_self_noFTV : forall (th:csub) (t:type) (v:expr) (k:kind),
-    ~ isExFTV t -> ctsubst th (self t v k) = self (ctsubst th t) (csubst th v) k.
-
-Lemma lem_denotes_ctsubst_tsubFTV_self : 
-  forall (th:csub) (a:vname) (t_a t:type) (v v':expr) (k:kind),
-    closed th -> loc_closed th -> substitutable th
-        -> noExists t_a -> isLCT t_a -> free t_a = empty -> freeTV t_a = empty
-        -> ftv v = empty -> isLC v
-        -> Denotes (ctsubst th (self (tsubFTV a t_a t) v k)) v'
-        -> Denotes (ctsubst th (tsubFTV a t_a (self t v k))) v'.
-Proof. induction th; intros; revert H8; simpl.
-  - (* CEmpty *) apply lem_denotes_tsubFTV_self;
-    try apply lem_subFTV_notin; try apply empty_no_elem; trivial.
-  - (* CCons *) rewrite lem_commute_tsubFV_tsubFTV;
-    try repeat rewrite lem_tsubFV_self;
-    try rewrite lem_commute_tsubFV_tsubFTV; try apply IHth;
-    simpl in H; simpl in H0; simpl in H1; 
-    try apply lem_islc_at_subFV;
-    destruct H; destruct H0; destruct H1; destruct H8;
-    try apply empty_no_elem; trivial;
-    assert (Subset (ftv (subFV x v_x v)) (union empty empty))
-        by (rewrite <- H6 at 1; rewrite <- H8; apply ftv_subFV_elim);
-    apply no_elem_empty; intros; 
-    apply not_elem_subset with (union empty empty); auto.
-  - (* CConsT *)
-
-
-
-    
-  apply lem_denotes_tsubFTV_self' with (depth t); trivial. Qed.  
-
-
-
-x v' k'; destruct k'; simpl;
-    try rewrite lem_ctsubst_func; try rewrite lem_ctsubst_exis;
-    try rewrite lem_ctsubst_poly; simpl; trivial.
-    - (* TRefn Base *)
-
-    (* maybe try with subFTV first in the Basic Props Denotes file?*)  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Lemma lem_denotes_ctsubst_self' : 
-  forall (n:nat) (th:csub) (t:type) (v v':expr) (k:kind),
-    depth t <= n -> closed th -> loc_closed th -> substitutable th
-        -> isLC v
-        -> Denotes (self (ctsubst th t) (csubst th v) k) v'
-        -> Denotes (ctsubst th (self t v k)) v'.
-Proof. induction n.
-  - (* n = 0 => TRefn *) induction th;
-    intros; revert H4;
-    assert (depth t = 0) by auto with *;
-    destruct t; simpl in H4; try discriminate;
-    destruct k; try rewrite lem_self_star; trivial.
-    
-    simpl. 
-    destruct b; simpl. ; rewrite H3;
-    unfold eqlPred; trivial. (* FTV a0 remains*)
-    destruct (a =? a0) eqn:A; simpl; 
-    unfold eqlPred; trivial.
-    (* a = a0*) destruct t_a; simpl in A; try contradiction;
-    simpl; trivial; unfold eqlPred.
-    repeat rewrite Denotes_equation_1; intuition.
-    apply PECons; fold subBV_at; fold psubBV_at;
-    inversion H9; try apply H12. 
-    destruct (0 =? 0) eqn:Z; simpl in Z; try discriminate;
-    destruct b eqn:B; unfold isLCT in H1; simpl in H2;
-    try destruct i; try destruct H1; try inversion H1;
-    try apply (empty_no_elem (names_add a1 (ftvP ps0))) with a1 in H2;
-    try apply not_elem_names_add_elim in H2; try destruct H2; intuition.
-    * (* TBool *) 
-      apply AddStep with (App (App (Prim Eqv) (subBV_at 0 v' v)) v').
-      apply EApp1; apply EApp1; apply lem_step_eql_tbool.
-      apply lem_decompose_evals with 
-        (App (App (AppT (Prim Eql) (TRefn TBool PEmpty)) (subBV_at 0 v' v)) v');
-      trivial; apply lem_step_evals;
-      apply EApp1; apply EApp1; apply lem_step_eql_tbool.
-    * (* TInt *) 
-      apply AddStep with (App (App (Prim Eq) (subBV_at 0 v' v)) v').
-      apply EApp1; apply EApp1; apply lem_step_eql_tint.
-      apply lem_decompose_evals with 
-        (App (App (AppT (Prim Eql) (TRefn TInt PEmpty)) (subBV_at 0 v' v)) v');
-      trivial; apply lem_step_evals;
-      apply EApp1; apply EApp1; apply lem_step_eql_tint.
-  - (* n > 0 *) intros; destruct t.
-    * (* TRefn *) apply IHn; revert H5; simpl; auto with *.
-    * (* TFunc *) destruct k; simpl; simpl in H5; apply H5.
-    * (* TExists *) revert H5; destruct k; simpl; trivial.
-      (* Base *) repeat rewrite Denotes_equation_3;
-      simpl; rewrite lem_erase_tsubFTV_self; intuition;
-      destruct H8 as [v_x H8]; exists v_x; intuition.
-      rewrite lem_tsubBV_self in H10; trivial.
-      apply lem_den_hasftype in H8 as H9.
-      apply lem_fv_subset_bindsF in H9 as H9;
-      destruct H9; unfold Subset in H11; simpl in H11;
-      assert (subFTV a t_a v_x = v_x)
-        by (apply lem_subFTV_notin; unfold not; apply H11). 
-      trivial || rewrite <- H12; rewrite <- H12 in H10.
-      rewrite <- lem_commute_tsubFTV_tsubBV in H10;
-      try rewrite <- lem_commute_tsubFTV_tsubBV;
-      try assumption; rewrite lem_tsubBV_self;
-      try apply IHn; simpl in H; apply Nat.succ_le_mono in H;
-      try rewrite depth_tsubBV;
-      try apply Nat.le_trans with (max (depth t1) (depth t2));
-      try apply Nat.le_max_r;
-      unfold isLC; simpl; trivial.
-    * (* TPoly *) destruct k; simpl; simpl in H5; apply H5.
-  Qed.    
+    * (* Yes *) destruct t eqn:T; try destruct b; remember H11 as H12;
+      simpl in H11; try contradiction; try subst a0.
+      + rewrite lem_unroll_ctsubst_tv_left;
+        try split; trivial;
+        rewrite lem_ctsubst_self_FTV with th a (TRefn (FTV a) ps) v k;
+        try apply lem_denotes_tsubFTV_self;
+        try apply lem_subFTV_notin;
+        try apply lem_csubst_isLC;
+        assert (ftv (csubst th v) = empty)
+          by (apply lem_csubst_pres_noftv; trivial);
+        try rewrite H11; simpl; auto.
+        rewrite <- lem_unroll_ctsubst_tv_left;
+        unfold csubst in H10; fold csubst in H10;
+        assert (subFTV a t_a v = v)
+          by (apply lem_subFTV_notin; rewrite H6; auto);
+          rewrite H13 in H10; try apply H10; intuition.
+      + rewrite lem_unroll_ctsubst_tv_left;
+        try split; trivial;
+        rewrite lem_ctsubst_self_FTV with th a (TExists t0_1 t0_2) v k;
+        try apply lem_denotes_tsubFTV_self;
+        try apply lem_subFTV_notin;
+        try apply lem_csubst_isLC;
+        assert (ftv (csubst th v) = empty)
+          by (apply lem_csubst_pres_noftv; trivial);
+        try rewrite H13;  
+        try rewrite <- lem_unroll_ctsubst_tv_left;
+        unfold csubst in H10; fold csubst in H10;
+        assert (subFTV a t_a v = v)
+          by (apply lem_subFTV_notin; rewrite H6; auto);
+        try rewrite H14 in H10; 
+        try apply H10;
+        simpl; auto.
+    * (* No *) simpl; rewrite lem_tsubFTV_self_noFTV;
+      try apply IHth; simpl in H10; 
+      assert (subFTV a t_a v = v)
+          by (apply lem_subFTV_notin; rewrite H6; auto);
+      try apply H10; try rewrite H12; trivial.
+  Qed.

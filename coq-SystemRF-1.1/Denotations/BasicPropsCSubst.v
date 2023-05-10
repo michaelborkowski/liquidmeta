@@ -1,6 +1,7 @@
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 Require Import SystemRF.Strengthenings.
+Require Import SystemRF.LocalClosure.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.BasicPropsSubstitution.
@@ -262,6 +263,19 @@ Lemma lem_ctsubst_refn : forall (th:csub) (b:basic) (ps:preds),
         -> ctsubst th (TRefn b ps) = TRefn b (cpsubst th ps).
 Proof. induction th; intros b ps Hb; simpl;
   destruct b; simpl in Hb; try rewrite IHth; intuition. Qed.
+
+Lemma lem_ctsubst_refn_tv_notin : forall (th:csub) (a:vname) (ps:preds),
+    ~ in_csubst a th 
+        -> ctsubst th (TRefn (FTV a) ps) = TRefn (FTV a) (cpsubst th ps).
+Proof. induction th; intros a0 ps H; simpl.
+  - (* CEmpty *) reflexivity.
+  - (* CCons *) apply in_csubst_CCons in H; destruct H;
+    apply IHth; apply H0.
+  - (* CConsT *) apply in_csubst_CConsT in H; destruct H;
+    apply Nat.neq_sym in H; apply Nat.eqb_neq in H;
+    rewrite H; apply IHth; apply H0.
+  Qed.
+
 (*
 {-@ lem_ctsubst_refn_tv :: th:csub -> { a:vname | tv_in_csubst a th } -> x:RVname -> p:preds
         -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == push (csubst th p) (csubst_tv th a) } @-}
@@ -279,17 +293,6 @@ lem_ctsubst_refn_tv (CConsT a' t' th) a x p
         -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == TRefn b z (strengthen (csubst th p) q) } @-}
 lem_ctsubst_refn_tv' :: csub -> vname -> RVname -> expr -> Basic -> RVname -> expr -> Proof
 lem_ctsubst_refn_tv' th a x p b z q = () ? lem_ctsubst_refn_tv th a x p
-
-{-@ lem_ctsubst_refn_tv_notin :: th:csub -> { a:vname | not (tv_in_csubst a th) } 
-        -> x:RVname -> p:expr 
-        -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == TRefn (FTV a) x (csubst th p) } @-}
-lem_ctsubst_refn_tv_notin :: csub -> vname -> RVname -> expr -> Proof
-lem_ctsubst_refn_tv_notin (CEmpty)          a x p = ()
-lem_ctsubst_refn_tv_notin (CCons  y v_y th) a x p 
-              = () ? lem_ctsubst_refn_tv_notin th a x (subFV y v_y p)
-lem_ctsubst_refn_tv_notin (CConsT a' t' th) a x p 
-  | a == a'   = impossible ""
-  | otherwise = () ? lem_ctsubst_refn_tv_notin th a x (subFTV a' t' p)
 
 {-@ lem_ctsubst_refn_usertype :: g:Env -> th:csub -> ProofOf(DenotesEnv g th)
         -> b:Basic -> x:RVname -> p:preds -> ProofOf(WFType g (TRefn b x p) Base)
@@ -357,9 +360,27 @@ Proof. intro a; induction t;
   - apply Nat.eqb_eq in A; left; apply A.
   - apply Nat.eqb_neq in A; right; apply A. Qed. 
 
+Lemma lem_matchesExFTV_both : forall (a0 a:vname) (t:type),
+    matchesExFTV a0 t -> matchesExFTV a t -> a0 = a.  
+Proof. intros a0 a; induction t; simpl;
+  try destruct b; intuition; subst a; apply H. Qed.
+
 Lemma lem_isNotExFTV_no_match : forall (a:vname) (t:type),
     ~ isExFTV t -> ~ matchesExFTV a t.
 Proof. intro a; induction t; simpl; try destruct b; intuition. Qed.
+
+Lemma lem_tsubFV_matchesExFTV : forall (a x:vname) (v_x:expr) (t:type),
+    matchesExFTV a t -> matchesExFTV a (tsubFV x v_x t).
+Proof. intros a x v_x; induction t; simpl;
+  try destruct b; trivial. Qed.
+
+Lemma lem_tsubFTV_matchesExFTV : forall (a0 a:vname) (t_a t:type),
+    a0 <> a 
+        -> matchesExFTV a0 t -> matchesExFTV a0 (tsubFTV a t_a t).
+Proof. intros a a0 t_a; induction t; simpl;
+  try destruct b; trivial; intros; subst a1;
+  apply Nat.neq_sym in H; apply Nat.eqb_neq in H;
+  rewrite H; simpl; reflexivity. Qed.  
 
 Lemma lem_tsubFV_isNotExFTV : forall (x:vname) (v_x:expr) (t:type),
     ~ isExFTV t -> ~ isExFTV (tsubFV x v_x t).
@@ -418,6 +439,30 @@ Proof. induction th; simpl; intros; try reflexivity.
     try apply lem_tsubFTV_isNotExFTV;
     try apply lem_isNotExFTV_no_match; apply H. Qed.
 
+Lemma lem_ctsubst_self_FTV : forall (th:csub) (a:vname) (t:type) (v:expr) (k:kind),
+    matchesExFTV a t -> ~ in_csubst a th
+        -> ctsubst th (self t v k) = self (ctsubst th t) (csubst th v) k.
+Proof.  induction th; simpl; intros; try reflexivity.
+  - (* CCons *) rewrite lem_tsubFV_self; apply IHth with a;
+    unfold in_csubst in H0; simpl in H0; 
+    apply not_elem_names_add_elim in H0; destruct H0;
+    try apply lem_tsubFV_matchesExFTV; trivial.
+  - (* CConsT *) apply in_csubst_CConsT in H0;  destruct H0;
+    destruct t eqn:T; simpl in H; 
+    try destruct b; try contradiction; try subst a1;
+    rewrite lem_tsubFTV_self_noFTV ;
+    try rewrite <- IHth with a0 (tsubFTV a t_a (TRefn (FTV a0) ps)) 
+                              (subFTV a t_a v) k;
+    try rewrite <- IHth with a0 (tsubFTV a t_a (TExists t0_1 t0_2)) 
+                              (subFTV a t_a v) k;
+    try assert (a =? a0 = false)
+      by (apply Nat.eqb_neq; apply Nat.neq_sym; apply H0);    
+    simpl; try rewrite H; simpl;
+    try apply Nat.neq_sym;
+    try apply lem_tsubFTV_matchesExFTV;
+    trivial; unfold not; intros; apply H0;
+    apply lem_matchesExFTV_both with t0_2; trivial.
+  Qed.
 
   (* --- Various properties of csubst/ctsubst and free/bound variables *)
 (*
@@ -440,23 +485,7 @@ Proof. induction th; intros; simpl; try reflexivity;
     by (apply lem_subFTV_notin; apply empty_no_elem; apply H0);
   rewrite H1; trivial. Qed.
  
-(*
-{-{-@ lem_csubst_freeBV :: th:csub -> e:expr
-        -> { pf:_ | freeBV (csubst th e) == freeBV e } @-}
-lem_csubst_freeBV :: csub -> expr -> Proof
-lem_csubst_freeBV (CEmpty)       e = ()
-lem_csubst_freeBV (CCons x v th) e = () ? lem_csubst_freeBV th (subFV x v e)
-                         ? toProof ( freeBV (subFV x v e) === freeBV e )
--}
-{-@ lem_ctsubst_nofreeBV :: th:csub -> { t:type | Set_emp (tfreeBV t) }
-        -> { pf:_ | Set_emp (tfreeBV (ctsubst th t)) } @-}
-lem_ctsubst_nofreeBV :: csub -> type -> Proof
-lem_ctsubst_nofreeBV (CEmpty)          t = ()
-lem_ctsubst_nofreeBV (CCons x v th)    t = () ? lem_ctsubst_nofreeBV th (tsubFV x v t
-                                                    ? lem_tsubFV_tfreeBV  x v   t)
-lem_ctsubst_nofreeBV (CConsT a t_a th) t = () ? lem_ctsubst_nofreeBV th (tsubFTV a t_a t
-                                                    ? lem_tsubFTV_tfreeBV a t_a t)
-*)
+
 Lemma lem_csubst_value : forall (th:csub) (v:expr),
     isValue v -> substitutable th -> isValue (csubst th v).
 Proof. induction th; simpl; intros; try apply H; destruct H0;
@@ -593,10 +622,23 @@ lem_ctsubst_and_unbind_tvT a1 a t_a k p_emp_ta th t
        ? lem_tfreeBV_empty      Empty t_a k p_emp_ta 
        ? lem_tsubFTV_unbind_tvT a1 a t_a t   
        ? lem_ctsubst_tsubBTV    a1 t_a k p_emp_ta th t
+*)
+  (* --- After applying a closing substitution there are no more free variables remaining *)
 
-  --- After applying a closing substitution there are no more free variables remaining
-
-{-@ lem_csubst_no_more_fv :: th:csub 
+Lemma lem_csubst_pres_noftv : forall (th:csub) (v:expr),
+    closed th -> ftv v = empty -> ftv (csubst th v) = empty.
+Proof. induction th; simpl; trivial; intros; destruct H; destruct H1.
+  - (* CCons *) apply IHth. apply H2. 
+    assert (Subset (ftv (subFV x v_x v)) (union (ftv v) (ftv v_x)))
+      by apply ftv_subFV_elim;
+    rewrite H1 in H3; rewrite H0 in H3;
+    apply no_elem_empty; unfold not; intros. 
+    apply H3 in H4; intuition.
+  - (* CConsT *) assert (subFTV a t_a v = v) 
+        by (apply lem_subFTV_notin; rewrite H0; auto);
+    rewrite H3; apply IHth; assumption. 
+  Qed.
+(*
         -> { v_x:expr | Set_sub (fv v_x) (vbindsC th) && Set_sub (ftv v_x) (tvbindsC th) }
         -> { pf:_ | Set_emp (fv (csubst th v_x)) && Set_emp (ftv (csubst th v_x)) } @-}
 lem_csubst_no_more_fv :: csub -> expr -> Proof
@@ -611,15 +653,15 @@ lem_ctsubst_no_more_fv :: csub -> type -> Proof
 lem_ctsubst_no_more_fv CEmpty            t = ()
 lem_ctsubst_no_more_fv (CCons  y v_y th) t = () ? lem_ctsubst_no_more_fv th (tsubFV y v_y t)
 lem_ctsubst_no_more_fv (CConsT a t_a th) t = () ? lem_ctsubst_no_more_fv th (tsubFTV a t_a t)
-    
-{-@ lem_csubst_no_more_bv :: th:csub 
-        -> { v_x:expr | Set_emp (freeBV v_x) && Set_emp (freeBTV v_x) }
-        -> { pf:_ | Set_emp (freeBV (csubst th v_x)) && Set_emp (freeBTV (csubst th v_x)) } @-}
-lem_csubst_no_more_bv :: csub -> expr -> Proof
-lem_csubst_no_more_bv CEmpty v_x            = ()
-lem_csubst_no_more_bv (CCons  y v_y th) v_x = () ? lem_csubst_no_more_bv th (subFV y v_y v_x)
-lem_csubst_no_more_bv (CConsT a t_a th) v_x = () ? lem_csubst_no_more_bv th (subFTV a t_a v_x)
+*)
+Lemma lem_csubst_isLC : forall (th:csub) (v:expr),
+    loc_closed th -> substitutable th -> isLC v -> isLC (csubst th v).
+Proof. induction th; simpl; trivial; intros; destruct H; destruct H0.
+  - (* CCons *) apply IHth; try apply lem_islc_at_subFV; trivial. 
+  - (* CConsT *) apply IHth; try apply lem_islc_at_subFTV; trivial.
+  Qed.
 
+(*
 {-@ lem_ctsubst_no_more_bv :: th:csub -> { t:type | Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
         -> { pf:_ | Set_emp (tfreeBV (ctsubst th t)) && Set_emp (tfreeBTV (ctsubst th t)) } @-}
 lem_ctsubst_no_more_bv :: csub -> type -> Proof

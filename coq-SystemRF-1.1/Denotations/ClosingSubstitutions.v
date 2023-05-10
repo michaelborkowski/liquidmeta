@@ -1,6 +1,9 @@
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 
+Require Import Arith.
+Require Import Lists.ListSet.
+
 (*------------------------------------------------------------------------- 
 ----- | CLOSING SUBSTITUTIONS 
 -------------------------------------------------------------------------*)
@@ -38,14 +41,6 @@ Fixpoint tvbindsC (th : csub) : names :=
 
 Definition in_csubst (x : vname) (th : csub) : Prop := Elem x (bindsC th).
 
-(* Should we add Fixpoint uniqueC ? *)
-(*Fixpoint uniqueC (th0 : csub) : Prop :=
-    match th0 with
-    | CEmpty         => True
-    | (CCons  x v_x th) => ~ in_csubst x th /\ uniqueC th
-    | (CConsT a t_a th) => ~ in_csubst a th /\ uniqueC th
-    end.    *)
-
 Lemma vbindsC_subset : forall (th : csub), Subset (vbindsC th) (bindsC th).
 Proof. unfold Subset; induction th; simpl.
   - trivial.
@@ -58,7 +53,19 @@ Proof. unfold Subset; induction th; simpl.
   - apply subset_add_intro; assumption.
   - apply subset_add_both_intro; assumption. Qed. 
 
-(* Should we add Lemma in_env_CCons ? *)  (* Should we add Lemma in_env_CConsT ? *)
+Lemma in_csubst_CCons : forall (x y : vname) (v : expr) (th : csub),
+   ~ in_csubst x (CCons y v th) -> x <> y /\ ~ in_csubst x th.
+Proof. unfold in_csubst; simpl; intros; split; unfold not.
+  - intro. apply set_add_intro2 with _ Nat.eq_dec x y (bindsC th) in H0; contradiction.
+  - intro. apply set_add_intro1 with _ Nat.eq_dec x y (bindsC th) in H0; contradiction.
+  Qed.
+
+Lemma in_csubst_CConsT : forall (x a : vname) (t : type) (th : csub),
+    ~ in_csubst x (CConsT a t th) -> x <> a /\ ~ in_csubst x th.
+Proof. unfold in_csubst; simpl; intros; split; unfold not.
+  - intro. apply set_add_intro2 with _ Nat.eq_dec x a (bindsC th) in H0; contradiction.
+  - intro. apply set_add_intro1 with _ Nat.eq_dec x a (bindsC th) in H0; contradiction.
+  Qed.
 
 Fixpoint bound_inC (x : vname) (v_x : expr) (th : csub) : Prop := 
     match th with
@@ -94,6 +101,13 @@ Fixpoint substitutable (th0 : csub) : Prop :=
     | (CCons  x v_x th) => isValue v_x /\ substitutable th
     | (CConsT a t   th) => noExists t  /\ substitutable th
     end.  
+
+Fixpoint uniqueC (th0 : csub) : Prop :=
+    match th0 with
+    | CEmpty         => True
+    | (CCons  x v_x th) => ~ in_csubst x th /\ uniqueC th
+    | (CConsT a t_a th) => ~ in_csubst a th /\ uniqueC th
+    end.   
     
 Fixpoint csubst (th : csub) (e : expr) : expr := 
     match th with

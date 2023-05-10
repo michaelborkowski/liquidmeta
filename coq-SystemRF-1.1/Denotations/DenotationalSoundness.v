@@ -1,14 +1,16 @@
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
+Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.Typing.
-(*Require Import SystemRF.BasicPropsSubstitution.
-Require Import SystemRF.BasicPropsEnvironments.*)
+(*Require Import SystemRF.BasicPropsSubstitution.*)
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
+Require Import Denotations.BasicPropsDenotes.
 Require Import Denotations.PrimitivesDenotations.
+Require Import Denotations.SelfifyDenotations.
 
 Lemma lem_denote_sound : ( forall (g:env) (e:expr) (t:type),
     Hastype g e t -> forall (th:csub),
@@ -35,7 +37,16 @@ Proof. apply ( judgments_mutind
   - (* TIC *) rewrite lem_csubst_ic; rewrite lem_ctsubst_nofree;
     try apply lem_den_evalsdenotes; try apply lem_den_tyic;
     unfold tyic; simpl; reflexivity.
-  - (* TVar *) unfold EvalsDenotes.
+  - (* TVar *) unfold EvalsDenotes; exists (csubst th (FV x));
+    repeat split; try apply Refl;
+    try apply lem_denotes_ctsubst_self;
+    try apply lem_denotations_selfify;
+
+    try apply lem_csubst_value;
+    try apply lem_denotesenv_closed with g;
+    try apply lem_denotesenv_loc_closed with g;
+    try apply lem_denotesenv_substitutable with g;
+    unfold isLC; simpl; trivial.
   
   inversion H0; try (subst g; simpl in b; contradiction).
 

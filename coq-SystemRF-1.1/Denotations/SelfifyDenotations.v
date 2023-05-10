@@ -84,14 +84,3 @@ Lemma lem_denotations_selfify : forall (t:type) (k:kind) (v:expr),
         -> Denotes t v -> Denotes (self t v k) v.
 Proof. intros t k v p_emp_t. 
   apply lem_denotations_selfify' with (depth t) Empty; trivial. Qed.
-
-Lemma lem_denotes_ctsubst_self : 
-  forall (th:csub) (t:type) (x:vname) (v':expr) (k:kind),
-    Denotes (self (ctsubst th t) (csubst th (FV x)) k) v'
-       -> Denotes (ctsubst th (self t (FV x) k)) v'.
-Proof. intro th; induction t; intros x v' k'; destruct k'; simpl;
-    try rewrite lem_ctsubst_func; try rewrite lem_ctsubst_exis;
-    try rewrite lem_ctsubst_poly; simpl; trivial.
-    - (* TRefn Base *)
-
-    (* maybe try with subFTV first in the Basic Props Denotes file?*)
