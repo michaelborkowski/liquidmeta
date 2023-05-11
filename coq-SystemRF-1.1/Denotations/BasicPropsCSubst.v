@@ -465,26 +465,20 @@ Proof.  induction th; simpl; intros; try reflexivity.
   Qed.
 
   (* --- Various properties of csubst/ctsubst and free/bound variables *)
-(*
-{-@ lem_csubst_nofv :: th:csub -> { e:expr | Set_emp (fv e) && Set_emp (ftv e) }
-        -> { pf:_ | csubst th e == e } @-}
-lem_csubst_nofv :: csub -> expr -> Proof
-lem_csubst_nofv (CEmpty)       e    = ()
-lem_csubst_nofv (CCons x v th) e    = () ? lem_csubst_nofv th e
-                                         ? lem_subFV_notin x v e
-lem_csubst_nofv (CConsT a t_a th) e = () ? lem_csubst_nofv th e
-                                         ? lem_subFTV_notin a t_a e 
-*)
+
+Lemma lem_csubst_nofv : forall (th:csub) (e:expr),
+    fv e = empty -> ftv e = empty -> csubst th e = e.
+Proof. induction th; intros; simpl; try reflexivity;
+  rewrite IHth; try rewrite lem_subFV_notin';
+  try rewrite lem_subFTV_notin'; 
+  try apply empty_no_elem; trivial. Qed.
+
 Lemma lem_ctsubst_nofree : forall (th:csub) (t:type),
     free t = empty -> freeTV t = empty -> ctsubst th t = t.
 Proof. induction th; intros; simpl; try reflexivity;
-  rewrite IHth;
-  try assert (tsubFV x v_x t = t)
-    by (apply lem_subFV_notin; apply empty_no_elem; apply H);
-  try assert (tsubFTV a t_a t = t)
-    by (apply lem_subFTV_notin; apply empty_no_elem; apply H0);
-  rewrite H1; trivial. Qed.
- 
+  rewrite IHth; try rewrite lem_tsubFV_notin; 
+  try rewrite lem_tsubFTV_notin; 
+  try apply empty_no_elem; trivial. Qed.
 
 Lemma lem_csubst_value : forall (th:csub) (v:expr),
     isValue v -> substitutable th -> isValue (csubst th v).

@@ -9,6 +9,7 @@ Require Import SystemRF.BasicPropsSubstitution.
 Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.BasicPropsWellFormedness.
 Require Import SystemRF.Typing.
+Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.LemmasTransitive.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
@@ -42,19 +43,64 @@ Proof. intros; induction H; simpl; try split; trivial.
 
 Lemma lem_denotesenv_uniqueC : forall (g:env) (th:csub),
     DenotesEnv g th -> uniqueC th.
-Proof. intros g th; revert g; induction th; simpl; trivial.
-  - intros; split; inversion H.
-  pose proof lem_binds_env_th. ...... 
-
+Proof. intros g th den_g_th; induction den_g_th; simpl; 
+  try split; trivial; unfold in_csubst;
+  rewrite <- lem_binds_env_th with g th; trivial. Qed.
 
 Lemma lem_bound_in_denotesenv : 
   forall (x:vname) (t:type) (g:env) (th:csub),
-    bound_in x t g -> DenotesEnv g th 
+    DenotesEnv g th -> bound_in x t g -> WFEnv g
         -> Denotes (ctsubst th t) (csubst th (FV x)).
-Proof. 
-
-
-
+Proof. intros x t; induction g.
+  - simpl; intuition.
+  - intros; inversion H;   subst x1 t1 g0;
+    try apply H1;  simpl in H0; destruct H0.
+    * (* x = x0 *) destruct H0; subst x0 t0;
+      inversion H1; subst x0 t0 g0.
+      simpl; destruct (x =? x) eqn:X;
+      try apply Nat.eqb_neq in X; try unfold not in X; 
+      try contradiction.
+      apply lem_free_subset_binds in H10; destruct H10.
+      assert (~ Elem x (free t))
+        by (pose proof (vbinds_subset g);
+            apply not_elem_subset with (vbinds g);
+            try apply not_elem_subset with (binds g); trivial).
+      rewrite lem_tsubFV_notin;
+      apply lem_den_hasftype in H8 as H11;
+      apply lem_fv_subset_bindsF in H11;
+      simpl in H11; destruct H11;
+      try apply no_elem_empty;
+      try rewrite lem_csubst_nofv; 
+      try apply no_elem_empty; trivial;
+      intros; try apply not_elem_subset with empty.
+    * (* x <> x0 *)
+      apply boundin_wfenv_wftype in H0 as p_g_t; 
+      pose proof (vbinds_subset g);
+      assert (x0 <> x)
+        by (apply lem_boundin_inenv in H0; 
+            unfold in_env in H7; apply H2 in H0;
+            unfold not; intros; subst x0; contradiction);
+      apply Nat.eqb_neq in H3; simpl; try rewrite H3;
+      try rewrite lem_tsubFV_notin;
+      try apply lem_free_subset_binds in p_g_t; 
+      try destruct p_g_t;
+      try apply not_elem_subset with (vbinds g);
+      try apply not_elem_subset with (binds g); 
+      try apply IHg;
+      inversion H1; trivial.
+  - intros; simpl in H0;
+    apply boundin_wfenv_wftype in H0 as p_g_t; 
+    pose proof (tvbinds_subset g);
+    try apply lem_free_subset_binds in p_g_t;
+    try destruct p_g_t; 
+    inversion H; subst a0 k0 g0; simpl;
+    try rewrite lem_tsubFTV_notin;
+    try apply IHg; 
+    try apply not_elem_subset with (tvbinds g);
+    try apply not_elem_subset with (binds g);
+    inversion H1; trivial.
+  Qed.
+  
 (* Unfortunately, the self operator and tsubFTV do not quite 
    commute with each other, but are entirely semantically 
    equivalent. The next lemma shows that the denotation is

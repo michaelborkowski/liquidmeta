@@ -1,5 +1,6 @@
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
+Require Import SystemRF.BasicPropsEnvironments.
 
 Require Import Arith.
 Require Import Lists.ListSet.
@@ -156,3 +157,12 @@ remove_fromCS (CCons  z v_z th) x | ( x == z ) = th
                                   | otherwise  = CCons  z v_z (remove_fromCS th x)
 remove_fromCS (CConsT a t_a th) x | ( x == a ) = th
                                   | otherwise  = CConsT a t_a (remove_fromCS th x) *)
+
+Fixpoint csubst_env (th0:csub) (g:env) : env :=
+    match th0 with  
+    | CEmpty            => g 
+    | (CCons  z v_z th) => csubst_env th (esubFV  z v_z g)
+    | (CConsT a t_a th) => csubst_env th (esubFTV a t_a g)
+    end.
+(* Pre:  g:Env  | Set_emp (Set_cap (bindsC th) (binds g)) 
+   Post: g':Env | binds g == binds g' && vbinds g == vbinds g' && tvbinds g == tvbinds g' } *)

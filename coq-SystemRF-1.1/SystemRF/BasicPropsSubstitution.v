@@ -56,6 +56,14 @@ Proof.  apply ( syntax_mutind
       apply not_elem_union_elim in H3; destruct H3; assumption.
   Qed.
 
+Lemma lem_subFV_notin' : forall (e:expr) (x:vname) (v:expr) ,
+    ~ Elem x (fv e) -> subFV x v e = e.
+Proof. intros; apply lem_subFV_notin; apply H.  Qed.    
+
+Lemma lem_tsubFV_notin : forall (t:type) (x:vname) (v:expr),
+    ~ Elem x (free t) -> tsubFV x v t = t.
+Proof. intros; apply lem_subFV_notin; apply H.  Qed.
+
 Lemma lem_subFTV_notin : (forall (e:expr) (a:vname) (t_a:type),
     ~ Elem a (ftv e) -> subFTV a t_a e = e ) * ((
   forall (t:type) (a:vname) (t_a:type),
@@ -80,6 +88,14 @@ Proof. apply ( syntax_mutind
       apply not_elem_union_elim in H2; destruct H2;
       apply not_elem_union_elim in H3; destruct H3; assumption.
   Qed.
+
+Lemma lem_subFTV_notin' : forall (e:expr) (a:vname) (t_a:type),
+    ~ Elem a (ftv e) -> subFTV a t_a e = e.
+Proof. intros; apply lem_subFTV_notin; apply H. Qed.
+
+Lemma lem_tsubFTV_notin : forall (t:type) (a:vname) (t_a:type),
+    ~ Elem a (freeTV t) -> tsubFTV a t_a t = t.
+Proof. intros; apply lem_subFTV_notin; apply H. Qed.  
 
 (*---------------------------------------------------------------------------
 -- | TECHNICAL LEMMAS: Reduction of Unbinding to (Bound) Substitution

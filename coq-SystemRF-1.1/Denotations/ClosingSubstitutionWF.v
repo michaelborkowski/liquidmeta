@@ -4,18 +4,22 @@ Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.Typing.
-(*Require Import SystemRF.BasicPropsSubstitution.*)
+Require Import SystemRF.BasicPropsEnvironments.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
 Require Import Denotations.BasicPropsDenotes.
 
-(*
+Lemma lem_ctsubst_wf' : forall (g g':env) (t:type) (k:kind) (th:csub),
+    WFtype (concatE g g') t k -> WFEnv g
+        -> intersect (binds g) (binds g') = empty
+        -> DenotesEnv g th
+        -> WFtype (csubst_env th g') (ctsubst th t) k.
+Proof. induction g; intros.
+  - (* Empty *) inversion H2; simpl; 
+    rewrite lem_empty_concatE in H.  simpl in H.
 
-{-@ lem_ctsubst_wf :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
-        -> t:Type -> k:Kind -> ProofOf(WFType (concatE g g') t k) -> ProofOf (WFEnv (concatE g g')) 
-        -> th:CSub -> ProofOf(DenotesEnv g th)  
-        -> ProofOf(WFType (csubst_env th g') (ctsubst th t) k) / [envsize g] @-}
+(*
 lem_ctsubst_wf :: Env -> Env -> Type -> Kind -> WFType -> WFEnv -> CSub -> DenotesEnv -> WFType
 lem_ctsubst_wf Empty           g' t k p_env_t p_env_wf th den_g_th = case den_g_th of
   (DEmp)                                        -> p_env_t ? lem_binds_env_th Empty th den_g_th
