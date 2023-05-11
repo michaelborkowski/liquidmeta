@@ -40,6 +40,20 @@ Lemma lem_denotesenv_substitutable : forall (g:env) (th:csub),
 Proof. intros; induction H; simpl; try split; trivial.
   apply lem_den_isvalue with (ctsubst th t); apply H1. Qed.
 
+Lemma lem_denotesenv_uniqueC : forall (g:env) (th:csub),
+    DenotesEnv g th -> uniqueC th.
+Proof. intros g th; revert g; induction th; simpl; trivial.
+  - intros; split; inversion H.
+  pose proof lem_binds_env_th. ...... 
+
+
+Lemma lem_bound_in_denotesenv : 
+  forall (x:vname) (t:type) (g:env) (th:csub),
+    bound_in x t g -> DenotesEnv g th 
+        -> Denotes (ctsubst th t) (csubst th (FV x)).
+Proof. 
+
+
 
 (* Unfortunately, the self operator and tsubFTV do not quite 
    commute with each other, but are entirely semantically 
