@@ -2,9 +2,11 @@ Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFTyping.
+Require Import SystemRF.SystemFLemmasWeaken.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.Typing.
 Require Import SystemRF.BasicPropsEnvironments.
+Require Import SystemRF.SubstitutionLemmaWF.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
@@ -12,18 +14,33 @@ Require Import Denotations.BasicPropsDenotes.
 
 Lemma lem_ctsubst_wf' : forall (g g':env) (t:type) (k:kind) (th:csub),
     WFtype (concatE g g') t k -> WFEnv g
+        -> unique g -> unique g'
         -> intersect (binds g) (binds g') = empty
         -> DenotesEnv g th
         -> WFtype (csubst_env th g') (ctsubst th t) k.
 Proof. induction g; intros.
-  - (* Empty *) inversion H2; simpl; 
-    rewrite lem_empty_concatE in H.  simpl in H.
+  - (* Empty *) inversion H4; simpl; 
+    rewrite lem_empty_concatE in H; apply H.
+  - (* Cons *)  inversion H4; subst x0 t1 g0. simpl.
+
+
+
+    apply IHg; inversion H0; subst x0 t1 g0.
+    
+    try apply lem_subst_wf with t;
+    
+    (*pose proof (lem_weaken_many_ftyp FEmpty (erase_env g) v (erase t));
+    try rewrite lem_empty_concatF in H5; try apply H5;*)
+    try apply lem_den_isvalue with (ctsubst th0 t);
+    (*try apply lem_den_hasftype;*)
+    
+    try rewrite esubFV_binds;
+    try apply esubFV_unique; try apply unique_erase_env;
+    simpl in H1; destruct H1;
+    simpl; trivial. 
+    .
 
 (*
-lem_ctsubst_wf :: Env -> Env -> Type -> Kind -> WFType -> WFEnv -> CSub -> DenotesEnv -> WFType
-lem_ctsubst_wf Empty           g' t k p_env_t p_env_wf th den_g_th = case den_g_th of
-  (DEmp)                                        -> p_env_t ? lem_binds_env_th Empty th den_g_th
-                                                           ? lem_empty_concatE g'
 lem_ctsubst_wf (Cons x t_x g)  g' t k p_env_t p_env_wf xth den_xg_xth = case den_xg_xth of
   (DExt _g th_ den_g_th _x _tx v_x den_thtx_vx) -> p_g'_xtht
     where
