@@ -25,7 +25,7 @@ Lemma no_elem_empty : forall (ys : names),
     (forall (x:vname), ~ Elem x ys) -> ys = empty.
 Proof. intros. destruct ys.
   - reflexivity.
-  - assert (List.In v (v :: ys)) by intuition.
+  - assert (List.In v (v :: ys)) by auto with *.
     apply H in H0; contradiction.
   Qed.
 

@@ -59,7 +59,8 @@ Lemma lem_sub_trans' : forall (n:nat) (g:env) (t t' t'':type) (k k' k'':kind),
                     -> Subtype g t t' -> Subtype g t' t'' 
                     -> Subtype g t t''.
 Proof. intros n; induction n.
-  - (* Base *) intros; assert (depth t + depth t' + depth t'' = 0) by intuition.
+  - (* Base *) intros; assert (depth t + depth t' + depth t'' = 0) 
+      by auto with *.
     repeat (apply Nat.eq_add_0 in H6; destruct H6);
     destruct t;   simpl in H6; try discriminate H6;
     destruct t';  simpl in H8; try discriminate H8;

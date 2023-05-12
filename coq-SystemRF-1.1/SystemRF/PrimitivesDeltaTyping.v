@@ -172,7 +172,7 @@ Proof. intros c t ispo noex p_emp_t; destruct c eqn:C;
               by ( apply lem_wftype_islct in p_emp_t as lct;  
                    unfold isLCT in lct; simpl in lct;         
                    apply lem_open_at_lc_at with 0; 
-                   apply lem_islc_at_weaken with 1 0; intuition )              
+                   apply lem_islc_at_weaken with 1 0; auto with * )              
           ; try rewrite Hps ; try rewrite Hps3; try reflexivity 
 
           ; try apply WFRefn with (names_add y0 (singleton y))
@@ -189,7 +189,7 @@ Proof. intros c t ispo noex p_emp_t; destruct c eqn:C;
               by ( apply lem_wftype_islct in p_emp_t as lct;  
                    unfold isLCT in lct; simpl in lct;         
                    apply lem_open_at_lc_at with 0; 
-                   apply lem_islc_at_weaken with 1 0; intuition  )
+                   apply lem_islc_at_weaken with 1 0; auto with *  )
           ; try assert (openP_at 1 y1 ps = ps) as Hps1
               by ( apply lem_wftype_islct in p_emp_t as lct;  
                    unfold isLCT in lct; simpl in lct;         
@@ -220,7 +220,7 @@ Proof. intros c t ispo noex p_emp_t; destruct c eqn:C;
           ; try apply subset_empty_l
           ; try apply lem_wftype_islct with Empty Base
           ; try discriminate
-          ; simpl ; try rewrite B ; intuition 
+          ; simpl ; try rewrite B ; auto with *
 
           ; apply SFunc with empty 
           ; try apply SBase with empty; intros; try apply IFaith

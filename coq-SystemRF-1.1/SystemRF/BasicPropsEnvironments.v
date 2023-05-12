@@ -16,6 +16,10 @@ Fixpoint concatE (g g'0 : env) : env :=
     | (ConsT a k g') => ConsT a k (concatE g g')
     end.
 
+Lemma lem_empty_concatE : forall (g : env),
+  concatE Empty g = g.
+Proof. induction g; simpl; try rewrite IHg; reflexivity. Qed.
+
 Lemma lem_binds_concat : forall (g g' : env),
     Subset (binds (concatE g g')) (union (binds g) (binds g')) /\
     Subset (union (binds g) (binds g')) (binds (concatE g g')).
@@ -217,6 +221,10 @@ Fixpoint concatF (g g'0 : fenv) : fenv :=
     | (FCons  x t g') => FCons  x t (concatF g g')
     | (FConsT a k g') => FConsT a k (concatF g g')
     end.
+
+Lemma lem_empty_concatF : forall (g : fenv),
+  concatF FEmpty g = g.
+Proof. induction g; simpl; try rewrite IHg; reflexivity. Qed.
 
 Lemma lem_binds_concatF : forall (g g' : fenv),
     Subset (bindsF (concatF g g')) (union (bindsF g) (bindsF g')) /\
