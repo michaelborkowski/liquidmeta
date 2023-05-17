@@ -13,7 +13,7 @@ Require Import Arith.
 
   (* -- | More Properties of Substitution *)
 
-Lemma lem_commute_subFV : (forall (e:expr) (x:vname) (v:expr) (y:vname) (v_y:expr),
+Lemma lem_commute_subFV' : (forall (e:expr) (x:vname) (v:expr) (y:vname) (v_y:expr),
     y <> x -> ~ Elem x (fv v_y) -> ~ Elem y (fv v)
       -> subFV y v_y (subFV x v e) = subFV x v (subFV y v_y e) ) * ((
   forall (t:type) (x:vname) (v:expr) (y:vname) (v_y:expr),
@@ -45,7 +45,17 @@ Proof. apply ( syntax_mutind
   - (* If *) rewrite H; try rewrite H0; try rewrite H1; trivial.
   Qed.
 
-Lemma lem_commute_subFV_subFTV : (forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
+Lemma lem_commute_subFV : forall (e:expr) (x:vname) (v:expr) (y:vname) (v_y:expr),
+    y <> x -> ~ Elem x (fv v_y) -> ~ Elem y (fv v)
+      -> subFV y v_y (subFV x v e) = subFV x v (subFV y v_y e).
+Proof. intros; apply lem_commute_subFV'; assumption. Qed.
+
+Lemma lem_commute_tsubFV : forall (t:type) (x:vname) (v:expr) (y:vname) (v_y:expr),
+y <> x -> ~ Elem x (fv v_y) -> ~ Elem y (fv v)
+  -> tsubFV y v_y (tsubFV x v t) = tsubFV x v (tsubFV y v_y t).
+Proof. intros; apply lem_commute_subFV'; assumption. Qed.  
+
+Lemma lem_commute_subFV_subFTV' : (forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
     noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
       -> subFV y v_y (subFTV a t_a e) = subFTV a t_a (subFV y v_y e) ) * ((
   forall (t:type) (a:vname) (t_a:type) (y:vname) (v_y:expr),
@@ -76,13 +86,18 @@ Proof. apply ( syntax_mutind
     try rewrite H; try f_equal; try apply lem_subFV_notin; trivial.
   Qed. 
 
+Lemma lem_commute_subFV_subFTV : forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
+      -> subFV y v_y (subFTV a t_a e) = subFTV a t_a (subFV y v_y e).
+Proof.  intros; apply lem_commute_subFV_subFTV'; assumption. Qed.
+
 Lemma lem_commute_tsubFV_tsubFTV : 
   forall (t:type) (a:vname) (t_a:type) (y:vname) (v_y:expr),
     noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
       -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a t_a (tsubFV y v_y t).
-Proof.  intros; apply lem_commute_subFV_subFTV; assumption. Qed.
+Proof.  intros; apply lem_commute_subFV_subFTV'; assumption. Qed.
 
-Lemma lem_commute_subFTV : (
+Lemma lem_commute_subFTV' : (
   forall (e:expr) (a:vname) (t_a:type) (a':vname) (t_a':type),
     noExists t_a -> noExists t_a' -> a' <> a 
       -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
@@ -123,6 +138,18 @@ Proof. apply ( syntax_mutind
     try subst a0; trivial.
   Qed.
 
+Lemma lem_commute_subFTV : forall (e:expr) (a:vname) (t_a:type) (a':vname) (t_a':type),
+    noExists t_a -> noExists t_a' -> a' <> a 
+      -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
+      -> subFTV a' t_a' (subFTV a t_a e) = subFTV a t_a (subFTV a' t_a' e).
+Proof. intros; apply lem_commute_subFTV'; assumption. Qed.  
+
+Lemma lem_commute_tsubFTV : forall (t:type) (a:vname) (t_a:type) (a':vname) (t_a':type),
+    noExists t_a -> noExists t_a' -> a' <> a 
+      -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
+      -> tsubFTV a' t_a' (tsubFTV a t_a t) = tsubFTV a t_a (tsubFTV a' t_a' t).     
+Proof. intros; apply lem_commute_subFTV'; assumption. Qed.  
+
   (* -- | Closing Substitution Properties *)
 
 Lemma lem_unroll_csubst_left : forall (th:csub) (x:vname) (v_x e:expr),
@@ -152,12 +179,12 @@ Proof. induction th; intros; simpl; try reflexivity;
   unfold in_csubst in H; simpl in H; 
   apply not_elem_names_add_elim in H; destruct H.
   - (* CCons *) rewrite <- IHth; simpl; try apply f_equal;
-    try apply lem_commute_subFV; 
+    try apply lem_commute_tsubFV; 
     simpl in H2; simpl in H3; try apply H0;
     destruct H0; destruct H2; destruct H6; destruct H3;
     try rewrite H0; try rewrite H2; intuition.
   - (* CConsT *) rewrite <- IHth; simpl; try apply f_equal;
-    try symmetry; try apply lem_commute_subFV_subFTV;
+    try symmetry; try apply lem_commute_tsubFV_tsubFTV;
     simpl in H2; simpl in H3; try apply H0;
     destruct H0; destruct H2; destruct H6; destruct H3;
     try rewrite H2; try rewrite H5; intuition.
@@ -171,12 +198,12 @@ Proof. induction th; intros; simpl; try reflexivity;
   unfold in_csubst in H; simpl in H; 
   apply not_elem_names_add_elim in H; destruct H.
   - (* CCons *) rewrite <- IHth; simpl; try apply f_equal;
-    try apply lem_commute_subFV_subFTV;
+    try apply lem_commute_tsubFV_tsubFTV;
     simpl in H2; simpl in H3; try apply H0;
     destruct H0; destruct H2; destruct H6; destruct H3;
     try rewrite H0; try rewrite H6; intuition.
   - (* CConsT *) rewrite <- IHth; simpl; try apply f_equal;
-    try symmetry; try apply lem_commute_subFTV;
+    try symmetry; try apply lem_commute_tsubFTV;
     simpl in H2; simpl in H3; try apply H0;
     destruct H0; destruct H2; destruct H6; destruct H3;
     try rewrite H5; try rewrite H6; intuition.

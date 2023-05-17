@@ -15,6 +15,8 @@ echo "Checking BasicPropsCSubst.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsCSubst.v
 echo "Checking BasicPropsDenotes.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsDenotes.v
+echo "Checking EnvironmentSubstitutions.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/EnvironmentSubstitutions.v
 echo "Checking BasicPropsSemantics.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsSemantics.v
 echo "Checking ClosingSubstitutionWF.v ..."

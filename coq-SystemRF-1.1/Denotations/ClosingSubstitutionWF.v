@@ -11,6 +11,7 @@ Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
 Require Import Denotations.BasicPropsDenotes.
+Require Import Denotations.BasicPropsErasedTyping.
 
 Lemma lem_ctsubst_wf' : forall (g g':env) (t:type) (k:kind) (th:csub),
     WFtype (concatE g g') t k -> WFEnv g
@@ -21,7 +22,22 @@ Lemma lem_ctsubst_wf' : forall (g g':env) (t:type) (k:kind) (th:csub),
 Proof. induction g; intros.
   - (* Empty *) inversion H4; simpl; 
     rewrite lem_empty_concatE in H; apply H.
-  - (* Cons *)  inversion H4; subst x0 t1 g0. simpl.
+  - (* Cons *)  inversion H4; subst x0 t1 g0;
+    rewrite lem_unroll_csubst_env_left;
+    try rewrite lem_unroll_ctsubst_left;
+    try rewrite <- (lem_empty_concatE (esubFV x v (csubst_env th0 g')));
+    try apply lem_subst_wf with (ctsubst th0 t); 
+    assert (Cons x (ctsubst th0 t) Empty = csubst_env th0 (Cons x t Empty))
+      by (symmetry; rewrite <- (lem_csubst_env_empty th0) at 2;
+          apply lem_csubst_cons_env); try rewrite H5;
+    try rewrite <- lem_csubst_env_concat; try apply IHg.
+
+    simpl; auto.
+
+    pose proof lem_subst_wf. pose proof lem_empty_concatE.
+  
+  
+  . simpl.
 
 
 

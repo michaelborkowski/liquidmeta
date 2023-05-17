@@ -10,6 +10,84 @@ Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
 
+Require Import Arith.
+
+Lemma lem_concat_shift : forall (g:env) (x:vname) (t_x:type) (g':env),
+    ~ (in_env x g) -> ~ (in_env x g') -> intersect (binds g) (binds g') = empty
+        -> concatE (Cons x t_x g) g' = concatE g (concatE (Cons x t_x Empty) g').
+Proof. intros g x t_x; induction g'; simpl; intros; try reflexivity;
+  f_equal; apply IHg'; unfold in_env in H0; simpl in H0;
+  apply not_elem_names_add_elim in H0; destruct H0; 
+  apply intersect_names_add_elim_r in H1; destruct H1;  trivial. Qed.
+
+Lemma lem_concat_shift_tv : forall (g:env) (a:vname) (k_a:kind) (g':env),
+    ~ (in_env a g) -> ~ (in_env a g') -> intersect (binds g) (binds g') = empty
+        -> concatE (ConsT a k_a g) g' = concatE g (concatE (ConsT a k_a Empty) g').
+Proof. intros g a k_a; induction g'; simpl; intros; try reflexivity;
+  f_equal; apply IHg'; unfold in_env in H0; simpl in H0;
+  apply not_elem_names_add_elim in H0; destruct H0; 
+  apply intersect_names_add_elim_r in H1; destruct H1;  trivial. Qed.
+
+Lemma lem_csubst_env_empty : forall (th:csub),
+    csubst_env th Empty = Empty.
+Proof. induction th; simpl; reflexivity || apply IHth. Qed.
+
+Lemma lem_csubst_cons_env : forall (th:csub) (x:vname) (t_x:type) (g:env),
+    csubst_env th (Cons x t_x g) = Cons x (ctsubst th t_x) (csubst_env th g).
+Proof. induction th; simpl; intros; reflexivity || apply IHth. Qed.
+
+Lemma lem_csubst_consT_env : forall (th:csub) (a:vname) (k_a:kind) (g:env), 
+    csubst_env th (ConsT a k_a g) = ConsT a k_a (csubst_env th g).
+Proof. induction th; simpl; intros; reflexivity || apply IHth. Qed.
+
+Lemma lem_esubFV_concat : forall (x:vname) (v:expr) (g g':env),
+    esubFV x v (concatE g g') = concatE (esubFV x v g) (esubFV x v g').
+Proof. intros; induction g'; simpl; try rewrite IHg'; reflexivity. Qed.
+
+Lemma lem_esubFTV_concat : forall (a:vname) (t_a:type) (g g':env),
+    esubFTV a t_a (concatE g g') = concatE (esubFTV a t_a g) (esubFTV a t_a g').
+Proof. intros; induction g'; simpl; try rewrite IHg'; reflexivity. Qed.
+
+Lemma lem_csubst_env_concat : forall (th:csub) (g g':env),
+    csubst_env th (concatE g g') = concatE (csubst_env th g) (csubst_env th g').
+Proof. induction th; simpl; intros; try rewrite lem_esubFV_concat;
+  try rewrite lem_esubFTV_concat; apply IHth || reflexivity. Qed.
+
+Lemma lem_commute_esubFV : forall (g:env) (x:vname) (v_x:expr) (y:vname) (v_y:expr),
+    y <> x -> ~ Elem x (fv v_y) -> ~ Elem y (fv v_x)
+        -> esubFV y v_y (esubFV x v_x g) = esubFV x (subFV y v_y v_x) (esubFV y v_y g).
+Proof. induction g; simpl; intros; reflexivity || rewrite <- IHg;
+  try rewrite lem_commute_tsubFV; 
+  try rewrite lem_subFV_notin'; trivial. Qed.
+  
+Lemma lem_commute_esubFV_esubFTV : 
+  forall (g:env) (a:vname) (t_a:type) (y:vname) (v_y:expr),
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
+        -> esubFV y v_y (esubFTV a t_a g) =
+                    esubFTV a (tsubFV y v_y t_a) (esubFV y v_y g).
+Proof. induction g; simpl; intros; reflexivity || rewrite <- IHg;
+  try rewrite lem_commute_tsubFV_tsubFTV;
+  try rewrite (lem_tsubFV_notin t_a); trivial. Qed.
+  
+Lemma lem_unroll_csubst_env_left : forall (th:csub) (x:vname) (v_x:expr) (g:env),
+    ~ in_csubst x th -> fv v_x = empty /\ ftv v_x = empty -> isValue v_x
+        -> closed th -> substitutable th
+        (*-> { g':Env | Set_emp (Set_cap (bindsC th) (binds g')) && not (in_env x g') }*)
+        -> csubst_env (CCons x v_x th) g = esubFV x v_x (csubst_env th g).
+Proof. induction th; simpl; intros; try reflexivity;
+  unfold in_csubst in H; simpl in H; 
+  apply not_elem_names_add_elim in H; destruct H;
+  rewrite <- IHth; simpl; try f_equal;
+  destruct H2; destruct H3; destruct H5; trivial;
+  destruct H0.
+  - (* CCons *) rewrite lem_commute_esubFV;
+    try rewrite lem_subFV_notin'; try apply Nat.neq_sym;
+    try rewrite H0; try rewrite H2; auto.
+  - (* CConsT *) rewrite lem_commute_esubFV_esubFTV;
+    try rewrite lem_tsubFV_notin; 
+    try rewrite H8; try rewrite H2; auto.
+  Qed.
+
 (*
 {-@ lem_unbind_tvT_equals :: a:Vname -> a':Vname -> { t1:FType | not (Set_mem a' (ffreeTV t1)) }
         -> { t2:FType | unbindFT a a' t1 == unbindFT a a' t2 && not (Set_mem a' (ffreeTV t2)) } 
@@ -72,77 +150,7 @@ lem_erase_ctsubst (CConsT a t_a th') t1 t2
          ? lem_unroll_ctsubst_tv_left th' a t_a t2
          ? lem_erase_tsubFTV a t_a (ctsubst th' t2)
 
-{-@ lem_csubst_env_empty :: th:CSub -> { pf:_ | csubst_env th Empty == Empty } @-}
-lem_csubst_env_empty :: CSub -> Proof
-lem_csubst_env_empty CEmpty            = ()
-lem_csubst_env_empty (CCons  z v_z th) = () ? lem_csubst_env_empty th
-lem_csubst_env_empty (CConsT a t_a th) = () ? lem_csubst_env_empty th
 
-{-@ lem_csubst_env_concat :: th:CSub -> { g:Env | Set_emp (Set_cap (bindsC th) (binds g)) }
-        -> { g':Env | Set_emp (Set_cap (bindsC th) (binds g)) && Set_emp (Set_cap (binds g) (binds g')) }
-        -> { pf:_ | csubst_env th (concatE g g') == concatE (csubst_env th g) (csubst_env th g') } @-}
-lem_csubst_env_concat :: CSub -> Env -> Env -> Proof
-lem_csubst_env_concat CEmpty            g g' = ()
-lem_csubst_env_concat (CCons  z v_z th) g g' 
-  = () ? lem_esubFV_concat z v_z g g'
-       ? lem_csubst_env_concat th (esubFV z v_z g) (esubFV z v_z g')
-lem_csubst_env_concat (CConsT a t_a th) g g'
-   = () ? lem_esubFTV_concat a t_a g g'
-        ? lem_csubst_env_concat th (esubFTV a t_a g) (esubFTV a t_a g')
-
-{-@ lem_csubst_cons_env :: th:CSub -> x:Vname -> t_x:Type -> g:Env
-        -> { pf:_ | csubst_env th (Cons x t_x g) == Cons x (ctsubst th t_x) (csubst_env th g) } @-}
-lem_csubst_cons_env :: CSub -> Vname -> Type -> Env -> Proof
-lem_csubst_cons_env CEmpty            x t_x g' = ()
-lem_csubst_cons_env (CCons  z v_z th) x t_x g' 
-  = () ? lem_csubst_cons_env th x (tsubFV z v_z t_x) (esubFV z v_z g')
-lem_csubst_cons_env (CConsT a t_a th) x t_x g' 
-  = () ? lem_csubst_cons_env th x (tsubFTV a t_a t_x) (esubFTV a t_a g')
-
-{-@ lem_csubst_consT_env :: th:CSub -> a:Vname -> k_a:Kind -> g':Env
-        -> { pf:_ | csubst_env th (ConsT a k_a g') == ConsT a k_a (csubst_env th g') } @-}
-lem_csubst_consT_env :: CSub -> Vname -> Kind -> Env -> Proof
-lem_csubst_consT_env CEmpty            a k_a g' = ()
-lem_csubst_consT_env (CCons  z v_z th) a k_a g' 
-  = () ? lem_csubst_consT_env th a k_a (esubFV z v_z g')
-lem_csubst_consT_env (CConsT a' t' th) a k_a g'
-  = () ? lem_csubst_consT_env th a k_a (esubFTV a' t' g')
-
-{-@ lem_commute_esubFV :: x:Vname -> v:Value -> { y:Vname | not (y == x)}
-        -> { v_y:Value | not (Set_mem x (fv v_y)) } -> g:Env
-        -> { pf:_ | esubFV y v_y (esubFV x v g) == esubFV x (subFV y v_y v) (esubFV y v_y g) } @-}
-lem_commute_esubFV :: Vname -> Expr -> Vname -> Expr -> Env -> Proof
-lem_commute_esubFV x v y v_y Empty          = ()
-lem_commute_esubFV x v y v_y (Cons z t_z g) = () ? lem_commute_tsubFV x v y v_y t_z
-                                                 ? lem_commute_esubFV x v y v_y g
-lem_commute_esubFV x v y v_y (ConsT a k g)  = () ? lem_commute_esubFV x v y v_y g
-
-{-@ lem_commute_esubFV_esubFTV :: a:Vname -> t_a:UserType ->  y:Vname
-        -> { v_y:Value | not (Set_mem a (ftv v_y)) } -> g:Env
-        -> { pf:_ | esubFV y v_y (esubFTV a t_a g) ==
-                    esubFTV a (tsubFV y v_y t_a) (esubFV y v_y g) } @-}
-lem_commute_esubFV_esubFTV :: Vname -> Type -> Vname -> Expr -> Env -> Proof
-lem_commute_esubFV_esubFTV a t_a x v Empty           = ()
-lem_commute_esubFV_esubFTV a t_a x v (Cons  z t_z g) 
-  = () ? lem_commute_tsubFV_tsubFTV a t_a x v t_z
-       ? lem_commute_esubFV_esubFTV a t_a x v g
-lem_commute_esubFV_esubFTV a t_a x v (ConsT a' k' g) 
-  = () ? lem_commute_esubFV_esubFTV a t_a x v g  
-
-{-@ lem_unroll_csubst_env_left :: th:CSub -> { x:Vname | not (in_csubst x th) }
-        -> { v_x:Value | Set_emp (fv v_x) && Set_emp (ftv v_x) } 
-        -> { g':Env | Set_emp (Set_cap (bindsC th) (binds g')) && not (in_env x g') }
-        -> { pf:_ | csubst_env (CCons x v_x th) g' == esubFV x v_x (csubst_env th g') } @-}
-lem_unroll_csubst_env_left :: CSub -> Vname -> Expr -> Env -> Proof
-lem_unroll_csubst_env_left CEmpty           x v_x g' = ()
-lem_unroll_csubst_env_left (CCons z v_z th) x v_x g'
-  = () ? lem_subFV_notin x v_x v_z
-       ? lem_commute_esubFV z v_z x v_x g'
-       ? lem_unroll_csubst_env_left th x v_x (esubFV z v_z g')
-lem_unroll_csubst_env_left (CConsT a t_a th) x v_x g'
-  = () ? lem_tsubFV_notin x v_x t_a
-       ? lem_commute_esubFV_esubFTV a t_a x v_x g'
-       ? lem_unroll_csubst_env_left th x v_x (esubFTV a t_a g')
 
 {-@ lem_csubst_wfft :: g:Env -> { g':Env | Set_emp (Set_cap (binds g) (binds g')) }
         -> th:CSub -> ProofOf(DenotesEnv g th) -> t_z:Type -> k_z:Kind
