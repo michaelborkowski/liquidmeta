@@ -204,6 +204,10 @@ Proof. unfold Subset; intros.
   apply set_add_intro; intuition; right; 
   (apply set_union_intro1; assumption) || (apply set_union_intro2; assumption). Qed.
 
+Lemma intersect_empty_l : forall (xs : names), intersect empty xs = empty.
+Proof. intro xs; apply no_elem_empty; unfold not; intros; 
+  apply set_inter_elim in H; intuition. Qed.
+
 Lemma intersect_empty_r : forall (xs : names), intersect xs empty = empty.
 Proof. intro xs; apply no_elem_empty; unfold not; intros; 
   apply set_inter_elim in H; intuition. Qed.
@@ -230,6 +234,23 @@ Proof. intros; apply no_elem_empty; unfold not; intros.
       || assumption).
   Qed.
 
+Lemma intersect_names_add_elim_l : forall (x : vname) (xs ys : names),
+    intersect (names_add x xs) ys = empty -> intersect xs ys = empty /\ ~ Elem x ys.
+Proof. intros; split. 
+  - apply no_elem_empty; unfold not; intros; 
+    apply set_inter_elim in H0; destruct H0.
+    apply empty_no_elem with (intersect (names_add x xs) ys) x0 in H.
+    apply set_add_intro1 with vname Nat.eq_dec x0 x xs in H0.
+    apply set_inter_intro with vname Nat.eq_dec x0 (names_add x xs) ys in H1;
+    intuition.
+  - unfold not; intros.
+    apply empty_no_elem with (intersect (names_add x xs) ys) x in H.
+    assert (x = x) by reflexivity.
+    apply set_add_intro2 with vname Nat.eq_dec x x xs in H1. 
+    apply set_inter_intro with vname Nat.eq_dec x (names_add x xs) ys in H0;
+    intuition.
+  Qed.  
+
 Lemma intersect_names_add_elim_r : forall (y : vname) (xs ys : names),
     intersect xs (names_add y ys) = empty -> intersect xs ys = empty /\ ~ Elem y xs.
 Proof. intros; split. 
@@ -247,6 +268,12 @@ Proof. intros; split.
     intuition.
   Qed.
   
+Lemma subset_in_intersect : forall (xs ys zs : names),
+    intersect xs zs = empty -> Subset ys zs -> intersect xs ys = empty.
+Proof. intros; apply no_elem_empty; unfold not; intros. 
+  apply set_inter_elim in H1; destruct H1; apply H0 in H2.
+  assert (Elem x (intersect xs zs)) by (apply set_inter_intro; assumption);
+  rewrite H in H3; intuition. Qed.
 
 Lemma subset_union_diff : forall (xs ys zs : names),
     Subset (union (diff xs zs) (diff ys zs)) (diff (union xs ys) zs) /\

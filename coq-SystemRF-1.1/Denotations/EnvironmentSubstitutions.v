@@ -53,6 +53,16 @@ Lemma lem_csubst_env_concat : forall (th:csub) (g g':env),
 Proof. induction th; simpl; intros; try rewrite lem_esubFV_concat;
   try rewrite lem_esubFTV_concat; apply IHth || reflexivity. Qed.
 
+Lemma csubst_env_binds : forall (th:csub) (g:env),
+    binds (csubst_env th g) = binds g.
+Proof. induction th; intros; simpl; try rewrite IHth;
+  try apply esubFV_binds; try apply esubFTV_binds; reflexivity. Qed.
+
+Lemma csubst_env_unique : forall (th:csub) (g:env),
+    unique g -> unique (csubst_env th g).
+Proof. induction th; intros; simpl; try apply IHth;
+  try apply esubFV_unique; try apply esubFTV_unique; apply H. Qed.
+
 Lemma lem_commute_esubFV : forall (g:env) (x:vname) (v_x:expr) (y:vname) (v_y:expr),
     y <> x -> ~ Elem x (fv v_y) -> ~ Elem y (fv v_x)
         -> esubFV y v_y (esubFV x v_x g) = esubFV x (subFV y v_y v_x) (esubFV y v_y g).

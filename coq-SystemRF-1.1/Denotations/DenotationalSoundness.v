@@ -9,6 +9,7 @@ Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
 Require Import Denotations.BasicPropsDenotes.
+Require Import Denotations.ClosingSubstitutionWF.
 Require Import Denotations.PrimitivesDenotations.
 Require Import Denotations.SelfifyDenotations.
 
@@ -41,78 +42,23 @@ Proof. apply ( judgments_mutind
     repeat split; try apply Refl;
     try apply lem_denotes_ctsubst_self;
     try apply lem_denotations_selfify;
-
+    try apply lem_den_hasftype;
+    try apply lem_bound_in_denotesenv with g;
     try apply lem_csubst_value;
+    try apply lem_ctsubst_wf with g;
     try apply lem_denotesenv_closed with g;
     try apply lem_denotesenv_loc_closed with g;
     try apply lem_denotesenv_substitutable with g;
+    try apply lem_denotesenv_uniqueC with g;
+    try apply wfenv_unique;
     unfold isLC; simpl; trivial.
+  - (* TPrm *) rewrite lem_csubst_prim; unfold EvalsDenotes;
+    exists (Prim c); repeat split; try apply Refl.
+    apply lem_den_ty with g; apply H0.
+  - (* TAbs *) 
   
-  inversion H0; try (subst g; simpl in b; contradiction).
 
   (*
-lem_denote_sound_typ_tvar1 g e t (TVar1 g' x t' k' p_g'_t') (WFEBind _ wf_g' _ _ _ _p_g'_t') th den_g_th  
-  = case den_g_th of              -- e == FV x, t == self t x 
-      (DExt _g' th' den_g'_th' _x _t' w den_th't'_w)  -- w = th(x)
-        -> ValDen (csubst th e) (ctsubst th t) w ev_the_v' den_tht_thx
-             where
-               ev_the_v' = Refl w `withProof` lem_den_nofv w (ctsubst th' t') den_th't'_w
-                                  `withProof` lem_den_nobv w (ctsubst th' t') den_th't'_w
-                                  `withProof` lem_csubst_nofv th' w
-               p_emp_th't' = lem_ctsubst_wf g' Empty t' k' p_g'_t' wf_g' th' den_g'_th'
-                                        ? lem_csubst_env_empty th'
-               p_w_erth't' = get_ftyp_from_den (ctsubst th' t') w den_th't'_w
-               den_tht_thx = lem_denotations_selfify (ctsubst th' t') k' p_emp_th't' w p_w_erth't'
-                                        w (Refl w) den_th't'_w 
-                                        ? lem_free_bound_in_env g' t' k' p_g'_t' x
-                                        ? lem_binds_env_th g' th' den_g'_th'
-                                        ? lem_tsubFV_notin x w t'
-                                        ? lem_ctsubst_self th t' (FV x) k'
-
-{- @ ple lem_denote_sound_typ_tvar2 @-}
-{-@ lem_denote_sound_typ_tvar2 :: g:Env -> e:Term -> t:Type 
-                -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTVar2 p_e_t } -> ProofOf(WFEnv g) 
-                ->  th:CSub  -> ProofOf(DenotesEnv g th)  
-                -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
-lem_denote_sound_typ_tvar2 :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
-                            -> DenotesEnv -> ValueDenoted
-lem_denote_sound_typ_tvar2 g e t (TVar2 g' x _t p_x_t y t_y) pf_g_wf th den_g_th
-  = case den_g_th of 
-      (DExt _g' th' den_g'_th' _y _ v_y den_tht_thy) 
-        -> ValDen (csubst th e) (ctsubst th t) thx ev_the_v' den_tht_thx
-            where
-              (WFEBind _ pf_g'_wf _ _ _ p_g'_ty) = pf_g_wf
-              {-@  thx :: Value @-} 
-              (ValDen _ _ thx pf1 pf2) = lem_denote_sound_typ g' e t p_x_t pf_g'_wf th' den_g'_th' 
-              p_g'_t      = lem_typing_wf g' (FV x) t p_x_t pf_g'_wf 
-              ev_the_v'   = pf1 `withProof` lem_den_nofv thx (ctsubst th' t) pf2
-                                `withProof` lem_csubst_nofv th' thx
-              den_tht_thx = pf2 ? lem_free_bound_in_env g' t Star p_g'_t y
-                                ? lem_binds_env_th g' th' den_g'_th' 
-                                ? lem_tsubFV_notin y v_y t
-
-{- @ ple lem_denote_sound_typ_tvar3 @-}
-{-@ lem_denote_sound_typ_tvar3 :: g:Env -> e:Term -> t:Type 
-                -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTVar3 p_e_t } -> ProofOf(WFEnv g) 
-                ->  th:CSub  -> ProofOf(DenotesEnv g th)  
-                -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
-lem_denote_sound_typ_tvar3 :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
-                            -> DenotesEnv -> ValueDenoted
-lem_denote_sound_typ_tvar3 g e t (TVar3 g' x _t p_x_t a k_a) pf_g_wf th den_g_th
-  = case den_g_th of 
-      (DExtT _g' th' den_g'_th' _a _ka t_a p_emp_ta) 
-        -> ValDen (csubst th e) (ctsubst th t) thx ev_the_v' den_tht_thx
-             where
-               (WFEBindT _ pf_g'_wf _ _) = pf_g_wf
-               {-@ thx :: Value @-}
-               (ValDen _ _ thx pf1 pf2) = lem_denote_sound_typ g' e t p_x_t pf_g'_wf th' den_g'_th'
-               p_g'_t      = lem_typing_wf g' (FV x) t p_x_t pf_g'_wf 
-               ev_the_v'   = pf1 `withProof` lem_den_nofv thx (ctsubst th' t) pf2
-                                 `withProof` lem_csubst_nofv th' thx
-               den_tht_thx = pf2 ? lem_free_bound_in_env g' t Star p_g'_t a
-                                 ? lem_binds_env_th g' th' den_g'_th'
-                                 ? lem_tsubFTV_notin a t_a t
-
 {- @ ple lem_denote_sound_typ_tabs @-}
 {-@ lem_denote_sound_typ_tabs :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAbs p_e_t } -> ProofOf(WFEnv g) 
