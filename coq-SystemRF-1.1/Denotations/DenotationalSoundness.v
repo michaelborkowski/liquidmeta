@@ -3,15 +3,20 @@ Require Import SystemRF.Names.
 Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.WellFormedness.
+Require Import SystemRF.BasicPropsSubstitution.
+Require Import SystemRF.BasicPropsEnvironments.
+Require Import SystemRF.BasicPropsWellFormedness.
 Require Import SystemRF.Typing.
-(*Require Import SystemRF.BasicPropsSubstitution.*)
+Require Import SystemRF.LemmasTyping.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
 Require Import Denotations.BasicPropsDenotes.
-Require Import Denotations.ClosingSubstitutionWF.
+Require Import Denotations.MultiSubstitutionLemmas.
 Require Import Denotations.PrimitivesDenotations.
 Require Import Denotations.SelfifyDenotations.
+
+Require Import Lists.ListSet.
 
 Lemma lem_denote_sound : ( forall (g:env) (e:expr) (t:type),
     Hastype g e t -> forall (th:csub),
@@ -55,129 +60,126 @@ Proof. apply ( judgments_mutind
   - (* TPrm *) rewrite lem_csubst_prim; unfold EvalsDenotes;
     exists (Prim c); repeat split; try apply Refl.
     apply lem_den_ty with g; apply H0.
-  - (* TAbs *) 
-  
+  - (* TAbs *) rewrite lem_csubst_lambda; rewrite lem_ctsubst_func;
+    unfold EvalsDenotes; exists (Lambda (csubst th e));
+    split; try split; try apply Refl;
+    rewrite Denotes_equation_2; repeat split.
+    * rewrite <- lem_csubst_lambda; rewrite <- lem_ctsubst_func;
+      apply lem_csubst_hasftype with g;
+      try apply lem_typing_hasftype; try apply TAbs with k_x nms;
+      try apply lem_erase_env_wfenv; try apply wfenv_unique; trivial.
+    * intros; pose proof (fresh_var_not_elem nms g) as Hy; 
+      set (y := fresh_var nms g) in Hy; destruct Hy as [Hy Hyg]; 
+      apply H with y (CCons y v_x th) in Hy;
+      try apply WFEBind with k_x; try apply DExt; trivial.
+      unfold EvalsDenotes in Hy; destruct Hy as [v' Hy];
+      destruct Hy; simpl in H5; destruct H5;
+      rewrite <- lem_subFV_unbind in H5;
+      rewrite <- lem_tsubFV_unbindT in H6;
+      assert (Hastype g (Lambda e) (TFunc t_x t)) as Het
+        by (apply TAbs with k_x nms; trivial);
+      apply lem_typing_wf in Het as Ht; try apply H0;
+      apply lem_fv_subset_binds in Het; try apply H0;
+      apply lem_free_subset_binds in Ht; 
+      destruct Het; destruct Ht; simpl in H7; simpl in H9;
+      assert (Subset (free t) (union (free t_x) (free t)))
+        by apply subset_union_intro_r;
+      pose proof (vbinds_subset g);
+      try apply not_elem_subset with (vbinds g);
+      try apply not_elem_subset with (binds g); trivial; 
+      try apply subset_trans with (union (free t_x) (free t)); trivial.
+      exists v'; repeat split; try apply H4;
+      try apply AddStep with (csubst th (subBV v_x e)); 
+      try apply H5; try rewrite lem_csubst_subBV;
+      try rewrite lem_csubst_nofv with th v_x; try apply EAppAbs;
+      try apply lem_den_nofv in H3 as Hvx; destruct Hvx;
+      try rewrite lem_ctsubst_tsubBV in H6;
+      try rewrite lem_csubst_nofv with th v_x in H6;
+      try apply lem_denotesenv_loc_closed with g;
+      try apply lem_denotesenv_substitutable with g; 
+      trivial.
+  - (* TApp *) rewrite lem_csubst_app; rewrite lem_ctsubst_exis;
+    unfold EvalsDenotes; apply H in H2 as den_thtxt_the;
+    apply H0 in H2 as den_thtx_the'; try apply H1;
+    unfold EvalsDenotes in den_thtx_the'; 
+    unfold EvalsDenotes in den_thtxt_the; 
+    destruct den_thtx_the' as [v_x Hvx]; destruct Hvx; 
+    destruct H4 as [ev_the'_vx den_thtx_vx];
+    destruct den_thtxt_the as [v Hv]; destruct Hv;
+    destruct H5 as [ev_the_v den_thtxt_v];
+    rewrite lem_ctsubst_func in den_thtxt_v;
+    rewrite Denotes_equation_2 in den_thtxt_v;
+    destruct den_thtxt_v as [_ Hv];
+    destruct Hv as [p_v_thtxt den_func];
+    apply den_func in den_thtx_vx as Hv'; try apply H3;
+    destruct Hv' as [v' [Hv' [ev_vvx_v' den_v']]];
+    exists v'; split; try split; try apply Hv';
+    try apply lemma_evals_trans with (App v v_x);
+    try apply lemma_app_both_many; trivial.
+    rewrite Denotes_equation_3; repeat split;
+    apply lem_den_hasftype in den_v' as p_v'_tvx;
+    rewrite lem_erase_tsubBV in p_v'_tvx; simpl; trivial.
+    exists v_x; split; try split; trivial.
+  - (* TAbsT *) rewrite lem_csubst_lambdaT; rewrite lem_ctsubst_poly;
+    unfold EvalsDenotes; exists (LambdaT k (csubst th e));
+    split; try split; try apply Refl;
+    rewrite Denotes_equation_4; repeat split.
+    * rewrite <- lem_csubst_lambdaT; rewrite <- lem_ctsubst_poly;
+      apply lem_csubst_hasftype with g;
+      try apply lem_typing_hasftype; try apply TAbsT with nms;
+      try apply lem_erase_env_wfenv; try apply wfenv_unique; trivial.
+    * intros; pose proof (fresh_var_not_elem nms g) as Ha; 
+      set (a := fresh_var nms g) in Ha; destruct Ha as [Ha Ha'];
+      apply H with a (CConsT a t_a th) in Ha;
+      try apply WFEBindT; try apply DExtT; trivial.
+      unfold EvalsDenotes in Ha; destruct Ha as [v' [Hv' [ev_the_v' den_v']]];
+      simpl in ev_the_v'; rewrite <- lem_subFTV_unbind_tv in ev_the_v';
+      simpl in den_v'; rewrite <- lem_tsubFTV_unbind_tvT in den_v';
+      assert (Hastype g (LambdaT k e) (TPoly k t)) as Het
+        by (apply TAbsT with nms; trivial);
+      apply lem_typing_wf in Het as Ht; try apply H0;
+      apply lem_fv_subset_binds in Het; try apply H0;
+      apply lem_free_subset_binds in Ht; 
+      destruct Het; destruct Ht; simpl in H5; simpl in H7;
+      pose proof (tvbinds_subset g);
+      try apply not_elem_subset with (tvbinds g);
+      try apply not_elem_subset with (binds g); trivial.
+      exists v'; repeat split; try apply Hv';
+      try apply AddStep with (csubst th (subBTV t_a e)); 
+      try apply ev_the_v'; try rewrite lem_csubst_subBTV;
+      try rewrite lem_ctsubst_nofree with th t_a; try apply EAppTAbs;
+      try apply lem_free_subset_binds in H3; simpl in H3; destruct H3;
+      try rewrite lem_ctsubst_tsubBTV in den_v';
+      try rewrite lem_ctsubst_nofree with th t_a in den_v';
+      try apply lem_denotesenv_loc_closed with g;
+      try apply lem_denotesenv_substitutable with g; 
+      try apply no_elem_empty; trivial. 
+  - (* TAppT *) rewrite lem_csubst_appT; rewrite lem_ctsubst_tsubBTV;
+    unfold EvalsDenotes; apply H in H1 as den_thks_the;
+    try apply lem_denotesenv_loc_closed with g;
+    try apply lem_denotesenv_substitutable with g; trivial;
+    unfold EvalsDenotes in den_thks_the.
+    destruct den_thks_the as [v' [Hv' [ev_the_v' den_v']]].
+    rewrite lem_ctsubst_poly in den_v';
+    rewrite Denotes_equation_4 in den_v';
+    destruct den_v' as [_ [p_v'_ks den_func]].
+    assert (WFtype Empty (ctsubst th t) k) as p_tht
+      by (apply lem_ctsubst_wf with g; 
+          try apply wfenv_unique; trivial);
+    apply den_func in p_tht as Htht.
+    
+    (*den_thtx_vx as Hv'; try apply H3;
+    destruct Hv' as [v' [Hv' [ev_vvx_v' den_v']]];
+    exists v'; split; try split; try apply Hv';
+    try apply lemma_evals_trans with (App v v_x);
+    try apply lemma_app_both_many; trivial.
+    rewrite Denotes_equation_3; repeat split;
+    apply lem_den_hasftype in den_v' as p_v'_tvx;
+    rewrite lem_erase_tsubBV in p_v'_tvx; simpl; trivial.
+    exists v_x; split; try split; trivial.*)
+
 
   (*
-{- @ ple lem_denote_sound_typ_tabs @-}
-{-@ lem_denote_sound_typ_tabs :: g:Env -> e:Term -> t:Type 
-                -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAbs p_e_t } -> ProofOf(WFEnv g) 
-                ->  th:CSub  -> ProofOf(DenotesEnv g th)  
-                -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
-lem_denote_sound_typ_tabs :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
-                            -> DenotesEnv -> ValueDenoted
-lem_denote_sound_typ_tabs g e t p_e_t@(TAbs _g x t_x k_x p_g_tx e' t' y p_yg_e'_t') p_g_wf th den_g_th
-  = ValDen (csubst th e) (ctsubst th t) v ev_the_v den_tht_v
-      where 
-        {-@ v :: { z:Value | z == csubst th e && e == Lambda x e'} @-} -- need to show (Lambda x e') is value 
-        v = Lambda x (csubst th e') ? lem_csubst_lambda th x e'        -- i.e. v = csubst th e
-        ev_the_v    = Refl (csubst th e) ? lem_csubst_lambda th x e'
-        p_er_g_wf   = lem_erase_env_wfenv  g p_g_wf 
-        p_e_er_t    = lem_typing_hasftype  g e t p_e_t    p_g_wf
-        p_v_er_txt' = lem_csubst_hasftype' g e t p_e_er_t p_er_g_wf th den_g_th
-                                      ? lem_ctsubst_func th x t_x t'
-        den_tht_v = DFunc x (ctsubst th t_x) (ctsubst th t') v p_v_er_txt' pf_den_tht'vx_vvx 
-        {-@ pf_den_tht'vx_vvx :: v_x:Value -> ProofOf(Denotes (ctsubst th t_x) v_x)
-                     -> ProofOf(ValueDenoted (App v v_x) (tsubBV x v_x (ctsubst th t'))) @-}
-        pf_den_tht'vx_vvx :: Expr -> Denotes -> ValueDenoted
-        pf_den_tht'vx_vvx v_x den_thtx_vx 
-                  = ValDen (App v v_x) (tsubBV x v_x (ctsubst th t')) v' ev_vvx_v' 
-                           (den_tht'vx_v' ? lem_ctsubst_and_unbindT x y v_x (erase (ctsubst th t_x)) 
-                                                                    pf_vx_er_tx th t')
-          where
-            th'            = CCons y v_x (th ? lem_binds_env_th g th den_g_th)
-            den_g'_th'     = DExt g th den_g_th y t_x (v_x ? lem_den_nofv v_x (ctsubst th t_x) den_thtx_vx
-                                                           ? lem_den_nobv v_x (ctsubst th t_x) den_thtx_vx)
-                                  den_thtx_vx
-            pf_vx_er_tx    = get_ftyp_from_den (ctsubst th t_x) v_x den_thtx_vx 
-            (ValDen _ _ v' ev_th'e'_v' den_tht'vx_v') = lem_denote_sound_typ (Cons y t_x g) (unbind x y e') 
-                                            (unbindT x y t') p_yg_e'_t' 
-                                            (WFEBind g p_g_wf y t_x k_x p_g_tx) th' den_g'_th'
-            step_vvx_th'e' = EAppAbs x (csubst th e') v_x  
-            ev_vvx_v'      = AddStep (App v v_x) (subBV x v_x (csubst th e')) step_vvx_th'e'
-                                     v' (ev_th'e'_v' ? lem_csubst_and_unbind x y v_x 
-                                                           (erase (ctsubst th t_x)) pf_vx_er_tx th e')
- 
-{- @ ple lem_denote_sound_typ_tapp @-}
-{-@ lem_denote_sound_typ_tapp :: g:Env -> e:Term -> t:Type 
-                -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTApp p_e_t } -> ProofOf(WFEnv g) 
-                ->  th:CSub  -> ProofOf(DenotesEnv g th)  
-                -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
-lem_denote_sound_typ_tapp :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
-                            -> DenotesEnv -> ValueDenoted
-lem_denote_sound_typ_tapp g e t p_e_t@(TApp _g e' x t_x t' p_e_txt' e_x p_ex_tx) p_g_wf th den_g_th 
-  = ValDen (csubst th e) (ctsubst th t)  v''  ev_the_v''  den_tht_v'' 
-     where
-      (ValDen _ _ v'  ev_the'_v' den_thtxt'_v'_) = lem_denote_sound_typ g e' (TFunc x t_x t') 
-                                                       p_e_txt' p_g_wf th den_g_th
-      (ValDen _ _ v_x ev_thex_vx den_thtx_vx)    = lem_denote_sound_typ g e_x t_x p_ex_tx 
-                                                       p_g_wf th den_g_th
-      {-@ den_thtxt'_v' :: { pf:Denotes | propOf pf == Denotes (ctsubst th (TFunc x t_x t')) v' } @-}
-      den_thtxt'_v'  = den_thtxt'_v'_ ? lem_ctsubst_func th x t_x t'
-      p_v'_ertxt'    = get_ftyp_from_den (ctsubst th (TFunc x t_x t')) v' den_thtxt'_v'
-      reducer        = get_obj_from_dfunc x (ctsubst th t_x) (ctsubst th t') v' den_thtxt'_v'
-      (ValDen _ _ v'' ev_v'vx_v'' den_tht'vx_v'') = reducer v_x den_thtx_vx
-      ev_the_v'vx    = lemma_app_both_many (csubst th e')  v'  ev_the'_v'
-                                           (csubst th e_x) v_x ev_thex_vx
-                           `withProof` lem_csubst_app th e' e_x
-      {-@ ev_the_v'' :: ProofOf(EvalsTo (csubst th e) v'') @-}
-      ev_the_v''     = lemma_evals_trans (csubst th (App e' e_x)) (App v' v_x) v''
-                                      ev_the_v'vx ev_v'vx_v''
-                           `withProof` lem_csubst_app th e' e_x
-
-      p_vx_ertx      = get_ftyp_from_den (ctsubst th t_x) v_x den_thtx_vx 
-      p_v'vx_ert     = FTApp FEmpty v' (erase (ctsubst th t_x)) (erase (ctsubst th t'))
-                             p_v'_ertxt' --`withProof` lem_ctsubst_func th x t_x t') 
-                             v_x p_vx_ertx  
-      p_v''_ert      = lemma_many_preservation (App v' v_x) (v'' ? lem_value_pred v'') 
-                                       ev_v'vx_v'' (erase (ctsubst th t')) p_v'vx_ert 
-      {-@ den_tht_v'' :: ProofOf(Denotes (ctsubst th t) v'') @-}
-      den_tht_v''    = DExis x (ctsubst th t_x) (ctsubst th t') v'' p_v''_ert v_x 
-                           den_thtx_vx den_tht'vx_v'' ? lem_ctsubst_exis th x t_x t' 
-
-{- @ ple lem_denote_sound_typ_tabst @-}
-{-@ lem_denote_sound_typ_tabst :: g:Env -> e:Term -> t:Type 
-                -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAbsT p_e_t } -> ProofOf(WFEnv g) 
-                ->  th:CSub -> ProofOf(DenotesEnv g th)  
-                -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
-lem_denote_sound_typ_tabst :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
-                            -> DenotesEnv -> ValueDenoted
-lem_denote_sound_typ_tabst g e t p_e_t@(TAbsT _g a k e' t' k' a' p_e'_t' p_a'g_t') p_g_wf th den_g_th 
-  = ValDen (csubst th e) (ctsubst th t) v ev_the_v den_tht_v
-      where 
-        {-@ v :: { z:Value | z == csubst th e && e == LambdaT a k e'} @-} -- WTS: (LambdaT a k e') isValue 
-        v = LambdaT a k (csubst th e') ? lem_csubst_lambdaT th a k e' 
-        ev_the_v  = Refl (csubst th e) ? lem_csubst_lambdaT th a k e'
-        
-        p_v_er_tht = lem_csubst_hasftype g e t p_e_t p_g_wf th den_g_th ? lem_ctsubst_poly th a k t'
-        den_tht_v = DPoly a k (ctsubst th t') v p_v_er_tht -- a0 s' eqv_s_er_tht p_e_s
-                          pf_den_tht'ta_vta
-        {-@ pf_den_tht'ta_vta :: t_a:UserType -> ProofOf(WFType Empty t_a k)
-                     -> ProofOf(ValueDenoted (AppT v t_a) (tsubBTV a t_a (ctsubst th t'))) @-}
-        pf_den_tht'ta_vta :: Type -> WFType -> ValueDenoted
-        pf_den_tht'ta_vta t_a p_emp_ta = ValDen (AppT v t_a) (tsubBTV a t_a (ctsubst th t'))
-                                 v' ev_vta_v' (den_tht'ta_v' 
-                                     ? lem_ctsubst_and_unbind_tvT a a' t_a k p_emp_ta th t')
-          where
-            th'            = CConsT a' t_a (th ? lem_binds_env_th g th den_g_th)
-            den_g'_th'     = DExtT g th den_g_th a' k (t_a ? lem_free_subset_binds Empty t_a k p_emp_ta
-                                                           ? lem_tfreeBV_empty Empty t_a k p_emp_ta)
-                                   p_emp_ta
-
-            (ValDen _ _ v' ev_th'e'_v' den_tht'ta_v') = lem_denote_sound_typ (ConsT a' k g) 
-                                   (unbind_tv a a' e') (unbind_tvT a a' t') p_e'_t' 
-                                   (WFEBindT g p_g_wf a' k) th' den_g'_th'
-            step_vta_th'e' = EAppTAbs a k (csubst th e') t_a
-            ev_vta_v'      = AddStep (AppT v t_a) (subBTV a t_a (csubst th e')) step_vta_th'e'
-                                     v' (ev_th'e'_v' ? lem_csubst_and_unbind_tv a a' t_a k p_emp_ta th e')
-
-{- @ ple lem_denote_sound_typ_tappt @-}
-{-@ lem_denote_sound_typ_tappt :: g:Env -> e:Term -> t:Type 
-                -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAppT p_e_t } -> ProofOf(WFEnv g) 
-                ->  th:CSub  -> ProofOf(DenotesEnv g th)  
-                -> ProofOf(ValueDenoted (csubst th e) (ctsubst th t)) / [typSize p_e_t, 0] @-}
-lem_denote_sound_typ_tappt :: Env -> Expr -> Type -> HasType -> WFEnv -> CSub 
-                            -> DenotesEnv -> ValueDenoted
 lem_denote_sound_typ_tappt g e t (TAppT _ e' a k s p_e_as t' p_g_t') p_g_wf th den_g_th  
   = ValDen (csubst th e) (ctsubst th t) v'' ev_the_v'' (den_tht_v''
                         ? lem_commute_ctsubst_tsubBTV th a t' s)
@@ -238,7 +240,6 @@ lem_denote_sound_typ_tlet g e t (TLet _g e_x t_x p_ex_tx x e' _t k p_g_t y p_yg_
                                       ? lem_ctsubst_nofreeBV th t
                                       ? lem_tsubBV_notin x v_x (ctsubst th t) 
 
-{- @ ple lem_denote_sound_typ_tann @-}
 {-@ lem_denote_sound_typ_tann :: g:Env -> e:Term -> t:Type 
                 -> { p_e_t:HasType | propOf p_e_t == HasType g e t && isTAnn p_e_t } -> ProofOf(WFEnv g) 
                 ->  th:CSub  -> ProofOf(DenotesEnv g th)  

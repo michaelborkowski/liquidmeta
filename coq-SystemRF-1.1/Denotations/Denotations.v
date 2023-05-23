@@ -11,14 +11,6 @@ From Equations Require Import Equations.
 
 Require Import Arith.
 
-Fixpoint isMono (t0 : type) : Prop := 
-    match t0 with         
-    | (TRefn b ps)     => True  
-    | (TFunc  t_x t)   => isMono t_x /\ isMono t
-    | (TExists  t_x t) => isMono t_x /\ isMono t
-    | (TPoly  k   t)   => False
-    end.
-
 Fixpoint quants (t : type) : nat :=
     match t with
     | (TRefn b ps)     => 0  
@@ -203,18 +195,14 @@ Inductive DImplies : env -> preds -> preds -> Prop :=
                                            -> PEvalsTrue (cpsubst th qs) )
             -> DImplies g ps qs.
 
-(* Is this really neccessary?   
 Lemma lem_den_nofv : forall (v:expr) (t:type),
     Denotes t v -> fv v = empty /\ ftv v = empty.
 Proof. intros v t den_t_v; apply lem_den_hasftype in den_t_v;
-  apply lem_fv_subset_bindsF in den_t_v; simpl in den_t_v.
-  .....  *)
-(*
-lem_den_nofv :: Expr -> Type -> Denotes -> Proof
-lem_den_nofv v t den_t_v = lem_fv_subset_bindsF FEmpty v (erase t) pf_v_bt
-  where
-    pf_v_bt = get_ftyp_from_den t v den_t_v
-
+  apply lem_fv_subset_bindsF in den_t_v; simpl in den_t_v;
+  destruct den_t_v; split; apply no_elem_empty; intro x;
+  apply not_elem_subset with empty; auto. Qed.
+  
+    (*
 {-@ lem_den_nobv :: v:Value -> t:Type -> ProofOf(Denotes t v) 
         -> { pf:_ | Set_emp (freeBV v) && Set_emp (freeBTV v) } @-}
 lem_den_nobv :: Expr -> Type -> Denotes -> Proof

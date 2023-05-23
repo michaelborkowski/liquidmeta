@@ -541,58 +541,25 @@ Proof. induction th; simpl; intros; try reflexivity;
   try apply lemma_tsubFV_noExists;
   try apply lemma_tsubFTV_noExists; try assumption. Qed.
 
+Lemma lem_ctsubst_tsubBV : forall (th:csub) (v:expr) (t:type),
+    loc_closed th -> substitutable th 
+        -> ctsubst th (tsubBV v t) = tsubBV (csubst th v) (ctsubst th t).
+Proof. induction th; simpl; intros; try reflexivity;
+  try rewrite lem_commute_tsubFV_tsubBV;
+  try rewrite lem_commute_tsubFTV_tsubBV;
+  try apply IHth; destruct H; destruct H0; assumption. Qed.
+
+Lemma lem_ctsubst_tsubBTV : forall (th:csub) (t_a t:type),
+    loc_closed th -> substitutable th -> noExists t_a
+        -> ctsubst th (tsubBTV t_a t) = tsubBTV (ctsubst th t_a) (ctsubst th t).
+Proof. induction th; simpl; intros; try reflexivity;
+  try rewrite lem_commute_tsubFV_tsubBTV;
+  try rewrite lem_commute_tsubFTV_tsubBTV;
+  destruct H; destruct H0; try apply IHth; 
+  try apply lemma_tsubFV_noExists;
+  try apply lemma_tsubFTV_noExists; try assumption. Qed.
+  
 (*
-  {-@ lem_ctsubst_tsubBV :: x:vname -> v:Value -> bt:FType
-           -> ProofOf(HasFType FEmpty v bt) -> th:csub -> t:type
-           -> { pf:_ | ctsubst th (tsubBV x v t) == tsubBV x v (ctsubst th t) } @-}
-lem_ctsubst_tsubBV :: vname -> expr -> FType -> HasFType -> csub -> type -> Proof
-lem_ctsubst_tsubBV x v bt pf_v_b (CEmpty)         t = ()
-lem_ctsubst_tsubBV x v bt pf_v_b (CCons y v_y th) t 
-    = () ? lem_commute_tsubFV_tsubBV1 x v 
-                   (y `withProof` lem_fv_bound_in_fenv FEmpty v bt pf_v_b y) v_y t
-         ? lem_ctsubst_tsubBV x v bt pf_v_b th (tsubFV y v_y t)
-lem_ctsubst_tsubBV x v bt pf_v_b (CConsT a t_a th) t 
-    = () ? lem_commute_tsubFTV_tsubBV1 x v
-                   (a `withProof` lem_fv_bound_in_fenv FEmpty v bt pf_v_b a) t_a t
-         ? lem_ctsubst_tsubBV x v bt pf_v_b th (tsubFTV a t_a t)
-
-{-@ lem_ctsubst_tsubBTV :: a1:vname -> t_a:UserType -> k:kind 
-        -> ProofOf(WFType Empty t_a k) -> th:csub -> t:type 
-        -> { pf:_ | ctsubst th (tsubBTV a1 t_a t) == tsubBTV a1 t_a (ctsubst th t) } @-}
-lem_ctsubst_tsubBTV :: vname -> type -> kind -> WFType -> csub -> type -> Proof
-lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CEmpty)            t = ()
-lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CCons y v_y th)    t
-    = () ? lem_commute_tsubFV_tsubBTV1 a1 t_a
-                   (y  ? lem_free_bound_in_env Empty t_a k p_emp_ta y)  v_y  t
-         ? lem_ctsubst_tsubBTV a1 t_a k p_emp_ta th (tsubFV y v_y t)
-lem_ctsubst_tsubBTV a1 t_a k p_emp_ta (CConsT a' t_a' th) t 
-    = () ? lem_commute_tsubFTV_tsubBTV1 a1 t_a
-                   (a' ? lem_free_bound_in_env Empty t_a k p_emp_ta a') t_a' t 
-         ? lem_ctsubst_tsubBTV a1 t_a k p_emp_ta th (tsubFTV a' t_a' t)
-
-{-@ lem_commute_ctsubst_tsubBV :: th:csub -> x:vname -> v:Value -> t:type
-           -> { pf:_ | ctsubst th (tsubBV x v t) == tsubBV x (csubst th v) (ctsubst th t) } @-} 
-lem_commute_ctsubst_tsubBV :: csub -> vname -> expr -> type -> Proof
-lem_commute_ctsubst_tsubBV (CEmpty)         x v t = () 
-lem_commute_ctsubst_tsubBV (CCons y v_y th) x v t 
-    = () ? lem_commute_tsubFV_tsubBV x v y v_y t
-         ? lem_commute_ctsubst_tsubBV th x (subFV y v_y v) (tsubFV y v_y t)
-lem_commute_ctsubst_tsubBV (CConsT a t_a th) x v t 
-    = () ? lem_commute_tsubFTV_tsubBV x v a t_a t
-         ? lem_commute_ctsubst_tsubBV th x (subFTV a t_a v) (tsubFTV a t_a t)
-
-{-@ lem_commute_ctsubst_tsubBTV :: th:csub -> a:vname -> t_a:UserType -> t:type 
-        -> { pf:_ | ctsubst th (tsubBTV a t_a t) == tsubBTV a (ctsubst th t_a) (ctsubst th t) } @-}
-lem_commute_ctsubst_tsubBTV :: csub -> vname -> type -> type -> Proof
-lem_commute_ctsubst_tsubBTV (CEmpty)            a t_a t = ()
-lem_commute_ctsubst_tsubBTV (CCons y v_y th)    a t_a t  
-    = () ? lem_commute_tsubFV_tsubBTV a t_a y v_y t
-         ? lem_commute_ctsubst_tsubBTV th a (tsubFV y v_y t_a) (tsubFV y v_y t)
-lem_commute_ctsubst_tsubBTV (CConsT a' t_a' th) a t_a t  
-    = () ? lem_commute_tsubFTV_tsubBTV a t_a a' t_a' t
-         ? lem_commute_ctsubst_tsubBTV th a (tsubFTV a' t_a' t_a) (tsubFTV a' t_a' t)
-
-
   --- Compositional Laws
 
 {-@ lem_csubst_and_unbind :: x:vname -> y:vname 
