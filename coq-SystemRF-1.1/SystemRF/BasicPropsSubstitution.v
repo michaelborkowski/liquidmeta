@@ -17,6 +17,20 @@ Proof. intros a t_a v val_v.
   destruct v; simpl in val_v; try contradiction;
   simpl; try (destruct (Nat.eqb y x)); simpl; assumption. Qed.
 
+Lemma lemma_tsubFV_isMono : forall (y:vname) (v_y:expr) (t:type),
+    isMono t -> isMono (tsubFV y v_y t).
+Proof. intros y v_y t mono; induction t;
+  simpl in mono; try contradiction;
+  simpl; intuition. Qed.
+
+Lemma lemma_tsubFTV_isMono : forall (a:vname) (t_a:type) (t:type),
+    isMono t_a -> noExists t_a -> isMono t -> isMono (tsubFTV a t_a t).
+Proof. intros a t_a t monota noexta monot; induction t;
+  simpl in monot; try contradiction;
+  try destruct b; simpl; try destruct (a =? a0);
+  destruct t_a; simpl in monota; simpl in noexta;
+  try contradiction; simpl; intuition. Qed.
+
 Lemma lemma_tsubFV_noExists : forall (y:vname) (v_y:expr) (t:type),
     (*isValue v_y ->*) noExists t -> noExists (tsubFV y v_y t).
 Proof. intros y v_y t noex; induction t;

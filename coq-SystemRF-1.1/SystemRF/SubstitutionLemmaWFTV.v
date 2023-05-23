@@ -23,7 +23,8 @@ Lemma lem_subst_tv_wf'' : forall (g'ag : env) (t : type) (k_t : kind),
                      -> unique g -> unique g'
                      -> intersect (binds g) (binds g') = empty
                      -> ~ (in_env a g) -> ~ (in_env a g') 
-                     -> noExists t_a -> WFtype g t_a k_a -> WFFE (erase_env g)
+                     -> isMono t_a -> noExists t_a 
+                     -> WFtype g t_a k_a -> WFFE (erase_env g)
                      -> WFtype (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) k_t ).
 Proof. apply ( WFtype_ind 
   (fun (g'ag : env) (t : type) (k_t : kind) => 
@@ -32,7 +33,8 @@ Proof. apply ( WFtype_ind
               -> unique g -> unique g'
               -> intersect (binds g) (binds g') = empty
               -> ~ (in_env a g) -> ~ (in_env a g') 
-              -> noExists t_a -> WFtype g t_a k_a -> WFFE (erase_env g)
+              -> isMono t_a -> noExists t_a 
+              -> WFtype g t_a k_a -> WFFE (erase_env g)
               -> WFtype (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) k_t  )).
   - (* WFBase *) intros; destruct b; simpl;
     (apply WFBase; assumption) || (simpl in H; contradiction).
@@ -43,9 +45,9 @@ Proof. apply ( WFtype_ind
     try (pose proof (H0 g g' a t_a k_a) as H0'; rewrite Ha0 in H0'; apply H0');
     try (destruct ps; simpl; contradiction || discriminate); try assumption;
     (* TBool / TInt / FTV a0 <> a *) try (
-      intros; apply not_elem_names_add_elim in H12; try destruct H12;
-      apply not_elem_union_elim in H13; try destruct H13;
-      apply not_elem_concat_elim in H14; try destruct H14; try subst env;
+      intros; apply not_elem_names_add_elim in H13; try destruct H13;
+      apply not_elem_union_elim in H14; try destruct H14;
+      apply not_elem_concat_elim in H15; try destruct H15; try subst env;
       assert (FCons y (FTBasic b) (erase_env (concatE g (esubFTV a t_a g')))
             = concatF (erase_env g) (fesubFV a (erase t_a) (FCons y (FTBasic b) (erase_env g'))) ) as Henv
         by (subst b; rewrite lem_erase_concat; rewrite lem_erase_esubFTV; 
@@ -63,16 +65,16 @@ Proof. apply ( WFtype_ind
       try rewrite <- vbinds_erase_env; try rewrite <- tvbinds_erase_env;
       try apply lem_free_subset_binds with k_a;
       try apply lem_erase_wftype;
-      apply Nat.neq_sym in H12; try split; trivial
+      apply Nat.neq_sym in H13; try split; trivial
     ).
     * (* FTV a0 *) (* a = a0 *) apply lem_push_wf with (names_add a (union nms (binds (concatE g g')))); 
-      try apply H9;
+      try apply H10;
       pose proof (H0 g g' a t_a k_a) as H0'; rewrite Ha0 in H0'; rewrite lem_push_empty in H0';
       try apply H0'; trivial; intros; subst env; apply Nat.eqb_eq in Ha0; subst a0;
-      apply not_elem_names_add_elim in H12; destruct H12;
-      apply not_elem_union_elim in H12;     destruct H12;
-      apply not_elem_concat_elim in H13;    destruct H13.
-      apply lem_erase_wftype in H10 as Her;  apply lem_wftype_islct in H10 as Hlc;
+      apply not_elem_names_add_elim in H13; destruct H13;
+      apply not_elem_union_elim in H13;     destruct H13;
+      apply not_elem_concat_elim in H14;    destruct H14.
+      apply lem_erase_wftype in H11 as Her;  apply lem_wftype_islct in H11 as Hlc;
       assert (FCons y (erase t_a) (erase_env (concatE g (esubFTV a t_a g')))
           = concatF (erase_env g) (fesubFV a (erase t_a) (FCons y (FTBasic (FTV a)) (erase_env g'))) ) as Henv
         by (  rewrite lem_erase_concat; rewrite lem_erase_esubFTV; simpl; destruct (a =? a) eqn:A;
@@ -110,8 +112,8 @@ Proof. apply ( WFtype_ind
     apply WFFunc with k_x k (names_add a (union nms (binds (concatE g g')))); fold tsubFTV;
     try apply H0 with k_a; trivial; intros;
     apply not_elem_names_add_elim in H3;  destruct H3;
-    apply not_elem_union_elim in H12;     destruct H12;
-    apply not_elem_concat_elim in H13;    destruct H13;
+    apply not_elem_union_elim in H13;     destruct H13;
+    apply not_elem_concat_elim in H14;    destruct H14;
     assert (Cons y (tsubFTV a t_a t_x) (concatE g (esubFTV a t_a g')) 
               = concatE g (esubFTV a t_a (Cons y t_x g')) ) as Henv
       by reflexivity; rewrite Henv;
@@ -123,8 +125,8 @@ Proof. apply ( WFtype_ind
     apply WFExis with k_x (names_add a (union nms (binds (concatE g g')))); fold tsubFTV;
     try apply H0 with k_a; trivial; intros;
     apply not_elem_names_add_elim in H3;  destruct H3;
-    apply not_elem_union_elim in H12;     destruct H12;
-    apply not_elem_concat_elim in H13;    destruct H13;
+    apply not_elem_union_elim in H13;     destruct H13;
+    apply not_elem_concat_elim in H14;    destruct H14;
     assert (Cons y (tsubFTV a t_a t_x) (concatE g (esubFTV a t_a g')) 
               = concatE g (esubFTV a t_a (Cons y t_x g')) ) as Henv
       by reflexivity; rewrite Henv;
@@ -135,8 +137,8 @@ Proof. apply ( WFtype_ind
   - (* WFPoly *) intros env k0; intros; subst env.
     apply WFPoly with k_t (names_add a (union nms (binds (concatE g g')))); fold tsubFTV; intros.
     apply not_elem_names_add_elim in H1;  destruct H1;
-    apply not_elem_union_elim in H10;     destruct H10;
-    apply not_elem_concat_elim in H11;    destruct H11;
+    apply not_elem_union_elim in H11;     destruct H11;
+    apply not_elem_concat_elim in H12;    destruct H12;
     assert (ConsT a' k0 (concatE g (esubFTV a t_a g')) 
               = concatE g (esubFTV a t_a (ConsT a' k0 g')) ) as Henv
       by reflexivity; rewrite Henv.
@@ -152,7 +154,8 @@ Lemma lem_subst_tv_wf : forall (g g':env) (a:vname) (t_a:type) (k_a:kind) (t:typ
                     -> unique g -> unique g'
                     -> intersect (binds g) (binds g') = empty
                     -> ~ (in_env a g) -> ~ (in_env a g') 
-                    -> noExists t_a -> WFtype g t_a k_a -> WFFE (erase_env g)
+                    -> isMono t_a -> noExists t_a 
+                    -> WFtype g t_a k_a -> WFFE (erase_env g)
                     -> WFtype (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) k_t.
 Proof. intros; apply lem_subst_tv_wf'' with (concatE (ConsT a k_a g) g') k_a;
   assumption || reflexivity.  Qed.
@@ -162,7 +165,8 @@ Lemma lem_subst_tv_wf' : forall (g g':env) (a:vname) (t_a:type) (k_a:kind) (t:ty
                     -> unique g -> unique g'
                     -> intersect (binds g) (binds g') = empty
                     -> ~ (in_env a g) -> ~ (in_env a g') 
-                    -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
+                    -> isMono t_a -> noExists t_a 
+                    -> WFtype g t_a k_a -> WFEnv g
                     -> WFtype (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) k_t.
 Proof. intros; apply lem_subst_tv_wf with k_a; try apply lem_erase_env_wfenv;
   assumption || reflexivity.  Qed.

@@ -116,6 +116,7 @@ Proof. apply ( judgments_mutind
   - (* TAppT *) rewrite lem_commute_tsubFV_tsubBTV; simpl;
     try apply TAppT with k; simpl in H;
     try apply H with t_x;
+    try apply lemma_tsubFV_isMono;
     try apply lemma_tsubFV_noExists;
     try apply lem_subst_wf with t_x;
     try apply lem_typing_hasftype;

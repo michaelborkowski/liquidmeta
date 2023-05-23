@@ -107,6 +107,14 @@ Definition isValue (e: expr) : Prop :=
     | _             => False         
     end.
 
+Fixpoint isMono (t0 : type) : Prop := 
+    match t0 with         
+    | (TRefn b ps)     => True  
+    | (TFunc  t_x t)   => isMono t_x /\ isMono t
+    | (TExists  t_x t) => isMono t_x /\ isMono t
+    | (TPoly  k   t)   => False
+    end.
+
 Fixpoint noExists (t0 : type) : Prop := 
     match t0 with         
     | (TRefn b ps)     => True  
@@ -452,6 +460,13 @@ Fixpoint erase (t0 : type) : ftype :=
     | (TExists t_x t) => (erase t)
     | (TPoly  k  t)   => FTPoly k (erase t)
     end.
+
+Fixpoint isMonoF (t0 : ftype) : Prop := 
+    match t0 with         
+    | (FTBasic b)      => True  
+    | (FTFunc  t_x t)  => isMonoF t_x /\ isMonoF t
+    | (FTPoly  k   t)  => False
+    end.  (* is this needed? *)
 
 Fixpoint isLCFT_at (j : index) (t0 : ftype) : Prop :=
     match t0 with

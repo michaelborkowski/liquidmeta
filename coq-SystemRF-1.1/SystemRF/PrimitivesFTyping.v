@@ -117,8 +117,8 @@ Proof. intros t p_t_b; inversion p_t_b; subst t;
 Lemma lem_prim_compatT_in_ftappt : forall (c:prim) (rt:type) (t:ftype),
     HasFtype FEmpty (AppT (Prim c) rt) t  ->  isCompatT' c rt.
 Proof. intros c rt t p_crt_t. destruct c; inversion p_crt_t; inversion H1;
-  subst k; apply lem_base_types in H8; 
-  destruct (erase rt) eqn:Hrt; simpl in H8; try contradiction; 
+  subst k; apply lem_base_types in H9; 
+  destruct (erase rt) eqn:Hrt; try contradiction; 
   simpl; rewrite Hrt; trivial. Qed.
   
 Lemma lem_deltaT_ftyp : forall (c:prim) (k:kind) (s:ftype) (t:type),

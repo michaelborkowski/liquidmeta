@@ -55,7 +55,7 @@ Proof. intros g e t p_e_t; induction p_e_t; intro emp; simpl; subst g;
     try (injection H2 as H2; subst e0);
     exists (subBV e' e1); apply EAppAbs; assumption.
   - (* AppT e rt *) inversion p_e_t;
-    try simpl in H2; try contradiction;
+    try simpl in H3; try contradiction;
     destruct IHp_e_t as [H'|H']; try reflexivity;
     (* consider e not a value *)
     try (subst e; simpl in H'; contradiction);
@@ -65,18 +65,19 @@ Proof. intros g e t p_e_t; induction p_e_t; intro emp; simpl; subst g;
     apply lem_typing_hasftype in p_e_t as p_e_ert; 
     try apply WFEEmpty; simpl in p_e_ert;
     apply lemma_tfunction_values with e k (erase s) in H'; trivial;
-    try destruct e eqn:E; try discriminate H2; try discriminate H3; 
+    try destruct e eqn:E; 
+    try discriminate H3; try discriminate H4;
     simpl in H'; try contradiction;
     (* either e = Prim c ...*)
-    try (injection H2 as H2; subst c);
+    try (injection H3 as H3; subst c);
     try ( assert (Hastype Empty (AppT (Prim p) t) (tsubBTV t s)) as p_pt_st
             by (apply TAppT with k; trivial);
           pose proof (lem_prim_compatT_in_tappT p t (tsubBTV t s)
-                        H p_pt_st) as pf;
+                        H0 p_pt_st) as pf;
           apply compatT_prop_set in pf; exists (deltaT p t pf); 
           apply EPrimT; trivial );
     (* ... or e = LambdaT k e1 *)
-    try (injection H3 as Hk0 He0; subst e0; subst k0 k);
+    try (injection H4 as Hk0 He0; subst e0; subst k0 k);
     exists (subBTV t e1); apply EAppTAbs; assumption.
   - (* Let e_x e *) destruct IHp_e_t; try reflexivity.
       * (* e_x val *) exists (subBV e_x e); apply ELetV; apply H2.
@@ -175,13 +176,13 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
     * (* AppT (Prim p) t *) 
       assert (Hastype Empty (AppT (Prim p) t) (tsubBTV t s))
         by (apply TAppT with k; assumption).
-      pose proof (lem_prim_compatT_in_tappT p t (tsubBTV t s) H H1) as pf;
+      pose proof (lem_prim_compatT_in_tappT p t (tsubBTV t s) H0 H2) as pf;
       apply compatT_prop_set in pf; subst e;
       apply lem_sem_det with (AppT (Prim p) t) e'' (deltaT p t pf) in st_e_e'' 
         as He''; try apply EPrimT; try assumption; subst e'';
-      pose proof (lem_deltaT_typ p t k s H p_e_t H0) as He'';
+      pose proof (lem_deltaT_typ p t k s H H0 p_e_t H1) as He'';
       rewrite deltaT_deltaT' with p t pf in He''; destruct He'';
-      destruct H2; injection H2 as H2; subst x; assumption.
+      destruct H3; injection H3 as H3; subst x; assumption.
     * (* App (Lambda e0) val *) subst e;
       assert (Hastype Empty (AppT (LambdaT k0 e0) t) (tsubBTV t s)) as p_et_st
         by (apply TAppT with k; assumption);

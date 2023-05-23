@@ -124,7 +124,7 @@ Inductive HasFtype : fenv -> expr -> ftype -> Prop :=
                     -> HasFtype (FConsT a' k g) (unbind_tv a' e) (unbindFT a' b) )
               -> HasFtype g (LambdaT k e) (FTPoly k b)
     | FTAppT : forall (g:fenv) (e:expr) (k:kind) (t':ftype) (rt:type),
-          HasFtype g e (FTPoly k t') 
+          HasFtype g e (FTPoly k t') -> isMono rt
               -> noExists rt -> Subset (free rt) (vbindsF g) 
                              -> Subset (freeTV rt) (tvbindsF g) -> isLCT rt
               -> WFFT g (erase rt) k -> HasFtype g (AppT e rt) (ftsubBV (erase rt) t')

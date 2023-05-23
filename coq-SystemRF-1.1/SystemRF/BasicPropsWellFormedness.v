@@ -98,8 +98,8 @@ Proof. apply ( HasFtype_ind
     try (apply not_elem_names_add_intro);
     try (apply intersect_names_add_intro_r); try apply fv_unbind_tv_elim; intuition.
   - (* FTAppT *) apply FTAppT with k; try apply H0 with x t_x;
-    try apply lem_strengthen_wfft with x t_x; simpl in H10;
-    apply not_elem_union_elim in H10; destruct H10;
+    try apply lem_strengthen_wfft with x t_x; simpl in H11;
+    apply not_elem_union_elim in H11; destruct H11;
     pose proof (lem_vbinds_cons_concatF g g' x t_x) as Hv; destruct Hv as [Hv Hvx];
     pose proof (lem_tvbinds_cons_concatF g g' x t_x) as Htv; destruct Htv as [Htv Htvx];
     trivial.

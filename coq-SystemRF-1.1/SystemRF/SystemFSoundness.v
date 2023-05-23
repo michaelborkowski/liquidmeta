@@ -150,7 +150,7 @@ Proof. intros g e; induction e; intros t0 e' p_e_t emp st_e_e'; simpl; subst g;
       rewrite lem_subFTV_unbind_tv with (fresh nms) t e1;
       try rewrite lem_ftsubFV_unbindFT with (fresh nms) (erase t) t';
       try rewrite Hemp; try apply lem_subst_tv_ftyp with k; simpl;
-      try apply H9; trivial; 
+      try apply H10; trivial; 
       apply lem_fv_bound_in_fenv 
         with FEmpty (LambdaT k0 e1) (FTPoly k t') (fresh nms) in H1 as Hfr1;
       apply lem_ftyping_wfft in H1;

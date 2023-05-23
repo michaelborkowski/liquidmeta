@@ -25,7 +25,7 @@ Lemma lem_subst_tv_typ' : ( forall (g'ag : env) (e : expr) (t : type),
             -> unique g -> unique g'
             -> intersect (binds g) (binds g') = empty
             -> ~ (in_env a g) -> ~ (in_env a g') 
-            -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
+            -> isMono t_a -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
             -> Hastype (concatE g (esubFTV a t_a g')) (subFTV a t_a e) (tsubFTV a t_a t ) )) /\ (
   forall (g'ag : env) (t : type) (t' : type),
     Subtype g'ag t t' -> ( forall (g g':env) (a:vname) (t_a:type) (k_a:kind),
@@ -33,7 +33,7 @@ Lemma lem_subst_tv_typ' : ( forall (g'ag : env) (e : expr) (t : type),
         -> unique g -> unique g'
         -> intersect (binds g) (binds g') = empty
         -> ~ (in_env a g) -> ~ (in_env a g') 
-        -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
+        -> isMono t_a -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
         -> Subtype (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) (tsubFTV a t_a t') )).
 Proof. apply ( judgments_mutind 
   (fun (g'ag : env) (e : expr) (t : type) (p_e_t : Hastype g'ag e t) => 
@@ -42,7 +42,7 @@ Proof. apply ( judgments_mutind
             -> unique g -> unique g'
             -> intersect (binds g) (binds g') = empty
             -> ~ (in_env a g) -> ~ (in_env a g') 
-            -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
+            -> isMono t_a -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
             -> Hastype (concatE g (esubFTV a t_a g')) (subFTV a t_a e) (tsubFTV a t_a t ) )
   (fun (g'ag : env) (t : type) (t' : type) (p_t_t' : Subtype g'ag t t') => 
     forall (g g':env) (a:vname) (t_a:type) (k_a:kind),
@@ -50,7 +50,7 @@ Proof. apply ( judgments_mutind
         -> unique g -> unique g'
         -> intersect (binds g) (binds g') = empty
         -> ~ (in_env a g) -> ~ (in_env a g') 
-        -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
+        -> isMono t_a -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
         -> Subtype (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) (tsubFTV a t_a t') ) );
   intro env; intros; subst env.
   - (* TBC *) rewrite lem_tsubFTV_tybc; try apply TBC; assumption.
@@ -64,14 +64,14 @@ Proof. apply ( judgments_mutind
       try apply lem_wftype_islct with (concatE (ConsT a k_a g) g') Base;
       try apply FTVar; try apply boundin_erase_env; try rewrite lem_boundin_concat;
       destruct b;
-      try apply (boundin_wfenv_wftype x t g H) in H7 as p_g_t;
-      try ( left; pose proof lem_subFTV_notin; destruct H8; destruct p; rewrite e0;
+      try apply (boundin_wfenv_wftype x t g H) in H8 as p_g_t;
+      try ( left; pose proof lem_subFTV_notin; destruct H9; destruct p; rewrite e0;
             try apply H; apply lem_free_bound_in_env with g Star );
       try ( right; apply lem_boundin_esubFTV ); simpl; intuition.
     * (* Star *) rewrite lem_self_star; 
       rewrite <- lem_self_star with (tsubFTV a t_a t) (FV x); apply TVar;
       try apply lem_boundin_concat; destruct b; 
-      try ( left; pose proof lem_subFTV_notin; destruct H8; destruct p; rewrite e0;
+      try ( left; pose proof lem_subFTV_notin; destruct H9; destruct p; rewrite e0;
             try apply H; apply lem_free_bound_in_env with g Star );
       try ( right; apply lem_boundin_esubFTV );
       try apply lem_subst_tv_wf' with k_a;
@@ -80,11 +80,11 @@ Proof. apply ( judgments_mutind
   - (* TAbs *) simpl; apply TAbs with k_x (names_add a (union nms (binds (concatE g g'))));
     try apply lem_subst_tv_wf' with k_a; try assumption; intros;
     apply not_elem_names_add_elim in H0; destruct H0;
-    apply not_elem_union_elim in H9; destruct H9;
-    apply not_elem_concat_elim in H10; destruct H10;
+    apply not_elem_union_elim in H10; destruct H10;
+    apply not_elem_concat_elim in H11; destruct H11;
     assert (Cons y (tsubFTV a t_a t_x) (concatE g (esubFTV a t_a g')) 
             = concatE g (esubFTV a t_a (Cons y t_x g')))
-      by reflexivity; rewrite H12;
+      by reflexivity; rewrite H13;
     rewrite <- lem_commute_subFTV_unbind;
     try rewrite <- lem_commute_tsubFTV_unbindT;
     try apply H with k_a;
@@ -96,10 +96,10 @@ Proof. apply ( judgments_mutind
     apply H with k_a || apply H0 with k_a; trivial.
   - (* TAbsT *) simpl; apply TAbsT with (names_add a (union nms (binds (concatE g g'))));
     intros; apply not_elem_names_add_elim in H0; destruct H0;
-    apply not_elem_union_elim in H9; destruct H9;
-    apply not_elem_concat_elim in H10; destruct H10;
+    apply not_elem_union_elim in H10; destruct H10;
+    apply not_elem_concat_elim in H11; destruct H11;
     assert (ConsT a' k (concatE g (esubFTV a t_a g')) = concatE g (esubFTV a t_a (ConsT a' k g')))
-      by reflexivity; rewrite H12;
+      by reflexivity; rewrite H13;
     try rewrite <- lem_commute_subFTV_unbind_tv;
     try rewrite <- lem_commute_tsubFTV_unbind_tvT;
     try apply H with k_a;
@@ -109,6 +109,7 @@ Proof. apply ( judgments_mutind
   - (* TAppT *) rewrite lem_commute_tsubFTV_tsubBTV; simpl;
     try apply TAppT with k; simpl in H;
     try apply H with k_a;
+    try apply lemma_tsubFTV_isMono;
     try apply lemma_tsubFTV_noExists;
     try apply lem_subst_tv_wf' with k_a;
     try apply lem_wftype_islct with g k_a; trivial.
@@ -117,11 +118,11 @@ Proof. apply ( judgments_mutind
     try apply lem_subst_tv_wf' with k_a;
     try apply H with k_a; trivial; intros;
     apply not_elem_names_add_elim in H1; destruct H1;
-    apply not_elem_union_elim in H10; destruct H10;
-    apply not_elem_concat_elim in H11; destruct H11;
+    apply not_elem_union_elim in H11; destruct H11;
+    apply not_elem_concat_elim in H12; destruct H12;
     assert (Cons y (tsubFTV a t_a t_x) (concatE g (esubFTV a t_a g')) 
             = concatE g (esubFTV a t_a (Cons y t_x g')))
-      by reflexivity; rewrite H13;
+      by reflexivity; rewrite H14;
     rewrite <- lem_commute_subFTV_unbind;
     try rewrite <- lem_commute_tsubFTV_unbindT;
     try apply H0 with k_a;
@@ -136,16 +137,16 @@ Proof. apply ( judgments_mutind
     try apply lem_subst_tv_wf with k_a;
     try apply lem_typing_hasftype; intros;
     try apply not_elem_names_add_elim in H2; try destruct H2;
-    try apply not_elem_union_elim in H11; try destruct H11; 
-    try apply not_elem_concat_elim in H12; try destruct H12;     
+    try apply not_elem_union_elim in H12; try destruct H12; 
+    try apply not_elem_concat_elim in H13; try destruct H13;     
     try assert (Cons y (self (TRefn TBool (psubFTV a t_a ps)) (Bc true) Base) 
                        (concatE g (esubFTV a t_a g')) 
             = concatE g (esubFTV a t_a (Cons y (self (TRefn TBool ps) (Bc true) Base) g')))
-      by reflexivity; try rewrite H14; 
+      by reflexivity; try rewrite H15; 
     try assert (Cons y (self (TRefn TBool (psubFTV a t_a ps)) (Bc false) Base)  
                        (concatE g (esubFTV a t_a g')) 
             = concatE g (esubFTV a t_a (Cons y (self (TRefn TBool ps) (Bc false) Base) g')))
-      by reflexivity; try rewrite H15; 
+      by reflexivity; try rewrite H16; 
     try apply H0 with y k_a; try apply H1 with y k_a; 
     try apply lem_erase_env_wfenv;
     try apply not_elem_names_add_intro;
@@ -164,22 +165,22 @@ Proof. apply ( judgments_mutind
           try rewrite Henv;
           try apply ISubTV with k_a; try (rewrite B; apply i);
           apply not_elem_names_add_elim in H; destruct H;
-          apply not_elem_union_elim in H8; destruct H8;
-          apply not_elem_concat_elim in H9; destruct H9;
+          apply not_elem_union_elim in H9; destruct H9;
+          apply not_elem_concat_elim in H10; destruct H10;
           try apply lem_wftype_islct with g k_a;
           try apply not_elem_names_add_intro;
           try apply intersect_names_add_intro_r;
           simpl; try split; intuition ).
     (* b = FTV a *) destruct t_a eqn:TA; try (simpl in H5; contradiction); simpl; 
     try ( apply lem_sub_refl with k_a; 
-          rewrite <- TA; rewrite <- TA in H6;
+          rewrite <- TA; rewrite <- TA in H7;
           try apply lem_weaken_many_wf; 
           try apply esubFTV_unique; try rewrite esubFTV_binds; 
           trivial).
     apply SBase with (names_add a (union nms (binds (concatE g g')))); intros;
     apply not_elem_names_add_elim in H; destruct H;
-    apply not_elem_union_elim in H8; destruct H8;
-    apply not_elem_concat_elim in H9; destruct H9;
+    apply not_elem_union_elim in H9; destruct H9;
+    apply not_elem_concat_elim in H10; destruct H10;
     repeat rewrite lem_unbindP_strengthen; apply IStren;
     try apply not_elem_concat_intro; try rewrite esubFTV_binds; trivial;
     repeat rewrite <- lem_commute_psubFTV_unbindP; try repeat rewrite <- TA;
@@ -196,12 +197,12 @@ Proof. apply ( judgments_mutind
   - (* SFunc *) simpl; apply SFunc with (names_add a (union nms (binds (concatE g g'))));
     try apply H with k_a; trivial; intros;
     apply not_elem_names_add_elim in H1; destruct H1;
-    apply not_elem_union_elim in H10; destruct H10;
-    apply not_elem_concat_elim in H11; destruct H11;
+    apply not_elem_union_elim in H11; destruct H11;
+    apply not_elem_concat_elim in H12; destruct H12;
     repeat rewrite <- lem_commute_tsubFTV_unbindT;
     assert (Cons y (tsubFTV a t_a s2) (concatE g (esubFTV a t_a g')) 
             = concatE g (esubFTV a t_a (Cons y s2 g')))
-      by reflexivity; try rewrite H13;
+      by reflexivity; try rewrite H14;
     try apply H0 with k_a;
     try apply intersect_names_add_intro_r;  
     try apply lem_wftype_islct with g k_a;
@@ -215,24 +216,24 @@ Proof. apply ( judgments_mutind
     try apply lem_islc_at_subFTV; try apply (lem_wftype_islct g t_a) with k_a;
     trivial; intros;
     apply not_elem_names_add_elim in H0; destruct H0;
-    apply not_elem_union_elim in H9; destruct H9;
-    apply not_elem_concat_elim in H10; destruct H10;
+    apply not_elem_union_elim in H10; destruct H10;
+    apply not_elem_concat_elim in H11; destruct H11;
     try rewrite <- lem_commute_tsubFTV_unbindT;
     assert (Cons y (tsubFTV a t_a t_x) (concatE g (esubFTV a t_a g')) 
             = concatE g (esubFTV a t_a (Cons y t_x g')))
-      by reflexivity; try rewrite H12;
+      by reflexivity; try rewrite H13;
     try apply H with k_a;
     try apply intersect_names_add_intro_r;  
     try apply lem_wftype_islct with g k_a;
     try apply not_elem_names_add_intro; simpl; intuition.
   - (* SPoly *) simpl; apply SPoly with (names_add a (union nms (binds (concatE g g'))));
     intros; apply not_elem_names_add_elim in H0; destruct H0;
-    apply not_elem_union_elim in H9; destruct H9;
-    apply not_elem_concat_elim in H10; destruct H10;
+    apply not_elem_union_elim in H10; destruct H10;
+    apply not_elem_concat_elim in H11; destruct H11;
     repeat rewrite <- lem_commute_tsubFTV_unbind_tvT;
     assert (ConsT a0 k (concatE g (esubFTV a t_a g')) 
               = concatE g (esubFTV a t_a (ConsT a0 k g')))
-        by reflexivity; try rewrite H12;
+        by reflexivity; try rewrite H13;
     try apply H with k_a;
     try apply lem_wftype_islct with g k_a; 
     try apply not_elem_names_add_intro;
@@ -244,18 +245,18 @@ Lemma lem_subst_tv_typ : forall (g g':env) (a:vname) (t_a:type) (k_a:kind) (e:ex
             -> unique g -> unique g'
             -> intersect (binds g) (binds g') = empty
             -> ~ (in_env a g) -> ~ (in_env a g') 
-            -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
+            -> isMono t_a -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
             -> Hastype (concatE g (esubFTV a t_a g')) (subFTV a t_a e) (tsubFTV a t_a t ).
-Proof. intros; pose proof lem_subst_tv_typ'; destruct H8 as [Htyp Hsub];
+Proof. intros; pose proof lem_subst_tv_typ'; destruct H9 as [Htyp Hsub];
   apply Htyp with (concatE (ConsT a k_a g) g') k_a; trivial. Qed.
 
 Lemma lem_subst_tv_typ_top : forall (g:env) (a:vname) (t_a:type) (k_a:kind) (e:expr) (t:type),
     Hastype (ConsT a k_a g) e t 
             -> unique g -> ~ (in_env a g) 
-            -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
+            -> isMono t_a -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
             -> Hastype g (subFTV a t_a e) (tsubFTV a t_a t).
 Proof. intros; assert (g = concatE g (esubFTV a t_a Empty)) by reflexivity;
-  rewrite H5; apply lem_subst_tv_typ with k_a; try apply intersect_empty_r; 
+  rewrite H6; apply lem_subst_tv_typ with k_a; try apply intersect_empty_r; 
   unfold unique; intuition. Qed.
 
 Lemma lem_subst_tv_subtype : forall (g g':env) (a:vname) (t_a:type) (k_a:kind) (t t':type),
@@ -263,16 +264,16 @@ Lemma lem_subst_tv_subtype : forall (g g':env) (a:vname) (t_a:type) (k_a:kind) (
             -> unique g -> unique g'
             -> intersect (binds g) (binds g') = empty
             -> ~ (in_env a g) -> ~ (in_env a g') 
-            -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
+            -> isMono t_a -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
             -> Subtype (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) (tsubFTV a t_a t').
-Proof. intros; pose proof lem_subst_tv_typ'; destruct H8 as [Htyp Hsub];
+Proof. intros; pose proof lem_subst_tv_typ'; destruct H9 as [Htyp Hsub];
   apply Hsub with (concatE (ConsT a k_a g) g') k_a; trivial. Qed.
 
 Lemma lem_subst_tv_subtype_top : forall (g:env) (a:vname) (t_a:type) (k_a:kind) (t t':type),
         Subtype (ConsT a k_a g) t t' 
             -> unique g -> ~ (in_env a g) 
-            -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
+            -> isMono t_a -> noExists t_a -> WFtype g t_a k_a -> WFEnv g
             -> Subtype g (tsubFTV a t_a t) (tsubFTV a t_a t').
 Proof. intros; assert (g = concatE g (esubFTV a t_a Empty)) by reflexivity;
-  rewrite H5; apply lem_subst_tv_subtype with k_a; try apply intersect_empty_r; 
+  rewrite H6; apply lem_subst_tv_subtype with k_a; try apply intersect_empty_r; 
   unfold unique; intuition. Qed.

@@ -61,11 +61,11 @@ Proof. intros g e t p_e_t; induction p_e_t; intro p_g.
   - (* TAbsT *) apply WFPoly with Star (union nms (binds g)); intros;
     apply H0; apply not_elem_union_elim in H1; destruct H1;
     try apply WFEBindT; trivial.
-  - (* TAppT *) apply IHp_e_t in p_g as IH'; inversion IH'; try inversion H1.
-    pose proof (fresh_var_not_elem nms g); set (a := fresh_var nms g) in H6; destruct H6;
-    assert (g = concatE g (esubFTV a t Empty)) by reflexivity; rewrite H8.
+  - (* TAppT *) apply IHp_e_t in p_g as IH'; inversion IH'; try inversion H2.
+    pose proof (fresh_var_not_elem nms g); set (a := fresh_var nms g) in H7; destruct H7;
+    assert (g = concatE g (esubFTV a t Empty)) by reflexivity; rewrite H9.
     rewrite lem_tsubFTV_unbind_tvT with a t s; try apply lem_subst_tv_wf with k;
-    destruct k_t; try apply H3; try (apply WFKind; apply H3);
+    destruct k_t; try apply H4; try (apply WFKind; apply H4);
     try apply wfenv_unique; try apply WFEEmpty;
     try apply intersect_empty_r; try apply lem_erase_env_wfenv;
     try apply (lem_free_bound_in_env g (TPoly k s) Star a IH'); intuition.

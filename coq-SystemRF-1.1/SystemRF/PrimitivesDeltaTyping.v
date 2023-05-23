@@ -368,9 +368,10 @@ Proof. intros c k s p_tyc_ks; inversion p_tyc_ks;
   injection H as Hk Hty'; subst k0; intuition. Qed.
 
 Lemma lem_deltaT_typ : forall (c:prim) (t:type) (k:kind) (s': type),
-    noExists t -> Hastype Empty (Prim c) (TPoly k s') -> WFtype Empty t k
-               -> exists e, Some e = deltaT' c t /\ Hastype Empty e (tsubBTV t s').
-Proof. intros c t k s' noex p_c_ks' p_emp_t. inversion p_c_ks';
+    isMono t -> noExists t -> Hastype Empty (Prim c) (TPoly k s') 
+              -> WFtype Empty t k
+              -> exists e, Some e = deltaT' c t /\ Hastype Empty e (tsubBTV t s').
+Proof. intros c t k s' mono noex p_c_ks' p_emp_t. inversion p_c_ks';
   assert (Hastype Empty (AppT (Prim c) t) (tsubBTV t s')) as p_ct_s't
     by (apply TAppT with k; assumption);
   assert (isCompatT c t) as pf 

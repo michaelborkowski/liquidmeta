@@ -127,7 +127,7 @@ Inductive Hastype : env -> expr -> type -> Prop :=
                            -> Hastype (ConsT a' k g) (unbind_tv a' e) (unbind_tvT a' t))
               -> Hastype g (LambdaT k e) (TPoly k t)
     | TAppT : forall (g:env) (e:expr) (k:kind) (s:type) (t:type),
-          Hastype g e (TPoly k s) -> noExists t -> WFtype g t k
+          Hastype g e (TPoly k s) -> isMono t -> noExists t -> WFtype g t k
               -> Hastype g (AppT e t) (tsubBTV t s)
     | TLet  : forall (g:env) (e_x:expr) (t_x:type) (e:expr) (t:type) (k:kind) (nms:names),
           WFtype g t k -> Hastype g e_x t_x

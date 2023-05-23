@@ -224,9 +224,7 @@ Proof. intros g e t p_e_t p_g. induction p_e_t.
     try (apply H1); 
     try (apply WFFBind with k);
     try (apply wffe_uniqueF);
-
-    try (apply intersect_empty_r);
-    intuition.
+    try (apply intersect_empty_r); intuition.
   - (* FTApp *) apply IHp_e_t1 in p_g as p_g_bb'; inversion p_g_bb'.
       * destruct k2; assumption || apply WFFTKind; assumption.
       * inversion H.
@@ -235,16 +233,16 @@ Proof. intros g e t p_e_t p_g. induction p_e_t.
     apply H0; try (apply WFFBindT); assumption.
   - (* FTAppT *) apply IHp_e_t in p_g as p_g_kt'; inversion p_g_kt'.
       * pose proof (fresh_varF_not_elem nms g). 
-        set (a' := fresh_varF nms g) in H8; destruct H8;
-        apply H6 in H8 as p_a'g_t'.
-        assert (g = concatF g (fesubFV a' (erase rt) FEmpty)) by reflexivity; rewrite H10.
+        set (a' := fresh_varF nms g) in H9; destruct H9;
+        apply H7 in H9 as p_a'g_t'.
+        assert (g = concatF g (fesubFV a' (erase rt) FEmpty)) by reflexivity; rewrite H11.
         rewrite lem_ftsubFV_unbindFT with a' (erase rt) t';
         try apply (lem_ffreeTV_bound_in_fenv g (FTPoly k t') Star a' p_g_kt');
         try apply lem_subst_tv_wfft with k; simpl;  
         try apply wffe_uniqueF;
         try apply intersect_empty_r; intuition;  
         destruct k_t; assumption || apply WFFTKind; assumption.
-      * inversion H4.
+      * inversion H5.
   - (* FTLet *) assert (g = concatF g FEmpty) by reflexivity; rewrite H1.
       pose proof (fresh_varF_not_elem nms g). 
       set (y := fresh_varF nms g) in H2; destruct H2.
