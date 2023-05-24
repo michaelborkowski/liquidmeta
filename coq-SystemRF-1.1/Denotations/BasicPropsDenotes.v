@@ -23,7 +23,7 @@ Lemma lem_denotesenv_loc_closed : forall (g:env) (th:csub),
 Proof. intros; induction H; simpl; try split; trivial.
   - (* CCons *) apply lem_den_hasftype in H1; 
     apply lem_ftyp_islc in H1; assumption.
-  - (* CConsT *) apply lem_wftype_islct in H2; assumption. 
+  - (* CConsT *) apply lem_wftype_islct in H3; assumption. 
   Qed.
 
 Lemma lem_denotesenv_closed : forall (g:env) (th:csub), 
@@ -32,13 +32,13 @@ Proof. intros; induction H; simpl; trivial.
   - (* CCons *) apply lem_den_hasftype in H1;
     apply lem_fv_subset_bindsF in H1; repeat split;
     try apply IHDenotesEnv; apply no_elem_empty; intuition.
-  - (* CConsT *) apply lem_free_subset_binds in H2;repeat split;
+  - (* CConsT *) apply lem_free_subset_binds in H3; repeat split;
     try apply IHDenotesEnv; apply no_elem_empty; intuition.
   Qed.
 
 Lemma lem_denotesenv_substitutable : forall (g:env) (th:csub), 
     DenotesEnv g th -> substitutable th.
-Proof. intros; induction H; simpl; try split; trivial.
+Proof. intros; induction H; simpl; repeat split; trivial.
   apply lem_den_isvalue with (ctsubst th t); apply H1. Qed.
 
 Lemma lem_denotesenv_uniqueC : forall (g:env) (th:csub),
@@ -214,40 +214,40 @@ Proof. induction th; intros t v v' k H1 H2 H3 H4 H5 H6; trivial;
     * (* Yes *) destruct t eqn:T; try destruct b; remember H11 as H12;
       simpl in H11; try contradiction; try subst a0.
       + rewrite lem_unroll_ctsubst_tv_left;
-        try split; trivial;
+        try split; destruct H8; trivial;
         rewrite lem_ctsubst_self_FTV with th a (TRefn (FTV a) ps) v k;
         try apply lem_denotes_tsubFTV_self;
         try apply lem_subFTV_notin;
         try apply lem_csubst_isLC;
         assert (ftv (csubst th v) = empty)
           by (apply lem_csubst_pres_noftv; trivial);
-        try rewrite H11; simpl; auto.
+        try rewrite H13; simpl; auto.
         rewrite <- lem_unroll_ctsubst_tv_left;
         unfold csubst in H10; fold csubst in H10;
         assert (subFTV a t_a v = v)
           by (apply lem_subFTV_notin; rewrite H6; auto);
-          rewrite H13 in H10; try apply H10; intuition.
+          rewrite H14 in H10; try apply H10; intuition.
       + rewrite lem_unroll_ctsubst_tv_left;
-        try split; trivial;
+        try split; destruct H8; trivial;
         rewrite lem_ctsubst_self_FTV with th a (TExists t0_1 t0_2) v k;
         try apply lem_denotes_tsubFTV_self;
         try apply lem_subFTV_notin;
         try apply lem_csubst_isLC;
         assert (ftv (csubst th v) = empty)
           by (apply lem_csubst_pres_noftv; trivial);
-        try rewrite H13;  
+        try rewrite H14;  
         try rewrite <- lem_unroll_ctsubst_tv_left;
         unfold csubst in H10; fold csubst in H10;
         assert (subFTV a t_a v = v)
           by (apply lem_subFTV_notin; rewrite H6; auto);
-        try rewrite H14 in H10; 
+        try rewrite H15 in H10; 
         try apply H10;
         simpl; auto.
     * (* No *) simpl; rewrite lem_tsubFTV_self_noFTV;
-      try apply IHth; simpl in H10; 
+      try apply IHth; simpl in H10; destruct H8;
       assert (subFTV a t_a v = v)
           by (apply lem_subFTV_notin; rewrite H6; auto);
-      try apply H10; try rewrite H12; trivial.
+      try apply H10; try rewrite H13; trivial.
   Qed.
 
 (*

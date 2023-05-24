@@ -509,14 +509,24 @@ Proof. induction th; intros; simpl; try reflexivity;
 
 Lemma lem_csubst_value : forall (th:csub) (v:expr),
     isValue v -> substitutable th -> isValue (csubst th v).
-Proof. induction th; simpl; intros; try apply H; destruct H0;
+Proof. induction th; simpl; intros; try apply H; 
+  destruct H0; try destruct H1;
   try apply lem_subFV_value with x v_x v in H as H';
   try apply lem_subFTV_value with a t_a v in H as H';
   try apply IHth; assumption. Qed.
 
+Lemma lem_ctsubst_isMono : forall (th:csub) (t_a:type),
+    isMono t_a -> substitutable th -> isMono (ctsubst th t_a).
+Proof. induction th; simpl; intros; try apply H; 
+  destruct H0; try destruct H1;
+  try apply lemma_tsubFV_isMono with x v_x t_a in H as H';
+  try apply lemma_tsubFTV_isMono with a t_a t_a0 in H as H';
+  try apply IHth; assumption. Qed.
+
 Lemma lem_ctsubst_noExists : forall (th:csub) (t_a:type),
     noExists t_a -> substitutable th -> noExists (ctsubst th t_a).
-Proof. induction th; simpl; intros; try apply H; destruct H0;
+Proof. induction th; simpl; intros; try apply H; 
+  destruct H0; try destruct H1;
   try apply lemma_tsubFV_noExists with x v_x t_a in H as H';
   try apply lemma_tsubFTV_noExists with a t_a t_a0 in H as H';
   try apply IHth; assumption. Qed.
@@ -529,7 +539,7 @@ Lemma lem_csubst_subBV : forall (th:csub) (v e:expr),
 Proof. induction th; simpl; intros; try reflexivity;
   try rewrite lem_commute_subFV_subBV;
   try rewrite lem_commute_subFTV_subBV;
-  try apply IHth; destruct H; destruct H0; assumption. Qed.
+  try apply IHth; destruct H; destruct H0; try destruct H2; assumption. Qed.
 
 Lemma lem_csubst_subBTV : forall (th:csub) (t_a:type) (e:expr),
     loc_closed th -> substitutable th -> noExists t_a
@@ -537,9 +547,9 @@ Lemma lem_csubst_subBTV : forall (th:csub) (t_a:type) (e:expr),
 Proof. induction th; simpl; intros; try reflexivity;
   try rewrite lem_commute_subFV_subBTV;
   try rewrite lem_commute_subFTV_subBTV;
-  destruct H; destruct H0; try apply IHth; 
+  destruct H; destruct H0; try apply IHth; try destruct H3; 
   try apply lemma_tsubFV_noExists;
-  try apply lemma_tsubFTV_noExists; try assumption. Qed.
+  try apply lemma_tsubFTV_noExists; assumption. Qed.
 
 Lemma lem_ctsubst_tsubBV : forall (th:csub) (v:expr) (t:type),
     loc_closed th -> substitutable th 
@@ -547,7 +557,8 @@ Lemma lem_ctsubst_tsubBV : forall (th:csub) (v:expr) (t:type),
 Proof. induction th; simpl; intros; try reflexivity;
   try rewrite lem_commute_tsubFV_tsubBV;
   try rewrite lem_commute_tsubFTV_tsubBV;
-  try apply IHth; destruct H; destruct H0; assumption. Qed.
+  try apply IHth; destruct H; destruct H0; 
+  try destruct H2; try assumption. Qed.
 
 Lemma lem_ctsubst_tsubBTV : forall (th:csub) (t_a t:type),
     loc_closed th -> substitutable th -> noExists t_a
@@ -555,10 +566,10 @@ Lemma lem_ctsubst_tsubBTV : forall (th:csub) (t_a t:type),
 Proof. induction th; simpl; intros; try reflexivity;
   try rewrite lem_commute_tsubFV_tsubBTV;
   try rewrite lem_commute_tsubFTV_tsubBTV;
-  destruct H; destruct H0; try apply IHth; 
+  destruct H; destruct H0; try apply IHth; try destruct H3;
   try apply lemma_tsubFV_noExists;
   try apply lemma_tsubFTV_noExists; try assumption. Qed.
-  
+
 (*
   --- Compositional Laws
 
@@ -646,17 +657,19 @@ Lemma lem_csubst_isLC : forall (th:csub) (v:expr),
     loc_closed th -> substitutable th -> isLC v -> isLC (csubst th v).
 Proof. induction th; simpl; trivial; intros; destruct H; destruct H0.
   - (* CCons *) apply IHth; try apply lem_islc_at_subFV; trivial. 
-  - (* CConsT *) apply IHth; try apply lem_islc_at_subFTV; trivial.
+  - (* CConsT *) apply IHth; destruct H3;
+    try apply lem_islc_at_subFTV; trivial.
   Qed.
 
-(*
-{-@ lem_ctsubst_no_more_bv :: th:csub -> { t:type | Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) }
-        -> { pf:_ | Set_emp (tfreeBV (ctsubst th t)) && Set_emp (tfreeBTV (ctsubst th t)) } @-}
-lem_ctsubst_no_more_bv :: csub -> type -> Proof
-lem_ctsubst_no_more_bv CEmpty            t = ()
-lem_ctsubst_no_more_bv (CCons  y v_y th) t = () ? lem_ctsubst_no_more_bv th (tsubFV y v_y t)
-lem_ctsubst_no_more_bv (CConsT a t_a th) t = () ? lem_ctsubst_no_more_bv th (tsubFTV a t_a t)
+Lemma lem_ctsubst_isLCT : forall (th:csub) (t:type),
+    loc_closed th -> substitutable th -> isLCT t -> isLCT (ctsubst th t).
+Proof. induction th; simpl; trivial; intros; destruct H; destruct H0.
+  - (* CCons *) apply IHth; try apply lem_islc_at_subFV; trivial. 
+  - (* CConsT *) apply IHth; destruct H3;
+    try apply lem_islc_at_subFTV; trivial.
+  Qed.  
 
+(*
 {-@ lem_csubst_subFV :: th:csub -> { x:vname | not (in_csubst x th) } 
         -> { v_x:Value | Set_sub (fv v_x) (vbindsC th) && Set_sub (ftv v_x) (tvbindsC th) } -> e:expr
         -> { pf:_ | csubst th (subFV x v_x e) == csubst th (subFV x (csubst th v_x) e) } @-}

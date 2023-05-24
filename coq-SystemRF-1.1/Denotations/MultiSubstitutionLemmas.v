@@ -82,7 +82,7 @@ Proof. induction g; intros; inversion H4.
     try apply unique_erase_env;
     unfold in_envF; repeat rewrite <- binds_erase_env;
     inversion H0; subst a0 k0 g0;
-    apply lem_weaken_many_wf with Empty g t0 k in H12 as Ht0;
+    apply lem_weaken_many_wf with Empty g t0 k in H13 as Ht0;
     try rewrite lem_empty_concatE in Ht0;
     try apply lem_erase_wftype;
     try apply lem_free_subset_binds in Ht0 as Hfr;

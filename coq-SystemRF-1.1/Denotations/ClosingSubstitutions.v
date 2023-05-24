@@ -100,7 +100,7 @@ Fixpoint substitutable (th0 : csub) : Prop :=
     match th0 with
     | CEmpty            => True
     | (CCons  x v_x th) => isValue v_x /\ substitutable th
-    | (CConsT a t   th) => noExists t  /\ substitutable th
+    | (CConsT a t   th) => isMono t /\ noExists t /\ substitutable th
     end.  
 
 Fixpoint uniqueC (th0 : csub) : Prop :=

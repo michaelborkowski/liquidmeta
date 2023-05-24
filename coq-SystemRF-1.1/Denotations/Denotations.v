@@ -162,7 +162,8 @@ Inductive DenotesEnv : env -> csub -> Prop :=
         DenotesEnv g th -> ~ in_env x g -> Denotes (ctsubst th t) v
               -> DenotesEnv (Cons x t g) (CCons x v th)
     | DExtT : forall (g:env) (th:csub) (a:vname) (k:kind) (t:type),
-        DenotesEnv g th -> ~ in_env a g -> noExists t -> WFtype Empty t k
+        DenotesEnv g th -> ~ in_env a g 
+              -> isMono t -> noExists t -> WFtype Empty t k
               -> DenotesEnv (ConsT a k g) (CConsT a t th).
 (* the following spec. in the LH follow from Denotes th(t) v:
     - isValue v

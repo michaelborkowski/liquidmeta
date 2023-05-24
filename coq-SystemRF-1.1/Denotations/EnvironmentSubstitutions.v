@@ -82,20 +82,19 @@ Proof. induction g; simpl; intros; reflexivity || rewrite <- IHg;
 Lemma lem_unroll_csubst_env_left : forall (th:csub) (x:vname) (v_x:expr) (g:env),
     ~ in_csubst x th -> fv v_x = empty /\ ftv v_x = empty -> isValue v_x
         -> closed th -> substitutable th
-        (*-> { g':Env | Set_emp (Set_cap (bindsC th) (binds g')) && not (in_env x g') }*)
         -> csubst_env (CCons x v_x th) g = esubFV x v_x (csubst_env th g).
 Proof. induction th; simpl; intros; try reflexivity;
   unfold in_csubst in H; simpl in H; 
   apply not_elem_names_add_elim in H; destruct H;
   rewrite <- IHth; simpl; try f_equal;
-  destruct H2; destruct H3; destruct H5; trivial;
-  destruct H0.
+  destruct H2; destruct H3; destruct H5; try destruct H6;
+  trivial; destruct H0.
   - (* CCons *) rewrite lem_commute_esubFV;
     try rewrite lem_subFV_notin'; try apply Nat.neq_sym;
     try rewrite H0; try rewrite H2; auto.
   - (* CConsT *) rewrite lem_commute_esubFV_esubFTV;
     try rewrite lem_tsubFV_notin; 
-    try rewrite H8; try rewrite H2; auto.
+    try rewrite H9; try rewrite H2; auto.
   Qed.
 
 (*
