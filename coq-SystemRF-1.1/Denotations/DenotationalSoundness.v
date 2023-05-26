@@ -18,6 +18,7 @@ Require Import Denotations.MultiSubstitutionLemmas.
 Require Import Denotations.PrimitivesDenotations.
 Require Import Denotations.SelfifyDenotations.
 
+Require Import Arith.
 Require Import Lists.ListSet.
 
 Lemma lem_denote_sound : ( forall (g:env) (e:expr) (t:type),
@@ -248,10 +249,19 @@ Proof. apply ( judgments_mutind
       try apply lem_denotes_ctsubst_self;
       try rewrite lem_csubst_bc;
       try apply lem_denotations_selfify;
-      try apply lem_ctsubst_wf;
+      try apply lem_ctsubst_wf with g;
       try rewrite lem_ctsubst_refn; simpl;
+      try rewrite Denotes_equation_1;
+      
       try apply FTBC;
-      auto. 
+      try apply lem_denotesenv_closed with g;
+      try apply lem_denotesenv_loc_closed with g;
+      try apply lem_denotesenv_substitutable with g;
+      try apply lem_denotesenv_uniqueC with g;
+      try apply wfenv_unique;
+      auto. Focs
+
+
       
     * (* False *) apply H1 with y (CCons y v0 th) in Hy as He2;
       try apply WFEBind with Base; 
