@@ -6,6 +6,7 @@ Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.BasicPropsSubstitution.
 Require Import SystemRF.BasicPropsEnvironments.
+Require Import SystemRF.Typing.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
@@ -97,74 +98,67 @@ Proof. induction th; simpl; intros; try reflexivity;
     try rewrite H9; try rewrite H2; auto.
   Qed.
 
-(*
-{-@ lem_unbind_tvT_equals :: a:Vname -> a':Vname -> { t1:FType | not (Set_mem a' (ffreeTV t1)) }
-        -> { t2:FType | unbindFT a a' t1 == unbindFT a a' t2 && not (Set_mem a' (ffreeTV t2)) } 
-        -> { pf:_ | t1 == t2 } @-}
-lem_unbind_tvT_equals :: Vname -> Vname -> FType -> FType -> Proof
-lem_unbind_tvT_equals a a' (FTBasic b) (FTBasic _) = case b of
-  (BTV a) -> ()
-  _       -> ()
-lem_unbind_tvT_equals a a' (FTFunc t11 t12) (FTFunc t21 t22) 
-  = () ? lem_unbind_tvT_equals a a' t11 t21
-       ? lem_unbind_tvT_equals a a' t12 t22
-lem_unbind_tvT_equals a a' (FTPoly a1 k t1') (FTPoly _ _ t2')
-  = () ? lem_unbind_tvT_equals a a' t1' t2'
+Lemma lem_unbind_tvT_equals : forall (i:index) (a:vname) (t1 t2:ftype),
+    ~ Elem a (ffreeTV t1) -> ~ Elem a (ffreeTV t2) 
+          -> openFT_at i a t1 = openFT_at i a t2 -> t1 = t2.
+Proof. intros i a t1; revert i; induction t1; intros.
+  - (* FTBasic *) destruct t2; unfold unbindFT in H1; 
+    destruct b; try destruct b0; simpl in H1;
+    try destruct (i =? i0) eqn:I0; try destruct (i =? i1) eqn:I1;
+    try discriminate; try apply Nat.eqb_eq in I0; 
+    try apply Nat.eqb_eq in I1;
+    try subst i0; try subst i1; 
+    try reflexivity; try apply H1;
+    simpl in H; simpl in H0;
+    injection H1 as H1; subst a0; intuition.
+  - (* FTFunc *) destruct t2; unfold unbindFT in H1;
+    try destruct b; simpl in H1; try destruct (i =? i0);
+    try discriminate; injection H1 as H1;
+    simpl in H; apply not_elem_union_elim in H;
+    simpl in H0; apply not_elem_union_elim in H0;
+    destruct H; destruct H0;
+    apply IHt1_1 in H1; apply IHt1_2 in H2;
+    try subst t2_1 t2_2; trivial.
+  - (* FTPoly *) destruct t2; unfold unbindFT in H1;
+    try destruct b; simpl in H1; try destruct (i =? i0); 
+    try discriminate; injection H1 as H1;
+    simpl in H; simpl in H0; f_equal; try apply H1;
+    apply IHt1 with (i+1); trivial.
+  Qed.
 
--- LEMMA 6. If G |- s <: t, then if we erase the types then (erase s) and (erase t)
---               equiv up to alpha-renaming bound variables
-{-@ lem_erase_subtype :: g:Env -> t1:Type -> t2:Type -> ProofOf(Subtype g t1 t2)
-               -> { pf:_ | erase t1 == erase t2 } @-}
-lem_erase_subtype :: Env -> Type -> Type -> Subtype -> Proof
-lem_erase_subtype g t1 t2 (SBase _g x1 b p1 x2 p2 y _) = ()
-lem_erase_subtype g t1 t2 (SFunc _g x1 s1 x2 s2 p_s2_s1 t1' t2' y p_t1'_t2')
-  = () ? lem_erase_subtype  g s2 s1 p_s2_s1
-       ? lem_erase_tsubBV x1 (FV y) t1'
-       ? lem_erase_tsubBV x2 (FV y) t2'
-       ? lem_erase_subtype (Cons y s2 g) (unbindT x1 y t1') (unbindT x2 y t2') p_t1'_t2'
-lem_erase_subtype g t1 t2 (SWitn _g v t_x p_v_tx _t1 x t' p_t1_t'v)
-  = () ? lem_erase_subtype g t1 (tsubBV x v t') p_t1_t'v
-       ? lem_erase_tsubBV x v t'
-{- toProof ( erase t1 ? lem_erase_subtype g t1 (tsubBV x v t') p_t1_t'v
-            === erase (tsubBV x v t') ? lem_erase_tsubBV x v t'
-            === erase t' === erase (TExists x t_x t') ) -}
-lem_erase_subtype g t1 t2 (SBind _g x t_x t _t2 y p_t_t')
-  = () ? lem_erase_subtype (Cons y t_x g) (unbindT x y t) t2 p_t_t'
-       ? lem_erase_tsubBV x (FV y) t
-lem_erase_subtype g t1 t2 (SPoly _g a1 k t1' a2 t2' a p_ag_t1'_t2') 
-  = () ? lem_erase_subtype (ConsT a k g) (unbind_tvT a1 a t1') (unbind_tvT a2 a t2')
-                           p_ag_t1'_t2' 
-       ? lem_erase_unbind_tvT a1 a t1'
-       ? lem_erase_unbind_tvT a2 a t2'
-       ? lem_unbind_tvT_equals a1 a (erase t1' ? lem_erase_freeTV t1') 
-                                    (erase t2' ? lem_erase_freeTV t2')
-
-{-@ lem_erase_ctsubst :: th:CSub -> t1:Type 
-        -> { t2:Type | erase t1 == erase t2 }
-        -> { pf:_ | erase (ctsubst th t1) == erase (ctsubst th t2) } @-}
-lem_erase_ctsubst :: CSub -> Type -> Type -> Proof
-lem_erase_ctsubst CEmpty             t1 t2 = () 
-lem_erase_ctsubst (CCons  x v_x th') t1 t2 
-    = () ? lem_erase_ctsubst  th' (tsubFV x v_x t1 ? lem_erase_tsubFV x v_x t1) 
-                                  (tsubFV x v_x t2 ? lem_erase_tsubFV x v_x t2) 
-         ? lem_unroll_ctsubst_left th' x v_x t1
-         ? lem_erase_tsubFV x v_x (ctsubst th' t1)
-         ? lem_unroll_ctsubst_left th' x v_x t2
-         ? lem_erase_tsubFV x v_x (ctsubst th' t2)
-lem_erase_ctsubst (CConsT a t_a th') t1 t2 
-    = () ? lem_erase_ctsubst  th' (tsubFTV a t_a t1 ? lem_erase_tsubFTV a t_a t1)
-                                  (tsubFTV a t_a t2 ? lem_erase_tsubFTV a t_a t2)
-         ? lem_unroll_ctsubst_tv_left th' a t_a t1
-         ? lem_erase_tsubFTV a t_a (ctsubst th' t1)
-         ? lem_unroll_ctsubst_tv_left th' a t_a t2
-         ? lem_erase_tsubFTV a t_a (ctsubst th' t2)
-
-
-
-{-@ lem_csubst_fv_in ::  y:Vname -> { v:Value | Set_emp (fv v) && Set_emp (ftv v) &&
-                                         Set_emp (freeBV v) && Set_emp (freeBTV v) }
-                                 -> { th:CSub | not (in_csubst y th ) }
-                                 -> { pf:_ | csubst (CCons y v th) (FV y) == v } @-}
-lem_csubst_fv_in :: Vname -> Expr -> CSub -> Proof
-lem_csubst_fv_in y v th = () ? lem_csubst_nofv th v
-*)
+(* -- LEMMA 6. If G |- s <: t, then if we erase the types then (erase s) and (erase t)
+   --               equiv up to alpha-renaming bound variables *)
+Lemma lem_erase_subtype : forall (g:env) (t1 t2:type),
+    Subtype g t1 t2 -> erase t1 = erase t2.
+Proof. intros g t1 t2 p_t1_t2; induction p_t1_t2; simpl.
+  - (* SBase *) reflexivity.
+  - (* SFunc *) f_equal; try (symmetry; apply IHp_t1_t2);
+    pose proof (fresh_not_elem nms) as Hy;
+    set (y := fresh nms) in Hy;
+    apply H0 in Hy as IH2;
+    repeat rewrite lem_erase_unbind in IH2; apply IH2.
+  - (* SWitn *) rewrite lem_erase_tsubBV in IHp_t1_t2;
+    apply IHp_t1_t2.
+  - (* SBind *) pose proof (fresh_not_elem nms) as Hy;
+    set (y := fresh nms) in Hy;
+    apply H1 in Hy as IH;
+    rewrite lem_erase_unbind in IH; apply IH.
+  - (* SPoly *) f_equal;
+    pose proof (fresh_varFTs_not_elem nms g (erase t1) (erase t2)) as Ha;
+    set (a := fresh_varFTs nms g (erase t1) (erase t2)) in Ha;
+    destruct Ha as [Ht [Ht' [Ha Hg]]];
+    apply H0 in Ha as IH2;
+    repeat rewrite lem_erase_unbind_tvT in IH2;
+    apply lem_unbind_tvT_equals with 0 a; trivial.
+  Qed.
+    
+Lemma lem_erase_ctsubst : forall (th:csub) (t1 t2:type),
+    substitutable th -> erase t1 = erase t2 
+        -> erase (ctsubst th t1) = erase (ctsubst th t2).
+Proof. induction th; simpl; intros.  
+  - (* CEmpty *) apply H0.
+  - (* CCons *) destruct H; apply IHth; 
+    repeat rewrite lem_erase_tsubFV; assumption.
+  - (* CConsT *) destruct H; destruct H1; apply IHth; 
+    repeat rewrite lem_erase_tsubFTV; f_equal; assumption.
+  Qed.

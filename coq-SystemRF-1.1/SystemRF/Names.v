@@ -367,6 +367,18 @@ Fixpoint ffreeTV (t0:ftype) : names :=
     | (FTPoly   k t)   => ffreeTV t
     end.
 
+Lemma lem_erase_freeTV : forall (t:type),
+    Subset (ffreeTV (erase t)) (freeTV t).
+Proof. induction t; simpl.
+  - destruct b; try apply subset_empty_l;
+    apply subset_sing_l; apply set_add_intro2;
+    reflexivity.
+  - apply subset_union_both; assumption.
+  - unfold Subset; intros; apply set_union_intro;
+    right; apply IHt2; apply H.
+  - apply IHt.
+  Qed.
+  
     (* III. Free variables under substiution etc *)
 
 Lemma fv_open_at_intro : ( forall (e:expr) (j:index) (y:vname) ,

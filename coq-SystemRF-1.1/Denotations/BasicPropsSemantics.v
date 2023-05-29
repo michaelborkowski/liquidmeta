@@ -15,6 +15,12 @@ Lemma lemma_strengthen_semantics : forall (ps qs:preds),
 Proof. induction ps; simpl; trivial; intros.
   apply PECons; inversion H; try apply IHps; assumption. Qed.
 
+Lemma lemma_semantics_strengthen : forall (ps qs:preds),
+    PEvalsTrue (strengthen ps qs) -> PEvalsTrue ps /\ PEvalsTrue qs.
+Proof. induction ps; simpl; intros; split;
+  try apply PEEmp; try apply PECons; try apply H;
+  inversion H; apply IHps in H3; destruct H3; assumption. Qed.  
+
   (* Lemma. If p ~> q then th(p) ~> th(q). *)
 
 Lemma lem_csubst_isCompat : forall (c:prim) (w:expr) (th:csub),

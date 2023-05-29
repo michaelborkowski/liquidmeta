@@ -17,6 +17,7 @@ Require Import Denotations.PrimitivesSemantics.
 Require Import Denotations.BasicPropsCSubst.
 
 Require Import Arith.
+Require Import Lists.ListSet.
 
 Lemma lem_denotesenv_loc_closed : forall (g:env) (th:csub), 
     DenotesEnv g th -> loc_closed th.
@@ -100,6 +101,46 @@ Proof. intros x t; induction g.
     try apply not_elem_subset with (binds g);
     inversion H1; trivial.
   Qed.
+
+Lemma lem_tvbinds_denotesenv : 
+  forall (a:vname) (g:env) (th:csub),
+    DenotesEnv g th -> substitutable th -> Elem a (tvbinds g)
+        -> exists t_a, noExists t_a /\ WFtype Empty t_a Star 
+                                    /\ tv_bound_inC a t_a th.
+Proof. intro a; induction g; intros; simpl in H1.
+  - contradiction.
+  - inversion H; simpl; apply IHg; 
+    try apply lem_denotesenv_substitutable with g; trivial.
+  - inversion H; subst a1 k0 g0; 
+    destruct (a =? a0) eqn:A.
+    * apply Nat.eqb_eq in A; subst a0.
+      exists t; simpl; repeat split; auto;
+      destruct k; apply H10 || apply WFKind; apply H10.
+    * apply set_add_elim2 in H1; 
+      try apply Nat.eqb_neq; try apply A;
+      apply IHg in H5; try apply H1;
+      subst th; simpl in H0; destruct H0;
+      destruct H2; try apply H3.
+      destruct H5 as [t_a [Hta [Hta' Hta'']]];
+      exists t_a; simpl; repeat split; auto.
+  Qed.
+
+(*
+Lemma get_wftype_from_denv : forall (g:env) (th:csub) (a:vname),
+    DenotesEnv g th
+        -> a:Vname -> { k_a:Kind | tv_bound_in a k_a g }
+        -> (UserType, WFType)<{\t_a pf -> t_a == csubst_tv th a &&
+                                          propOf pf == WFType Empty t_a k_a }> @-}
+get_wftype_from_denv :: Env -> CSub -> DenotesEnv -> Vname -> Kind -> (Type, WFType)
+get_wftype_from_denv Empty          _   den_g_th   a k_a = case den_g_th of
+  DEmp -> impossible ""
+get_wftype_from_denv (Cons z t_z g) zth den_zg_zth a k_a = case den_zg_zth of
+  (DExt _g th den_g_th _ _ _ _) -> get_wftype_from_denv g th den_g_th a k_a
+get_wftype_from_denv (ConsT a' k' g) a'th den_a'g_a'th a k_a = case den_a'g_a'th of
+  (DExtT _g th den_g_th _ _ t' p_emp_t') -> case (a == a') of
+    True  -> (t', p_emp_t')
+    False -> get_wftype_from_denv g th den_g_th a k_a
+*)  
 
 (* Unfortunately, the self operator and tsubFTV do not quite 
    commute with each other, but are entirely semantically 
@@ -249,6 +290,41 @@ Proof. induction th; intros t v v' k H1 H2 H3 H4 H5 H6; trivial;
           by (apply lem_subFTV_notin; rewrite H6; auto);
       try apply H10; try rewrite H13; trivial.
   Qed.
+
+Lemma lem_widen_denotes : 
+  forall (g g':env) (x:vname) (s_x t_x:type) (*k_x:kind*) (th:csub),
+    unique g -> unique g'
+        -> intersect (binds g) (binds g') = empty
+        -> ~ (in_env x g) -> ~ (in_env x g') 
+          (*-> WFtype g t_x k_x -> Subtype g s_x t_x *)
+          (*-> WFEnv (concatE (Cons x s_x g) g') *)
+        -> (forall (v:expr) (th0:csub), isValue v -> DenotesEnv g th0
+              -> Denotes (ctsubst th0 s_x) v -> Denotes (ctsubst th0 t_x) v)
+        -> DenotesEnv (concatE (Cons x s_x g) g') th 
+        -> DenotesEnv (concatE (Cons x t_x g) g') th.
+Proof. intro g; induction g'; intros; simpl.
+  - simpl in H5; inversion H5; apply DExt; try apply H4; 
+    try apply lem_den_isvalue with (ctsubst th0 s_x); trivial.
+  - simpl in H5; inversion H5; subst x1 t0 g0.
+    apply DExt;  try apply IHg' with s_x;
+    simpl in H0; destruct H0; 
+    simpl in H1; apply intersect_names_add_elim_r in H1;
+    destruct H1;
+    unfold in_env in H3; simpl in H3; 
+    apply not_elem_names_add_elim in H3; destruct H3;
+    try apply not_elem_concat_intro; simpl; 
+    try apply not_elem_names_add_intro; auto.
+  - simpl in H5; inversion H5; subst a0 k0 g0;
+    apply DExtT; try apply IHg' with s_x;
+    simpl in H0; destruct H0; 
+    simpl in H1; apply intersect_names_add_elim_r in H1;
+    destruct H1;
+    unfold in_env in H3; simpl in H3; 
+    apply not_elem_names_add_elim in H3; destruct H3;
+    try apply not_elem_concat_intro; simpl; 
+    try apply not_elem_names_add_intro; auto.
+  Qed. 
+    
 
 (*
   {-@ lem_remove_var_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (fv v) }

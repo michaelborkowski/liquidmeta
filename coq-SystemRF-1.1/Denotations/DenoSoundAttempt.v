@@ -36,7 +36,7 @@ Lemma lem_denote_sound : ( forall (g:env) (e:expr) (t:type),
             -> (forall (v:expr), isValue v
                 -> Denotes (ctsubst th t1) v -> Denotes (ctsubst th t2) v) ) /\ (
   forall (g:env) (ps qs:preds),
-    Implies g ps qs -> DImplies g ps qs)).  
+    Implies g ps qs -> WFEnv g -> DImplies g ps qs)).  
 Proof. apply ( judgments_mutind3
   (fun (g:env) (e:expr) (t:type) (p_e_t : Hastype g e t) =>
     forall (th:csub), WFEnv g -> DenotesEnv g th 
@@ -46,7 +46,8 @@ Proof. apply ( judgments_mutind3
       WFEnv g -> WFtype g t1 k1 -> WFtype g t2 k2 -> DenotesEnv g th
         -> (forall (v:expr), isValue v
               -> Denotes (ctsubst th t1) v -> Denotes (ctsubst th t2) v) )
-  (fun (g:env) (ps qs:preds) (p_ps_qs : Implies g ps qs) => DImplies g ps qs));
+  (fun (g:env) (ps qs:preds) (p_ps_qs : Implies g ps qs) =>
+      WFEnv g -> DImplies g ps qs));
   intros.
   - (* TBC *) rewrite lem_csubst_bc; rewrite lem_ctsubst_nofree;
     try apply lem_den_evalsdenotes; try apply lem_den_tybc;
@@ -327,7 +328,8 @@ Proof. apply ( judgments_mutind3
       simpl in H5; simpl; intuition.
       pose proof (fresh_var_not_elem nms g) as Hy; 
       set (y := fresh_var nms g) in Hy; destruct Hy as [Hy Hyg].
-      apply H in Hy as IH; inversion IH.
+      apply H in Hy as IH; try apply WFEBind with Base;
+      try apply WFBase; simpl; trivial; inversion IH.
       assert (Denotes (TRefn TBool PEmpty) v).
         rewrite Denotes_equation_1; unfold psubBV;
         simpl; repeat split; try apply PEEmp; trivial.
@@ -359,7 +361,8 @@ Proof. apply ( judgments_mutind3
       simpl in H5; simpl; intuition.
       pose proof (fresh_var_not_elem nms g) as Hy; 
       set (y := fresh_var nms g) in Hy; destruct Hy as [Hy Hyg].
-      apply H in Hy as IH; inversion IH.
+      apply H in Hy as IH; try apply WFEBind with Base;
+      try apply WFBase; simpl; trivial; inversion IH.
       assert (Denotes (TRefn TInt PEmpty) v).
         rewrite Denotes_equation_1; unfold psubBV;
         simpl; repeat split; try apply PEEmp; trivial.
@@ -417,8 +420,16 @@ Proof. apply ( judgments_mutind3
 
       pose proof (fresh_var_not_elem nms g) as Hy; 
       set (y := fresh_var nms g) in Hy; destruct Hy as [Hy Hyg].
-      apply H in Hy as IH; inversion IH.
-
+      assert (exists k, tv_bound_in a k g).
+        inversion H1; try inversion H5; try inversion H12;
+        try simpl in H10; try contradiction;
+        try inversion H8; try simpl in H15; try contradiction;
+        try (exists Base; apply H14 || apply H16 || apply H18);
+        try (exists k1; apply H10).
+      destruct H5 as [k  Hk].
+      apply H in Hy as IH; try apply WFEBind with k;
+      try apply WFVar; trivial.  
+      inversion IH.
       assert (Denotes (TRefn b0 ps) v).
         rewrite Denotes_equation_1; unfold psubBV;
         simpl; repeat split; try apply PEEmp; trivial.
@@ -598,30 +609,37 @@ Proof. apply ( judgments_mutind3
     simpl in H22; destruct H22;
     try apply no_elem_empty; trivial.
     apply Hden; apply den_v'.
+
   - (* IRefl *) apply DImp; trivial.
-  - (* ITrans *) apply DImp; inversion H; inversion H0.
-    intros; apply H5; try apply H1; apply H9 || apply H10.
+  - (* ITrans *) apply DImp; apply H in H1 as H';
+    apply H0 in H1 as H0';  
+    inversion H'; inversion H0'.
+    intros; apply H6; try apply H2; apply H10 || apply H11.
   - (* IFaith *) apply DImp; intros;
     rewrite lem_cpsubst_pempty; apply PEEmp.
   - (* IConj *) apply DImp; intros;
     rewrite lem_cpsubst_strengthen;
     apply lemma_strengthen_semantics;
-    inversion H; inversion H0;
-    apply H3 || apply H7; trivial.
+    apply H in H1 as H'; apply H0 in H1 as H0'; 
+    inversion H'; inversion H0';
+    apply H4 || apply H8; trivial.
 
   - (* ICons1 *) apply DImp; intros;
     rewrite lem_cpsubst_pcons;
-    rewrite lem_cpsubst_pcons in H0;
+    rewrite lem_cpsubst_pcons in H1;
     rewrite lem_cpsubst_pempty;
-    inversion H0; apply PECons; try apply PEEmp; trivial.
+    inversion H1; apply PECons; try apply PEEmp; trivial.
   - (* ICons2 *) apply DImp; intros;
-    rewrite lem_cpsubst_pcons in H0;
-    inversion H0; apply H4.
+    rewrite lem_cpsubst_pcons in H1;
+    inversion H1; apply H5.
   - (* IRepeat *) apply DImp; intro th;
     repeat rewrite lem_cpsubst_pcons; intros;
-    inversion H0; repeat apply PECons; trivial.
-  - (* INarrow *) apply DImp; inversion H0; 
-    intros; subst g0 ps0 qs0; apply H1;
+    inversion H1; repeat apply PECons; trivial.
+  - (* INarrow *) apply DImp; intros.
+
+
+   apply H0 in H1 as H0';
+    inversion H0'; intros. ; subst g0 ps0 qs0; apply H1;
     try apply lem_widen_denotes with s_x; trivial. 
     intros; try apply H with Star Star;
     

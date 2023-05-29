@@ -82,6 +82,12 @@ Fixpoint tv_bound_inC (a : vname) (t_a : type) (th : csub) : Prop :=
     | (CConsT a' t_a' th)  => (a = a' /\ t_a = t_a') \/ tv_bound_inC a t_a th
     end.
 
+Lemma lem_tvboundinC_incsubst: forall (a:vname) (t_a:type) (th:csub),
+    tv_bound_inC a t_a th -> in_csubst a th.
+Proof. intros. induction th; simpl in H; simpl; try contradiction;
+  try (apply set_add_intro); try (destruct H); try (apply IHg in H); intuition. 
+Qed.
+
 Fixpoint closed (th0 : csub) : Prop :=
     match th0 with
     | CEmpty            => True

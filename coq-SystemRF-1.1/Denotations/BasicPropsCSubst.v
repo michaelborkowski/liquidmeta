@@ -209,6 +209,47 @@ Proof. induction th; intros; simpl; try reflexivity;
     try rewrite H5; try rewrite H6; intuition.
   Qed.         
 
+  (* --- Various properties of csubst/ctsubst and free/bound variables *)
+
+  Lemma lem_csubst_nofv : forall (th:csub) (e:expr),
+  fv e = empty -> ftv e = empty -> csubst th e = e.
+
+Proof. induction th; intros; simpl; try reflexivity;
+rewrite IHth; try rewrite lem_subFV_notin';
+try rewrite lem_subFTV_notin'; 
+try apply empty_no_elem; trivial. Qed.
+
+Lemma lem_ctsubst_nofree : forall (th:csub) (t:type),
+  free t = empty -> freeTV t = empty -> ctsubst th t = t.
+Proof. induction th; intros; simpl; try reflexivity;
+rewrite IHth; try rewrite lem_tsubFV_notin; 
+try rewrite lem_tsubFTV_notin; 
+try apply empty_no_elem; trivial. Qed.
+
+Lemma lem_csubst_value : forall (th:csub) (v:expr),
+  isValue v -> substitutable th -> isValue (csubst th v).
+Proof. induction th; simpl; intros; try apply H; 
+destruct H0; try destruct H1;
+try apply lem_subFV_value with x v_x v in H as H';
+try apply lem_subFTV_value with a t_a v in H as H';
+try apply IHth; assumption. Qed.
+
+Lemma lem_ctsubst_isMono : forall (th:csub) (t_a:type),
+  isMono t_a -> substitutable th -> isMono (ctsubst th t_a).
+Proof. induction th; simpl; intros; try apply H; 
+destruct H0; try destruct H1;
+try apply lemma_tsubFV_isMono with x v_x t_a in H as H';
+try apply lemma_tsubFTV_isMono with a t_a t_a0 in H as H';
+try apply IHth; assumption. Qed.
+
+Lemma lem_ctsubst_noExists : forall (th:csub) (t_a:type),
+  noExists t_a -> substitutable th -> noExists (ctsubst th t_a).
+Proof. induction th; simpl; intros; try apply H; 
+destruct H0; try destruct H1;
+try apply lemma_tsubFV_noExists with x v_x t_a in H as H';
+try apply lemma_tsubFTV_noExists with a t_a t_a0 in H as H';
+try apply IHth; assumption. Qed.
+
   (* --- various distributive properties of csubst and ctsubst *)
 
 Lemma lem_csubst_bc : forall (th:csub) (b:bool) ,
@@ -303,17 +344,25 @@ Proof. induction th; intros a0 ps H; simpl.
     rewrite H; apply IHth; apply H0.
   Qed.
 
-(*
-{-@ lem_ctsubst_refn_tv :: th:csub -> { a:vname | tv_in_csubst a th } -> x:RVname -> p:preds
-        -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == push (csubst th p) (csubst_tv th a) } @-}
-lem_ctsubst_refn_tv :: csub -> vname -> RVname -> expr -> Proof
-lem_ctsubst_refn_tv (CEmpty)          a x p = ()
-lem_ctsubst_refn_tv (CCons  y v_y th) a x p = () ? lem_ctsubst_refn_tv th a x (subFV y v_y p)
-lem_ctsubst_refn_tv (CConsT a' t' th) a x p 
-  | a == a'   = () ? lem_ctsubst_push th (subFTV a' t' p) t'
-                   ? lem_ctsubst_nofree th t'
-  | otherwise = () ? lem_ctsubst_refn_tv th a x (subFTV a' t' p)
+Lemma lem_ctsubst_refn_tv : forall (th:csub) (a:vname) (t_a:type) (ps:preds),
+    tv_bound_inC a t_a th -> closed th -> substitutable th -> uniqueC th
+        -> ctsubst th (TRefn (FTV a) ps) = push (cpsubst th ps) t_a.
+Proof. induction th; simpl; intros.
+  - (* CEmpty *) contradiction.
+  - (* CCons *) apply IHth; intuition. 
+  - (* CConsT *) destruct (a =? a0) eqn:A;
+    destruct H0; destruct H1; destruct H2; destruct H3; destruct H4.
+    * destruct H; try destruct H.
+      + subst t_a0; rewrite lem_ctsubst_push;
+        try rewrite lem_ctsubst_nofree; trivial.
+      + apply Nat.eqb_eq in A; subst a0;
+        apply lem_tvboundinC_incsubst in H; contradiction.
+    * destruct H; try destruct H; apply Nat.eqb_neq in A.
+      + subst a0; contradiction.
+      + apply IHth; trivial.
+  Qed.
 
+(*
 {-@ lem_ctsubst_refn_tv' :: th:csub -> { a:vname | tv_in_csubst a th } -> x:RVname -> p:preds
         -> { b:Basic | b == TBool || b == TInt } -> z:RVname
         -> { q:preds | (TRefn b z q) == csubst_tv th a }
@@ -491,46 +540,6 @@ Proof.  induction th; simpl; intros; try reflexivity.
     apply lem_matchesExFTV_both with t0_2; trivial.
   Qed.
 
-  (* --- Various properties of csubst/ctsubst and free/bound variables *)
-
-Lemma lem_csubst_nofv : forall (th:csub) (e:expr),
-    fv e = empty -> ftv e = empty -> csubst th e = e.
-Proof. induction th; intros; simpl; try reflexivity;
-  rewrite IHth; try rewrite lem_subFV_notin';
-  try rewrite lem_subFTV_notin'; 
-  try apply empty_no_elem; trivial. Qed.
-
-Lemma lem_ctsubst_nofree : forall (th:csub) (t:type),
-    free t = empty -> freeTV t = empty -> ctsubst th t = t.
-Proof. induction th; intros; simpl; try reflexivity;
-  rewrite IHth; try rewrite lem_tsubFV_notin; 
-  try rewrite lem_tsubFTV_notin; 
-  try apply empty_no_elem; trivial. Qed.
-
-Lemma lem_csubst_value : forall (th:csub) (v:expr),
-    isValue v -> substitutable th -> isValue (csubst th v).
-Proof. induction th; simpl; intros; try apply H; 
-  destruct H0; try destruct H1;
-  try apply lem_subFV_value with x v_x v in H as H';
-  try apply lem_subFTV_value with a t_a v in H as H';
-  try apply IHth; assumption. Qed.
-
-Lemma lem_ctsubst_isMono : forall (th:csub) (t_a:type),
-    isMono t_a -> substitutable th -> isMono (ctsubst th t_a).
-Proof. induction th; simpl; intros; try apply H; 
-  destruct H0; try destruct H1;
-  try apply lemma_tsubFV_isMono with x v_x t_a in H as H';
-  try apply lemma_tsubFTV_isMono with a t_a t_a0 in H as H';
-  try apply IHth; assumption. Qed.
-
-Lemma lem_ctsubst_noExists : forall (th:csub) (t_a:type),
-    noExists t_a -> substitutable th -> noExists (ctsubst th t_a).
-Proof. induction th; simpl; intros; try apply H; 
-  destruct H0; try destruct H1;
-  try apply lemma_tsubFV_noExists with x v_x t_a in H as H';
-  try apply lemma_tsubFTV_noExists with a t_a t_a0 in H as H';
-  try apply IHth; assumption. Qed.
-
   (* --- Commutative laws relating csubst/ctsubst and substitution operations *)
 
 Lemma lem_csubst_subBV : forall (th:csub) (v e:expr),
@@ -570,8 +579,26 @@ Proof. induction th; simpl; intros; try reflexivity;
   try apply lemma_tsubFV_noExists;
   try apply lemma_tsubFTV_noExists; try assumption. Qed.
 
-(*
-  --- Compositional Laws
+Lemma lem_cpsubst_psubBV : forall (th:csub) (v:expr) (ps:preds),
+    loc_closed th -> substitutable th 
+        -> cpsubst th (psubBV v ps) = psubBV (csubst th v) (cpsubst th ps).
+Proof. induction th; simpl; intros; try reflexivity;
+  try rewrite lem_commute_psubFV_psubBV;
+  try rewrite lem_commute_psubFTV_psubBV;
+  try apply IHth; destruct H; destruct H0; 
+  try destruct H2; try assumption. Qed.
+
+Lemma lem_cpsubst_psubBTV : forall (th:csub) (t_a:type) (ps:preds),
+    loc_closed th -> substitutable th -> noExists t_a
+        -> cpsubst th (psubBTV t_a ps) = psubBTV (ctsubst th t_a) (cpsubst th ps).
+Proof. induction th; simpl; intros; try reflexivity;
+  try rewrite lem_commute_psubFV_psubBTV;
+  try rewrite lem_commute_psubFTV_psubBTV;
+  destruct H; destruct H0; try apply IHth; try destruct H3;
+  try apply lemma_tsubFV_noExists;
+  try apply lemma_tsubFTV_noExists; try assumption. Qed.
+  
+(* --- Compositional Laws
 
 {-@ lem_csubst_and_unbind :: x:vname -> y:vname 
            -> v:Value -> bt:FType -> ProofOf(HasFType FEmpty v bt)

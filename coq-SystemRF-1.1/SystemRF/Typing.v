@@ -216,4 +216,10 @@ with Implies : env -> preds -> preds -> Prop :=
 
 Scheme Hastype_mutind  := Induction for Hastype  Sort Prop
 with   Subtype_mutind  := Induction for Subtype  Sort Prop.
-Combined Scheme judgments_mutind from Hastype_mutind, Subtype_mutind.                               
+Combined Scheme judgments_mutind from Hastype_mutind, Subtype_mutind.    
+
+Scheme Hastype_mutind3 := Induction for Hastype  Sort Prop
+with   Subtype_mutind3 := Induction for Subtype  Sort Prop
+with   Implies_mutind3 := Induction for Implies  Sort Prop.
+Combined Scheme judgments_mutind3 
+    from Hastype_mutind3, Subtype_mutind3, Implies_mutind3.
