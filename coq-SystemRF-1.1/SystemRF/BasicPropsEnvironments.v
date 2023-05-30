@@ -108,6 +108,21 @@ Proof. intros; induction g'; simpl; try assumption; split;
   apply IHg' in H2; assumption.
   Qed.
 
+Lemma concat_unique : forall (g g' : env),
+    unique (concatE g g') 
+        -> unique g /\ unique g' /\ intersect (binds g) (binds g') = empty.
+Proof. intro g; induction g'; simpl; intros.
+  - (* Empty *) repeat split; try apply intersect_empty_r; apply H.
+  - (* Cons  *) repeat split; destruct H;
+    apply IHg' in H0; destruct H0 as [Hg [Hg' Hi]];
+    apply not_elem_concat_elim in H; destruct H;
+    try apply intersect_names_add_intro_r; trivial.
+  - (* ConsT *) repeat split; destruct H;
+    apply IHg' in H0; destruct H0 as [Hg [Hg' Hi]];
+    apply not_elem_concat_elim in H; destruct H;
+    try apply intersect_names_add_intro_r; trivial.
+  Qed.
+
 Lemma lem_boundin_concat : forall (x:vname) (t:type) (g g':env),
   bound_in x t (concatE g g') <-> bound_in x t g \/ bound_in x t g'.
 Proof. intros; induction g'; simpl; intuition. Qed.

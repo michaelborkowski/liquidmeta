@@ -179,28 +179,30 @@ with Implies : env -> preds -> preds -> Prop :=
     | IRepeat : forall (g:env) (p:expr) (ps:preds), Implies g (PCons p ps) (PCons p (PCons p ps))
     | INarrow : forall (g:env) (g':env) (x:vname) (s_x t_x:type) (k_sx k_tx:kind) (ps qs:preds),
           intersect (binds g) (binds g') = empty -> unique g -> unique g'
-              -> ~ in_env x g -> ~ in_env x g'  
+              -> ~ in_env x g -> ~ in_env x g' -> WFEnv g
               -> WFtype g s_x k_sx -> WFtype g t_x k_tx -> Subtype g s_x t_x
               -> Implies (concatE (Cons x t_x g) g') ps qs
               -> Implies (concatE (Cons x s_x g) g') ps qs 
     | IWeak   : forall (g:env) (g':env) (ps:preds) (qs:preds) (x:vname) (t_x:type),
           intersect (binds g) (binds g') = empty -> unique g -> unique g' 
-              -> ~ in_env x g -> ~ in_env x g'
+              -> ~ in_env x g -> ~ in_env x g' -> WFEnv g
               -> Implies (concatE g g') ps qs 
               -> Implies (concatE (Cons x t_x g) g') ps qs
     | IWeakTV : forall (g:env) (g':env) (ps:preds) (qs:preds) (a:vname) (k_a:kind),
           intersect (binds g) (binds g') = empty -> unique g -> unique g' 
-              -> ~ in_env a g -> ~ in_env a g'
+              -> ~ in_env a g -> ~ in_env a g' -> WFEnv g
               -> Implies (concatE g g') ps qs 
               -> Implies (concatE (ConsT a k_a g) g') ps qs
     | ISub    : forall (g:env) (g':env) (x:vname) (v_x:expr) (t_x:type) (ps:preds) (qs:preds),
           intersect (binds g) (binds g') = empty -> unique g -> unique g' 
-              -> ~ in_env x g -> ~ in_env x g' -> isValue v_x -> Hastype g v_x t_x
+              -> ~ in_env x g -> ~ in_env x g' -> WFEnv g
+              -> isValue v_x -> Hastype g v_x t_x
               -> Implies (concatE (Cons x t_x g) g') ps qs
               -> Implies (concatE g (esubFV x v_x g')) (psubFV x v_x ps) (psubFV x v_x qs)
     | ISubTV  : forall (g:env) (g':env) (a:vname) (t_a:type) (k_a:kind) (ps:preds) (qs:preds),
           intersect (binds g) (binds g') = empty -> unique g -> unique g' 
-              -> ~ in_env a g -> ~ in_env a g' -> noExists t_a -> WFtype g t_a k_a
+              -> ~ in_env a g -> ~ in_env a g' -> WFEnv g
+              -> noExists t_a -> WFtype g t_a k_a
               -> Implies (concatE (ConsT a k_a g) g') ps qs
               -> Implies (concatE g (esubFTV a t_a g')) (psubFTV a t_a ps) (psubFTV a t_a qs)
     | IEqlSub : forall (g:env) (b:basic) (y:vname) (e:expr) (ps:preds),

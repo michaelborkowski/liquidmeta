@@ -170,3 +170,35 @@ Lemma lem_subst_tv_wf' : forall (g g':env) (a:vname) (t_a:type) (k_a:kind) (t:ty
                     -> WFtype (concatE g (esubFTV a t_a g')) (tsubFTV a t_a t) k_t.
 Proof. intros; apply lem_subst_tv_wf with k_a; try apply lem_erase_env_wfenv;
   assumption || reflexivity.  Qed.
+
+Lemma lem_subst_tv_wfenv : forall (g g':env) (a:vname) (t_a:type) (k_a:kind),
+    WFEnv (concatE (ConsT a k_a g) g' )
+        -> unique g -> unique g'
+        -> intersect (binds g) (binds g') = empty
+        -> ~ (in_env a g) -> ~ (in_env a g') 
+        -> isMono t_a -> noExists t_a -> WFtype g t_a k_a
+        -> WFEnv (concatE g (esubFTV a t_a g')).
+Proof. intro g; induction g'; simpl; intros.
+  - (* Empty *) inversion H; assumption.
+  - (* Cons  *) inversion H; apply WFEBind with k;
+    try apply IHg' with k_a;
+    try apply not_elem_concat_intro;
+    try rewrite esubFTV_binds;
+    try apply lem_subst_tv_wf with k_a;
+    apply lem_truncate_wfenv in H11 as H';
+    try apply lem_erase_env_wfenv;
+    inversion H'; destruct H1;
+    apply intersect_names_add_elim_r in H2; destruct H2;
+    unfold in_env in H4; simpl in H4;
+    apply not_elem_names_add_elim in H4; destruct H4;
+    trivial. 
+  - (* ConsT *) inversion H; apply WFEBindT;
+    try apply IHg' with k_a;
+    try apply not_elem_concat_intro; 
+    try rewrite esubFTV_binds; destruct H1; 
+    apply intersect_names_add_elim_r in H2; destruct H2;
+    unfold in_env in H4; simpl in H4;
+    apply not_elem_names_add_elim in H4; destruct H4;
+    trivial.
+  Qed.
+    

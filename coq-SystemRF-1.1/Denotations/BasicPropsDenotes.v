@@ -291,41 +291,6 @@ Proof. induction th; intros t v v' k H1 H2 H3 H4 H5 H6; trivial;
       try apply H10; try rewrite H13; trivial.
   Qed.
 
-Lemma lem_widen_denotes : 
-  forall (g g':env) (x:vname) (s_x t_x:type) (*k_x:kind*) (th:csub),
-    unique g -> unique g'
-        -> intersect (binds g) (binds g') = empty
-        -> ~ (in_env x g) -> ~ (in_env x g') 
-          (*-> WFtype g t_x k_x -> Subtype g s_x t_x *)
-          (*-> WFEnv (concatE (Cons x s_x g) g') *)
-        -> (forall (v:expr) (th0:csub), isValue v -> DenotesEnv g th0
-              -> Denotes (ctsubst th0 s_x) v -> Denotes (ctsubst th0 t_x) v)
-        -> DenotesEnv (concatE (Cons x s_x g) g') th 
-        -> DenotesEnv (concatE (Cons x t_x g) g') th.
-Proof. intro g; induction g'; intros; simpl.
-  - simpl in H5; inversion H5; apply DExt; try apply H4; 
-    try apply lem_den_isvalue with (ctsubst th0 s_x); trivial.
-  - simpl in H5; inversion H5; subst x1 t0 g0.
-    apply DExt;  try apply IHg' with s_x;
-    simpl in H0; destruct H0; 
-    simpl in H1; apply intersect_names_add_elim_r in H1;
-    destruct H1;
-    unfold in_env in H3; simpl in H3; 
-    apply not_elem_names_add_elim in H3; destruct H3;
-    try apply not_elem_concat_intro; simpl; 
-    try apply not_elem_names_add_intro; auto.
-  - simpl in H5; inversion H5; subst a0 k0 g0;
-    apply DExtT; try apply IHg' with s_x;
-    simpl in H0; destruct H0; 
-    simpl in H1; apply intersect_names_add_elim_r in H1;
-    destruct H1;
-    unfold in_env in H3; simpl in H3; 
-    apply not_elem_names_add_elim in H3; destruct H3;
-    try apply not_elem_concat_intro; simpl; 
-    try apply not_elem_names_add_intro; auto.
-  Qed. 
-    
-
 (*
   {-@ lem_remove_var_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (fv v) }
       -> ProofOf(Denotes (ctsubst th t) v) -> { x:Vname | v_in_csubst x th && not (Set_mem x (free t)) } 

@@ -19,6 +19,8 @@ echo "Checking EnvironmentSubstitutions.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/EnvironmentSubstitutions.v
 echo "Checking BasicPropsSemantics.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsSemantics.v
+echo "Checking LemmasWidening.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/LemmasWidening.v
 echo "Checking MultiSubstitutionLemmas.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/MultiSubstitutionLemmas.v
 echo "Checking PrimitivesDenotations.v ..."

@@ -620,7 +620,23 @@ Proof. apply ( judgments_mutind3
   - (* IRepeat *) apply DImp; intro th;
     repeat rewrite lem_cpsubst_pcons; intros;
     inversion H0; repeat apply PECons; trivial.
-  - (* INarrow *) apply DImp; inversion H0; 
+  - (* INarrow *) apply DImp; 
+    assert (WFEnv (concatE (Cons x t_x g) g'))
+      by (apply lem_widen_wfenv with s_x k_tx; trivial).
+    apply H0 in H2; inversion H2; subst g0 ps0 qs0;
+    intros; apply H3; try apply lem_widen_denotes with s_x;
+    trivial; intros; apply H with k_sx k_tx; intros;
+    apply (lem_truncate_wfenv (Cons x s_x g) g') in H1;
+    inversion H1; trivial.
+
+  - (* IWeak *) apply DImp.
+  
+  
+  
+  
+  
+  
+  apply DImp; inversion H0; 
     intros; subst g0 ps0 qs0; apply H1;
     try apply lem_widen_denotes with s_x; trivial. 
     intros; try apply H with k_sx k_tx;

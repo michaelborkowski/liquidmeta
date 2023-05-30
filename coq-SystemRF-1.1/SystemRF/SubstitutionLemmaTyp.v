@@ -24,7 +24,7 @@ Lemma lem_subst_typ' : ( forall (g'xg : env) (e : expr) (t : type),
             -> unique g -> unique g'
             -> intersect (binds g) (binds g') = empty
             -> ~ (in_env x g) -> ~ (in_env x g') 
-            -> isValue v_x -> Hastype g v_x t_x -> WFEnv g
+            -> isValue v_x -> Hastype g v_x t_x -> WFEnv (concatE (Cons x t_x g) g')
             -> Hastype (concatE g (esubFV x v_x g')) (subFV x v_x e) (tsubFV x v_x t ) )) /\ (
   forall (g'xg : env) (t : type) (t' : type),
     Subtype g'xg t t' -> ( forall (g g':env) (x:vname) (v_x:expr) (t_x:type),
@@ -32,7 +32,7 @@ Lemma lem_subst_typ' : ( forall (g'xg : env) (e : expr) (t : type),
             -> unique g -> unique g'
             -> intersect (binds g) (binds g') = empty
             -> ~ (in_env x g) -> ~ (in_env x g') 
-            -> isValue v_x -> Hastype g v_x t_x -> WFEnv g
+            -> isValue v_x -> Hastype g v_x t_x -> WFEnv (concatE (Cons x t_x g) g')
             -> Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x t) (tsubFV x v_x t') )).
 Proof. apply ( judgments_mutind 
   (fun (g'xg : env) (e : expr) (t : type) (p_e_t : Hastype g'xg e t) => 
@@ -41,7 +41,7 @@ Proof. apply ( judgments_mutind
             -> unique g -> unique g'
             -> intersect (binds g) (binds g') = empty
             -> ~ (in_env x g) -> ~ (in_env x g') 
-            -> isValue v_x -> Hastype g v_x t_x -> WFEnv g
+            -> isValue v_x -> Hastype g v_x t_x -> WFEnv (concatE (Cons x t_x g) g')
             -> Hastype (concatE g (esubFV x v_x g')) (subFV x v_x e) (tsubFV x v_x t ) )
   (fun (g'xg : env) (t : type) (t' : type) (p_t_t' : Subtype g'xg t t') => 
     forall (g g':env) (x:vname) (v_x:expr) (t_x:type),
@@ -49,12 +49,13 @@ Proof. apply ( judgments_mutind
             -> unique g -> unique g'
             -> intersect (binds g) (binds g') = empty
             -> ~ (in_env x g) -> ~ (in_env x g') 
-            -> isValue v_x -> Hastype g v_x t_x -> WFEnv g
+            -> isValue v_x -> Hastype g v_x t_x -> WFEnv (concatE (Cons x t_x g) g')
             -> Subtype (concatE g (esubFV x v_x g')) (tsubFV x v_x t) (tsubFV x v_x t') ));
   intro env; intros; subst env.
   - (* TBC *) rewrite lem_tsubFV_tybc; try apply TBC; assumption.
   - (* TIC *) rewrite lem_tsubFV_tyic; try apply TIC; assumption.
-  - (* TVar *) rewrite lem_tsubFV_self; destruct (Nat.eqb x0 x) eqn:X.
+  - (* TVar *) rewrite lem_tsubFV_self; destruct (Nat.eqb x0 x) eqn:X;
+    apply lem_truncate_wfenv in H7 as H7'; inversion H7'; subst x1 t0 g0.
     * simpl; rewrite X; apply Nat.eqb_eq in X; subst x0;
       apply lem_boundin_concat in b; simpl in b; destruct b; try destruct H;
       try ( apply lem_boundin_inenv in H; apply vbinds_subset in H;
@@ -68,11 +69,12 @@ Proof. apply ( judgments_mutind
       destruct k; try apply lem_strengthen_wftype_base with x t_x; simpl;
       try apply lem_strengthen_many_wftype_base with g';
       try apply lem_weaken_wf_top;
+      try apply lem_subst_wfenv with t_x;
+      try apply lem_typing_hasftype;
       try apply intersect_names_add_intro_l;
       try apply lem_free_bound_in_env with g Star ;
       try apply esubFV_unique; try rewrite esubFV_binds;
-      try apply intersect_empty_r; unfold unique;
-      intuition.
+      try apply intersect_empty_r; unfold unique; intuition.
     * simpl; rewrite X; apply TVar; try apply lem_subst_wf with t_x;
       try apply lem_typing_hasftype; trivial;
       apply lem_boundin_concat in b; simpl in b; destruct b; try destruct H;
@@ -84,45 +86,61 @@ Proof. apply ( judgments_mutind
       + (* x in g' *) right; apply lem_boundin_esubFV; assumption.
   - (* TPrm *) rewrite lem_tsubFV_ty; simpl; try apply TPrm; assumption.
   - (* TAbs *) simpl; apply TAbs with k_x (names_add x (union nms (binds (concatE g g'))));
+    apply lem_truncate_wfenv in H8 as H8'; inversion H8'; subst x0 t0 g0;
     try apply lem_subst_wf with t_x0; try apply lem_typing_hasftype;
-    try assumption; intros;
+    try assumption; intros.
     apply not_elem_names_add_elim in H0; destruct H0;
     apply not_elem_union_elim in H9; destruct H9;
     apply not_elem_concat_elim in H10; destruct H10;
     assert (Cons y (tsubFV x v_x t_x) (concatE g (esubFV x v_x g')) 
             = concatE g (esubFV x v_x (Cons y t_x g')))
-      by reflexivity; rewrite H12;
+      by reflexivity; rewrite H15;
     rewrite <- lem_commute_subFV_unbind;
     try rewrite <- lem_commute_tsubFV_unbindT;
     try apply H with t_x0;
+    try apply WFEBind with k_x;
     try apply intersect_names_add_intro_r;
     try apply lem_typ_islc with g t_x0;
-    unfold in_env; try apply not_elem_names_add_intro;
-    simpl; intuition.
+    unfold in_env; fold concatE;
+    pose proof (lem_binds_concat (Cons x t_x0 g) g');
+    destruct H16; try apply not_elem_names_add_intro; trivial;
+    try apply not_elem_subset with (union (binds (Cons x t_x0 g)) (binds g'));
+    try apply not_elem_union_intro;
+    try apply not_elem_names_add_intro;
+    simpl; auto. 
   - (* TApp *) simpl; apply TApp; simpl in H; 
     apply H with t_x0 || apply H0 with t_x0; trivial.
-  - (* TAbsT *) simpl; apply TAbsT with (names_add x (union nms (binds (concatE g g'))));
+  - (* TAbsT *) simpl; apply TAbsT with (names_add x (union nms (binds (concatE g g')))).
+    apply lem_truncate_wfenv in H8 as H8'; inversion H8'; subst x0 t0 g0;
     intros; apply not_elem_names_add_elim in H0; destruct H0;
     apply not_elem_union_elim in H9; destruct H9;
     apply not_elem_concat_elim in H10; destruct H10;
     assert (ConsT a' k (concatE g (esubFV x v_x g')) = concatE g (esubFV x v_x (ConsT a' k g')))
-      by reflexivity; rewrite H12;
+      by reflexivity; rewrite H15;
     try rewrite <- lem_commute_subFV_unbind_tv;
     try rewrite <- lem_commute_tsubFV_unbind_tvT;
-    try apply H with t_x;
+    try apply H with t_x; try apply WFEBindT;
     try apply intersect_names_add_intro_r;
     try apply lem_typ_islc with g t_x;
-    unfold in_env; try apply not_elem_names_add_intro; simpl; intuition.
+    unfold in_env; fold concatE;
+    pose proof (lem_binds_concat (Cons x t_x g) g');
+    destruct H16; try apply not_elem_names_add_intro; trivial;
+    try apply not_elem_subset with (union (binds (Cons x t_x g)) (binds g'));
+    try apply not_elem_union_intro;
+    try apply not_elem_names_add_intro; simpl; intuition.
   - (* TAppT *) rewrite lem_commute_tsubFV_tsubBTV; simpl;
+    apply lem_truncate_wfenv in H8 as H8'; inversion H8'; subst x0 t0 g0;
     try apply TAppT with k; simpl in H;
     try apply H with t_x;
     try apply lemma_tsubFV_isMono;
     try apply lemma_tsubFV_noExists;
     try apply lem_subst_wf with t_x;
     try apply lem_typing_hasftype;
-    try apply lem_typ_islc with g t_x; trivial.
+    try apply lem_typ_islc with g t_x; 
+    trivial.
   - (* TLet *) simpl; apply TLet with (tsubFV x v_x t_x) k
                   (names_add x (union nms (binds (concatE g g'))));
+    apply lem_truncate_wfenv in H9 as H9'; inversion H9'; subst x0 t0 g0;
     try apply lem_subst_wf with t_x0; try apply lem_typing_hasftype;
     try apply H with t_x0; trivial; intros;
     apply not_elem_names_add_elim in H1; destruct H1;
@@ -130,17 +148,24 @@ Proof. apply ( judgments_mutind
     apply not_elem_concat_elim in H11; destruct H11;
     assert (Cons y (tsubFV x v_x t_x) (concatE g (esubFV x v_x g')) 
             = concatE g (esubFV x v_x (Cons y t_x g')))
-      by reflexivity; rewrite H13;
+      by reflexivity; rewrite H16;
     rewrite <- lem_commute_subFV_unbind;
     try rewrite <- lem_commute_tsubFV_unbindT;
     try apply H0 with t_x0;
+    try apply WFEBind with Star; fold concatE;
+    try apply lem_typing_wf with e_x;
     try apply intersect_names_add_intro_r;
     try apply lem_typ_islc with g t_x0;
+    pose proof (lem_binds_concat (Cons x t_x0 g) g');
+    destruct H17; try apply not_elem_names_add_intro; trivial;
+    try apply not_elem_subset with (union (binds (Cons x t_x0 g)) (binds g'));
+    try apply not_elem_union_intro;
     try apply not_elem_names_add_intro; simpl; auto.
   - (* TAnn *) simpl; apply TAnn; try apply lemma_tsubFV_noExists;
     try apply H with t_x; trivial.
   - (* TIf *) simpl; apply TIf with (psubFV x v_x ps) k 
                                     (names_add x (union nms (binds (concatE g g'))));
+    apply lem_truncate_wfenv in H10 as H10'; inversion H10'; subst x0 t0 g0;
     simpl in H; try apply H with t_x;
     try apply lem_subst_wf with t_x;
     try apply lem_typing_hasftype; intros;
@@ -149,19 +174,30 @@ Proof. apply ( judgments_mutind
     try apply not_elem_concat_elim in H12; try destruct H12;
     try assert (Cons y (self (TRefn TBool (psubFV x v_x ps)) (Bc true) Base) (concatE g (esubFV x v_x g')) 
             = concatE g (esubFV x v_x (Cons y (self (TRefn TBool ps) (Bc true) Base) g')))
-      by reflexivity; try rewrite H14;
+      by reflexivity; try rewrite H17;
     try assert (Cons y (self (TRefn TBool (psubFV x v_x ps)) (Bc false) Base) (concatE g (esubFV x v_x g')) 
             = concatE g (esubFV x v_x (Cons y (self (TRefn TBool ps) (Bc false) Base) g')))
-      by reflexivity; try rewrite H15; 
-    try apply H0 with y t_x; try apply H1 with y t_x; 
+      by reflexivity; try rewrite H18;
+    try apply H0 with y t_x; try apply H1 with y t_x;
+    try apply WFEBind with Base; fold concatE;
+    try apply lem_selfify_wf; try apply FTBC;
     try apply not_elem_names_add_intro;
     try apply intersect_names_add_intro_r;
-    simpl; try split; auto.
+    pose proof (lem_binds_concat (Cons x t_x g) g');
+    try destruct H19; try apply not_elem_names_add_intro; trivial;
+    try apply not_elem_subset with (union (binds (Cons x t_x g)) (binds g'));
+    try apply not_elem_union_intro;
+    try apply not_elem_names_add_intro; 
+    simpl; try discriminate; try split; auto;
+    apply lem_typing_wf in h; try apply H10; 
+    inversion h; trivial.
   - (* TSub *) apply TSub with (tsubFV x v_x s) k; 
+    apply lem_truncate_wfenv in H9 as H9'; inversion H9'; subst x0 t0 g0;
     try apply H with t_x; try apply lem_subst_wf with t_x;
     try apply lem_typing_hasftype;
     try apply H0 with t_x; trivial.
   - (* SBase *) simpl; apply SBase with (names_add x (union nms (binds (concatE g g'))));
+    apply lem_truncate_wfenv in H7 as H7'; inversion H7'; subst x0 t g0;
     intros; repeat rewrite <- lem_commute_psubFV_unbindP; 
     assert ( Cons y (TRefn b PEmpty) (concatE g (esubFV x v_x g'))
               = concatE g (esubFV x v_x (Cons y (TRefn b PEmpty) g')) )
@@ -175,6 +211,7 @@ Proof. apply ( judgments_mutind
     try apply intersect_names_add_intro_r;
     simpl; try split; intuition.
   - (* SFunc *) simpl; apply SFunc with (names_add x (union nms (binds (concatE g g'))));
+    apply lem_truncate_wfenv in H9 as H9'; inversion H9'; subst x0 t g0;
     try apply H with t_x; trivial; intros;
     apply not_elem_names_add_elim in H1; destruct H1;
     apply not_elem_union_elim in H10; destruct H10;
@@ -182,7 +219,7 @@ Proof. apply ( judgments_mutind
     repeat rewrite <- lem_commute_tsubFV_unbindT;
     assert (Cons y (tsubFV x v_x s2) (concatE g (esubFV x v_x g')) 
             = concatE g (esubFV x v_x (Cons y s2 g')))
-      by reflexivity; try rewrite H13;
+      by reflexivity; try rewrite H16;
     try apply H0 with t_x;
     try apply intersect_names_add_intro_r;  
     try apply lem_typ_islc with g t_x;

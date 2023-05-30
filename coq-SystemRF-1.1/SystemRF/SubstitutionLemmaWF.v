@@ -117,3 +117,32 @@ Lemma lem_subst_wf_top : forall (g:env) (x:vname) (v_x:expr) (t_x:type) (t:type)
 Proof. intros; assert (g = concatE g (esubFV x v_x Empty)) by reflexivity;
   rewrite H4; apply lem_subst_wf with t_x; simpl; 
   try apply intersect_empty_r; intuition. Qed.
+
+Lemma lem_subst_wfenv : forall (g g':env) (x:vname) (v_x:expr) (t_x:type),
+    WFEnv (concatE (Cons x t_x g) g' )
+        -> unique g -> unique g'
+        -> intersect (binds g) (binds g') = empty
+        -> ~ (in_env x g) -> ~ (in_env x g') 
+        -> isValue v_x -> HasFtype (erase_env g) v_x (erase t_x)
+        -> WFEnv (concatE g (esubFV x v_x g')).
+Proof. intro g; induction g'; simpl; intros.
+  - (* Empty *) inversion H; assumption.
+  - (* Cons  *) inversion H; apply WFEBind with k;
+    try apply IHg' with t_x;
+    try apply not_elem_concat_intro; 
+    try rewrite esubFV_binds;
+    try apply lem_subst_wf with t_x;
+    destruct H1; 
+    apply intersect_names_add_elim_r in H2; destruct H2;
+    unfold in_env in H4; simpl in H4;
+    apply not_elem_names_add_elim in H4; destruct H4;
+    trivial.
+  - (* ConsT *) inversion H; apply WFEBindT;
+    try apply IHg' with t_x;
+    try apply not_elem_concat_intro; 
+    try rewrite esubFV_binds; destruct H1; 
+    apply intersect_names_add_elim_r in H2; destruct H2;
+    unfold in_env in H4; simpl in H4;
+    apply not_elem_names_add_elim in H4; destruct H4;
+    trivial.
+  Qed.
