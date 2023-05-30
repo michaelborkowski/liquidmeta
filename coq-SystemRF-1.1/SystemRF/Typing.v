@@ -177,9 +177,10 @@ with Implies : env -> preds -> preds -> Prop :=
     | ICons1  : forall (g:env) (p:expr) (ps:preds), Implies g (PCons p ps) (PCons p PEmpty)
     | ICons2  : forall (g:env) (p:expr) (ps:preds), Implies g (PCons p ps) ps
     | IRepeat : forall (g:env) (p:expr) (ps:preds), Implies g (PCons p ps) (PCons p (PCons p ps))
-    | INarrow : forall (g:env) (g':env) (x:vname) (s_x:type) (t_x:type) (ps:preds) (qs:preds),
+    | INarrow : forall (g:env) (g':env) (x:vname) (s_x t_x:type) (k_sx k_tx:kind) (ps qs:preds),
           intersect (binds g) (binds g') = empty -> unique g -> unique g'
-              -> ~ in_env x g -> ~ in_env x g'  -> Subtype g s_x t_x
+              -> ~ in_env x g -> ~ in_env x g'  
+              -> WFtype g s_x k_sx -> WFtype g t_x k_tx -> Subtype g s_x t_x
               -> Implies (concatE (Cons x t_x g) g') ps qs
               -> Implies (concatE (Cons x s_x g) g') ps qs 
     | IWeak   : forall (g:env) (g':env) (ps:preds) (qs:preds) (x:vname) (t_x:type),

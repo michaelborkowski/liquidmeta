@@ -623,7 +623,7 @@ Proof. apply ( judgments_mutind3
   - (* INarrow *) apply DImp; inversion H0; 
     intros; subst g0 ps0 qs0; apply H1;
     try apply lem_widen_denotes with s_x; trivial. 
-    intros; try apply H with Star Star;
+    intros; try apply H with k_sx k_tx;
     
     
     trivial.

@@ -150,8 +150,8 @@ Proof. apply ( judgments_mutind
       as Henv by reflexivity; rewrite Henv;
     apply not_elem_names_add_elim in H; destruct H;
     apply not_elem_union_elim in H9; destruct H9;
-    apply not_elem_concat_elim in H10; destruct H10;
-    apply INarrow with t_x; try apply i;
+    apply not_elem_concat_elim in H10; destruct H10.
+    apply INarrow with t_x k_sx k_tx; try apply i;
     try apply intersect_names_add_intro_r; try apply not_elem_names_add_intro;
     simpl; intuition.
   - (* SFunc *) apply SFunc with (names_add x (union nms (binds (concatE g g'))));
