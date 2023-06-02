@@ -264,20 +264,38 @@ Proof. apply ( judgments_mutind
     try apply unique_concat; 
     try apply intersect_names_add_intro_l;
     simpl; try split; trivial.
-  - (* SBind *) simpl; apply SBind with (names_add x (union nms (binds (concatE g g'))));
+  - (* SBind *) 
+    apply lem_truncate_wfenv in H8 as H8'; inversion H8'; subst x0 t0 g0;
+    inversion H9; try inversion H0; subst t0 k0 g0; simpl;
+
+    apply SBind with (names_add x (union (union nms nms0) (binds (concatE g g'))));
     try apply lem_islc_at_subFV; try apply lem_typ_islc with g t_x0;
-    trivial; intros;
-    apply not_elem_names_add_elim in H0; destruct H0;
-    apply not_elem_union_elim in H9; destruct H9;
-    apply not_elem_concat_elim in H10; destruct H10;
+    trivial; intros y Hy;
+    apply not_elem_names_add_elim in Hy; destruct Hy;
+    apply not_elem_union_elim in H12; destruct H12 as [H12 Hyg];
+    apply not_elem_union_elim in H12; destruct H12;
+    apply not_elem_concat_elim in Hyg; destruct Hyg;
     try rewrite <- lem_commute_tsubFV_unbindT;
     assert (Cons y (tsubFV x v_x t_x) (concatE g (esubFV x v_x g')) 
-            = concatE g (esubFV x v_x (Cons y t_x g')))
-      by reflexivity; try rewrite H12;
-    try apply H with t_x0;
+            = concatE g (esubFV x v_x (Cons y t_x g'))) as Henv
+      by reflexivity; try rewrite Henv;
+    try apply H with t_x0 k_t k_t';
+    try apply H18; try apply lem_weaken_wf_top; 
+    try apply WFEBind with k_x; fold concatE;
     try apply intersect_names_add_intro_r;  
     try apply lem_typ_islc with g t_x0;
-    try apply not_elem_names_add_intro; simpl; intuition.
+    try apply not_elem_names_add_intro; 
+    pose proof (lem_binds_concat (Cons x t_x0 g) g') as Hbin;
+    try destruct Hbin; trivial;
+    try apply not_elem_subset with (union (binds (Cons x t_x0 g)) (binds g'));
+    try apply not_elem_union_intro;
+    try apply not_elem_names_add_intro; 
+    try apply unique_concat;
+    try apply intersect_names_add_intro_l; simpl; auto; 
+    destruct k_t; try apply WFKind. Focus 2. apply H22.
+    Focus 4.
+    
+    intuition.
   - (* SPoly *) simpl; apply SPoly with (names_add x (union nms (binds (concatE g g'))));
     intros; apply not_elem_names_add_elim in H0; destruct H0;
     apply not_elem_union_elim in H9; destruct H9;
