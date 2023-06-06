@@ -491,6 +491,43 @@ Lemma ftv_unbind_intro : ( forall (e:expr) (y:vname) ,
 Proof. unfold unbind; unfold unbindT; unfold unbindP; repeat split; 
   intros; apply ftv_open_at_intro. Qed. 
 
+Lemma ftv_open_at_elim : ( forall (e:expr) (j:index) (y:vname) ,
+    Subset (ftv (open_at j y e)) (ftv e)) * ((
+  forall (t:type) (j:index) (y:vname) ,
+    Subset (freeTV (openT_at j y t)) (freeTV t)) * (
+  forall (ps:preds) (j:index) (y:vname) ,
+    Subset (ftvP (openP_at j y ps)) (ftvP ps))).
+Proof. apply ( syntax_mutind
+  ( fun e : expr => forall (j:index) (y:vname) ,
+    Subset (ftv (open_at j y e)) (ftv e) )
+  ( fun t : type => forall (j:index) (y:vname) ,
+    Subset (freeTV (openT_at j y t)) (freeTV t))
+  ( fun ps : preds => forall (j:index) (y:vname) ,
+    Subset (ftvP (openP_at j y ps)) (ftvP ps)))
+  ; simpl; intros
+       ; try (apply subset_empty_l)
+       ; (* one IH *) try ( apply H )
+       ; (* two IH *) try ( apply subset_union_both;  
+                            apply H || apply H0).
+       - (* BV *) destruct (j =? i); simpl;
+          apply subset_empty_l || apply subset_sing_l; 
+          simpl; left; reflexivity.
+       - (* If *) try apply subset_union_both; 
+          try apply subset_union_both;
+          apply H || apply H0 || apply H1.
+       - (* SBase *) destruct b; 
+         try apply subset_add_both_intro; apply H.
+  Qed.
+
+Lemma ftv_unbind_elim : ( forall (e:expr) (y:vname) ,
+    Subset (ftv (unbind y e)) (ftv e) ) * ((
+  forall (t:type) (y:vname) ,
+    Subset (freeTV (unbindT y t)) (freeTV t)) * (
+  forall (ps:preds) (y:vname) ,
+    Subset (ftvP (unbindP y ps)) (ftvP ps))).
+Proof. unfold unbind; unfold unbindT; unfold unbindP; repeat split; 
+  intros; apply ftv_open_at_elim. Qed. 
+
 
 Lemma fv_open_tv_at_intro : ( forall (e:expr) (j:index) (a:vname) ,
   Subset (fv e) (fv (open_tv_at j a e))  ) * ((

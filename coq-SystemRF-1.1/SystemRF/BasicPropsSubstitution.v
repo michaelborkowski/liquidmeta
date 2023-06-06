@@ -78,6 +78,11 @@ Lemma lem_tsubFV_notin : forall (t:type) (x:vname) (v:expr),
     ~ Elem x (free t) -> tsubFV x v t = t.
 Proof. intros; apply lem_subFV_notin; apply H.  Qed.
 
+Lemma lem_psubFV_notin : forall (ps:preds) (x:vname) (v:expr),
+    ~ Elem x (fvP ps) -> psubFV x v ps = ps.
+Proof. intros; apply lem_subFV_notin; apply H.  Qed.
+
+
 Lemma lem_subFTV_notin : (forall (e:expr) (a:vname) (t_a:type),
     ~ Elem a (ftv e) -> subFTV a t_a e = e ) * ((
   forall (t:type) (a:vname) (t_a:type),
@@ -109,6 +114,10 @@ Proof. intros; apply lem_subFTV_notin; apply H. Qed.
 
 Lemma lem_tsubFTV_notin : forall (t:type) (a:vname) (t_a:type),
     ~ Elem a (freeTV t) -> tsubFTV a t_a t = t.
+Proof. intros; apply lem_subFTV_notin; apply H. Qed.  
+
+Lemma lem_psubFTV_notin : forall (ps:preds) (a:vname) (t_a:type),
+    ~ Elem a (ftvP ps) -> psubFTV a t_a ps = ps.
 Proof. intros; apply lem_subFTV_notin; apply H. Qed.  
 
 (*---------------------------------------------------------------------------

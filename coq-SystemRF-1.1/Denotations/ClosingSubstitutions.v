@@ -155,15 +155,13 @@ Fixpoint concatCS (th th'0 : csub) : csub :=
     | (CConsT a t th') => CConsT a t (concatCS th th')
     end.
 
-(*@ reflect remove_fromCS @-}
-{-@ remove_fromCS :: th:csub -> { x:vname | in_csubst x th}
-        -> { th':csub | bindsC th' == Set_dif (bindsC th) (Set_sng x) } @-}
-remove_fromCS :: csub -> vname -> csub
-remove_fromCS (CCons  z v_z th) x | ( x == z ) = th
-                                  | otherwise  = CCons  z v_z (remove_fromCS th x)
-remove_fromCS (CConsT a t_a th) x | ( x == a ) = th
-                                  | otherwise  = CConsT a t_a (remove_fromCS th x) *)
-
+Fixpoint remove_fromCS (th:csub) (x:vname) : csub := 
+    match th with 
+    | CEmpty          => CEmpty
+    | (CCons  y v th) => if x =? y then th else CCons  y v (remove_fromCS th x)
+    | (CConsT a t th) => if x =? a then th else CConsT a t (remove_fromCS th x)
+    end.
+    
 Fixpoint csubst_env (th0:csub) (g:env) : env :=
     match th0 with  
     | CEmpty            => g 

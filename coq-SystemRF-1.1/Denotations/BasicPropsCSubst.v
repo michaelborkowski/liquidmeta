@@ -10,6 +10,7 @@ Require Import SystemRF.Typing.
 Require Import Denotations.ClosingSubstitutions.
 
 Require Import Arith.
+Require Import Lists.ListSet.
 
   (* -- | More Properties of Substitution *)
 
@@ -795,9 +796,10 @@ lem_ctsubst_tsubFTV  (CConsT a' t_a' th) a t_a t
          ? lem_tsubFTV_notin a' t_a' (ctsubst (CConsT a' t_a' th) t_a)
          ? lem_ctsubst_tsubFTV th a (tsubFTV a' t_a' t_a) (tsubFTV a' t_a' t)
          ? lem_commute_tsubFTV a t_a a' t_a' t
+*)
 
-  --- Closing Substitutions and Technical Operations
-
+(*  --- Closing Substitutions and Technical Operations *)
+(*
 --        -> { e:expr | Set_sub (fv e) (bindsC th) && not (Set_mem x (fv e)) }
 {-@ lem_remove_csubst :: th:csub -> { x:vname | v_in_csubst x th}
         -> { e:expr | not (Set_mem x (fv e)) }
@@ -828,31 +830,163 @@ lem_remove_tv_csubst (CCons z v_z th) a e = case ( a == z ) of
 lem_remove_tv_csubst (CConsT a' t_a th) a e = case ( a == a' ) of
    (True)  -> () ? lem_subFTV_notin a t_a e
    (False) -> () ? lem_remove_tv_csubst th a (subFTV a' t_a e)
-
-{-@ lem_remove_ctsubst :: th:csub -> { x:vname | v_in_csubst x th}
-        -> { t:type | not (Set_mem x (free t)) }
-        -> { pf:Proof | ctsubst th t == ctsubst (remove_fromCS th x) t } @-}
-lem_remove_ctsubst :: csub -> vname -> type -> Proof
-lem_remove_ctsubst (CCons z v_z th) x t = case ( x == z ) of
-  (True)  -> () ? lem_tsubFV_notin x v_z t
-          {- toProof ( ctsubst (remove_fromCS (CCons x v_z th) x) t
-                   === ctsubst th t  
-                   === ctsubst th (tsubFV x v_z t)
-                   === ctsubst (CCons x v_z th) t) -}
-  (False) -> () {- toProof ( ctsubst (remove_fromCS (CCons z v_z th) x) t
-                   === ctsubst (CCons z v_z (remove_fromCS th x)) t-}
-                     ? lem_remove_ctsubst th x (tsubFV z v_z t)
-                {-   === ctsubst (CCons z v_z th) t )-}
-lem_remove_ctsubst (CConsT a t_a th) x t = case ( x == a ) of
-  (False) -> () ? lem_remove_ctsubst th x (tsubFTV a t_a t)
-
-{-@ lem_remove_tv_ctsubst :: th:csub -> { a:vname | tv_in_csubst a th}
-        -> { t:type | not (Set_mem a (freeTV t)) }
-        -> { pf:Proof | ctsubst th t == ctsubst (remove_fromCS th a) t } @-} 
-lem_remove_tv_ctsubst :: csub -> vname -> type -> Proof
-lem_remove_tv_ctsubst (CCons z v_z th) a t = case ( a == z ) of
-  (False) -> () ? lem_remove_tv_ctsubst th a (tsubFV z v_z t)
-lem_remove_tv_ctsubst (CConsT a' t_a th) a t = case ( a == a' ) of
-  (True)  -> () ? lem_tsubFTV_notin a t_a t
-  (False) -> () ? lem_remove_tv_ctsubst th a (tsubFTV a' t_a t)
 *)
+
+Lemma lem_remove_not_incsubst : forall (th:csub) (x:vname),
+    ~ in_csubst x th -> remove_fromCS th x = th.
+Proof. induction th; unfold in_csubst; simpl; intros; 
+  try reflexivity; apply not_elem_names_add_elim in H;
+  destruct H; apply Nat.eqb_neq in H; rewrite H;
+  f_equal; apply IHth; trivial. Qed.
+
+Lemma lem_remove_ctsubst : forall (th:csub) (x:vname) (t:type),
+    Elem x (bindsC th) -> ~ Elem x (free t) -> ~ Elem x (freeTV t)
+        -> closed th -> uniqueC th -> substitutable th
+        -> ctsubst th t = ctsubst (remove_fromCS th x) t.
+Proof. induction th; intros; simpl.
+  - (* CEmpty *) reflexivity.
+  - (* CCons  *) destruct (x0 =? x) eqn:X.
+    * apply Nat.eqb_eq in X; subst x0; 
+      rewrite lem_tsubFV_notin; trivial.
+    * simpl; apply IHth; simpl in H;
+      apply set_add_elim in H; destruct H;
+      try (apply Nat.eqb_neq in X; contradiction);
+      simpl in *; destruct H2 as [H2 [H2' Hcl]];
+      destruct H3; destruct H4;
+      pose proof fv_subFV_elim as [_ [H' _]];
+      pose proof ftv_subFV_elim as [_ [H'' _]]; 
+      unfold not; intros;
+      try apply H' in H7; try apply H'' in H7;
+      try rewrite H2 in H7; try rewrite H2' in H7;
+      try revert H7;
+      try apply not_elem_union_intro; unfold not; intros;
+      try apply (set_diff_elim1 Nat.eq_dec) in H7; 
+      try contradiction; auto.
+  - (* CConsT *) destruct (x =? a) eqn:X.
+    * apply Nat.eqb_eq in X; subst a; 
+      rewrite lem_tsubFTV_notin; trivial.
+    * simpl; apply IHth; simpl in H;
+      apply set_add_elim in H; destruct H;
+      try (apply Nat.eqb_neq in X; contradiction);
+      simpl in *; destruct H2 as [H2 [H2' Hcl]];
+      destruct H3; destruct H4; destruct H6;
+      pose proof fv_subFTV_elim as [_ [H' _]];
+      pose proof ftv_subFTV_elim as [_ [H'' _]]; 
+      unfold not; intros;
+      try apply H' in H8; try apply H'' in H8;
+      try rewrite H2 in H8; try rewrite H2' in H8;
+      try revert H8;
+      try apply not_elem_union_intro; unfold not; intros;
+      try apply (set_diff_elim1 Nat.eq_dec) in H8; 
+      try contradiction; auto.
+  Qed.  
+
+Lemma lem_remove_cpsubst : forall (th:csub) (x:vname) (ps:preds),
+    Elem x (bindsC th) -> ~ Elem x (fvP ps) -> ~ Elem x (ftvP ps)
+        -> closed th -> uniqueC th -> substitutable th
+        -> cpsubst th ps = cpsubst (remove_fromCS th x) ps.
+Proof. induction th; intros; simpl.
+  - (* CEmpty *) reflexivity.
+  - (* CCons  *) destruct (x0 =? x) eqn:X.
+    * apply Nat.eqb_eq in X; subst x0; 
+      rewrite lem_psubFV_notin; trivial.
+    * simpl; apply IHth; simpl in H;
+      apply set_add_elim in H; destruct H;
+      try (apply Nat.eqb_neq in X; contradiction);
+      simpl in *; destruct H2 as [H2 [H2' Hcl]];
+      destruct H3; destruct H4;
+      pose proof fv_subFV_elim as [_ [_ H' ]];
+      pose proof ftv_subFV_elim as [_ [_ H'']]; 
+      unfold not; intros;
+      try apply H' in H7; try apply H'' in H7;
+      try rewrite H2 in H7; try rewrite H2' in H7;
+      try revert H7;
+      try apply not_elem_union_intro; unfold not; intros;
+      try apply (set_diff_elim1 Nat.eq_dec) in H7; 
+      try contradiction; auto.
+  - (* CConsT *) destruct (x =? a) eqn:X.
+    * apply Nat.eqb_eq in X; subst a; 
+      rewrite lem_psubFTV_notin; trivial.
+    * simpl; apply IHth; simpl in H;
+      apply set_add_elim in H; destruct H;
+      try (apply Nat.eqb_neq in X; contradiction);
+      simpl in *; destruct H2 as [H2 [H2' Hcl]];
+      destruct H3; destruct H4; destruct H6;
+      pose proof fv_subFTV_elim as [_ [_ H']];
+      pose proof ftv_subFTV_elim as [_ [_ H'']]; 
+      unfold not; intros;
+      try apply H' in H8; try apply H'' in H8;
+      try rewrite H2 in H8; try rewrite H2' in H8;
+      try revert H8;
+      try apply not_elem_union_intro; unfold not; intros;
+      try apply (set_diff_elim1 Nat.eq_dec) in H8; 
+      try contradiction; auto.
+  Qed.
+    
+
+(*
+Lemma lem_remove_ctsubst : forall (th:csub) (x:vname) (t:type),
+    Elem x (vbindsC th) -> ~ Elem x (free t) 
+        -> closed th -> uniqueC th -> substitutable th
+        -> ctsubst th t = ctsubst (remove_fromCS th x) t.
+Proof. induction th; intros; simpl.
+  - (* CEmpty *) reflexivity.
+  - (* CCons  *) destruct (x0 =? x) eqn:X.
+    * apply Nat.eqb_eq in X; subst x0; 
+      rewrite lem_tsubFV_notin; trivial.
+    * simpl; apply IHth; simpl in H;
+      apply set_add_elim in H; destruct H;
+      try (apply Nat.eqb_neq in X; contradiction);
+      simpl in *; destruct H1 as [H1 [_ Hcl]];
+      destruct H2; destruct H3;
+      pose proof fv_subFV_elim as [_ [H' _]];
+      try apply not_elem_subset with (union (diff (free t) (singleton x)) empty);
+      try apply not_elem_union_intro; 
+      try apply set_diff_intro;
+      auto; try rewrite <- H1; auto;
+      unfold not; intros;
+      apply (set_diff_elim1 Nat.eq_dec) in H6; contradiction.
+  - (* CConsT *) destruct (x =? a) eqn:X.
+    * simpl in H; simpl in H2; destruct H2;
+      pose proof vbindsC_subset; apply H5 in H;
+      apply Nat.eqb_eq in X; subst a; contradiction.
+    * simpl; apply IHth; simpl in *; destruct H1;
+      destruct H2; destruct H3; destruct H4; destruct H6;
+      pose proof fv_subFTV_elim as [_ [H' _]];
+      trivial; apply not_elem_subset with (union (free t) empty);
+      try apply not_elem_union_intro; auto;
+      try rewrite <- H1; apply H'; trivial.
+  Qed.
+
+  Lemma lem_remove_tv_ctsubst : forall (th:csub) (a:vname) (t:type),
+    Elem a (tvbindsC th) -> ~ Elem a (freeTV t) 
+        -> closed th -> uniqueC th -> substitutable th
+        -> ctsubst th t = ctsubst (remove_fromCS th a) t.
+Proof. induction th; intros; simpl.
+  - (* CEmpty *) reflexivity.
+  - (* CCons  *) destruct (a =? x) eqn:X.
+  * simpl in H; simpl in H2; destruct H2;
+    pose proof tvbindsC_subset; apply H5 in H;
+    apply Nat.eqb_eq in X; subst x; contradiction.
+  * simpl; apply IHth; simpl in *; destruct H1;
+    destruct H2; destruct H3; destruct H4;
+    pose proof ftv_subFV_elim as [_ [H' _]];
+    trivial; apply not_elem_subset with (union (freeTV t) empty);
+    try apply not_elem_union_intro; auto;
+    try rewrite <- H4; apply H'; trivial.
+  - (* CConsT *) destruct (a0 =? a) eqn:X.
+    * apply Nat.eqb_eq in X; subst a0; 
+      rewrite lem_tsubFTV_notin; trivial.
+    * simpl; apply IHth; simpl in *;
+      apply set_add_elim in H; destruct H;
+      try (apply Nat.eqb_neq in X; contradiction);
+      destruct H1 as [_ [H1 Hcl]]; 
+      destruct H2; destruct H3; destruct H5;
+      pose proof ftv_subFTV_elim as [_ [H' _]];
+      try apply not_elem_subset with (union (diff (freeTV t) (singleton a)) empty);
+      try apply not_elem_union_intro; 
+      try apply set_diff_intro;
+      auto; try rewrite <- H1; auto; unfold not; intros;
+      apply (set_diff_elim1 Nat.eq_dec) in H7; contradiction.
+  Qed.
+  *)

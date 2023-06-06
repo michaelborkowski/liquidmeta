@@ -18,6 +18,7 @@ Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
 Require Import Denotations.BasicPropsDenotes.
 Require Import Denotations.BasicPropsSemantics.
+Require Import Denotations.LemmasWidening.
 Require Import Denotations.EnvironmentSubstitutions.
 Require Import Denotations.MultiSubstitutionLemmas.
 Require Import Denotations.PrimitivesDenotations.
@@ -566,18 +567,16 @@ Proof. apply ( judgments_mutind3
     apply s in Ha as p_t1_t2;
     apply lem_erase_subtype in p_t1_t2;
     repeat rewrite lem_erase_unbind_tvT in p_t1_t2;
-    apply lem_unbind_tvT_equals in p_t1_t2;
+    apply lem_openFT_at_equals in p_t1_t2;
     pose proof (lem_erase_freeTV t1);
     pose proof (lem_erase_freeTV t2);
     try (apply not_elem_subset with (freeTV t1); apply H5 || apply H19);
     try (apply not_elem_subset with (freeTV t2); apply H18 || apply H20);
-    (*repeat rewrite lem_erase_unbind in p_t1_t2;*)
     try apply lem_erase_ctsubst with th t1 t2 in p_t1_t2 as Ht;
     try rewrite <- Ht;
     try apply lem_denotesenv_substitutable with g; trivial.
 
     intros; subst k1 k2 g0 k0 t g1 k3 t0;
-    (*apply H with k_x0 k_x th v_x in H23 as H''; trivial.*)
     apply den_func in H22 as H''; try assumption;
     destruct H'' as [v' [Hv' [ev_vta_v' den_v']]];
     exists v'; repeat split; trivial.
@@ -620,34 +619,22 @@ Proof. apply ( judgments_mutind3
   - (* IRepeat *) apply DImp; intro th;
     repeat rewrite lem_cpsubst_pcons; intros;
     inversion H0; repeat apply PECons; trivial.
-  - (* INarrow *) apply DImp; 
-    assert (WFEnv (concatE (Cons x t_x g) g'))
-      by (apply lem_widen_wfenv with s_x k_tx; trivial).
-    apply H0 in H2; inversion H2; subst g0 ps0 qs0;
-    intros; apply H3; try apply lem_widen_denotes with s_x;
-    trivial; intros; apply H with k_sx k_tx; intros;
-    apply (lem_truncate_wfenv (Cons x s_x g) g') in H1;
-    inversion H1; trivial.
+  - (* INarrow *) apply DImp; intros th Hden.
+    inversion H0; apply H1.
+    apply lem_widen_denotes with s_x; trivial; 
+    intros; apply H with k_sx k_tx; trivial.
 
-  - (* IWeak *) apply DImp.
-  
-  
-  
-  
-  
-  
-  apply DImp; inversion H0; 
-    intros; subst g0 ps0 qs0; apply H1;
-    try apply lem_widen_denotes with s_x; trivial. 
-    intros; try apply H with k_sx k_tx;
+  - (* IWeak *) apply DImp; intros th Hden Hps;
+    inversion H; 
+    rewrite lem_remove_cpsubst with th x ps in Hps;
+    try rewrite lem_remove_cpsubst with th x qs;
+    try apply H0;
+    try apply lem_remove_var_denote_env with t_x;
     
-    
-    trivial.
-    
-    apply IHImplies.
 
 
-    destruct (cpsubst th qs); simpl.
-    * apply IHImplies2; trivial.
-    * apply IHImplies1 in H1 as IH; try apply H0. 
-      inversion IH. apply PECons.  
+    auto.
+    
+
+  
+  

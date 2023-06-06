@@ -394,7 +394,10 @@ Proof. intros c t k s' mono noex p_c_ks' p_emp_t. inversion p_c_ks';
     pose proof (lem_deltaT_ty'c c t Hpoly noex p_emp_t); 
     destruct H0 as [e H0]; destruct H0;
     rewrite deltaT_deltaT' with c t pf in H0; injection H0 as H0; subst e; assumption.
-  - (* isTSub *) subst k1 k g0 t1 t2;
+  - (* isTSub *) inversion H0; try inversion H5; 
+    pose proof (lem_wf_ty Empty c) as Htyc;
+    rewrite Hty in Htyc; inversion Htyc; try inversion H15.
+    subst k k0 k1 k2 k3 g0 g1 g2 t1 t2 t3 t4;
     apply TSub with (tsubBTV t (TFunc  (intype c) (ty' c))) Star;
     (* Hastype Empty (deltaT c t pf) (tsubBTV t (TFunc (intype c) (ty' c))) *)
     pose proof (lem_deltaT_ty'c c t Hpoly noex p_emp_t) as H';
@@ -404,13 +407,18 @@ Proof. intros c t k s' mono noex p_c_ks' p_emp_t. inversion p_c_ks';
     (* WFtype Empty (tsubFTV a t (unbind_tvT a s')) Star *)
     try apply lem_typing_wf with (AppT (Prim c) t); try apply p_ct_s't;
     (* Subtype Empty (tsubBTV t (TFunc (intype c) (ty' c))) (tsubBTV t s') *)
-    pose proof (fresh_not_elem nms) as Ha; set (a := fresh nms) in Ha;
+    pose proof (fresh_not_elem (union nms (union nms0 nms1))) as Ha; 
+    set (a := fresh (union nms (union nms0 nms1))) in Ha;
+    apply not_elem_union_elim in Ha; destruct Ha;
+    apply not_elem_union_elim in H7; destruct H7;
     try rewrite lem_tsubFTV_unbind_tvT with a t (TFunc (intype c) (ty' c));
     try rewrite lem_tsubFTV_unbind_tvT with a t s';
-    try apply lem_subst_tv_subtype_top with Base; try apply H8;
+    try apply lem_subst_tv_subtype_top with Base Star k_t; try apply H11;
     assert (~ in_env a Empty) as Htriv by intuition;
-    pose proof (lem_free_bound_in_env Empty (TPoly Base s') k0 a H0 Htriv) 
+    pose proof (lem_free_bound_in_env Empty (TPoly Base s') Star a H0 Htriv) 
       as Hfr; simpl in Hfr; destruct Hfr;
       try (destruct c; simpl; unfold not; intro ff; apply ff);
-    try apply WFEEmpty; simpl; intuition.
+    try apply WFEEmpty; simpl; auto;
+    destruct k_t0; try apply H17; try apply WFKind; 
+    try apply H17; auto.
   Qed.

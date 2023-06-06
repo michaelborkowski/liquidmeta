@@ -291,72 +291,100 @@ Proof. induction th; intros t v v' k H1 H2 H3 H4 H5 H6; trivial;
       try apply H10; try rewrite H13; trivial.
   Qed.
 
+Lemma lem_remove_var_denote : forall (th:csub) (t:type) (v:expr) (x:vname),
+    Denotes (ctsubst th t) v -> Elem x (bindsC th) 
+        -> ~ Elem x (free t) -> ~ Elem x (freeTV t)
+        -> closed th -> uniqueC th -> substitutable th
+        -> Denotes (ctsubst (remove_fromCS th x) t) v.
+Proof. intros; rewrite <- lem_remove_ctsubst; trivial. Qed.
+
 (*
-  {-@ lem_remove_var_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (fv v) }
-      -> ProofOf(Denotes (ctsubst th t) v) -> { x:Vname | v_in_csubst x th && not (Set_mem x (free t)) } 
-      -> ProofOf(Denotes (ctsubst (remove_fromCS th x) t) v) @-}
-lem_remove_var_denote :: CSub -> Type -> Expr -> Denotes -> Vname -> Denotes
-lem_remove_var_denote th t v den_tht_v x = den_tht_v ? lem_remove_ctsubst th x t
-
-{-@ lem_remove_tvar_denote :: th:CSub -> t:Type -> { v:Value | Set_emp (ftv v) }
-      -> ProofOf(Denotes (ctsubst th t) v) -> { a:Vname | tv_in_csubst a th && not (Set_mem a (freeTV t)) } 
-      -> ProofOf(Denotes (ctsubst (remove_fromCS th a) t) v) @-}
-lem_remove_tvar_denote :: CSub -> Type -> Expr -> Denotes -> Vname -> Denotes
-lem_remove_tvar_denote th t v den_tht_v a = den_tht_v ? lem_remove_tv_ctsubst th a t
-
-{-@ lem_remove_var_denote_env :: g:Env -> { x:Vname | not (in_env x g) } -> t_x:Type
-       -> { g':Env | not (in_env x g') && Set_emp (Set_cap (binds g) (binds g')) }
-       -> ProofOf(WFEnv (concatE g g'))
-       -> th:CSub -> ProofOf(DenotesEnv (concatE (Cons x t_x g) g') th)
-       -> ProofOf(DenotesEnv (concatE g g') (remove_fromCS th x )) @-}
-lem_remove_var_denote_env :: Env -> Vname -> Type -> Env -> WFEnv -> CSub 
-                                 -> DenotesEnv -> DenotesEnv
-lem_remove_var_denote_env g x  t_x Empty           p_g'g_wf  th den_env_th = case den_env_th of
-  (DExt env' th' den_env'_th' _ _tx v_x den_th'tx_vx) -> den_env'_th'
-lem_remove_var_denote_env g x_ t_x (Cons z t_z g') p_zg'g_wf th den_env_th = case den_env_th of
-  (DExt env' th' den_env'_th' _z _tz v_z den_th'tz_vz) -- env' == concatE (Cons x t_x g) g' 
-    -> DExt (concatE g g') (remove_fromCS th' x) den_env''_th'' z t_z v_z den_th''tz_vz
-      where
-        (WFEBind _ p_g'g_wf _ _ k_z p_g'g_tz) = p_zg'g_wf
-        x              = x_ ? lem_binds_env_th (concatE (Cons x_ t_x g) g') th' den_env'_th'
-                            ? lem_in_env_concat g g' x_ 
-                            ? lem_free_bound_in_env (concatE g g') t_z k_z p_g'g_tz x_
-        den_env''_th'' = lem_remove_var_denote_env g x t_x g' p_g'g_wf th' den_env'_th'
-        den_th''tz_vz  = lem_remove_var_denote th' t_z v_z den_th'tz_vz x
-lem_remove_var_denote_env g x_ t_x (ConsT a k_a g') p_zg'g_wf th den_env_th = case den_env_th of
-  (DExtT env' th' den_env'_th' _a _ka t_a p_emp_ta)
-    -> DExtT (concatE g g') (remove_fromCS th' x) den_env''_th'' a k_a t_a p_emp_ta
-      where
-        (WFEBindT _ p_g'g_wf _ _) = p_zg'g_wf
-        x              = x_ ? lem_binds_env_th (concatE (Cons x_ t_x g) g') th' den_env'_th'
-                            ? lem_in_env_concat g g' x_ 
-        den_env''_th'' = lem_remove_var_denote_env g x t_x g' p_g'g_wf th' den_env'_th'
-
-{-@ lem_remove_tvar_denote_env :: g:Env -> { a:Vname | not (in_env a g) } -> k_a:Kind
-       -> { g':Env | not (in_env a g') && Set_emp (Set_cap (binds g) (binds g')) }
-       -> ProofOf(WFEnv (concatE g g'))
-       -> th:CSub -> ProofOf(DenotesEnv (concatE (ConsT a k_a g) g') th)
-       -> ProofOf(DenotesEnv (concatE g g') (remove_fromCS th a )) @-}
-lem_remove_tvar_denote_env :: Env -> Vname -> Kind -> Env -> WFEnv -> CSub 
-                                 -> DenotesEnv -> DenotesEnv
-lem_remove_tvar_denote_env g a  k_a Empty           p_g'g_wf  th den_env_th = case den_env_th of 
-  (DExtT env' th' den_env'_th' _ _ t_a p_emp_ta) -> den_env'_th'
-lem_remove_tvar_denote_env g a_ k_a (Cons z t_z g') p_ag'g_wf th den_env_th = case den_env_th of
-  (DExt env' th' den_env'_th' _z _tz v_z den_th'tz_vz) -- env' == concatE (Cons x t_x g) g' 
-    -> DExt (concatE g g') (remove_fromCS th' a) den_env''_th'' z t_z v_z den_th''tz_vz
-      where
-        (WFEBind _ p_g'g_wf _ _ k_z p_g'g_tz) = p_ag'g_wf
-        a              = a_ ? lem_binds_env_th (concatE (ConsT a_ k_a g) g') th' den_env'_th'
-                            ? lem_in_env_concat g g' a_ 
-                            ? lem_free_bound_in_env (concatE g g') t_z k_z p_g'g_tz a_
-        den_env''_th'' = lem_remove_tvar_denote_env g a k_a g' p_g'g_wf th' den_env'_th'
-        den_th''tz_vz  = lem_remove_tvar_denote th' t_z v_z den_th'tz_vz a
-lem_remove_tvar_denote_env g a_ k_a (ConsT a1 k1 g') p_a1g'g_wf th den_env_th = case den_env_th of
-  (DExtT env' th' den_env'_th' _a1 _k1 t_a1 p_emp_ta1)
-    -> DExtT (concatE g g') (remove_fromCS th' a) den_env''_th'' a1 k1 t_a1 p_emp_ta1
-      where
-        (WFEBindT _ p_g'g_wf _ _) = p_a1g'g_wf
-        a              = a_ ? lem_binds_env_th (concatE (ConsT a_ k_a g) g') th' den_env'_th'
-                            ? lem_in_env_concat g g' a_ 
-        den_env''_th'' = lem_remove_tvar_denote_env g a k_a g' p_g'g_wf th' den_env'_th'
-  *)
+Lemma lem_remove_tvar_denote : forall (th:csub) (t:type) (v:expr) (a:vname),
+    Denotes (ctsubst th t) v -> Elem a (tvbindsC th) -> ~ Elem a (freeTV t)
+        -> closed th -> uniqueC th -> substitutable th
+        -> Denotes (ctsubst (remove_fromCS th a) t) v.
+Proof. intros; rewrite <- lem_remove_tv_ctsubst; trivial. Qed.
+*)
+Lemma lem_remove_var_denote_env : forall (g g':env) (x:vname) (t_x:type) (th:csub),
+    unique g -> unique g'
+        -> intersect (binds g) (binds g') = empty
+        -> ~ (in_env x g) -> ~ (in_env x g') 
+        -> WFEnv (concatE g g')
+        -> closed th -> uniqueC th -> substitutable th
+        -> DenotesEnv (concatE (Cons x t_x g) g') th
+        -> DenotesEnv (concatE g g') (remove_fromCS th x).
+Proof. intro g; induction g'; simpl; intros.
+  - (* CEmpty *) inversion H8; simpl;
+    assert (x = x) by reflexivity;
+    apply Nat.eqb_eq in H16; rewrite H16; apply H12.
+  - (* CCons  *) inversion H4; inversion H8; 
+    unfold in_env in H3; simpl in *;
+    apply not_elem_names_add_elim in H3; destruct H3;
+    apply Nat.eqb_neq in H3; rewrite H3.
+    apply DExt; try apply IHg' with t_x;
+    try apply lem_remove_var_denote;
+    subst th; simpl in *; destruct H0;
+    destruct H5; destruct H6; destruct H7; destruct H23;
+    try rewrite <- lem_binds_env_th with (concatE (Cons x0 t_x g) g') th0;
+    pose proof (lem_binds_concat (Cons x0 t_x g) g'); destruct H27;
+    try apply H28; try apply set_union_intro1; 
+    try apply set_add_intro2;
+    try apply intersect_names_add_elim_r in H1; destruct H1;
+    apply lem_free_subset_binds in H14; destruct H14;
+    auto; apply not_elem_subset with (binds (concatE g g'));
+    try apply not_elem_concat_intro;
+    pose proof (vbinds_subset (concatE g g'));
+    pose proof (tvbinds_subset (concatE g g'));
+    try (apply subset_trans with (vbinds (concatE g g')); assumption);
+    try (apply subset_trans with (tvbinds (concatE g g')); assumption); auto.
+  - (* CConsT *) inversion H4; inversion H8; 
+    unfold in_env in H3; simpl in *;
+    apply not_elem_names_add_elim in H3; destruct H3;
+    apply Nat.eqb_neq in H3; rewrite H3;
+    apply DExtT; try apply IHg' with t_x;
+    subst th; simpl in *; destruct H0;
+    destruct H5 as [_ [_ H5]]; destruct H6; destruct H7; destruct H25;
+    apply intersect_names_add_elim_r in H1; destruct H1; auto.
+  Qed.
+    
+Lemma lem_remove_tvar_denote_env : forall (g g':env) (a:vname) (k_a:kind) (th:csub),
+    unique g -> unique g'
+        -> intersect (binds g) (binds g') = empty
+        -> ~ (in_env a g) -> ~ (in_env a g') 
+        -> WFEnv (concatE g g')
+        -> closed th -> uniqueC th -> substitutable th
+        -> DenotesEnv (concatE (ConsT a k_a g) g') th
+        -> DenotesEnv (concatE g g') (remove_fromCS th a).
+Proof. intro g; induction g'; simpl; intros.
+  - (* CEmpty *) inversion H8; simpl;
+    assert (a = a) by reflexivity;
+    apply Nat.eqb_eq in H18; rewrite H18; apply H12.
+  - (* CCons  *) inversion H4; inversion H8; 
+    unfold in_env in H3; simpl in *;
+    apply not_elem_names_add_elim in H3; destruct H3;
+    apply Nat.eqb_neq in H3; rewrite H3.
+    apply DExt; try apply IHg' with k_a;
+    try apply lem_remove_var_denote;
+    subst th; simpl in *; destruct H0;
+    destruct H5; destruct H6; destruct H7; destruct H23;
+    try rewrite <- lem_binds_env_th with (concatE (ConsT a k_a g) g') th0;
+    pose proof (lem_binds_concat (ConsT a k_a g) g'); destruct H27;
+    try apply H28; try apply set_union_intro1; 
+    try apply set_add_intro2;
+    try apply intersect_names_add_elim_r in H1; destruct H1;
+    apply lem_free_subset_binds in H14; destruct H14;
+    auto; apply not_elem_subset with (binds (concatE g g'));
+    try apply not_elem_concat_intro;
+    pose proof (vbinds_subset (concatE g g'));
+    pose proof (tvbinds_subset (concatE g g'));
+    try (apply subset_trans with (vbinds (concatE g g')); assumption);
+    try (apply subset_trans with (tvbinds (concatE g g')); assumption); auto.
+  - (* CConsT *) inversion H4; inversion H8; 
+    unfold in_env in H3; simpl in *;
+    apply not_elem_names_add_elim in H3; destruct H3;
+    apply Nat.eqb_neq in H3; rewrite H3;
+    apply DExtT; try apply IHg' with k_a;
+    subst th; simpl in *; destruct H0;
+    destruct H5 as [_ [_ H5]]; destruct H6; destruct H7; destruct H25;
+    apply intersect_names_add_elim_r in H1; destruct H1; auto.
+  Qed.

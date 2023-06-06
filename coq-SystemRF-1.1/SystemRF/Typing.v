@@ -185,12 +185,16 @@ with Implies : env -> preds -> preds -> Prop :=
               -> Implies (concatE (Cons x s_x g) g') ps qs 
     | IWeak   : forall (g:env) (g':env) (ps:preds) (qs:preds) (x:vname) (t_x:type),
           intersect (binds g) (binds g') = empty -> unique g -> unique g' 
-              -> ~ in_env x g -> ~ in_env x g' -> WFEnv g
+              -> ~ in_env x g -> ~ in_env x g' -> WFEnv (concatE g g')
+              -> ~ Elem x (fvP ps) -> ~ Elem x (ftvP ps) 
+              -> ~ Elem x (fvP qs) -> ~ Elem x (ftvP qs)
               -> Implies (concatE g g') ps qs 
               -> Implies (concatE (Cons x t_x g) g') ps qs
     | IWeakTV : forall (g:env) (g':env) (ps:preds) (qs:preds) (a:vname) (k_a:kind),
           intersect (binds g) (binds g') = empty -> unique g -> unique g' 
-              -> ~ in_env a g -> ~ in_env a g' -> WFEnv g
+              -> ~ in_env a g -> ~ in_env a g' -> WFEnv (concatE g g')
+              -> ~ Elem a (fvP ps) -> ~ Elem a (ftvP ps) 
+              -> ~ Elem a (fvP qs) -> ~ Elem a (ftvP qs)
               -> Implies (concatE g g') ps qs 
               -> Implies (concatE (ConsT a k_a g) g') ps qs
     | ISub    : forall (g:env) (g':env) (x:vname) (v_x:expr) (t_x:type) (ps:preds) (qs:preds),

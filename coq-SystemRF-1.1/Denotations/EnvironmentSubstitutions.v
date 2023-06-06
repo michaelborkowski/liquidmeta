@@ -97,60 +97,6 @@ Proof. induction th; simpl; intros; try reflexivity;
     try rewrite lem_tsubFV_notin; 
     try rewrite H9; try rewrite H2; auto.
   Qed.
-
-Lemma lem_unbind_tvT_equals : forall (i:index) (a:vname) (t1 t2:ftype),
-    ~ Elem a (ffreeTV t1) -> ~ Elem a (ffreeTV t2) 
-          -> openFT_at i a t1 = openFT_at i a t2 -> t1 = t2.
-Proof. intros i a t1; revert i; induction t1; intros.
-  - (* FTBasic *) destruct t2; unfold unbindFT in H1; 
-    destruct b; try destruct b0; simpl in H1;
-    try destruct (i =? i0) eqn:I0; try destruct (i =? i1) eqn:I1;
-    try discriminate; try apply Nat.eqb_eq in I0; 
-    try apply Nat.eqb_eq in I1;
-    try subst i0; try subst i1; 
-    try reflexivity; try apply H1;
-    simpl in H; simpl in H0;
-    injection H1 as H1; subst a0; intuition.
-  - (* FTFunc *) destruct t2; unfold unbindFT in H1;
-    try destruct b; simpl in H1; try destruct (i =? i0);
-    try discriminate; injection H1 as H1;
-    simpl in H; apply not_elem_union_elim in H;
-    simpl in H0; apply not_elem_union_elim in H0;
-    destruct H; destruct H0;
-    apply IHt1_1 in H1; apply IHt1_2 in H2;
-    try subst t2_1 t2_2; trivial.
-  - (* FTPoly *) destruct t2; unfold unbindFT in H1;
-    try destruct b; simpl in H1; try destruct (i =? i0); 
-    try discriminate; injection H1 as H1;
-    simpl in H; simpl in H0; f_equal; try apply H1;
-    apply IHt1 with (i+1); trivial.
-  Qed.
-
-(* -- LEMMA 6. If G |- s <: t, then if we erase the types then (erase s) and (erase t)
-   --               equiv up to alpha-renaming bound variables *)
-Lemma lem_erase_subtype : forall (g:env) (t1 t2:type),
-    Subtype g t1 t2 -> erase t1 = erase t2.
-Proof. intros g t1 t2 p_t1_t2; induction p_t1_t2; simpl.
-  - (* SBase *) reflexivity.
-  - (* SFunc *) f_equal; try (symmetry; apply IHp_t1_t2);
-    pose proof (fresh_not_elem nms) as Hy;
-    set (y := fresh nms) in Hy;
-    apply H0 in Hy as IH2;
-    repeat rewrite lem_erase_unbind in IH2; apply IH2.
-  - (* SWitn *) rewrite lem_erase_tsubBV in IHp_t1_t2;
-    apply IHp_t1_t2.
-  - (* SBind *) pose proof (fresh_not_elem nms) as Hy;
-    set (y := fresh nms) in Hy;
-    apply H1 in Hy as IH;
-    rewrite lem_erase_unbind in IH; apply IH.
-  - (* SPoly *) f_equal;
-    pose proof (fresh_varFTs_not_elem nms g (erase t1) (erase t2)) as Ha;
-    set (a := fresh_varFTs nms g (erase t1) (erase t2)) in Ha;
-    destruct Ha as [Ht [Ht' [Ha Hg]]];
-    apply H0 in Ha as IH2;
-    repeat rewrite lem_erase_unbind_tvT in IH2;
-    apply lem_unbind_tvT_equals with 0 a; trivial.
-  Qed.
     
 Lemma lem_erase_ctsubst : forall (th:csub) (t1 t2:type),
     substitutable th -> erase t1 = erase t2 

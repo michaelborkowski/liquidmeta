@@ -93,8 +93,8 @@ Proof. intros n; induction n.
       pose proof (lem_free_bound_in_env g (TExists t_x t'0) k'' y H3 Hy') as Hfr;
       simpl in Hfr; destruct Hfr as [Hfr _];
       apply not_elem_union_elim in Hfr as [_ Hfr]; 
-      try apply wfenv_unique; simpl; intuition ); 
-    (* SBind -ANY- *) try (  subst t; try set (nms0 := g1); inversion H1; try inversion H9; 
+      try apply wfenv_unique; simpl; intuition );
+    (* SBind -ANY- *) try ( subst t; try set (nms0 := g1); inversion H1; try inversion H9; 
       apply SBind with (union (union nms nms1) (binds g));
       try apply lem_wftype_islct with g k''; try (subst t''; assumption);
       intros y Hy; apply IHn with t' k k' k'';
@@ -111,12 +111,12 @@ Proof. intros n; induction n.
       try apply H19; try apply H20; try apply H21;
       try (destruct k; apply H23 || (apply WFKind; apply H23)); 
       try (destruct k; apply H24 || (apply WFKind; apply H24)); 
-      try (destruct k; apply H25 || (apply WFKind; apply H25)); 
+      try (destruct k; apply H25 || (apply WFKind; apply H25));
       try apply lem_weaken_wf_top;
-      try apply H7; try apply lem_weaken_subtype_top;
+      try apply H7; try apply lem_weaken_subtype_top with k' k'';
       apply not_elem_union_elim in Hy; destruct Hy as [Hy Hg];
       apply not_elem_union_elim in Hy; destruct Hy as [Hy Hy1];
-      try apply wfenv_unique; trivial ).
+      try apply wfenv_unique; trivial).
     * (* SBase SBase *) subst t'; injection H12 as Hb0 Hp0;
       subst b0; subst p0; apply SBase with (union nms nms0); 
       intros; apply not_elem_union_elim in H9; destruct H9;
@@ -167,11 +167,11 @@ Proof. intros n; induction n.
         try apply Nat.le_trans with (max (depth s1) (depth t1) + max (depth s2) (depth t2) +
                                  max (depth s3) (depth t3)); 
         try apply WFEBind with k_x1; try apply H24;
+        try apply H12;
+        try apply lem_narrow_subtype_top with s2 k_x1 k_x0 k0 k;
+        try apply H7; 
         try apply lem_narrow_wf_top with s2; try apply H21;
         try apply lem_narrow_wf_top with s1; try apply H18;
-        try apply H12;
-        try apply lem_narrow_subtype_top with s2 k_x1 k_x0;
-        try apply H7; 
         repeat (apply not_elem_union_elim in H9; destruct H9);
         try apply wfenv_unique; trivial. 
     * (* -ANY- SWitn *)  apply SWitn with v_x0; trivial;
@@ -217,12 +217,14 @@ Proof. intros n; induction n.
       assert (t'' = tsubFV y v_x t'') as Ht''
         by (symmetry; apply lem_subFV_notin; 
             try apply lem_free_bound_in_env with g k''; trivial);
-      try rewrite Ht''; try apply lem_subst_subtype_top with t_x;
-      try apply H13;
+      try rewrite Ht''; try apply lem_subst_subtype_top with t_x k' k'';
+      try apply H13; try apply H21;
+      try (apply lem_weaken_wf_top; assumption);
       pose proof (lem_free_bound_in_env g (TExists t_x t'0) k' y H2 Hy') as Hfr;
       simpl in Hfr; destruct Hfr as [Hfr _];
       apply not_elem_union_elim in Hfr as [_ Hfr]; 
-      try apply wfenv_unique; try apply lem_typing_hasftype; trivial. 
+      try apply wfenv_unique; try apply lem_typing_hasftype;
+      destruct k'; try apply WFKind; try apply H25; trivial.
     * (* SPoly SPoly *) subst t'; injection H12 as Hk0 Ht0;
       subst k0; subst t0; subst t; subst t'';
       inversion H1; try inversion H8;
