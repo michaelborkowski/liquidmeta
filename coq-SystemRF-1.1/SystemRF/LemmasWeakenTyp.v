@@ -120,7 +120,9 @@ Proof. apply ( judgments_mutind
     inversion h; auto.
   - (* TSub *) apply TSub with s k; try apply H; try apply lem_weaken_wf;
     try apply H0 with Star k; try apply lem_typing_wf with e; trivial.
-  - (* SBase *) apply SBase with (names_add x (union nms (binds (concatE g g')))); intros;
+  - (* SBase *) 
+    apply SBase 
+      with (names_add x (union (*(union*) nms (*(union nms0 nm1))*) (binds (concatE g g')))); intros;
     apply not_elem_names_add_elim in H; destruct H; 
     apply not_elem_union_elim in H8; destruct H8;
     apply not_elem_concat_elim in H9; destruct H9;
@@ -135,22 +137,34 @@ Proof. apply ( judgments_mutind
       by (inversion H6; try inversion H12; try apply WFKind;
           try (apply WFBase; apply H16 || apply H18); try apply H14;
           try (apply WFVar; apply H16 || apply H20); try apply H18);
+    assert (~ Elem x (binds (concatE g g')));
     try apply not_elem_concat_intro;
     try apply not_elem_union_intro; auto;
-    pose proof fv_unbind_elim as [_ [_ Hfv]];
-    pose proof ftv_unbind_elim as [_ [_ Hftv]];
-    apply lem_free_subset_binds in H6; 
-    unfold free in H6; destruct H6; fold fvP in H6;
-    apply lem_free_subset_binds in H7; 
-    unfold free in H7; destruct H7; fold fvP in H7;
-    pose proof (vbinds_subset (concatE g g'));
-    pose proof (tvbinds_subset (concatE g g'));
-    apply not_elem_subset with (binds (concatE g g'));
-    try apply not_elem_concat_intro;
-    try (apply subset_trans3 with (fvP p1) (vbinds (concatE g g')); assumption);
 
-    auto.
+    apply lem_free_bound_in_env 
+      with (concatE g g') (TRefn b p1) k_t x in H6;
+    apply lem_free_bound_in_env 
+      with (concatE g g') (TRefn b p2) k_t' x in H7;
+    simpl in H6; simpl in H7; trivial;
+    destruct H6; destruct H7;
+    pose proof fv_unbind_elim as [_ [_ Hfv]];
+    pose proof ftv_unbind_elim as [_ [_ Hftv]].
+
+    apply not_elem_subset with (names_add y (fvP p1));
+    try apply not_elem_names_add_intro; try split; auto.
+
+    assert (~ Elem x (ftvP p1)).
+      destruct b; try apply not_elem_names_add_elim in H13;
+      try destruct H13 as [_ H13]; apply H13.
+    apply not_elem_subset with (ftvP p1); apply H15 || apply Hftv.
     
+    apply not_elem_subset with (names_add y (fvP p2));
+    try apply not_elem_names_add_intro; try split; auto.
+
+    assert (~ Elem x (ftvP p2)).
+      destruct b; try apply not_elem_names_add_elim in H14;
+      try destruct H14 as [_ H14]; apply H14.
+    apply not_elem_subset with (ftvP p2); apply H15 || apply Hftv.
   - (* SFunc *) inversion H8; try inversion H1;
     inversion H9; try inversion H16.
     apply SFunc 

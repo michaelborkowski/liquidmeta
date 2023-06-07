@@ -630,11 +630,33 @@ Proof. apply ( judgments_mutind3
     try rewrite lem_remove_cpsubst with th x qs;
     try apply H0;
     try apply lem_remove_var_denote_env with t_x;
-    
-
-
-    auto.
-    
-
-  
-  
+    try rewrite <- lem_binds_env_th 
+      with (concatE (Cons x t_x g) g') th;
+    try apply lem_binds_concat;
+    try apply set_union_intro1; 
+    try apply set_add_intro2;
+    try apply lem_denotesenv_closed 
+      with (concatE (Cons x t_x g) g');
+    try apply lem_denotesenv_substitutable 
+      with (concatE (Cons x t_x g) g');
+    try apply lem_denotesenv_uniqueC
+      with (concatE (Cons x t_x g) g');  auto.
+  - (* IWeakTV *) apply DImp; intros th Hden Hps;
+    inversion H;
+    rewrite lem_remove_cpsubst with th a ps in Hps;
+    try rewrite lem_remove_cpsubst with th a qs;
+    try apply H0;
+    try apply lem_remove_tvar_denote_env with k_a;
+    try rewrite <- lem_binds_env_th 
+      with (concatE (ConsT a k_a g) g') th;
+    try apply lem_binds_concat;
+    try apply set_union_intro1; 
+    try apply set_add_intro2;
+    try apply lem_denotesenv_closed 
+      with (concatE (ConsT a k_a g) g');
+    try apply lem_denotesenv_substitutable 
+      with (concatE (ConsT a k_a g) g');
+    try apply lem_denotesenv_uniqueC
+      with (concatE (ConsT a k_a g) g');  auto.
+  - (* ISub *) apply DImp; intros th Hden Hps;
+    inversion H0.

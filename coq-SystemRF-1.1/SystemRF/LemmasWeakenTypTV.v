@@ -3,6 +3,7 @@ Require Import SystemRF.Names.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.BasicPropsSubstitution.
 Require Import SystemRF.BasicPropsEnvironments.
+Require Import SystemRF.BasicPropsWellFormedness.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.Typing.
 Require Import SystemRF.LemmasWeakenWF.
@@ -136,9 +137,34 @@ Proof. apply ( judgments_mutind
       by (inversion H6; try inversion H12; try apply WFKind;
           try (apply WFBase; apply H16 || apply H18); try apply H14;
           try (apply WFVar; apply H16 || apply H20); try apply H18);
-    pose proof (lem_binds_concat g g'); try destruct H12;
-    try apply not_elem_subset with (union (binds g) (binds g'));
-    try apply not_elem_union_intro; auto.
+    assert (~ Elem a (binds (concatE g g')));
+    try apply not_elem_concat_intro;
+    try apply not_elem_union_intro; auto;
+
+    apply lem_free_bound_in_env 
+      with (concatE g g') (TRefn b p1) k_t a in H6;
+    apply lem_free_bound_in_env 
+      with (concatE g g') (TRefn b p2) k_t' a in H7;
+    simpl in H6; simpl in H7; trivial;
+    destruct H6; destruct H7;
+    pose proof fv_unbind_elim as [_ [_ Hfv]];
+    pose proof ftv_unbind_elim as [_ [_ Hftv]].
+
+    apply not_elem_subset with (names_add y (fvP p1));
+    try apply not_elem_names_add_intro; try split; auto.
+
+    assert (~ Elem a (ftvP p1)).
+      destruct b; try apply not_elem_names_add_elim in H13;
+      try destruct H13 as [_ H13]; apply H13.
+    apply not_elem_subset with (ftvP p1); apply H15 || apply Hftv.
+    
+    apply not_elem_subset with (names_add y (fvP p2));
+    try apply not_elem_names_add_intro; try split; auto.
+
+    assert (~ Elem a (ftvP p2)).
+      destruct b; try apply not_elem_names_add_elim in H14;
+      try destruct H14 as [_ H14]; apply H14.
+    apply not_elem_subset with (ftvP p2); apply H15 || apply Hftv.
   - (* SFunc *) inversion H8; try inversion H1;
     inversion H9; try inversion H16.
     apply SFunc 

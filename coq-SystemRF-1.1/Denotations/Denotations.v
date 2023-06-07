@@ -192,10 +192,8 @@ Proof. intros g th den_g_th; induction den_g_th; simpl;
 
 Inductive DImplies : env -> preds -> preds -> Prop :=
     | DImp : forall (g:env) (ps qs : preds),
-        (forall (th:csub), DenotesEnv g th 
-                                -> closed th -> uniqueC th -> substitutable th
-                                -> PEvalsTrue (cpsubst th ps) 
-                                -> PEvalsTrue (cpsubst th qs) )
+        (forall (th:csub), DenotesEnv g th -> PEvalsTrue (cpsubst th ps) 
+                                           -> PEvalsTrue (cpsubst th qs) )
             -> DImplies g ps qs.
 
 Lemma lem_den_nofv : forall (v:expr) (t:type),
