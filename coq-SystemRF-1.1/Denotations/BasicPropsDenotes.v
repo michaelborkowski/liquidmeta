@@ -396,14 +396,54 @@ Lemma lem_add_var_denote_env :
         -> ~ (in_env x g) -> ~ (in_env x g') 
         (*-> WFEnv (concatE g g')*) (*(WFEnv (concatE (Cons x t_x g) g') )*)
         (*-> Hastype g v_x t_x*)
-        -> EvalsDenotes (ctsubst th t_x) (csubst th v_x)
+        -> Denotes (ctsubst th t_x) (csubst th v_x)
         -> DenotesEnv (concatE g (esubFV x v_x g')) th
-        -> exists th', DenotesEnv (concatE (Cons x t_x g) g') th'.
-Proof. intro g; induction g'; simpl; intros;
-  (*remember H4 as Hevden;*)
-  unfold EvalsDenotes in H4;
-  destruct H4 as [v [Hv [ev_thvx_v den_thtx_v]]].
-  - (* CEmpty *) exists (CCons x v th); apply DExt; trivial.
+        -> exists th', DenotesEnv (concatE (Cons x t_x g) g') th' /\
+                  (forall t, ctsubst th' t = ctsubst th (tsubFV x v_x t)) /\ 
+                  (forall e, csubst th' e = csubst th (subFV x v_x e)).
+Proof. intro g; induction g'; simpl; intros.
+  - (* CEmpty *) exists (CCons x (csubst th v_x) th); repeat split; 
+    try apply DExt; intros; simpl;
+    trivial. pose proof lem_csubst_value.
+
+    -> t_x:Type -> ProofOf(HasType g v_x t_x)
+    -> ProofOf(WFEnv (concatE (Cons x t_x g) g') )
+    -> th':CSub -> ProofOf(DenotesEnv (concatE g (esubFV x v_x g')) th')    
+lem_add_var_csubst g Empty           x v_x_ t_x p_vx_tx p_env_wf zth' den_env'_th' 
+  = case p_env_wf of -- env = Cons x t_x g
+      (WFEBind _ p_g_wf _ _ _ _) -> case (lem_denote_sound_typ g v_x_ t_x p_vx_tx 
+                                                               p_g_wf zth' den_env'_th') of
+        (ValDen _ _ val ev_th'vx_val den_th'tx_val) 
+          -> InsertInCS g Empty x v_x t_x zth' {-th-} 
+                        (CCons x th'vx (zth' ? lem_binds_env_th g zth' den_env'_th'))
+                        (DExt g zth' den_env'_th' x t_x th'vx  den_th'tx_th'vx) eq_func1 eq_func2
+               where
+                 {-@ v_x :: { v_x:Value | Set_sub (fv v_x)  (vbindsC zth') &&
+                                          Set_sub (ftv v_x) (tvbindsC zth') && v_x == v_x_ } @-}
+                 v_x   = v_x_ ? lem_binds_env_th g zth' den_env'_th'
+                              ? lem_fv_subset_binds g v_x_ t_x p_vx_tx p_g_wf
+                              ? lem_csubst_value zth' v_x_
+                              ? lem_den_nofv (csubst zth' v_x_) (ctsubst zth' t_x) -- den_th'tx_th'vx
+                                    (den_th'tx_val ? lem_value_refl (csubst zth' v_x_) val ev_th'vx_val) 
+                 {-@ th'vx :: { v:Value | Set_emp (fv v) && v == csubst zth' v_x } @-}
+                 th'vx :: Expr
+                 th'vx_ = csubst zth' v_x {-? lem_csubst_value zth' v_x -}
+                 th'vx  = th'vx_ ? lem_den_nofv (csubst zth' v_x) (ctsubst zth' t_x) -- den_th'tx_th'vx 
+                                                (den_th'tx_val ? lem_value_refl th'vx_ val ev_th'vx_val) 
+                                 ? lem_den_nobv (csubst zth' v_x) (ctsubst zth' t_x) -- den_th'tx_th'vx 
+                                                (den_th'tx_val ? lem_value_refl th'vx_ val ev_th'vx_val) 
+                 {-@ den_th'tx_th'vx :: ProofOf(Denotes (ctsubst zth' t_x) (csubst zth' v_x)) @-}
+                 den_th'tx_th'vx :: Denotes
+                 den_th'tx_th'vx = den_th'tx_val ? lem_value_refl th'vx val ev_th'vx_val
+        {- @ eq_func1 :: p:Pred -> { pf:Proof | csubst th p == csubst zth' (subFV x v_x_ p) } @-}
+                 eq_func1 :: Expr -> Proof   -- csubst th p
+                 eq_func1 p = () ? lem_csubst_subFV   zth' x v_x  p 
+                                 ? lem_binds_env_th g zth' den_env'_th'
+        {- @ eq_func2 :: t:Type -> { pf:Proof | ctsubst th t == ctsubst zth' (tsubFV x v_x_ t) } @-}
+                 eq_func2 :: Type -> Proof
+                 eq_func2 t = () ? lem_ctsubst_tsubFV zth' x v_x  t
+                                 ? lem_binds_env_th g zth' den_env'_th'
+
   - (* CCons  *) destruct H0;
     apply intersect_names_add_elim_r in H1; destruct H1;
     apply not_elem_names_add_elim in H3; destruct H3;

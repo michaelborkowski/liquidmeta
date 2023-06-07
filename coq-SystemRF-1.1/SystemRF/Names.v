@@ -134,6 +134,21 @@ Proof. unfold Subset; intros; apply set_add_intro;
   apply set_add_elim in H; destruct H;
   try (left; apply H); right; apply set_add_intro1; apply H. Qed.
 
+Lemma subset_add_to_diff : forall (xs ys : names) (y : vname),
+    Subset xs (names_add y ys) -> Subset (diff xs (singleton y)) ys.
+Proof. intros; unfold Subset; intros;
+  apply set_diff_iff in H0; destruct H0;
+  apply H in H0; apply set_add_elim in H0;
+  destruct H0; try subst y; simpl in H1; intuition. Qed.
+
+Lemma subset_diff_to_add : forall (xs ys : names) (y : vname),
+    Subset (diff xs (singleton y)) ys -> Subset xs (names_add y ys).
+Proof. intros; unfold Subset; intros;
+  apply set_add_intro; destruct (x =? y) eqn:X;
+  try apply Nat.eqb_eq in X; try (left; apply X);
+  apply Nat.eqb_neq in X; right; apply H;
+  apply set_diff_iff; split; simpl; intuition. Qed.
+
 Lemma union_empty_l : forall (ys : names), 
     Subset ys (union empty ys) /\ Subset (union empty ys) ys.
 Proof. unfold Subset; split; intros.
