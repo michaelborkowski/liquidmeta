@@ -71,23 +71,23 @@ Proof. intros; rewrite <- (lem_subFV_notin' v y v_y) at 2;
    try apply lem_commute_tsubFV_general; assumption. Qed.
 
 Lemma lem_commute_subFTV_subFV' : (forall (e:expr) (a:vname) (t_a:type) (x:vname) (v:expr),
-    noExists t_a -> isValue v -> ~ Elem x (free t_a)
+    noExists t_a -> ~ Elem x (free t_a)
       -> subFTV a t_a (subFV x v e) = subFV x (subFTV a t_a v) (subFTV a t_a e) ) * ((
   forall (t:type) (a:vname) (t_a:type) (x:vname) (v:expr),
-    noExists t_a -> isValue v -> ~ Elem x (free t_a)
+    noExists t_a -> ~ Elem x (free t_a)
       -> tsubFTV a t_a (tsubFV x v t) = tsubFV x (subFTV a t_a v) (tsubFTV a t_a t) ) * (
   forall (ps:preds) (a:vname) (t_a:type) (x:vname) (v:expr),
-    noExists t_a -> isValue v -> ~ Elem x (free t_a)
+    noExists t_a -> ~ Elem x (free t_a)
       -> psubFTV a t_a (psubFV x v ps) = psubFV x (subFTV a t_a v) (psubFTV a t_a ps) )).
 Proof. apply ( syntax_mutind
   (fun e : expr => forall (a:vname) (t_a:type) (x:vname) (v:expr),
-    noExists t_a -> isValue v -> ~ Elem x (free t_a)
+    noExists t_a -> ~ Elem x (free t_a)
       -> subFTV a t_a (subFV x v e) = subFV x (subFTV a t_a v) (subFTV a t_a e) )
   (fun t : type => forall (a:vname) (t_a:type) (x:vname) (v:expr),
-    noExists t_a -> isValue v -> ~ Elem x (free t_a)
+    noExists t_a -> ~ Elem x (free t_a)
       -> tsubFTV a t_a (tsubFV x v t) = tsubFV x (subFTV a t_a v) (tsubFTV a t_a t)  )
   (fun ps : preds => forall (a:vname) (t_a:type) (x:vname) (v:expr),
-    noExists t_a -> isValue v -> ~ Elem x (free t_a)
+    noExists t_a -> ~ Elem x (free t_a)
       -> psubFTV a t_a (psubFV x v ps) = psubFV x (subFTV a t_a v) (psubFTV a t_a ps) ))
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
@@ -103,36 +103,36 @@ Proof. apply ( syntax_mutind
 
 Lemma lem_commute_subFTV_subFV_general : 
   forall (e:expr) (a:vname) (t_a:type) (x:vname) (v:expr),
-    noExists t_a -> isValue v -> ~ Elem x (free t_a)
+    noExists t_a -> ~ Elem x (free t_a)
       -> subFTV a t_a (subFV x v e) = subFV x (subFTV a t_a v) (subFTV a t_a e).
 Proof. intros; apply lem_commute_subFTV_subFV'; assumption. Qed.
 
 Lemma lem_commute_tsubFTV_tsubFV_general : 
   forall (t:type) (a:vname) (t_a:type) (x:vname) (v:expr),
-    noExists t_a -> isValue v -> ~ Elem x (free t_a)
+    noExists t_a -> ~ Elem x (free t_a)
       -> tsubFTV a t_a (tsubFV x v t) = tsubFV x (subFTV a t_a v) (tsubFTV a t_a t).
 Proof. intros; apply lem_commute_subFTV_subFV'; assumption. Qed.    
 
 
 Lemma lem_commute_subFV_subFTV' : (
   forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+    noExists t_a -> ~ Elem a (ftv v_y) 
       -> subFV y v_y (subFTV a t_a e) = subFTV a (tsubFV y v_y t_a) (subFV y v_y e) ) * ((
   forall (t:type) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+    noExists t_a -> ~ Elem a (ftv v_y) 
       -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a (tsubFV y v_y t_a) (tsubFV y v_y t) ) * (
   forall (ps:preds) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+    noExists t_a -> ~ Elem a (ftv v_y) 
       -> psubFV y v_y (psubFTV a t_a ps) = psubFTV a (tsubFV y v_y t_a) (psubFV y v_y ps) )).
 Proof. apply ( syntax_mutind
   (fun e : expr => forall (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+    noExists t_a -> ~ Elem a (ftv v_y) 
       -> subFV y v_y (subFTV a t_a e) = subFTV a (tsubFV y v_y t_a) (subFV y v_y e) )
   (fun t : type => forall (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+    noExists t_a -> ~ Elem a (ftv v_y) 
       -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a (tsubFV y v_y t_a) (tsubFV y v_y t) )
   (fun ps : preds => forall (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+    noExists t_a -> ~ Elem a (ftv v_y) 
       -> psubFV y v_y (psubFTV a t_a ps) = psubFTV a (tsubFV y v_y t_a) (psubFV y v_y ps) ))
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
@@ -148,59 +148,50 @@ Proof. apply ( syntax_mutind
   
 Lemma lem_commute_subFV_subFTV_general : 
   forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y)
+    noExists t_a -> ~ Elem a (ftv v_y)
       -> subFV y v_y (subFTV a t_a e) = subFTV a (tsubFV y v_y t_a) (subFV y v_y e).
 Proof. intros; apply lem_commute_subFV_subFTV'; assumption. Qed.
   
 Lemma lem_commute_tsubFV_tsubFTV_general : 
   forall (t:type) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y)    
+    noExists t_a -> ~ Elem a (ftv v_y)    
       -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a (tsubFV y v_y t_a) (tsubFV y v_y t).
 Proof. intros; apply lem_commute_subFV_subFTV'; assumption. Qed.
 
 Lemma lem_commute_subFV_subFTV : forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
+    noExists t_a -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
       -> subFV y v_y (subFTV a t_a e) = subFTV a t_a (subFV y v_y e).
 Proof. intros; rewrite <- (lem_tsubFV_notin t_a y v_y) at 2;
    try apply lem_commute_subFV_subFTV_general; assumption. Qed.
 
 Lemma lem_commute_tsubFV_tsubFTV : 
   forall (t:type) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
+    noExists t_a -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
       -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a t_a (tsubFV y v_y t).
 Proof. intros; rewrite <- (lem_tsubFV_notin t_a y v_y) at 2;
    try apply lem_commute_tsubFV_tsubFTV_general; assumption. Qed.
 
 
-
-   
-
 Lemma lem_commute_subFTV' : (
   forall (e:expr) (a:vname) (t_a:type) (a':vname) (t_a':type),
-    noExists t_a -> noExists t_a' -> a' <> a 
-      -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
-      -> subFTV a' t_a' (subFTV a t_a e) = subFTV a t_a (subFTV a' t_a' e) ) * ((
+    noExists t_a -> noExists t_a' -> a' <> a -> ~ Elem a (freeTV t_a') 
+      -> subFTV a' t_a' (subFTV a t_a e) = subFTV a (tsubFTV a' t_a' t_a) (subFTV a' t_a' e) ) * ((
   forall (t:type) (a:vname) (t_a:type) (a':vname) (t_a':type),
-    noExists t_a -> noExists t_a' -> a' <> a 
-      -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
-      -> tsubFTV a' t_a' (tsubFTV a t_a t) = tsubFTV a t_a (tsubFTV a' t_a' t) ) * (
+    noExists t_a -> noExists t_a' -> a' <> a -> ~ Elem a (freeTV t_a') 
+      -> tsubFTV a' t_a' (tsubFTV a t_a t) = tsubFTV a (tsubFTV a' t_a' t_a) (tsubFTV a' t_a' t) ) * (
   forall (ps:preds) (a:vname) (t_a:type) (a':vname) (t_a':type),
-    noExists t_a -> noExists t_a' -> a' <> a 
-      -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
-      -> psubFTV a' t_a' (psubFTV a t_a ps) = psubFTV a t_a (psubFTV a' t_a' ps) )).
+    noExists t_a -> noExists t_a' -> a' <> a -> ~ Elem a (freeTV t_a')
+      -> psubFTV a' t_a' (psubFTV a t_a ps) = psubFTV a (tsubFTV a' t_a' t_a) (psubFTV a' t_a' ps) )).
 Proof. apply ( syntax_mutind
   (fun e : expr => forall (a:vname) (t_a:type) (a':vname) (t_a':type),
-    noExists t_a -> noExists t_a' -> a' <> a 
-      -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
-      -> subFTV a' t_a' (subFTV a t_a e) = subFTV a t_a (subFTV a' t_a' e) )
+    noExists t_a -> noExists t_a' -> a' <> a -> ~ Elem a (freeTV t_a') 
+      -> subFTV a' t_a' (subFTV a t_a e) = subFTV a (tsubFTV a' t_a' t_a) (subFTV a' t_a' e) )
   (fun t : type => forall (a:vname) (t_a:type) (a':vname) (t_a':type),
-    noExists t_a -> noExists t_a' -> a' <> a 
-      -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
-      -> tsubFTV a' t_a' (tsubFTV a t_a t) = tsubFTV a t_a (tsubFTV a' t_a' t) )
+    noExists t_a -> noExists t_a' -> a' <> a -> ~ Elem a (freeTV t_a') 
+      -> tsubFTV a' t_a' (tsubFTV a t_a t) = tsubFTV a (tsubFTV a' t_a' t_a) (tsubFTV a' t_a' t) )
   (fun ps : preds => forall (a:vname) (t_a:type) (a':vname) (t_a':type),
-    noExists t_a -> noExists t_a' -> a' <> a 
-      -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
-      -> psubFTV a' t_a' (psubFTV a t_a ps) = psubFTV a t_a (psubFTV a' t_a' ps) ))
+    noExists t_a -> noExists t_a' -> a' <> a -> ~ Elem a (freeTV t_a') 
+      -> psubFTV a' t_a' (psubFTV a t_a ps) = psubFTV a (tsubFTV a' t_a' t_a) (psubFTV a' t_a' ps) ))
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0; assumption ).
@@ -212,26 +203,39 @@ Proof. apply ( syntax_mutind
       try apply Nat.eqb_eq in Ea; try apply Nat.eqb_eq in Ea';
       try rewrite Ea in H2; try rewrite Ea' in H2; try contradiction;
     try rewrite lem_subFTV_push; try rewrite H; try f_equal;
-    try apply lem_subFTV_notin; try (symmetry; apply lem_subFTV_notin);
+    try apply lemma_tsubFTV_noExists;
+    try (symmetry; apply lem_subFTV_notin);
     try subst a0; trivial.
   Qed.
+
+Lemma lem_commute_subFTV_general : forall (e:expr) (a:vname) (t_a:type) (a':vname) (t_a':type),
+    noExists t_a -> noExists t_a' -> a' <> a -> ~ Elem a (freeTV t_a') 
+      -> subFTV a' t_a' (subFTV a t_a e) = subFTV a (tsubFTV a' t_a' t_a) (subFTV a' t_a' e).
+Proof. intros; apply lem_commute_subFTV'; assumption. Qed.  
+
+Lemma lem_commute_tsubFTV_general : forall (t:type) (a:vname) (t_a:type) (a':vname) (t_a':type),
+    noExists t_a -> noExists t_a' -> a' <> a -> ~ Elem a (freeTV t_a') 
+      -> tsubFTV a' t_a' (tsubFTV a t_a t) = tsubFTV a (tsubFTV a' t_a' t_a) (tsubFTV a' t_a' t).     
+Proof. intros; apply lem_commute_subFTV'; assumption. Qed.  
 
 Lemma lem_commute_subFTV : forall (e:expr) (a:vname) (t_a:type) (a':vname) (t_a':type),
     noExists t_a -> noExists t_a' -> a' <> a 
       -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
       -> subFTV a' t_a' (subFTV a t_a e) = subFTV a t_a (subFTV a' t_a' e).
-Proof. intros; apply lem_commute_subFTV'; assumption. Qed.  
+Proof. intros; rewrite <- (lem_tsubFTV_notin t_a a' t_a') at 2;
+  try apply lem_commute_subFTV'; assumption. Qed.  
 
 Lemma lem_commute_tsubFTV : forall (t:type) (a:vname) (t_a:type) (a':vname) (t_a':type),
     noExists t_a -> noExists t_a' -> a' <> a 
       -> ~ Elem a (freeTV t_a') -> ~ Elem a' (freeTV t_a)
       -> tsubFTV a' t_a' (tsubFTV a t_a t) = tsubFTV a t_a (tsubFTV a' t_a' t).     
-Proof. intros; apply lem_commute_subFTV'; assumption. Qed.  
+Proof. intros; rewrite <- (lem_tsubFTV_notin t_a a' t_a') at 2;
+  try apply lem_commute_subFTV'; assumption. Qed.  
 
   (* -- | Closing Substitution Properties *)
 
 Lemma lem_unroll_csubst_left : forall (th:csub) (x:vname) (v_x e:expr),
-    ~ in_csubst x th -> fv v_x = empty /\ ftv v_x = empty -> isValue v_x
+    ~ in_csubst x th -> fv v_x = empty /\ ftv v_x = empty (*-> isValue v_x*)
         -> closed th -> substitutable th
         -> csubst (CCons x v_x th) e = subFV x v_x (csubst th e).
 Proof. induction th; intros; simpl; try reflexivity;
@@ -239,33 +243,33 @@ Proof. induction th; intros; simpl; try reflexivity;
   apply not_elem_names_add_elim in H; destruct H.
   - (* CCons *) rewrite <- IHth; simpl; try apply f_equal;
     try apply lem_commute_subFV; 
-    simpl in H2; simpl in H3; try apply H0;
-    destruct H0; destruct H2; destruct H6; destruct H3;
-    try rewrite H0; try rewrite H2; intuition.
+    simpl in H2; simpl in H1; try apply H0;
+    destruct H0; destruct H2; destruct H1; destruct H6;
+    try rewrite H0; try rewrite H1; intuition.
   - (* CConsT *) rewrite <- IHth; simpl; try apply f_equal;
     try symmetry; try apply lem_commute_subFV_subFTV;
-    simpl in H2; simpl in H3; try apply H0;
-    destruct H0; destruct H2; destruct H6; destruct H3;
-    try rewrite H2; try rewrite H5; intuition.
+    simpl in H2; simpl in H1; try apply H0;
+    destruct H0; destruct H1; destruct H5;
+    try rewrite H1; try rewrite H4; intuition.
   Qed.
     
 Lemma lem_unroll_ctsubst_left : forall (th:csub) (x:vname) (v_x:expr) (t:type),
-    ~ in_csubst x th -> fv v_x = empty /\ ftv v_x = empty -> isValue v_x
+    ~ in_csubst x th -> fv v_x = empty /\ ftv v_x = empty (*-> isValue v_x*)
         -> closed th -> substitutable th
         -> ctsubst (CCons x v_x th) t = tsubFV x v_x (ctsubst th t).
 Proof. induction th; intros; simpl; try reflexivity;
   unfold in_csubst in H; simpl in H; 
   apply not_elem_names_add_elim in H; destruct H.
   - (* CCons *) rewrite <- IHth; simpl; try apply f_equal;
-    try apply lem_commute_tsubFV; 
-    simpl in H2; simpl in H3; try apply H0;
-    destruct H0; destruct H2; destruct H6; destruct H3;
-    try rewrite H0; try rewrite H2; intuition.
+    try apply lem_commute_tsubFV;
+    simpl in H1; simpl in H2; try apply H0;
+    destruct H0; destruct H1; 
+    try rewrite H0; try rewrite H1; intuition.
   - (* CConsT *) rewrite <- IHth; simpl; try apply f_equal;
     try symmetry; try apply lem_commute_tsubFV_tsubFTV;
-    simpl in H2; simpl in H3; try apply H0;
-    destruct H0; destruct H2; destruct H6; destruct H3;
-    try rewrite H2; try rewrite H5; intuition.
+    simpl in H1; simpl in H2; try apply H0;
+    destruct H0; destruct H1;
+    try rewrite H1; try rewrite H4; intuition.
   Qed.       
 
 Lemma lem_unroll_ctsubst_tv_left : forall (th:csub) (a:vname) (t_a t:type),
@@ -772,7 +776,7 @@ Proof. induction th; simpl; intros.
     apply subset_add_to_diff; apply H0.
   Qed.
 
-Lemma lem_cstubst_no_more_fv : forall (th:csub) (t:type),
+Lemma lem_ctsubst_no_more_fv : forall (th:csub) (t:type),
     Subset (free t) (vbindsC th) -> Subset (freeTV t) (tvbindsC th)
         -> closed th -> substitutable th
         -> free (ctsubst th t) = empty /\ freeTV (ctsubst th t) = empty.
@@ -846,9 +850,33 @@ Proof. induction th as [|y v_y th|a t_a th]; simpl; intros x v_x; intros.
   - (* CConsT *) apply not_elem_names_add_elim in H; destruct H;
     destruct H0; destruct H1; destruct H2; destruct H6;
     destruct H7; fold bindsC in H5.
-    rewrite <- lem_commute_subFV_subFTV; try rewrite IHth.
-
-    try rewrite <- (lem_commute_subFV_general e x v_x y v_y);
+    rewrite <- lem_commute_subFV_subFTV; try rewrite IHth;
+    try rewrite <- lem_commute_subFTV_subFV_general;
+    try (apply empty_no_elem; apply H0);
+    pose proof fv_subFTV_elim as [Hfv _];
+    pose proof ftv_subFTV_elim as [Hftv _];
+    assert (Subset (fv (subFTV a t_a v_x)) (vbindsC th))
+      by (apply subset_trans with (union (fv v_x) (free t_a));
+          try apply Hfv; try rewrite H0; try apply subset_union_intro_l;
+          try apply subset_empty_l; auto);
+    assert (Subset (ftv (subFTV a t_a v_x)) (tvbindsC th))
+      by (apply subset_trans with (union (diff (ftv v_x) (singleton a)) (freeTV t_a));
+          try apply Hftv; try rewrite H6; try apply subset_union_intro_l;
+          try apply subset_empty_l; try apply subset_add_to_diff; auto);
+    pose proof (lem_csubst_no_more_fv th (subFTV a t_a v_x));
+    apply H13 in H10 as H13'; try destruct H13'; try rewrite H15; auto.
+  Qed.
+   
+Lemma lem_ctsubst_tsubFV : forall (th:csub) (x:vname) (v_x:expr) (t:type), 
+    ~ (in_csubst x th) -> closed th -> substitutable th -> uniqueC th
+        -> Subset (fv v_x) (vbindsC th) -> Subset (ftv v_x) (tvbindsC th)
+        -> ctsubst th (tsubFV x (csubst th v_x) t) = ctsubst th (tsubFV x v_x t).
+Proof. induction th as [|y v_y th|a t_a th]; simpl; intros x v_x; intros.
+  - (* CEmpty *) reflexivity.
+  - (* CCons  *) apply not_elem_names_add_elim in H; destruct H;
+    destruct H0; destruct H1; destruct H2; destruct H6. fold bindsC in H5. 
+    rewrite lem_commute_tsubFV; try rewrite IHth;
+    try rewrite <- (lem_commute_tsubFV_general t x v_x y v_y);
     try (apply empty_no_elem; apply H0);
     pose proof fv_subFV_elim as [Hfv _];
     pose proof ftv_subFV_elim as [Hftv _];
@@ -862,120 +890,122 @@ Proof. induction th as [|y v_y th|a t_a th]; simpl; intros x v_x; intros.
           try apply subset_empty_l; auto);
     pose proof (lem_csubst_no_more_fv th (subFV y v_y v_x));
     apply H12 in H7 as H12'; try destruct H12'; try rewrite H13; auto.
-   
-  
-lem_csubst_subFV  (CConsT a t_a th) x v_x e
-    = () ? lem_commute_subFTV_subFV x (csubst (CConsT a t_a th) v_x ? lem_csubst_value (CConsT a t_a th) v_x)
-                            a t_a e
-         ? lem_csubst_no_more_fv (CConsT a t_a th) v_x
-         ? lem_subFTV_notin a t_a (csubst (CConsT a t_a th) v_x)
-         ? lem_csubst_subFV th x (subFTV a t_a v_x) (subFTV a t_a e)
-         ? lem_commute_subFTV_subFV x v_x a t_a e
-    
-{-@ lem_ctsubst_tsubFV :: th:csub -> { x:vname | not (in_csubst x th) } 
-        -> { v_x:Value | Set_sub (fv v_x) (vbindsC th) && Set_sub (ftv v_x) (tvbindsC th) } -> t:type
-        -> { pf:_ | ctsubst th (tsubFV x v_x t) == ctsubst th (tsubFV x (csubst th v_x) t) } @-}
-lem_ctsubst_tsubFV :: csub -> vname -> expr -> type -> Proof
-lem_ctsubst_tsubFV  CEmpty            x v_x t = ()
-lem_ctsubst_tsubFV  (CCons y v_y th)  x v_x t 
-  = () -- ? toProof (
---        ctsubst (CCons y v_y th) (tsubFV x (csubst (CCons y v_y th) v_x) t)
---    === ctsubst th (tsubFV y v_y (tsubFV x (csubst (CCons y v_y th) v_x) t))
-        ? lem_commute_tsubFV x (csubst (CCons y v_y th) v_x ? lem_csubst_value (CCons y v_y th) v_x) 
-                             y v_y t
---    === ctsubst th (tsubFV x (subFV y v_y (csubst (CCons y v_y th) v_x)) (tsubFV y v_y t))   
-        ? lem_csubst_no_more_fv (CCons y v_y th) v_x
-        ? lem_subFV_notin y v_y (csubst (CCons y v_y th) v_x)
---    === ctsubst th (tsubFV x (csubst (CCons y v_y th) v_x) (tsubFV y v_y t))
---    === ctsubst th (tsubFV x (csubst th (subFV y v_y v_x)) (tsubFV y v_y t))
-        ? lem_ctsubst_tsubFV th x (subFV y v_y v_x) (tsubFV y v_y t)
---    === ctsubst th (tsubFV x (subFV y v_y v_x) (tsubFV y v_y t))
-        ? lem_commute_tsubFV x v_x y v_y t 
---    === ctsubst th (tsubFV y v_y (tsubFV x v_x t))
---    === ctsubst (CCons y v_y th) (tsubFV x v_x t) )
-lem_ctsubst_tsubFV  (CConsT a t_a th) x v_x t 
-    = () ? lem_commute_tsubFTV_tsubFV x 
-                   (csubst (CConsT a t_a th) v_x ? lem_csubst_value (CConsT a t_a th) v_x)
-                   a t_a t
-         ? lem_csubst_no_more_fv (CConsT a t_a th) v_x
-         ? lem_subFTV_notin a t_a (csubst (CConsT a t_a th) v_x)
-         ? lem_ctsubst_tsubFV th x (subFTV a t_a v_x) (tsubFTV a t_a t)
-         ? lem_commute_tsubFTV_tsubFV x v_x a t_a t
+  - (* CConsT *) apply not_elem_names_add_elim in H; destruct H;
+    destruct H0; destruct H1; destruct H2; destruct H6;
+    destruct H7; fold bindsC in H5.
+    rewrite <- lem_commute_tsubFV_tsubFTV; try rewrite IHth;
+    try rewrite <- lem_commute_tsubFTV_tsubFV_general;
+    try (apply empty_no_elem; apply H0);
+    pose proof fv_subFTV_elim as [Hfv _];
+    pose proof ftv_subFTV_elim as [Hftv _];
+    assert (Subset (fv (subFTV a t_a v_x)) (vbindsC th))
+      by (apply subset_trans with (union (fv v_x) (free t_a));
+          try apply Hfv; try rewrite H0; try apply subset_union_intro_l;
+          try apply subset_empty_l; auto);
+    assert (Subset (ftv (subFTV a t_a v_x)) (tvbindsC th))
+      by (apply subset_trans with (union (diff (ftv v_x) (singleton a)) (freeTV t_a));
+          try apply Hftv; try rewrite H6; try apply subset_union_intro_l;
+          try apply subset_empty_l; try apply subset_add_to_diff; auto);
+    pose proof (lem_csubst_no_more_fv th (subFTV a t_a v_x));
+    apply H13 in H10 as H13'; try destruct H13'; try rewrite H15; auto.
+  Qed.        
 
-{-@ lem_csubst_subFTV :: th:csub -> { a:vname | not (in_csubst a th) } 
-        -> { t_a:UserType | Set_sub (free t_a) (vbindsC th) && Set_sub (freeTV t_a) (tvbindsC th) } 
-        -> e:expr -> { pf:_ | csubst th (subFTV a t_a e) == csubst th (subFTV a (ctsubst th t_a) e) } @-}
-lem_csubst_subFTV :: csub -> vname -> type -> expr -> Proof
-lem_csubst_subFTV  CEmpty            a t_a e = ()
-lem_csubst_subFTV  (CCons y v_y th)  a t_a e 
-  = ()  ? lem_commute_subFV_subFTV a (ctsubst (CCons y v_y th) t_a 
-                                         ? lem_ctsubst_usertype (CCons y v_y th) t_a) y v_y e
-        ? lem_ctsubst_no_more_fv (CCons y v_y th) t_a
-        ? lem_tsubFV_notin y v_y (ctsubst (CCons y v_y th) t_a)
-        ? lem_csubst_subFTV th a (tsubFV y v_y t_a) (subFV y v_y e)
-        ? lem_commute_subFV_subFTV a t_a y v_y e 
-lem_csubst_subFTV  (CConsT a' t_a' th) a t_a e
-    = () ? lem_commute_subFTV a (ctsubst (CConsT a' t_a' th) t_a
-                                    ? lem_ctsubst_usertype (CConsT a' t_a' th) t_a) a' t_a' e
-         ? lem_ctsubst_no_more_fv (CConsT a' t_a' th) t_a
-         ? lem_tsubFTV_notin a' t_a' (ctsubst (CConsT a' t_a' th) t_a)
-         ? lem_csubst_subFTV th a (tsubFTV a' t_a' t_a) (subFTV a' t_a' e)
-         ? lem_commute_subFTV a t_a a' t_a' e
-    
-{-@ lem_ctsubst_tsubFTV :: th:csub -> { a:vname | not (in_csubst a th) } 
-        -> { t_a:UserType | Set_sub (free t_a) (vbindsC th) && Set_sub (freeTV t_a) (tvbindsC th) } 
-        -> t:type -> {pf:_ | ctsubst th (tsubFTV a t_a t) == ctsubst th (tsubFTV a (ctsubst th t_a) t)} @-}
-lem_ctsubst_tsubFTV :: csub -> vname -> type -> type -> Proof
-lem_ctsubst_tsubFTV  CEmpty            a t_a t = ()
-lem_ctsubst_tsubFTV  (CCons y v_y th)  a t_a t 
-  = ()  ? lem_commute_tsubFV_tsubFTV a (ctsubst (CCons y v_y th) t_a 
-                                         ? lem_ctsubst_usertype (CCons y v_y th) t_a) y v_y t
-        ? lem_ctsubst_no_more_fv (CCons y v_y th) t_a
-        ? lem_tsubFV_notin y v_y (ctsubst (CCons y v_y th) t_a)
-        ? lem_ctsubst_tsubFTV th a (tsubFV y v_y t_a) (tsubFV y v_y t)
-        ? lem_commute_tsubFV_tsubFTV a t_a y v_y t 
-lem_ctsubst_tsubFTV  (CConsT a' t_a' th) a t_a t 
-    = () ? lem_commute_tsubFTV a (ctsubst (CConsT a' t_a' th) t_a
-                                    ? lem_ctsubst_usertype (CConsT a' t_a' th) t_a) a' t_a' t
-         ? lem_ctsubst_no_more_fv (CConsT a' t_a' th) t_a
-         ? lem_tsubFTV_notin a' t_a' (ctsubst (CConsT a' t_a' th) t_a)
-         ? lem_ctsubst_tsubFTV th a (tsubFTV a' t_a' t_a) (tsubFTV a' t_a' t)
-         ? lem_commute_tsubFTV a t_a a' t_a' t
-*)
+Lemma lem_csubst_subFTV : forall (th:csub) (a:vname) (t_a:type) (e:expr), 
+    ~ (in_csubst a th) -> noExists t_a -> closed th -> substitutable th -> uniqueC th
+        -> Subset (free t_a) (vbindsC th) -> Subset (freeTV t_a) (tvbindsC th)
+        -> csubst th (subFTV a (ctsubst th t_a) e) = csubst th (subFTV a t_a e).
+Proof. induction th as [|y v_y th|a' t_a' th]; simpl; intros a t_a; intros.
+  - (* CEmpty *) reflexivity.
+  - (* CCons  *) apply not_elem_names_add_elim in H; destruct H;
+    destruct H3; destruct H1; destruct H2; destruct H8. fold bindsC in H6. 
+    rewrite lem_commute_subFV_subFTV; try rewrite IHth;
+    try rewrite <- (lem_commute_subFV_subFTV_general e a t_a y v_y);
+    try (apply empty_no_elem; apply H8);
+    pose proof fv_subFV_elim as [_ [Hfv _]];
+    pose proof ftv_subFV_elim as [_ [Hftv _]];
+    assert (Subset (free (tsubFV y v_y t_a)) (vbindsC th))
+      by (apply subset_trans with (union (diff (free t_a) (singleton y)) (fv v_y));
+          try apply Hfv; rewrite H1; apply subset_union_intro_l;
+          try apply subset_empty_l; apply subset_add_to_diff; auto);
+    assert (Subset (freeTV (tsubFV y v_y t_a)) (tvbindsC th))
+      by (apply subset_trans with (union (freeTV t_a) (ftv v_y));
+          try apply Hftv; rewrite H8; apply subset_union_intro_l;
+          try apply subset_empty_l; auto);
+    pose proof (lem_ctsubst_no_more_fv th (tsubFV y v_y t_a));
+    try apply lem_ctsubst_noExists;
+    try apply lemma_tsubFV_noExists;
+    apply H13 in H9 as H13'; try destruct H13'; try rewrite H14; auto.
+  - (* CConsT *) apply not_elem_names_add_elim in H; destruct H;
+    destruct H1; destruct H2; destruct H3; destruct H7;
+    destruct H8; fold bindsC in H6.
+    rewrite <- lem_commute_subFTV; try rewrite IHth;
+    try rewrite <- lem_commute_subFTV_general;
+    try (apply empty_no_elem; apply H7);
+    pose proof fv_subFTV_elim as [_ [Hfv _]];
+    pose proof ftv_subFTV_elim as [_ [Hftv _]];
+    assert (Subset (free (tsubFTV a' t_a' t_a)) (vbindsC th))
+      by (apply subset_trans with (union (free t_a) (free t_a'));
+          try apply Hfv; try rewrite H1; try apply subset_union_intro_l;
+          try apply subset_empty_l; auto);
+    assert (Subset (freeTV (tsubFTV a' t_a' t_a)) (tvbindsC th))
+      by (apply subset_trans with (union (diff (freeTV t_a) (singleton a')) (freeTV t_a'));
+          try apply Hftv; try rewrite H7; try apply subset_union_intro_l;
+          try apply subset_empty_l; try apply subset_add_to_diff; auto);
+    pose proof (lem_ctsubst_no_more_fv th (tsubFTV a' t_a' t_a));
+    try apply lem_ctsubst_noExists;
+    try apply lemma_tsubFTV_noExists;
+    apply H14 in H11 as H14'; try destruct H14'; try rewrite H16; auto.
+  Qed.
+
+Lemma lem_ctsubst_tsubFTV : forall (th:csub) (a:vname) (t_a t:type), 
+    ~ (in_csubst a th) -> noExists t_a -> closed th -> substitutable th -> uniqueC th
+        -> Subset (free t_a) (vbindsC th) -> Subset (freeTV t_a) (tvbindsC th)
+        -> ctsubst th (tsubFTV a (ctsubst th t_a) t) = ctsubst th (tsubFTV a t_a t).
+Proof. induction th as [|y v_y th|a' t_a' th]; simpl; intros a t_a; intros.
+  - (* CEmpty *) reflexivity.
+  - (* CCons  *) apply not_elem_names_add_elim in H; destruct H;
+    destruct H3; destruct H1; destruct H2; destruct H8. fold bindsC in H6. 
+    rewrite lem_commute_tsubFV_tsubFTV; try rewrite IHth;
+    try rewrite <- (lem_commute_tsubFV_tsubFTV_general t a t_a y v_y);
+    try (apply empty_no_elem; apply H8);
+    pose proof fv_subFV_elim as [_ [Hfv _]];
+    pose proof ftv_subFV_elim as [_ [Hftv _]];
+    assert (Subset (free (tsubFV y v_y t_a)) (vbindsC th))
+      by (apply subset_trans with (union (diff (free t_a) (singleton y)) (fv v_y));
+          try apply Hfv; rewrite H1; apply subset_union_intro_l;
+          try apply subset_empty_l; apply subset_add_to_diff; auto);
+    assert (Subset (freeTV (tsubFV y v_y t_a)) (tvbindsC th))
+      by (apply subset_trans with (union (freeTV t_a) (ftv v_y));
+          try apply Hftv; rewrite H8; apply subset_union_intro_l;
+          try apply subset_empty_l; auto);
+    pose proof (lem_ctsubst_no_more_fv th (tsubFV y v_y t_a));
+    try apply lem_ctsubst_noExists;
+    try apply lemma_tsubFV_noExists;
+    apply H13 in H9 as H13'; try destruct H13'; try rewrite H14; auto.
+  - (* CConsT *) apply not_elem_names_add_elim in H; destruct H;
+    destruct H1; destruct H2; destruct H3; destruct H7;
+    destruct H8; fold bindsC in H6.
+    rewrite <- lem_commute_tsubFTV; try rewrite IHth;
+    try rewrite <- lem_commute_tsubFTV_general;
+    try (apply empty_no_elem; apply H7);
+    pose proof fv_subFTV_elim as [_ [Hfv _]];
+    pose proof ftv_subFTV_elim as [_ [Hftv _]];
+    assert (Subset (free (tsubFTV a' t_a' t_a)) (vbindsC th))
+      by (apply subset_trans with (union (free t_a) (free t_a'));
+          try apply Hfv; try rewrite H1; try apply subset_union_intro_l;
+          try apply subset_empty_l; auto);
+    assert (Subset (freeTV (tsubFTV a' t_a' t_a)) (tvbindsC th))
+      by (apply subset_trans with (union (diff (freeTV t_a) (singleton a')) (freeTV t_a'));
+          try apply Hftv; try rewrite H7; try apply subset_union_intro_l;
+          try apply subset_empty_l; try apply subset_add_to_diff; auto);
+    pose proof (lem_ctsubst_no_more_fv th (tsubFTV a' t_a' t_a));
+    try apply lem_ctsubst_noExists;
+    try apply lemma_tsubFTV_noExists;
+    apply H14 in H11 as H14'; try destruct H14'; try rewrite H16; auto.
+  Qed.
+
 
 (*  --- Closing Substitutions and Technical Operations *)
-(*
---        -> { e:expr | Set_sub (fv e) (bindsC th) && not (Set_mem x (fv e)) }
-{-@ lem_remove_csubst :: th:csub -> { x:vname | v_in_csubst x th}
-        -> { e:expr | not (Set_mem x (fv e)) }
-        -> { pf:Proof | csubst th e == csubst (remove_fromCS th x) e } @-}
-lem_remove_csubst :: csub -> vname -> expr -> Proof
-lem_remove_csubst (CCons z v_z th) x e = case ( x == z ) of
-  (True)  -> () ? lem_subFV_notin x v_z e
-                  {- ? toProof ( csubst (remove_fromCS (CCons x v_z th) x) e
-                   === csubst th e  
-                   === csubst th (subFV x v_z e)
-                   === csubst (CCons x v_z th) e) -}
-  (False) -> () {- toProof ( csubst (remove_fromCS (CCons z v_z th) x) e
-                   === csubst (CCons z v_z (remove_fromCS th x)) e-}
-                     ? lem_remove_csubst th x (subFV z v_z e)
-                {-   === csubst (CCons z v_z th) e )-}
-lem_remove_csubst (CConsT a t_a th) x e = case ( x == a ) of
-   (False) -> () ? lem_remove_csubst th x (subFTV a t_a e)
-
-{-@ lem_remove_tv_csubst :: th:csub -> { a:vname | tv_in_csubst a th}
-        -> { e:expr | not (Set_mem a (ftv e)) }
-        -> { pf:Proof | csubst th e == csubst (remove_fromCS th a) e } @-}
-lem_remove_tv_csubst :: csub -> vname -> expr -> Proof
-lem_remove_tv_csubst (CCons z v_z th) a e = case ( a == z ) of
-  (False) -> () {- toProof ( csubst (remove_fromCS (CCons z v_z th) x) e
-                   === csubst (CCons z v_z (remove_fromCS th x)) e-}
-                     ? lem_remove_tv_csubst th a (subFV z v_z e)
-                {-   === csubst (CCons z v_z th) e )-}
-lem_remove_tv_csubst (CConsT a' t_a th) a e = case ( a == a' ) of
-   (True)  -> () ? lem_subFTV_notin a t_a e
-   (False) -> () ? lem_remove_tv_csubst th a (subFTV a' t_a e)
-*)
 
 Lemma lem_remove_not_incsubst : forall (th:csub) (x:vname),
     ~ in_csubst x th -> remove_fromCS th x = th.

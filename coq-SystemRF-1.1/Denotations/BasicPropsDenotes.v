@@ -125,6 +125,19 @@ Proof. intro a; induction g; intros; simpl in H1.
       exists t_a; simpl; repeat split; auto.
   Qed.
 
+Lemma lem_fv_subset_bindsC : forall (th:csub) (t_x:type) (v_x:expr),
+    closed th -> substitutable th -> Denotes (ctsubst th t_x) (csubst th v_x)
+        -> Subset (fv v_x) (vbindsC th) /\ Subset (ftv v_x) (tvbindsC th).
+Proof. induction th; simpl; intros.
+  - (* CEmpty *) pose proof (lem_den_nofv v_x t_x H1); split; destruct H2; 
+    try rewrite H2; try rewrite H3; apply subset_empty_l.
+  - (* CCons  *) apply IHth in H1 as IH; try split;
+    destruct H; destruct H0; destruct H2; try destruct IH;
+    
+    auto.
+    pose 
+    pose ftv_subFV_elim.
+
 (*
 Lemma get_wftype_from_denv : forall (g:env) (th:csub) (a:vname),
     DenotesEnv g th
@@ -404,7 +417,22 @@ Lemma lem_add_var_denote_env :
 Proof. intro g; induction g'; simpl; intros.
   - (* CEmpty *) exists (CCons x (csubst th v_x) th); repeat split; 
     try apply DExt; intros; simpl;
-    trivial. pose proof lem_csubst_value.
+    try apply lem_csubst_subFV;
+    try apply lem_ctsubst_tsubFV;
+    
+    unfold in_csubst; try rewrite <- lem_binds_env_th with g th;
+    
+    try apply lem_denotesenv_closed with g;
+    try apply lem_denotesenv_substitutable with g;
+    try apply lem_denotesenv_uniqueC with g;
+    trivial.
+
+    
+    pose  lem_den_nofv.
+    pose  lem_csubst_no_more_fv.
+
+    pose fv_sub
+    
 
     -> t_x:Type -> ProofOf(HasType g v_x t_x)
     -> ProofOf(WFEnv (concatE (Cons x t_x g) g') )
