@@ -113,27 +113,27 @@ Lemma lem_commute_tsubFTV_tsubFV_general :
       -> tsubFTV a t_a (tsubFV x v t) = tsubFV x (subFTV a t_a v) (tsubFTV a t_a t).
 Proof. intros; apply lem_commute_subFTV_subFV'; assumption. Qed.    
 
-(* !!!!!!!!!!!! continue the "general" pattern on the next two !!!!!!!!!!!!! *)
 
-Lemma lem_commute_subFV_subFTV' : (forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
-      -> subFV y v_y (subFTV a t_a e) = subFTV a t_a (subFV y v_y e) ) * ((
+Lemma lem_commute_subFV_subFTV' : (
+  forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+      -> subFV y v_y (subFTV a t_a e) = subFTV a (tsubFV y v_y t_a) (subFV y v_y e) ) * ((
   forall (t:type) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
-      -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a t_a (tsubFV y v_y t) ) * (
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+      -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a (tsubFV y v_y t_a) (tsubFV y v_y t) ) * (
   forall (ps:preds) (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
-      -> psubFV y v_y (psubFTV a t_a ps) = psubFTV a t_a (psubFV y v_y ps) )).
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+      -> psubFV y v_y (psubFTV a t_a ps) = psubFTV a (tsubFV y v_y t_a) (psubFV y v_y ps) )).
 Proof. apply ( syntax_mutind
   (fun e : expr => forall (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
-      -> subFV y v_y (subFTV a t_a e) = subFTV a t_a (subFV y v_y e) )
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+      -> subFV y v_y (subFTV a t_a e) = subFTV a (tsubFV y v_y t_a) (subFV y v_y e) )
   (fun t : type => forall (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
-      -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a t_a (tsubFV y v_y t) )
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+      -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a (tsubFV y v_y t_a) (tsubFV y v_y t) )
   (fun ps : preds => forall (a:vname) (t_a:type) (y:vname) (v_y:expr),
-    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
-      -> psubFV y v_y (psubFTV a t_a ps) = psubFTV a t_a (psubFV y v_y ps) ))
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) 
+      -> psubFV y v_y (psubFTV a t_a ps) = psubFTV a (tsubFV y v_y t_a) (psubFV y v_y ps) ))
   ; intros; simpl; try reflexivity
   ; (* 1 IH *) try ( apply f_equal; apply H; assumption)
   ; (* 2 IH *) try ( apply f_equal2; apply H || apply H0; assumption ).
@@ -144,18 +144,36 @@ Proof. apply ( syntax_mutind
   - (* TRefn *) destruct b eqn:Eb; simpl; try rewrite H; trivial.
     destruct (a =? a0); simpl; try rewrite lem_subFV_push;
     try rewrite H; try f_equal; try apply lem_subFV_notin; trivial.
-  Qed. 
+  Qed.
+  
+Lemma lem_commute_subFV_subFTV_general : 
+  forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y)
+      -> subFV y v_y (subFTV a t_a e) = subFTV a (tsubFV y v_y t_a) (subFV y v_y e).
+Proof. intros; apply lem_commute_subFV_subFTV'; assumption. Qed.
+  
+Lemma lem_commute_tsubFV_tsubFTV_general : 
+  forall (t:type) (a:vname) (t_a:type) (y:vname) (v_y:expr),
+    noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y)    
+      -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a (tsubFV y v_y t_a) (tsubFV y v_y t).
+Proof. intros; apply lem_commute_subFV_subFTV'; assumption. Qed.
 
 Lemma lem_commute_subFV_subFTV : forall (e:expr) (a:vname) (t_a:type) (y:vname) (v_y:expr),
     noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
       -> subFV y v_y (subFTV a t_a e) = subFTV a t_a (subFV y v_y e).
-Proof.  intros; apply lem_commute_subFV_subFTV'; assumption. Qed.
+Proof. intros; rewrite <- (lem_tsubFV_notin t_a y v_y) at 2;
+   try apply lem_commute_subFV_subFTV_general; assumption. Qed.
 
 Lemma lem_commute_tsubFV_tsubFTV : 
   forall (t:type) (a:vname) (t_a:type) (y:vname) (v_y:expr),
     noExists t_a -> isValue v_y -> ~ Elem a (ftv v_y) -> ~ Elem y (free t_a)
       -> tsubFV y v_y (tsubFTV a t_a t) = tsubFTV a t_a (tsubFV y v_y t).
-Proof.  intros; apply lem_commute_subFV_subFTV'; assumption. Qed.
+Proof. intros; rewrite <- (lem_tsubFV_notin t_a y v_y) at 2;
+   try apply lem_commute_tsubFV_tsubFTV_general; assumption. Qed.
+
+
+
+   
 
 Lemma lem_commute_subFTV' : (
   forall (e:expr) (a:vname) (t_a:type) (a':vname) (t_a':type),
