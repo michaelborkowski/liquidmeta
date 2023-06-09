@@ -10,6 +10,7 @@ Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.BasicPropsWellFormedness.
 Require Import SystemRF.Typing.
 Require Import SystemRF.LemmasWellFormedness.
+Require Import SystemRF.LemmasTyping.
 Require Import SystemRF.LemmasTransitive.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
@@ -124,19 +125,6 @@ Proof. intro a; induction g; intros; simpl in H1.
       destruct H5 as [t_a [Hta [Hta' Hta'']]];
       exists t_a; simpl; repeat split; auto.
   Qed.
-
-Lemma lem_fv_subset_bindsC : forall (th:csub) (t_x:type) (v_x:expr),
-    closed th -> substitutable th -> Denotes (ctsubst th t_x) (csubst th v_x)
-        -> Subset (fv v_x) (vbindsC th) /\ Subset (ftv v_x) (tvbindsC th).
-Proof. induction th; simpl; intros.
-  - (* CEmpty *) pose proof (lem_den_nofv v_x t_x H1); split; destruct H2; 
-    try rewrite H2; try rewrite H3; apply subset_empty_l.
-  - (* CCons  *) apply IHth in H1 as IH; try split;
-    destruct H; destruct H0; destruct H2; try destruct IH;
-    
-    auto.
-    pose 
-    pose ftv_subFV_elim.
 
 (*
 Lemma get_wftype_from_denv : forall (g:env) (th:csub) (a:vname),
@@ -406,9 +394,9 @@ Lemma lem_add_var_denote_env :
   forall (g g':env) (x:vname) (v_x:expr) (t_x:type) (th:csub),
     unique g -> unique g'
         -> intersect (binds g) (binds g') = empty
-        -> ~ (in_env x g) -> ~ (in_env x g') 
+        -> ~ (in_env x g) -> ~ (in_env x g') -> WFEnv g
         (*-> WFEnv (concatE g g')*) (*(WFEnv (concatE (Cons x t_x g) g') )*)
-        (*-> Hastype g v_x t_x*)
+        -> Hastype g v_x t_x 
         -> Denotes (ctsubst th t_x) (csubst th v_x)
         -> DenotesEnv (concatE g (esubFV x v_x g')) th
         -> exists th', DenotesEnv (concatE (Cons x t_x g) g') th' /\
@@ -419,70 +407,31 @@ Proof. intro g; induction g'; simpl; intros.
     try apply DExt; intros; simpl;
     try apply lem_csubst_subFV;
     try apply lem_ctsubst_tsubFV;
-    
     unfold in_csubst; try rewrite <- lem_binds_env_th with g th;
-    
+    try rewrite <- lem_vbinds_env_th with g th;
+    try rewrite <- lem_tvbinds_env_th with g th;
+    try apply lem_fv_subset_binds with t_x;
     try apply lem_denotesenv_closed with g;
     try apply lem_denotesenv_substitutable with g;
-    try apply lem_denotesenv_uniqueC with g;
-    trivial.
-
-    
-    pose  lem_den_nofv.
-    pose  lem_csubst_no_more_fv.
-
-    pose fv_sub
-    
-
-    -> t_x:Type -> ProofOf(HasType g v_x t_x)
-    -> ProofOf(WFEnv (concatE (Cons x t_x g) g') )
-    -> th':CSub -> ProofOf(DenotesEnv (concatE g (esubFV x v_x g')) th')    
-lem_add_var_csubst g Empty           x v_x_ t_x p_vx_tx p_env_wf zth' den_env'_th' 
-  = case p_env_wf of -- env = Cons x t_x g
-      (WFEBind _ p_g_wf _ _ _ _) -> case (lem_denote_sound_typ g v_x_ t_x p_vx_tx 
-                                                               p_g_wf zth' den_env'_th') of
-        (ValDen _ _ val ev_th'vx_val den_th'tx_val) 
-          -> InsertInCS g Empty x v_x t_x zth' {-th-} 
-                        (CCons x th'vx (zth' ? lem_binds_env_th g zth' den_env'_th'))
-                        (DExt g zth' den_env'_th' x t_x th'vx  den_th'tx_th'vx) eq_func1 eq_func2
-               where
-                 {-@ v_x :: { v_x:Value | Set_sub (fv v_x)  (vbindsC zth') &&
-                                          Set_sub (ftv v_x) (tvbindsC zth') && v_x == v_x_ } @-}
-                 v_x   = v_x_ ? lem_binds_env_th g zth' den_env'_th'
-                              ? lem_fv_subset_binds g v_x_ t_x p_vx_tx p_g_wf
-                              ? lem_csubst_value zth' v_x_
-                              ? lem_den_nofv (csubst zth' v_x_) (ctsubst zth' t_x) -- den_th'tx_th'vx
-                                    (den_th'tx_val ? lem_value_refl (csubst zth' v_x_) val ev_th'vx_val) 
-                 {-@ th'vx :: { v:Value | Set_emp (fv v) && v == csubst zth' v_x } @-}
-                 th'vx :: Expr
-                 th'vx_ = csubst zth' v_x {-? lem_csubst_value zth' v_x -}
-                 th'vx  = th'vx_ ? lem_den_nofv (csubst zth' v_x) (ctsubst zth' t_x) -- den_th'tx_th'vx 
-                                                (den_th'tx_val ? lem_value_refl th'vx_ val ev_th'vx_val) 
-                                 ? lem_den_nobv (csubst zth' v_x) (ctsubst zth' t_x) -- den_th'tx_th'vx 
-                                                (den_th'tx_val ? lem_value_refl th'vx_ val ev_th'vx_val) 
-                 {-@ den_th'tx_th'vx :: ProofOf(Denotes (ctsubst zth' t_x) (csubst zth' v_x)) @-}
-                 den_th'tx_th'vx :: Denotes
-                 den_th'tx_th'vx = den_th'tx_val ? lem_value_refl th'vx val ev_th'vx_val
-        {- @ eq_func1 :: p:Pred -> { pf:Proof | csubst th p == csubst zth' (subFV x v_x_ p) } @-}
-                 eq_func1 :: Expr -> Proof   -- csubst th p
-                 eq_func1 p = () ? lem_csubst_subFV   zth' x v_x  p 
-                                 ? lem_binds_env_th g zth' den_env'_th'
-        {- @ eq_func2 :: t:Type -> { pf:Proof | ctsubst th t == ctsubst zth' (tsubFV x v_x_ t) } @-}
-                 eq_func2 :: Type -> Proof
-                 eq_func2 t = () ? lem_ctsubst_tsubFV zth' x v_x  t
-                                 ? lem_binds_env_th g zth' den_env'_th'
+    try apply lem_denotesenv_uniqueC with g; trivial.  
 
   - (* CCons  *) destruct H0;
     apply intersect_names_add_elim_r in H1; destruct H1;
     apply not_elem_names_add_elim in H3; destruct H3;
-    inversion H5; apply IHg' with x0 v_x t_x th0 in H11 as IH;
-    fold binds in H7; auto.
+
+    inversion H7; apply IHg' with x0 v_x t_x th0 in H14 as IH;
+    fold binds in H10; auto.
     (* exists th', DenotesEnv (Cons x t (concatE (Cons x0 t_x g) g')) th' *)
-    destruct IH as [th' d_env_th'].
-    exists (CCons x v0 th'); apply DExt; 
+    destruct IH as [th' [d_env_th' [Hcs' Hcs]]].
+    exists (CCons x v th'); simpl; repeat split. 
+    apply DExt;
     try apply not_elem_concat_intro;
-    try apply not_elem_names_add_intro; 
-    try split; auto.
+    try apply not_elem_names_add_intro; try split; 
+    try rewrite (Hcs' t); auto.
+    intros; rewrite lem_commute_tsubFV.
+
+
+    intros; rewrite lem_commute_subFV.
     
     (* EvalsDenotes (ctsubst th0 t_x) (csubst th0 v_x) *)
 

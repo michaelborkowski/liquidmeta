@@ -83,6 +83,12 @@ Lemma subset_trans4 : forall (xs ys zs ws vs : names),
 Proof. intros; apply subset_trans3 with zs ws; try apply H1; try apply H2;
   apply subset_trans with ys; try apply H; apply H0. Qed. 
 
+Lemma subset_trans5 : forall (xs ys zs ws vs us : names),
+    Subset xs ys -> Subset ys zs -> Subset zs ws 
+        -> Subset ws vs -> Subset vs us -> Subset xs us.
+Proof. intros; apply subset_trans3 with ys zs; try apply H; try apply H0;
+  apply subset_trans3 with ws vs; assumption. Qed. 
+
 Lemma subset_empty_l : forall (xs : names),
     Subset empty xs.
 Proof. unfold Subset; intros; contradiction. Qed.
@@ -713,6 +719,55 @@ Proof. intros; apply subset_trans with (union (diff (free t) (singleton x)) (fv 
   (apply elem_sing in H1; contradiction) || assumption.
   Qed.
 
+Lemma fv_subFV_intro : ( forall (e:expr) (x:vname) (v:expr),
+    Subset (fv e) (names_add x (fv (subFV x v e))) ) * ((
+  forall (t:type) (x:vname) (v:expr),
+    Subset (free t) (names_add x (free (tsubFV x v t))) ) * (
+  forall (ps:preds) (x:vname) (v:expr),
+    Subset (fvP ps) (names_add x (fvP (psubFV x v ps))) )).
+Proof. apply ( syntax_mutind
+  ( fun e : expr => forall (x:vname) (v:expr),
+    Subset (fv e) (names_add x (fv (subFV x v e)))  )
+  ( fun t : type => forall (x:vname) (v:expr),
+    Subset (free t) (names_add x (free (tsubFV x v t)))  )
+  ( fun ps : preds => forall (x:vname) (v:expr) ,
+    Subset (fvP ps) (names_add x (fvP (psubFV x v ps)))  ))
+  ; intros; simpl
+  ; try (apply subset_empty_l) 
+  ; (* one IH *) try ( apply H) 
+  ; (* two IH *) try ( 
+    pose proof (subset_union_both _ _ _ _ (H x v) (H0 x v));
+    unfold Subset; intros; apply H1 in H2;
+    apply set_union_elim in H2; destruct H2;
+    apply set_add_elim in H2;
+    apply set_add_intro; intuition; right;
+    (apply set_union_intro1; apply H3) || 
+        (apply set_union_intro2; apply H3)) .
+  - destruct (x0 =? x) eqn:E;
+    apply Nat.eqb_eq in E || apply Nat.eqb_neq in E;
+    try subst x0; unfold singleton;
+    try apply subset_add_both_intro;
+    try apply subset_empty_l.
+    unfold Subset; intros; apply set_add_elim in H;
+    destruct H; try subst x1;
+    apply set_add_intro; right; unfold fv; simpl; 
+    left; try reflexivity; contradiction.
+  - apply subset_trans5 with
+      (union (names_add x (fv (subFV x v e0)))
+             (union (fv e1) (fv e2)))
+      (union (names_add x (fv (subFV x v e0)))
+             (union (names_add x (fv (subFV x v e1))) (names_add x (fv (subFV x v e2)))))
+      (union (names_add x (fv (subFV x v e0)))
+             (union (names_add x (fv (subFV x v e1))) (names_add x (fv (subFV x v e2)))))
+      (union (names_add x (fv (subFV x v e0)))
+             (names_add x (union (fv (subFV x v e1)) (fv (subFV x v e2)))));
+    try apply subset_union_both; 
+    try apply subset_union_both;
+    try apply subset_union_names_add_both;
+    try apply subset_refl; auto. 
+  Qed.
+
+
 Lemma ftv_subFV_elim : ( forall (e:expr) (x:vname) (v:expr),
     Subset (ftv (subFV x v e)) (union (ftv e) (ftv v))  ) * ((
   forall (t:type) (x:vname) (v:expr),
@@ -754,6 +809,27 @@ Lemma freeTV_tsubFV_bounded : forall (x:vname) (v_x:expr) (t:type) (ys : names),
 Proof. intros; apply subset_trans with (union (freeTV t) (ftv v_x));
   try apply ftv_subFV_elim; apply subset_union_intro_l; try apply H; apply H0.
   Qed.
+  
+Lemma ftv_subFV_intro : ( forall (e:expr) (x:vname) (v:expr),
+    Subset (ftv e) (ftv (subFV x v e)) ) * ((
+  forall (t:type) (x:vname) (v:expr),
+    Subset (freeTV t) (freeTV (tsubFV x v t)) ) * (
+  forall (ps:preds) (x:vname) (v:expr),
+    Subset (ftvP ps) (ftvP (psubFV x v ps)) )).
+Proof. apply ( syntax_mutind
+  ( fun e : expr => forall (x:vname) (v:expr),
+    Subset (ftv e) (ftv (subFV x v e))  )
+  ( fun t : type => forall (x:vname) (v:expr),
+    Subset (freeTV t) (freeTV (tsubFV x v t))  )
+  ( fun ps : preds => forall (x:vname) (v:expr) ,
+    Subset (ftvP ps) (ftvP (psubFV x v ps))  ))
+  ; intros; simpl
+  ; try (apply subset_empty_l) 
+  ; (* one IH *) try ( apply H) 
+  ; (* 2+  IH *) try ( repeat apply subset_union_both; trivial ).
+  - destruct b; try apply subset_add_both_intro; apply H.
+  Qed.
+
 
 Lemma fv_strengthen_elim : forall (ps qs : preds),
     Subset ( fvP (strengthen ps qs)) (union (fvP ps) (fvP qs)).
@@ -764,6 +840,15 @@ Proof. intros; induction ps; simpl.
     * apply subset_union_assoc.
   Qed.
 
+Lemma fv_strengthen_intro : forall (ps qs : preds),
+    Subset (union (fvP ps) (fvP qs)) ( fvP (strengthen ps qs)) .
+Proof. intros; induction ps; simpl.
+  - apply subset_union_intro_l; try apply subset_empty_l; apply subset_refl.
+  - apply subset_trans with (union (fv p) (union (fvP ps) (fvP qs))).
+    * apply subset_union_assoc.
+    * apply subset_union_both; try apply subset_refl; apply IHps.     
+  Qed.
+
 Lemma ftv_strengthen_elim : forall (ps qs : preds),
     Subset ( ftvP (strengthen ps qs)) (union (ftvP ps) (ftvP qs)).
 Proof. intros; induction ps; simpl.
@@ -771,6 +856,15 @@ Proof. intros; induction ps; simpl.
   - apply subset_trans with (union (ftv p) (union (ftvP ps) (ftvP qs))).
     * apply subset_union_both; try apply subset_refl; apply IHps.
     * apply subset_union_assoc.
+  Qed.
+
+Lemma ftv_strengthen_intro : forall (ps qs : preds),
+    Subset (union (ftvP ps) (ftvP qs)) ( ftvP (strengthen ps qs)).
+Proof. intros; induction ps; simpl.
+  - apply subset_union_intro_l; try apply subset_empty_l; apply subset_refl.
+  - apply subset_trans with (union (ftv p) (union (ftvP ps) (ftvP qs))).
+    * apply subset_union_assoc.
+    * apply subset_union_both; try apply subset_refl; apply IHps.
   Qed.
 
 Lemma fv_push_elim : forall (ps : preds) (t_a : type),
@@ -791,6 +885,8 @@ Proof. intros; destruct t_a; simpl in H; try contradiction; simpl.
   - (* TFunc *) apply subset_union_intro_r.
   - (* TPoly *) apply subset_union_intro_r.
   Qed.
+
+
   
 Lemma fv_subFTV_elim : ( forall (e:expr) (a:vname) (t_a:type),
     noExists t_a -> Subset (fv (subFTV a t_a e)) (union (fv e) (free t_a))  ) * ((
@@ -909,6 +1005,7 @@ Proof. intros; apply subset_trans with (union (diff (freeTV t) (singleton a)) (f
   apply H1 in H2; apply set_add_elim in H2; destruct H2;
   (apply elem_sing in H2; contradiction) || assumption.
   Qed.
+
 
 (*-------------------------------------------------------------------------
 ----- | IV. TYPING ENVIRONMENTS
