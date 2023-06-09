@@ -153,6 +153,14 @@ Lemma lem_den_evalsdenotes : forall (t:type) (v:expr),
 Proof. intros; unfold EvalsDenotes; exists v; repeat split;
   try apply lem_den_isvalue with t; try apply Refl; apply H. Qed.
 
+Lemma lem_evalsdenotes_value : forall (t:type) (v:expr),
+    EvalsDenotes t v -> isValue v -> Denotes t v.
+Proof. intros; unfold EvalsDenotes in H; 
+  destruct H as [v' [Hv' [ev_v_v' den_t_v']]];
+  assert (v = v')
+    by (apply lem_evals_val_det with v; apply Refl || assumption);
+  subst v'; apply den_t_v'. Qed.
+  
 (* Denotations of Environments, [[g]]. There are two cases:
 --   1. [[ Empty ]] = { CEmpty }.
 --   2. [[ Cons x t g ]] = { CCons x v_x th | Denotes th(t) v_x && th \in [[ g ]] } *)

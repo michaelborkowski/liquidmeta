@@ -13,6 +13,7 @@ Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.LemmasTyping.
 Require Import SystemRF.LemmasWeakenWF.
 Require Import SystemRF.SubstitutionLemmaWF.
+Require Import SystemRF.LemmasWeakenTyp.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
@@ -21,6 +22,7 @@ Require Import Denotations.BasicPropsSemantics.
 Require Import Denotations.LemmasWidening.
 Require Import Denotations.EnvironmentSubstitutions.
 Require Import Denotations.MultiSubstitutionLemmas.
+Require Import Denotations.LemmasDenotesEnv.
 Require Import Denotations.PrimitivesDenotations.
 Require Import Denotations.SelfifyDenotations.
 
@@ -659,4 +661,16 @@ Proof. apply ( judgments_mutind3
     try apply lem_denotesenv_uniqueC
       with (concatE (ConsT a k_a g) g');  auto.
   - (* ISub *) apply DImp; intros th Hden Hps;
-    inversion H0.
+    inversion H0; 
+    apply lem_add_var_denote_env with g g' x v_x t_x th 
+      in Hden as Hth';
+    try destruct Hth' as [th' [den_env_th' [Hcs [Hcs' Hcs'']]]];
+    try pose proof (H1 _ den_env_th') as ev_func;
+    repeat rewrite Hcs'' in ev_func; try apply ev_func; auto.
+    apply lem_extend_denotes with g (esubFV x v_x g');
+    try apply lem_typing_wf with v_x; intros;
+    try apply lem_evalsdenotes_value; try apply H;
+    try apply lem_csubst_value; 
+    try apply lem_denotesenv_substitutable with g; auto.
+  - (* ISubTV *)
+
