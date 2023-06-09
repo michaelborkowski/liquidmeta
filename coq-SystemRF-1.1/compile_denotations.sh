@@ -23,6 +23,8 @@ echo "Checking LemmasWidening.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/LemmasWidening.v
 echo "Checking MultiSubstitutionLemmas.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/MultiSubstitutionLemmas.v
+echo "Checking LemmasDenotesEnv.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/LemmasDenotesEnv.v
 echo "Checking PrimitivesDenotations.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/PrimitivesDenotations.v
 echo "Checking SelfifyDenotations.v ..."
