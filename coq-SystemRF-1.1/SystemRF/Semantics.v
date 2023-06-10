@@ -174,6 +174,15 @@ Proof. intros. assert (Some (deltaT c t pf) = Some (deltaT c t pf')).
   - apply eq_stepl with (deltaT' c t); apply deltaT_deltaT'.
   - injection H as H'; assumption. Qed.
 
+Lemma deltaT_exchange_type : 
+  forall (c:prim) (t t':type) (pf:isCompatT c t) (pf':isCompatT c t'),
+    erase t = erase t' -> deltaT c t pf = deltaT c t' pf'.
+Proof. intros. assert (deltaT' c t = deltaT' c t')
+      by (inversion pf; simpl; rewrite <- H; rewrite H0; reflexivity);
+  rewrite deltaT_deltaT' with c t  pf  in H0;
+  rewrite deltaT_deltaT' with c t' pf' in H0;
+  injection H0 as H0; apply H0. Qed.
+
 Inductive Step : expr -> expr -> Prop :=
     | EPrim : forall (c:prim) (w : expr) (pf : isCompat c w), 
           isValue w -> Step (App (Prim c) w) (delta c w pf)

@@ -672,5 +672,47 @@ Proof. apply ( judgments_mutind3
     try apply lem_evalsdenotes_value; try apply H;
     try apply lem_csubst_value; 
     try apply lem_denotesenv_substitutable with g; auto.
-  - (* ISubTV *)
+  - (* ISubTV *) apply DImp; intros th Hden Hps.
+    inversion H;  subst g0 ps0 qs0.
+    apply lem_add_tvar_denote_env with g g' a t_a k_a th 
+      in Hden as Hth';
+    try destruct Hth' as [th' [den_env_th' [Hcs [Hcs' Hcs'']]]];
+    try pose proof (H0 _ den_env_th') as ev_func;
+    repeat rewrite Hcs'' in ev_func; try apply ev_func; auto.
+  
+  - (* IEqlSub *) apply DImp; intros th den_g_th.
+    repeat rewrite lem_cpsubst_pcons;
+    rewrite lem_cpsubst_pempty;
+    repeat rewrite lem_csubst_app;
+    repeat rewrite lem_csubst_appT;
+    rewrite lem_csubst_prim; intros;
+    inversion H; inversion H2; subst ps0 e3.
+    apply PECons; try apply PEEmp.
+    apply AddStep with e2; try apply H5.
+    (* investigate e2 *)
+    inversion H4;  simpl in H8;  try contradiction.
+    inversion H9;  simpl in H12; try contradiction.
+    inversion H13; try apply lem_value_stuck in H18;
+                   try simpl in H18; try contradiction. 
+    apply EApp1; apply EApp1; 
+    assert (isCompatT Eql (ctsubst th (TRefn b ps))) as pf'
+      by (inversion pf; 
+          (apply isCptT_EqlB; rewrite <- H18) || 
+              (apply isCptT_EqlZ; rewrite <- H18);
+          apply lem_erase_ctsubst;
+          try apply lem_denotesenv_substitutable with g; auto). 
+    pose proof (deltaT_exchange_type Eql (ctsubst th (TRefn b PEmpty)) 
+                                         (ctsubst th (TRefn b ps)) pf pf');
+    rewrite H18; try apply lem_erase_ctsubst; 
+    try apply EPrimT; try apply lem_ctsubst_noExists;
+    try apply lem_denotesenv_substitutable with g; simpl; trivial.
+  - (* IStren *) apply DImp; intros; inversion H.
+    rewrite lem_cpsubst_strengthen;
+    rewrite lem_cpsubst_strengthen in H1.
+    apply lemma_strengthen_semantics;
+    apply lemma_semantics_strengthen in H1;
+    destruct H1; try apply H6; apply H2; try apply H1.
+
+  -
+  -
 

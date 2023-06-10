@@ -206,7 +206,7 @@ with Implies : env -> preds -> preds -> Prop :=
     | ISubTV  : forall (g:env) (g':env) (a:vname) (t_a:type) (k_a:kind) (ps:preds) (qs:preds),
           intersect (binds g) (binds g') = empty -> unique g -> unique g' 
               -> ~ in_env a g -> ~ in_env a g' -> WFEnv g
-              -> noExists t_a -> WFtype g t_a k_a
+              -> isMono t_a -> noExists t_a -> WFtype g t_a k_a
               -> Implies (concatE (ConsT a k_a g) g') ps qs
               -> Implies (concatE g (esubFTV a t_a g')) (psubFTV a t_a ps) (psubFTV a t_a qs)
     | IEqlSub : forall (g:env) (b:basic) (y:vname) (e:expr) (ps:preds),
