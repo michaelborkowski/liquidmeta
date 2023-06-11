@@ -213,7 +213,8 @@ with Implies : env -> preds -> preds -> Prop :=
           Implies g (PCons (App (App (AppT (Prim Eql) (TRefn b PEmpty)) e) (FV y)) PEmpty)
                     (PCons (App (App (AppT (Prim Eql) (TRefn b ps    )) e) (FV y)) PEmpty) 
     | IStren  : forall (y:vname) (b':basic) (qs:preds) (g:env) (p1s:preds) (p2s:preds),
-          ~ in_env y g -> Implies (Cons y (TRefn b' qs)     g) p1s p2s
+          ~ in_env y g -> ~ Elem y (fvP qs)
+              -> Implies (Cons y (TRefn b' qs)     g) p1s p2s
               -> Implies (Cons y (TRefn b' PEmpty) g) 
                          (strengthen p1s (unbindP y qs)) (strengthen p2s (unbindP y qs))
     | IEvals  : forall (g:env) (p p':expr) (ps:preds),

@@ -29,11 +29,12 @@ Proof. intros; simpl; repeat f_equal; apply lem_open_at_lc_at with 0; apply H. Q
 Lemma lem_eqlPred_sub : forall (g:env) (b:basic) (ps:preds) (qs:preds) (e:expr),
     isLC e -> Subtype g (TRefn b (PCons (eqlPred  b ps e) qs))
                         (TRefn b (PCons (eqlPred' b ps e) qs)).
-Proof. intros; apply SBase with (binds g); intros;
+Proof. intros; apply SBase with (union (binds g) (fvP qs)); 
+  intros; apply not_elem_union_elim in H0; destruct H0;
   unfold unbindP; unfold openP_at; fold open_at; fold openP_at;
   rewrite <- (lem_strengthen_one (unbind y (eqlPred  b ps e)));
   rewrite <- (lem_strengthen_one (unbind y (eqlPred' b ps e))); 
-  apply IStren; try apply H0; apply IEqlSub. Qed.
+  apply IStren; try apply IEqlSub; trivial. Qed.
 
 Lemma lem_self_push : forall (g:env) (a:vname) (ps:preds) (b:basic) (qs:preds) (z:vname),
     Subtype g (self (tsubFTV a (TRefn b qs) (TRefn (FTV a) ps)) (FV z) Base)

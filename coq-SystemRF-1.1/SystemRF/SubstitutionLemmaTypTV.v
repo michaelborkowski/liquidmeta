@@ -235,8 +235,13 @@ Proof. apply ( judgments_mutind
     try apply ISubTV with k_a; 
     simpl; apply Nat.eqb_eq in A; subst a0; try apply i;
     try rewrite TA; try apply lem_wftype_islct with g k_a;
+    try apply lem_free_subset_binds in H7 as Hps; 
+    simpl in Hps; destruct Hps as [Hps _];
     try apply intersect_names_add_intro_r; 
-    try apply not_elem_names_add_intro; intuition.
+    try apply not_elem_names_add_intro; auto;
+    try apply not_elem_subset with (vbinds g);
+    try apply not_elem_subset with (binds g);
+    try apply vbinds_subset; auto.
   - (* SFunc *)
     apply lem_truncate_wfenv in H10 as H10'; inversion H10'; subst a0 k g0;
     inversion H11; try inversion H1;

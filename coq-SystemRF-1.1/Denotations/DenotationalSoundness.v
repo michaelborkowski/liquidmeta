@@ -8,6 +8,7 @@ Require Import SystemRF.WellFormedness.
 Require Import SystemRF.BasicPropsSubstitution.
 Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.BasicPropsWellFormedness.
+Require Import SystemRF.SystemFLemmasWellFormedness.
 Require Import SystemRF.Typing.
 Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.LemmasTyping.
@@ -712,6 +713,66 @@ Proof. apply ( judgments_mutind3
     apply lemma_strengthen_semantics;
     apply lemma_semantics_strengthen in H1;
     destruct H1; try apply H6; apply H2; try apply H1.
+    inversion H0; apply DExt; try assumption.
+    subst th; simpl in H6; rewrite <- lem_psubFV_unbindP in H6;
+    try rewrite lem_cpsubst_psubBV in H6;
+    try rewrite lem_csubst_nofv in H6;
+    apply lem_den_nofv in H13 as Hfv; destruct Hfv;
+    try apply lem_denotesenv_loc_closed with g;
+    try apply lem_denotesenv_substitutable with g; 
+    auto; destruct b' eqn:B;
+    try ( assert (isClosedBasic b' \/ isBTV b') 
+            by (subst b'; simpl; auto);
+          rewrite lem_ctsubst_refn in H13;
+          try rewrite lem_ctsubst_refn;
+          try rewrite Denotes_equation_1 in H13;
+          try rewrite Denotes_equation_1;
+          simpl; simpl in H13; intuition ).
+    * (* FTV a *) 
+      pose proof (set_In_dec Nat.eq_dec a (tvbinds g));
+      destruct H15. (* a \in tvbinds g *)
+      apply lem_tvbinds_denotesenv with a g th0 in s;
+      try destruct s as [t_a [Hta [p_ta_s Ha]]];
+      try rewrite lem_ctsubst_refn_tv with th0 a t_a qs;
+      try rewrite lem_ctsubst_refn_tv with th0 a t_a PEmpty in H13;
+      try rewrite lem_cpsubst_pempty in H13; 
+      try rewrite lem_push_empty in H13; 
+      try apply lem_denotesenv_closed with g;
+      try apply lem_denotesenv_loc_closed with g;
+      try apply lem_denotesenv_substitutable with g; 
+      try apply lem_denotesenv_uniqueC with g; auto.
+      destruct t_a; simpl in Hta; try contradiction; simpl;
+      try apply H13; rewrite Denotes_equation_1 in H13;
+      rewrite Denotes_equation_1; intuition;
+      rewrite lem_psubBV_strengthen;
+      apply lemma_strengthen_semantics; trivial.
+      (* a \not\in tvbinds g *)
+      rewrite lem_ctsubst_refn_tv_notin;
+      try rewrite lem_ctsubst_refn_tv_notin in H13.
+      .
+
+
+      
+      pose lem_ctsubst_refn_tv. with th0 a .
+      
+    
+    destruct (Elem a (tvbinds g)) eqn:Ha.
+    
+    
+    
+    apply lem_den_hasftype in H13 as Hv.
+    pose lem_csubst_hasftype.
+      apply lem_ftyp
+    
+    
+    
+    
+    
+    rewrite lem_ctsubst_refn in H13; 
+      try rewrite lem_ctsubst_refn;
+      try rewrite Denotes_equation_1 in H13;
+      try rewrite Denotes_equation_1;
+      simpl; simpl in H13; intuition.
 
   -
   -

@@ -487,6 +487,17 @@ Proof. induction th; intros a0 ps H; simpl.
     rewrite H; apply IHth; apply H0.
   Qed.
 
+Lemma lem_ctsubst_refn_tv_notin' : forall (th:csub) (a:vname) (ps:preds),
+    ~ Elem a (tvbindsC th)
+        -> ctsubst th (TRefn (FTV a) ps) = TRefn (FTV a) (cpsubst th ps).
+Proof. induction th; intros a0 ps H; simpl.
+  - (* CEmpty *) reflexivity.
+  - (* CCons *) simpl in H; apply IHth; apply H.
+  - (* CConsT *) simpl in H; apply not_elem_names_add_elim in H;
+    destruct H; apply Nat.neq_sym in H; apply Nat.eqb_neq in H;
+    rewrite H; apply IHth; apply H0.
+  Qed.  
+
 Lemma lem_ctsubst_refn_tv : forall (th:csub) (a:vname) (t_a:type) (ps:preds),
     tv_bound_inC a t_a th -> closed th -> substitutable th -> uniqueC th
         -> ctsubst th (TRefn (FTV a) ps) = push (cpsubst th ps) t_a.
