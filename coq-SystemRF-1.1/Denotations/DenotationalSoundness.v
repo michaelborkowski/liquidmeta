@@ -747,33 +747,26 @@ Proof. apply ( judgments_mutind3
       rewrite lem_psubBV_strengthen;
       apply lemma_strengthen_semantics; trivial.
       (* a \not\in tvbinds g *)
-      rewrite lem_ctsubst_refn_tv_notin;
-      try rewrite lem_ctsubst_refn_tv_notin in H13.
-      .
-
-
-      
-      pose lem_ctsubst_refn_tv. with th0 a .
-      
-    
-    destruct (Elem a (tvbinds g)) eqn:Ha.
-    
-    
-    
-    apply lem_den_hasftype in H13 as Hv.
-    pose lem_csubst_hasftype.
-      apply lem_ftyp
-    
-    
-    
-    
-    
-    rewrite lem_ctsubst_refn in H13; 
-      try rewrite lem_ctsubst_refn;
-      try rewrite Denotes_equation_1 in H13;
-      try rewrite Denotes_equation_1;
-      simpl; simpl in H13; intuition.
-
-  -
-  -
-
+      rewrite lem_ctsubst_refn_tv_notin';
+      try rewrite lem_ctsubst_refn_tv_notin' in H13;
+      try rewrite <- lem_tvbinds_env_th with g th0; trivial.
+      rewrite Denotes_equation_1 in H13;
+      rewrite Denotes_equation_1; intuition.
+  - (* IEvals  *) apply DImp; intros;
+    rewrite lem_cpsubst_pcons in H0;
+    rewrite lem_cpsubst_pcons; inversion H0;
+    apply PECons;
+    apply lem_csubst_evals with th p p' in e;
+    try apply lem_decompose_evals with (csubst th p);
+    try apply lem_denotesenv_loc_closed with g;
+    try apply lem_denotesenv_substitutable with g; 
+    simpl; auto.
+  - (* IEvals2 *) apply DImp; intros;
+    rewrite lem_cpsubst_pcons in H0;
+    rewrite lem_cpsubst_pcons; inversion H0;
+    apply PECons;
+    apply lem_csubst_evals with th p' p in e;
+    try apply lemma_evals_trans with (csubst th p);
+    try apply lem_denotesenv_loc_closed with g;
+    try apply lem_denotesenv_substitutable with g; auto.
+  Qed.
