@@ -22,7 +22,7 @@ Inductive WFFT : fenv -> defs -> ftype -> kind -> Prop :=
           ( forall (a:vname), ~ Elem a nms -> WFFT (FConsT a k g) ds (unbindFT a t) k_t )
               -> WFFT g ds (FTPoly k t) Star
     | WFFTData  : forall (g : fenv) (ds : defs) (tc : tcons) (t : ftype) (k_t : kind),
-          tcKind tc ds = Some k_t -> WFFT g ds t k_t -> WFFT g ds (FTData tc t) Base
+          kind_defined_in tc k_t ds -> WFFT g ds t k_t -> WFFT g ds (FTData tc t) Base
     | WFFTKind  : forall (g : fenv) (ds : defs) (t : ftype),
           WFFT g ds t Base -> WFFT g ds t Star.
 

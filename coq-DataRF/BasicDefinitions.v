@@ -1,5 +1,6 @@
 Require Import Nat.
 Require Import Lists.List.
+Require Import Program.Basics.
 
 Definition index := nat.
 Definition vname := nat. (* can change this atoms later *)
@@ -132,28 +133,28 @@ with dataValue : expr -> Set :=
 
 Fixpoint dvdc (dv : expr) (pf : dataValue dv) : dcons :=
     match pf with
-    | dval_Dc  dc               => dc
+    | dval_Dc  dc _             => dc
     | dval_App dv v dv_pf v_pf  => dvdc dv dv_pf
     end.
 
 Fixpoint argCount (dv: expr) (pf : dataValue dv) : nat :=
     match pf with
-    | dval_Dc  dc               => 0
+    | dval_Dc  _  _             => 0
     | dval_App dv v dv_pf v_pf  => S (argCount dv dv_pf)
     end.
 
 Fixpoint dvdc' (dv : expr) : option dcons :=
     match dv with
-    | Dc dc     => Some dc
-    | App dv v  => dvdc' dv
-    | _         => None
+    | AppT (Dc dc) _  => Some dc
+    | App dv v        => dvdc' dv
+    | _               => None
     end.
 
 Fixpoint argCount' (dv : expr) : option nat :=
     match dv with
-    | Dc _     => Some 0
-    | App dv v => option_map S (argCount' dv) 
-    | _        => None
+    | AppT (Dc _) _ => Some 0
+    | App dv v      => option_map S (argCount' dv) 
+    | _             => None
     end.
 
 Lemma dvdc_dvdc' : forall (dv : expr) (pf : dataValue dv),
@@ -170,6 +171,9 @@ Proof. intros. assert (Some (dvdc dv pf) = Some (dvdc dv pf')).
 Definition fullyApplied (dv: expr) (pf : dataValue dv) : Prop :=
     argCount dv pf = arity (dvdc dv pf).
 
+    (* These "usertypes" would also avoid issues of 
+    --   deBruijn index shifting 
+    --   in type variable substitution (in defining push) *)    
 Fixpoint noExists (t0 : type) : Prop := 
     match t0 with         
     | (TRefn b ps)     => True  
@@ -178,18 +182,6 @@ Fixpoint noExists (t0 : type) : Prop :=
     | (TExists  t_x t) => False
     | (TPoly  k   t)   => noExists t
     end.
-
-    (* This would also avoid issues of deBruijn index shifting 
-    --   in type variable substitution (in defining push) *)
-    Definition usertype := { t:type | noExists t }.
-    Definition toType (ut : usertype) : type :=
-        match ut with
-        | exist _ t _ => t
-        end.
-
-    Lemma texists_not_usertype : forall (t_x t : type),
-        noExists (TExists t_x t) -> False.
-    Proof. simpl. contradiction. Qed.
 
 Fixpoint arrows (t : type) : nat := 
     match t with 
@@ -219,7 +211,6 @@ Fixpoint outTC (t : type) : option tcons :=
   (* --- DEFINITIONAL ENVIRONMENTS ---  
       -- not currently enforced: but we assume that every
       --     DCons id is globally unique *)
-
 Record ddefn := DDefn {
     dddc    : dcons;
     ddtype  : type
@@ -232,11 +223,10 @@ Inductive polarity : Set :=
     | Neither.
 
 Definition (*Inductive*) ddefns (*: Set*) := list ddefn.
-    (*| DDEmpty 
-    | DDCons (dd : ddefn) (dds : ddefns).*)
+    (*| DDEmpty | DDCons (dd : ddefn) (dds : ddefns).*)
 
 Record tdefn := TDefn { 
-    tdid     : id;
+    tdtc     : tcons;
     vkind    : kind;
     vpolar   : polarity;
     tddcons  : ddefns 
@@ -244,21 +234,42 @@ Record tdefn := TDefn {
 
 Definition defs := list tdefn.
 
-Fixpoint tcKind (tc : tcons) (tds : defs) : option kind :=
+Definition defsIds (tds : defs) : list id :=
+    map (compose tcid tdtc) tds.
+
+Definition in_defs (tc : tcons) (ds : defs) : Prop := In (tcid tc) (defsIds ds).
+
+Fixpoint uniqueDefs (tds : defs) : Prop :=
     match tds with
-    | nil          => None
-    | (td :: tds)  => if tcid tc =? tdid td then Some (vkind td)  
-                                            else tcKind tc tds
+    | nil         => True
+    | (td :: tds) => ~ in_defs (tdtc td) tds /\ uniqueDefs tds
     end.
 
 Definition ddTypeMatch (tc : tcons) (dd : ddefn) :=
     quants (ddtype dd) = 1 /\ outTC (ddtype dd) = Some tc.
 
 Definition tdIsValid (td : tdefn) : Prop := 
-    Forall (ddTypeMatch (TCons (tdid td))) (tddcons td).
+    Forall (ddTypeMatch (tdtc td)) (tddcons td) /\ tddcons td <> nil.
 
-Definition isValid (tds : defs) : Prop := Forall tdIsValid tds.
+Definition isValid (tds : defs) : Prop := uniqueDefs tds /\ Forall tdIsValid tds. 
 
+Fixpoint defined_in (tc : tcons) (dds : ddefns) (tds : defs) : Prop := 
+    match tds with
+    | nil         => False
+    | (td :: tds) => (tc = tdtc td /\ dds = tddcons td) \/ defined_in tc dds tds
+    end.
+
+Fixpoint kind_defined_in (tc : tcons) (k : kind) (tds : defs) : Prop :=
+    match tds with
+    | nil         => False
+    | (td :: tds) => (tc = tdtc td /\ k = vkind td) \/ kind_defined_in tc k tds
+    end.
+
+Fixpoint dc_defined_in (dc : dcons) (dt : type) (tds : defs) : Prop :=
+    match tds with
+    | nil         => False
+    | (td :: tds) => In (DDefn dc dt) (tddcons td) \/ dc_defined_in dc dt tds
+    end.
 
 Fixpoint isLC_at (j_x : index) (j_a : index) (e : expr) : Prop  :=
     match e with
@@ -280,7 +291,7 @@ Fixpoint isLC_at (j_x : index) (j_a : index) (e : expr) : Prop  :=
 with isLCA_at (j_x : index) (j_a : index) (cs : alts) : Prop :=
     match cs with 
     | AEmpty          => True
-    | (ACons dc e cs) => isLC_at (j_x + (arity dc)) j_a e /\ isLCA_at j_x j_a cs
+    | (ACons dc e cs) => isLC_at (j_x + (arity dc)) (j_a + 1) e /\ isLCA_at j_x j_a cs
     end
 
 with isLCT_at (j_x : index) (j_a : index) (t0 : type) : Prop := 
@@ -371,7 +382,7 @@ Fixpoint open_tv_at (j : index) (a' : vname) (e0 : expr) : expr :=
 with open_tvA_at (j : index) (a' : vname) (cs : alts) : alts  :=
     match cs with
     | AEmpty          => AEmpty
-    | (ACons dc e cs) => ACons dc (open_tv_at j a' e) (open_tvA_at j a' cs)    
+    | (ACons dc e cs) => ACons dc (open_tv_at (j + 1) a' e) (open_tvA_at j a' cs)    
     end
 
 with open_tvT_at (j : index) (a' : vname) (t0 : type) : type  :=
@@ -421,7 +432,7 @@ Fixpoint shift_at (j k : index) (e : expr) : expr :=
 with shiftA_at (j k : index) (cs : alts) : alts :=
     match cs with    
     | AEmpty        => AEmpty
-    | ACons dc e cs => ACons dc (shift_at j k e) (shiftA_at j k cs)
+    | ACons dc e cs => ACons dc (shift_at (j+arity dc) k e) (shiftA_at j k cs)
     end
 
 with shiftT_at (j k : index) (t0 : type) : type :=
@@ -605,7 +616,7 @@ Fixpoint subBTV_at (j : index) (t_a : type) (e0 : expr) : expr :=
 with asubBTV_at (j : index) (t_a : type) (cs : alts) : alts :=
     match cs with
     | AEmpty          => AEmpty
-    | (ACons dc e cs) => ACons dc (subBTV_at j t_a e) (asubBTV_at j t_a cs)
+    | (ACons dc e cs) => ACons dc (subBTV_at (j+1) t_a e) (asubBTV_at j t_a cs)
     end
 
 with tsubBTV_at (j : index) (t_a : type) (t0 : type) : type :=
@@ -667,12 +678,6 @@ Fixpoint arrowsF (t:ftype) : nat :=
     match t with 
     | (FTFunc t_x t)  => 1 + (arrowsF t)
     | _               => 0
-    end.
-
-Definition quant_arrowsF (t : ftype) : nat := 
-    match t with 
-    | (FTPoly k t) => arrowsF t
-    | _            => 0
     end.
 
 Fixpoint erase (t0 : type) : ftype :=

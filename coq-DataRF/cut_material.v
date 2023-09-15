@@ -1,3 +1,20 @@
+Definition usertype := { t:type | noExists t }.
+Definition toType (ut : usertype) : type :=
+    match ut with
+    | exist _ t _ => t
+    end.
+
+Lemma texists_not_usertype : forall (t_x t : type),
+    noExists (TExists t_x t) -> False.
+Proof. simpl. contradiction. Qed.
+
+Definition quant_arrowsF (t : ftype) : nat := 
+    match t with 
+    | (FTPoly k t) => arrowsF t
+    | _            => 0
+    end.
+
+
 Fixpoint isValue (e: expr) : Prop :=
     match e with
     | Bc _          => True
@@ -31,6 +48,14 @@ Definition fullyApplied (dv : expr) : Prop :=
     
 Inductive fullyAppliedI : expr -> Set :=
     | fullyApp : forall dv pf, argCountI dv pf = arity (dvdcI dv pf) -> fullyAppliedI dv.
+
+Fixpoint tcKind (tc : tcons) (tds : defs) : option kind :=
+    match tds with
+    | nil          => None
+    | (td :: tds)  => if tcid tc =? tcid (tdtc td) 
+                        then Some (vkind td)  
+                        else tcKind tc tds
+    end.
 
 (********************************************************************************)
 

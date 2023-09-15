@@ -19,7 +19,7 @@ Definition diff := @set_diff vname Nat.eq_dec.
 Definition Elem := @set_In vname.
 Definition Subset (xs : names) (ys: names) : Prop :=
     forall (x : vname), Elem x xs -> Elem x ys.
-
+(* Disjoin: say, intersect xs ys = empty *)
 
 Lemma no_elem_empty : forall (ys : names),
     (forall (x:vname), ~ Elem x ys) -> ys = empty.
@@ -967,7 +967,7 @@ Proof. intro x. induction xs as[|y ys IH].
 
 Lemma above_fresh_not_elem : forall (y:vname) (xs : names), 
     fresh xs <= y -> ~ Elem y xs.
-Proof. unfold not. intros. apply fresh_above_all in H0. apply lt_not_le in H0.
+Proof. unfold not. intros. apply fresh_above_all in H0. apply Nat.lt_nge in H0.
   contradiction. Qed.
 
 Lemma fresh_not_elem : forall (xs : names), ~ Elem (fresh xs) xs.
@@ -995,7 +995,7 @@ Lemma fresh_var_excludingF_not_elem : forall (xs:names) (g:fenv) (y:vname),
     ~ in_envF (fresh_var_excludingF xs g y) g.
 Proof. split; unfold fresh_var_excludingF.
   - unfold not. intro. assert (1 + y <= max (fresh_varF xs g) (1 + y) ).
-    apply Nat.le_max_r. rewrite H in H0. apply lt_not_le in H0. intuition.
+    apply Nat.le_max_r. rewrite H in H0. apply Nat.lt_nge in H0. intuition.
   - apply above_fresh_varF_not_elem; unfold fresh_varF;
     apply Nat.le_max_l || apply Nat.le_max_r. Qed.
 
@@ -1044,7 +1044,7 @@ Lemma fresh_var_excluding_not_elem : forall (xs:names) (g:env) (y:vname),
     ~ in_env  (fresh_var_excluding xs g y) g.
 Proof. split; unfold fresh_var_excluding.
   - unfold not. intro. assert (1 + y <= max (fresh_var xs g) (1 + y) ).
-    apply Nat.le_max_r. rewrite H in H0. apply lt_not_le in H0. intuition.
+    apply Nat.le_max_r. rewrite H in H0. apply Nat.lt_nge in H0. intuition.
   - apply above_fresh_var_not_elem; unfold fresh_var;
     apply Nat.le_max_l || apply Nat.le_max_r. Qed.
 

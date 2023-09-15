@@ -211,23 +211,34 @@ Proof. intros dc m m'; induction cs; simpl; intros; try contradiction.
 
 (* may want to prove something about subMany where given an input
      { dv:DataValue | argCount dv == arity (dvdc dv) } something nice about output *)
-Fixpoint subMany  (dv : expr) (e : expr) (pf : dataValue dv) : expr :=
+Fixpoint subMany_at (n : index) (dv e : expr) (pf : dataValue dv) : expr :=
     match pf with 
-    | dval_Dc  dc           => e
-    | dval_App dv' v pf' _  => subBV v (subMany dv' e pf')
+    | dval_Dc  dc  t        => subBTV t e
+    | dval_App dv' v pf' _  => subMany_at (1+n) dv' (subBV_at n v e) pf'
+    end.
+    
+Definition subMany  (dv : expr) (e : expr) (pf : dataValue dv) : expr :=
+    subMany_at 0 dv e pf.
+
+Fixpoint subMany_at' (n : index) (dv : expr) (e : expr) : option expr :=
+    match dv with 
+    | (AppT (Dc _) t) => Some (subBTV t e)
+    | (App dv' v)     => subMany_at' (1+n) dv' (subBV_at n v e)
+    | _               => None
     end.
 
-Fixpoint subMany' (dv : expr) (e : expr) : option expr :=
-    match dv with 
-    | (Dc _)      => Some e
-    | (App dv' v) => option_map (subBV v) (subMany' dv' e)
-    | _           => None
-    end.
+Definition subMany' (dv : expr) (e : expr) : option expr := subMany_at' 0 dv e.
+
+Lemma subMany_at_subMany_at' : 
+  forall (n:index) (dv m : expr) (pf : dataValue dv),
+    subMany_at' n dv m =  Some (subMany_at n dv m pf).
+Proof. intros; generalize dependent m; generalize dependent n;
+  induction pf as [dc|dv v Hdv IH Hv]; 
+  intros n m; simpl; try rewrite IH; reflexivity. Qed.
 
 Lemma subMany_subMany' : forall (dv m : expr) (pf : dataValue dv),
     subMany' dv m =  Some (subMany dv m pf).
-Proof. intros. induction pf as [dc|dv v Hdv IH Hv]; simpl;
-  try rewrite IH; simpl; reflexivity. Qed.
+Proof. unfold subMany; unfold subMany'; apply subMany_at_subMany_at'. Qed.
 
 Lemma subMany_pf_indep : forall (dv m : expr) (pf pf' : dataValue dv),
     subMany dv m pf = subMany dv m pf'.
@@ -348,7 +359,7 @@ Proof. intros e e' st_e_e'; induction st_e_e'; intro Hval; inversion Hval.
   - (* EApp2 *) inversion H0; apply IHst_e_e'; apply H5.
   - (* EAppAbs *) inversion H0; inversion H4.
   - (* EPrimT *) inversion H0.
-  - (* EAppT *) inversion H0.
+  - (* EAppT *) inversion H0; apply IHst_e_e'; subst e; apply val_Dc.
   - (* EAppTAbs *) inversion H0.
   - (* ELet *) inversion H.
   - (* ELetV *) inversion H0.

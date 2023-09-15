@@ -2,6 +2,8 @@ Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 Require Import SystemRF.SystemFWellFormedness.
 
+
+
 (*-------------------------------------------------------------------------
 ----- | REFINEMENT TYPES of BUILT-IN PRIMITIVES
 -------------------------------------------------------------------------*)
@@ -104,46 +106,8 @@ Lemma erase_ty_ffreeTV : forall (c:prim), ffreeTV (erase_ty c) = empty.
 Proof. destruct c; simpl; reflexivity. Qed. 
 
 (*-----------------------------------------------------------------------------
------ | JUDGEMENTS : the Bare-Typing Relation
+----- | JUDGMENTS : the Bare-Typing Relation
 -----------------------------------------------------------------------------*)
-
-Definition inst_dtypeF (k : kind) (u : type) (t : ftype) : ftype :=
-    ftsubBV t (erase u).
-
-Inductive BijectionArrowsF : names -> ftype -> Type := (* can't use Prop here *)
-    | BAF_nil    : forall tc t,       BijectionArrowsF nil (FTData tc t)
-    | BAF_cons   : forall (x:vname) (xs:names) t_x t, 
-          BijectionArrowsF xs t -> BijectionArrowsF (cons x xs) (FTFunc t_x t).
-
-Fixpoint destructF (g : fenv) (xs : names) (u : ftype) 
-                   (pf : BijectionArrowsF xs u) : fenv :=
-    match pf with
-    | BAF_nil  _ _            => g
-    | BAF_cons x xs' u_x u' pf' => destructF (FCons x u_x g) xs' u' pf'
-    end.
-    (* it's not clear what the inductive Prop should be yet,
-        and maybe it will depend on isValid ? *)
-
-Fixpoint destructF' (g : fenv) (nms : names) (u : ftype) : option fenv :=
-    match nms, u with
-    | nil       , _             => Some g
-    | cons x xs , FTFunc u_x u' => destructF' (FCons x u_x g) xs u'
-    | _         , _             => None
-    end.
-
-Lemma destructF_destructF' : 
-  forall (g : fenv) (xs : names) (u : ftype) (pf : BijectionArrowsF xs u),
-      destructF' g xs u = Some (destructF g xs u pf).
-Proof. intros; generalize dependent g; 
-  induction pf as [tc t|x xs_ t_x t Hxs IH]; simpl;
-  intros g; try rewrite IH; reflexivity. Qed.
-
-Lemma destructF_pf_indep : 
-  forall (g : fenv) (xs : names) (u : ftype) (pf pf' : BijectionArrowsF xs u),
-    destructF g xs u pf = destructF g xs u pf'.
-Proof. intros. assert (Some (destructF g xs u pf) = Some (destructF g xs u pf')).
-- apply eq_stepl with (destructF' g xs u); apply destructF_destructF'.
-- injection H as H'; assumption. Qed.    
 
 Inductive HasFtype : fenv -> defs -> expr -> ftype -> Prop := 
     | FTBC   : forall (g:fenv) (ds:defs) (b:bool),  HasFtype g ds (Bc b) (FTBasic TBool)
@@ -151,8 +115,7 @@ Inductive HasFtype : fenv -> defs -> expr -> ftype -> Prop :=
     | FTVar  : forall (g:fenv) (ds:defs) (x:vname) (b:ftype),
           bound_inF x b g -> HasFtype g ds (FV x) b
     | FTPrm  : forall (g:fenv) (ds:defs) (c:prim),  HasFtype g ds (Prim c) (erase_ty c)
-    | FTDC   : forall (g:fenv) (ds:defs) (dc : dcons) (dt : type), 
-          dc_defined_in dc dt ds -> HasFtype g ds (Dc dc) (erase dt)
+    | FTData : ...
     | FTAbs  : forall (g:fenv) (ds:defs) (b:ftype) (k:kind) (e:expr) (b':ftype) (nms:names),
           WFFT g ds b k 
               -> (forall (y:vname), ~ Elem y nms -> HasFtype (FCons y b g) ds (unbind y e) b' )
@@ -176,23 +139,20 @@ Inductive HasFtype : fenv -> defs -> expr -> ftype -> Prop :=
           erase t1 = b  -> Subset (free t1) (vbindsF g) 
                         -> Subset (freeTV t1) (tvbindsF g) -> isLCT t1 
               -> HasFtype g ds e b -> HasFtype g ds (Annot e t1) b
-    | FTSwit : forall (g:fenv) (ds:defs) (tc:tcons) (t':ftype) (dds:ddefns)
-                      (e:expr) (cs:alts) (t:ftype),
-          defined_in tc dds ds -> AHasFtype g ds tc t' dds cs t -> HasFtype g ds e (FTData tc t')
-              -> HasFtype g ds (Switch e cs) t
+    | FTSwit : forall (g;fenv) (ds:defs) (e:expr) (cs:alts) ...
 
-with AHasFtype : fenv -> defs -> tcons -> ftype -> ddefns -> alts -> ftype -> Prop :=
-    | AFTEmpty : forall (g:fenv) (ds:defs) (tc:tcons) (t' t:ftype),
-          AHasFtype g ds tc t' nil AEmpty t
-    | AFTCons  : forall (g:fenv) (ds:defs) (tc:tcons) (t':ftype) 
-                        (dc:dcons) (k:kind) (u:type) (dds:ddefns) 
-                        (e':expr) (cs:alts) (t:ftype) (nms:names),
-          AHasFtype g ds tc t' dds cs t 
-              -> (forall (xs:names) (pf:BijectionArrowsF xs (inst_dtypeF k u t')), 
-                      (* -> len xs = arrows u (* arity dc *) *)
-                      intersect xs nms = empty 
-                          -> HasFtype (destructF g xs (inst_dtypeF k u t') pf) ds e' t ) 
-              -> AHasFtype g ds tc t' (cons (DDefn dc (TPoly k u)) dds) (ACons dc e' cs) t.
+with AHasFType : fenv -> defs (*-> expr*) -> ddefns -> alts -> ftype -> Prop :=
+    | AFTEmpty : forall (g:fenv) (ds:defs) (t:ftype) (*e:expr*),
+          AHasFType g ds (*e*) DDEmpty AEmpty t
+    | AFTCons  : forall (g:fenv) (ds:defs) (dc:dcons) (ddt:type) (dds:ddefns) 
+                        (e:expr) (s:ftype) (e':expr) (cs:alts) (t:ftype) (nms xs:names)
+          AHasFType g ds dds cs t -> isFTData s -> HasFType g ds e s
+              -> quant_arrows ddt == arity dc ....
+              -> len xs == arity dc -> Disjoint xs nms -> ....
+              -> (forall (y:vname), ~ Elem y (union xs nms) 
+                      -> HasFType (unapplyF g y xs (inst_dctypeF ddt s)) ds e' t ) 
+              -> AHasFType g ds (DDCons (DDef dc ddt) dds) (ACons dc e' as) t.
+
 
 Inductive PHasFtype : fenv -> defs -> preds -> Prop := 
     | PFTEmp  : forall (g:fenv) (ds:defs), PHasFtype g ds PEmpty

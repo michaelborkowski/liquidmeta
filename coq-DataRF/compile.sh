@@ -13,10 +13,10 @@ echo "Checking Semantics.v ..."
 coqc -Q . SystemRF Semantics.v
 echo "Checking SystemFWellFormedness.v ..."
 coqc -Q . SystemRF SystemFWellFormedness.v
-#echo "Checking SystemFTyping.v ..."
-#coqc -Q . SystemRF SystemFTyping.v
-#echo "Checking WellFormedness.v ..."
-#coqc -Q . SystemRF WellFormedness.v
+echo "Checking SystemFTyping.v ..."
+coqc -Q . SystemRF SystemFTyping.v
+echo "Checking WellFormedness.v ..."
+coqc -Q . SystemRF WellFormedness.v
 #echo "Checking PrimitivesFTyping.v ..."
 #coqc -Q . SystemRF PrimitivesFTyping.v
 #echo "Checking BasicPropsSubstitution.v ..."

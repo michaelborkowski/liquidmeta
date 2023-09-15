@@ -25,9 +25,10 @@ Proof. apply (syntax_mutind
        j <= j' -> k <= k' -> isLCP_at j k ps -> isLCP_at j' k' ps));
   simpl; try reflexivity.
   
-  - (* BV i *) simpl. intros i j k j' k' j_le k_le Hjk. apply lt_le_trans with j. all : assumption.
-  - (* Lambda e *) intros e IHe j k j' k' j_le k_le. apply IHe. 
-      { apply plus_le_compat_r. apply j_le. } 
+  - (* BV i *) simpl. intros i j k j' k' j_le k_le Hjk. 
+      apply Nat.lt_le_trans with j. all : assumption.
+  - (* Lambda e *) intros e IHe j k j' k' j_le k_le. apply IHe.
+      { apply Nat.add_le_mono_r. apply j_le. } 
       { apply k_le. }
   - (* App e e' *) intros e1 IHe1 e2 IHe2 j k j' k' j_le k_le Hjk. 
       destruct Hjk as [H1 H2]. split.
@@ -35,7 +36,7 @@ Proof. apply (syntax_mutind
       { apply IHe2 with j k. apply j_le. apply k_le. apply H2. }
   - (* LambdaT k e *) intros k e IHe j k0 j' k' j_le k_le Hjk. 
       apply IHe with j (k0+1). 
-      apply j_le. apply plus_le_compat_r. apply k_le. apply Hjk.
+      apply j_le. apply Nat.add_le_mono_r. apply k_le. apply Hjk.
   - (* AppT e t *) intros e IHe t IHt j k j' k' j_le k_le Hjk. 
       destruct Hjk as [He Ht]. split.
       { apply IHe with j k. all : assumption. }
@@ -43,7 +44,7 @@ Proof. apply (syntax_mutind
   - (* Let e1 e2 *) intros.
       destruct H3 as [He1 He2]. split.
       { apply H  with j     k. all : assumption. }
-      { apply H0 with (j+1) k. apply plus_le_compat_r. all : assumption. }
+      { apply H0 with (j+1) k. apply Nat.add_le_mono_r. all : assumption. }
   - (* Annot e t *) intros. destruct H3 as [He Ht]. split.
       { apply H  with j k. all : assumption. }
       { apply H0 with j k. all : assumption. }
@@ -52,27 +53,27 @@ Proof. apply (syntax_mutind
       { apply H0 with j k. all : assumption. }
 
   - (* ACons dc e cs *) intros. destruct H3 as [He Hcs]. split.
-      { apply H  with (j + arity d) k. apply plus_le_compat_r. all : assumption. }
+      { apply H  with (j + arity d) (k+1); try apply Nat.add_le_mono_r; assumption. }
       { apply H0 with j k. all : assumption. }
 
   - (* TRefn b ps *) intros. destruct b.
-      { apply H with (j+1) k. apply plus_le_compat_r. all : assumption.  }
-      { apply H with (j+1) k. apply plus_le_compat_r. all : assumption.  }
+      { apply H with (j+1) k. apply Nat.add_le_mono_r. all : assumption.  }
+      { apply H with (j+1) k. apply Nat.add_le_mono_r. all : assumption.  }
       { destruct H2. split. 
-        { apply lt_le_trans with k. all : assumption. }
-        { apply H with (j+1) k. apply plus_le_compat_r. all : assumption. }}
-      { apply H with (j+1) k. apply plus_le_compat_r. all : assumption.  }
+        { apply Nat.lt_le_trans with k. all : assumption. }
+        { apply H with (j+1) k. apply Nat.add_le_mono_r. all : assumption. }}
+      { apply H with (j+1) k. apply Nat.add_le_mono_r. all : assumption.  }
   - (* TData tc t *) intros; destruct H3. split.
       { apply H  with j     k. all : assumption. } 
-      { apply H0 with (j+1) k. apply plus_le_compat_r. all : assumption. }
+      { apply H0 with (j+1) k. apply Nat.add_le_mono_r. all : assumption. }
   - (* TFunc tx t *) intros. destruct H3 as [Htx Ht]. split.
       { apply H  with j     k. all : assumption. } 
-      { apply H0 with (j+1) k. apply plus_le_compat_r. all : assumption. }
+      { apply H0 with (j+1) k. apply Nat.add_le_mono_r. all : assumption. }
   - (* TExists tx t *) intros. destruct H3 as [Htx Ht]. split.
       { apply H  with j     k. all : assumption. } 
-      { apply H0 with (j+1) k. apply plus_le_compat_r. all : assumption. }
+      { apply H0 with (j+1) k. apply Nat.add_le_mono_r. all : assumption. }
   - (* TPoly k t *) intros. apply H with j (k0+1). 
-      assumption. apply plus_le_compat_r. all: assumption.
+      assumption. apply Nat.add_le_mono_r. all: assumption.
 
   - (* PCons p ps *) intros. destruct H3 as [Hp Hps]. split.
       { apply H  with j k. all : assumption. }
@@ -99,7 +100,7 @@ Proof. apply (syntax_mutind
   simpl; try reflexivity. 
   - (* BV i *) intros. assumption.
   - (* FV x *) intros. destruct (x0 =? x). 
-      { apply lem_islc_at_weaken with 0 0. apply le_0_n. apply le_0_n. assumption. }
+      { apply lem_islc_at_weaken with 0 0; try apply Nat.le_0_l. assumption. }
       { reflexivity. }
   - (* Lambda e *) intros. apply H. all : assumption.
   - (* App e e' *) intros. 
@@ -146,7 +147,7 @@ Lemma lem_islcp_at_strengthen : forall (j k : index) (ps : preds) (ts : preds),
     j >= 1 -> isLCP_at j k ps -> isLCP_at 1 0 ts -> isLCP_at j k (strengthen ps ts ).
 Proof. intros j k. induction ps. all : simpl.
   - (* PEmpty *) intros. apply lem_islc_at_weaken with 1 0. 
-      { assumption. } { apply le_0_n. } { assumption. }
+      { assumption. } { apply Nat.le_0_l. } { assumption. }
   - (* PCons p ps *) intros. destruct H0 as [Hp Hps]. split.
       { assumption. } { apply IHps. all : assumption. }
   Qed.
@@ -156,21 +157,21 @@ Lemma lem_islcp_at_push : forall (j k:index) (ps:preds) (t_a:type),
 Proof. intros j k ps t_a H_j1 H_ut H_ps. (*destruct t_a as [t] eqn:E. simpl. *)
   destruct t_a; unfold isLCT; 
   assert ((j - 1) + 1 = j) as Hj
-    by ( rewrite plus_comm; rewrite minus_Sn_m; try symmetry; 
-         try apply plus_minus; intuition).
+    by ( rewrite Nat.add_comm; rewrite <- Nat.sub_succ_l; 
+         try apply Nat.add_sub_eq_l; intuition).
   - (* TRefn b ps0 *) simpl; destruct b eqn:Eb; rewrite Hj. 
       (* b = TBool *) { apply lem_islcp_at_strengthen; assumption. }
       (* b = TInt  *) { apply lem_islcp_at_strengthen; assumption. }
       (* b = BTV i *) { intro H1. destruct H1. split.
-          * apply lt_le_trans with 0. assumption. apply le_0_n.
+          * apply Nat.lt_le_trans with 0. assumption. apply Nat.le_0_l.
           * apply lem_islcp_at_strengthen; assumption. }
       (* b = FTV x *) { apply lem_islcp_at_strengthen; assumption. }
   - (* TData tc t ps *) simpl; intro H1; destruct H1; try rewrite Hj; split.
           * apply lem_islc_at_weaken with 0 0; intuition.
           * apply lem_islcp_at_strengthen; intuition.
-  - (* TFunc t1 t2 *) apply lem_islc_at_weaken; apply le_0_n.
+  - (* TFunc t1 t2 *) apply lem_islc_at_weaken; apply Nat.le_0_l.
   - (* TExists t1 t2 *) contradiction.
-  - (* TPoly k1 k2 *) apply lem_islc_at_weaken; apply le_0_n.
+  - (* TPoly k1 k2 *) apply lem_islc_at_weaken; apply Nat.le_0_l.
   Qed.
 
 Lemma lem_islc_at_subFTV : (
@@ -202,9 +203,9 @@ Proof. apply (syntax_mutind
       (* BTV i *) { destruct H2. split. assumption. 
           apply H; assumption. }
       (* FTV a' *) { destruct (a =? a').
-          * rewrite <- (minus_plus 1 j). rewrite plus_comm. 
+          * rewrite <- (Nat.add_sub j 1).
             apply lem_islcp_at_push; try assumption. 
-              - apply le_plus_r. 
+              - apply Nat.le_add_l. 
               - apply H; assumption.
           * apply H; assumption.  }
   - (* TPoly k t *) intros. apply H; assumption.
@@ -215,11 +216,12 @@ Proof. apply (syntax_mutind
 -------------------------------------------------------------------------------*)
 
 Lemma lt_S : forall (j : index), j < j + 1.
-Proof. intro j. rewrite <- plus_0_r at 1. apply plus_lt_compat_l. unfold lt. trivial. Qed.
+Proof. intro j. rewrite <- Nat.add_0_r at 1. apply Nat.add_lt_mono_l. 
+  unfold lt. trivial. Qed.
 
 Lemma tighten_lt : forall (i j : index),
     i < j + 1  ->  j <> i  ->  i < j.
-Proof. intros i j Hlt Hneq. rewrite plus_comm in Hlt. simpl in Hlt.  
+Proof. intros i j Hlt Hneq. rewrite Nat.add_comm in Hlt. simpl in Hlt.  
   unfold lt in Hlt. unfold lt.
   apply not_eq_S in Hneq. apply Nat.le_succ_r in Hlt. 
   destruct Hlt. { assumption. } 
@@ -229,11 +231,11 @@ Proof. intros i j Hlt Hneq. rewrite plus_comm in Hlt. simpl in Hlt.
 Lemma loosen_lt : forall (i j : index),
     i < j -> i < j + 1. 
 Proof. intros i j Hlt. assert (j < j + 1). apply lt_S. 
-  apply lt_trans with j; assumption. Qed. 
+  apply Nat.lt_trans with j; assumption. Qed. 
 
 Lemma beq_lt_S : forall ( i j : index ),
   (j =? i) = true  ->  i < j + 1.
-Proof. intros. apply beq_nat_true in H. rewrite H. apply lt_S. Qed.
+Proof. intros. apply Nat.eqb_eq in H. rewrite H. apply lt_S. Qed.
 
 
 Lemma lem_islc_at_before_open_at : (forall (e : expr) (j k : index) (y : vname),
@@ -259,10 +261,10 @@ Proof. apply (syntax_mutind
     apply H || apply H0; assumption).
   - (* BV i *) intros i j k y H_ij1. destruct (j =? i) eqn:E; simpl.
         { reflexivity. } 
-        { apply beq_nat_false in E. apply tighten_lt; assumption. }
+        { apply Nat.eqb_neq in E. apply tighten_lt; assumption. }
   - (* ACons dc e cs *) intros; destruct H1; split;
-    apply H || apply H0. rewrite <- plus_assoc. 
-    rewrite (plus_comm (arity d) 1). rewrite plus_assoc.
+    apply H || apply H0. rewrite <- Nat.add_assoc. 
+    rewrite (Nat.add_comm (arity d) 1). rewrite Nat.add_assoc.
     all: assumption.
   - (* TRefn b ps *) intros. destruct b as [ | |i|a']; 
       try (apply H; assumption).
@@ -295,8 +297,8 @@ Proof. apply (syntax_mutind
       { apply beq_lt_S. assumption. }
       { simpl in H. apply loosen_lt. assumption. }
   - (* ACons dc e cs *) intros; destruct H1; split;
-    try ( rewrite <- plus_assoc;
-          rewrite <- (plus_comm (arity d) 1); rewrite plus_assoc);
+    try ( rewrite <- Nat.add_assoc;
+          rewrite <- (Nat.add_comm (arity d) 1); rewrite Nat.add_assoc);
     apply H with y || apply H0 with y; assumption.
   - (* TRefn b ps *) intros. destruct b as [ | |i|a']; 
       try (apply H with y; assumption).
