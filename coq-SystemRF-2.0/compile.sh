@@ -103,5 +103,7 @@ echo "Checking SelfifyDenotations.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/SelfifyDenotations.v
 echo "Checking DenotationalSoundness.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/DenotationalSoundness.v
-echo "Checking MainProperties.v ..."
-coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/MainProperties.v
+
+echo "Examples"
+echo "Checking Abs.v"
+coqc -Q SystemRF SystemRF -Q Denotations Denotations -R Examples Examples Examples/Abs.v

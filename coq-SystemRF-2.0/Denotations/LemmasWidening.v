@@ -20,12 +20,10 @@ Require Import Arith.
 Require Import Lists.ListSet.
 
 Lemma lem_widen_denotes : 
-  forall (g g':env) (x:vname) (s_x t_x:type) (*k_x:kind*) (th:csub),
+  forall (g g':env) (x:vname) (s_x t_x:type) (th:csub),
     unique g -> unique g'
         -> intersect (binds g) (binds g') = empty
         -> ~ (in_env x g) -> ~ (in_env x g') 
-          (*-> WFtype g t_x k_x -> Subtype g s_x t_x *)
-          (*-> WFEnv (concatE (Cons x s_x g) g') *)
         -> (forall (v:expr) (th0:csub), isValue v -> DenotesEnv g th0
               -> Denotes (ctsubst th0 s_x) v -> Denotes (ctsubst th0 t_x) v)
         -> DenotesEnv (concatE (Cons x s_x g) g') th 

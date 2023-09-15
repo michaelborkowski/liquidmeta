@@ -12,7 +12,7 @@ Require Import Denotations.Denotations.
 Require Import Denotations.BasicPropsCSubst.
 Require Import Denotations.PrimitivesSemantics.
 
-Require Import Arith.
+Require Import ZArith.
 
 (*------------------------------------------------------------------------
   -- | Inverting Denotations of the Basic Types
@@ -37,11 +37,11 @@ Proof. intro b; unfold tybc; rewrite Denotes_equation_1;
   assert (true = Bool.eqb b b) by (destruct b; reflexivity);
   rewrite H; apply lemma_eql_bool_semantics; apply Refl. Qed.
 
-Lemma lem_den_tyic : forall (n:nat), Denotes (tyic n) (Ic n).
+Lemma lem_den_tyic : forall (n:Z), Denotes (tyic n) (Ic n).
 Proof. intro n; unfold tyic; rewrite Denotes_equation_1;
   repeat split; unfold psubBV; simpl; trivial; try apply FTIC. 
   apply PECons; try apply PEEmp.
-  assert ((n =? n) = true) by (apply Nat.eqb_eq; reflexivity).
+  assert ((Z.eqb n n) = true) by (apply Z.eqb_eq; reflexivity).
   rewrite <- H; apply lemma_eql_int_semantics; apply Refl. Qed. 
 
 Lemma lem_den_and : Denotes (ty And) (Prim And).
@@ -209,19 +209,19 @@ Proof. unfold ty; simpl; rewrite Denotes_equation_2;
     try apply lemma_semantics_refn_imp; destruct b0; simpl; apply Refl.  
   Qed.  
 
-Lemma lem_den_leqn : forall (n:nat), Denotes (ty (Leqn n)) (Prim (Leqn n)).
+Lemma lem_den_leqn : forall (n:Z), Denotes (ty (Leqn n)) (Prim (Leqn n)).
 Proof. intro n; unfold ty; rewrite Denotes_equation_2;
   simpl; repeat split; try apply FTPrm; try apply WFFTBasic;
   unfold tsubBV; simpl; intros.
   assert (isInt v_x)
     by (apply lem_den_ints with (TRefn TInt PEmpty); simpl; trivial);
   destruct v_x eqn:E0; try contradiction.
-  exists (Bc (n <=? n0)); repeat split; unfold psubBV; simpl;
+  exists (Bc (Z.leb n n0)); repeat split; unfold psubBV; simpl;
   try apply lem_step_evals; try apply lem_step_leqn;
   try apply FTBC; try apply PECons; try apply PEEmp; 
-  apply lemma_evals_trans with (Bc (Bool.eqb (n <=? n0) (n <=? n0)));
+  apply lemma_evals_trans with (Bc (Bool.eqb (Z.leb n n0) (Z.leb n n0)));
   try apply lemma_semantics_refn_leq;  
-  set (b := n <=? n0); assert (Bool.eqb b b = true)
+  set (b := Z.leb n n0); assert (Bool.eqb b b = true)
     by (pose proof (Bool.eqb_refl b); destruct (Bool.eqb b b); 
         try contradiction; reflexivity);
   rewrite H2; apply Refl. Qed.
@@ -236,19 +236,19 @@ Proof. unfold ty; rewrite Denotes_equation_2;
   try apply lem_step_evals; try apply lem_step_leq;
   apply lem_den_leqn. Qed. 
 
-Lemma lem_den_eqn : forall (n:nat), Denotes (ty (Eqn n)) (Prim (Eqn n)).
+Lemma lem_den_eqn : forall (n:Z), Denotes (ty (Eqn n)) (Prim (Eqn n)).
 Proof. intro n; unfold ty; rewrite Denotes_equation_2;
   simpl; repeat split; try apply FTPrm; try apply WFFTBasic;
   unfold tsubBV; simpl; intros.
   assert (isInt v_x)
     by (apply lem_den_ints with (TRefn TInt PEmpty); simpl; trivial);
   destruct v_x eqn:E0; try contradiction.
-  exists (Bc (n =? n0)); repeat split; unfold psubBV; simpl;
+  exists (Bc (Z.eqb n n0)); repeat split; unfold psubBV; simpl;
   try apply lem_step_evals; try apply lem_step_eqn;
   try apply FTBC; try apply PECons; try apply PEEmp; 
-  apply lemma_evals_trans with (Bc (Bool.eqb (n =? n0) (n =? n0)));
+  apply lemma_evals_trans with (Bc (Bool.eqb (Z.eqb n n0) (Z.eqb n n0)));
   try apply lemma_semantics_refn_eq;  
-  set (b := n =? n0); assert (Bool.eqb b b = true)
+  set (b := Z.eqb n n0); assert (Bool.eqb b b = true)
     by (pose proof (Bool.eqb_refl b); destruct (Bool.eqb b b); 
         try contradiction; reflexivity);
   rewrite H2; apply Refl. Qed.
@@ -334,16 +334,16 @@ Proof. unfold ty; rewrite Denotes_equation_4;
     assert (isInt v_x0)
       by (apply lem_den_ints with (TRefn TInt (psubBV_at 1 (Ic n) ps)); simpl; trivial);
     destruct v_x0 eqn:E0; try contradiction.
-    exists (Bc (n <=? n0)); repeat split; unfold psubBV; simpl;
+    exists (Bc (Z.leb n n0)); repeat split; unfold psubBV; simpl;
     try apply lem_step_evals; try apply lem_step_leqn;
     try apply FTBC; try apply PECons; try apply PEEmp.
     apply AddStep with  
-        (App (App (Prim Eqv) (App (App (Prim Leq) (Ic n)) (Ic n0))) (Bc (n <=? n0)));
+        (App (App (Prim Eqv) (App (App (Prim Leq) (Ic n)) (Ic n0))) (Bc (Z.leb n n0)));
     try apply EApp1; try apply EApp2; try apply EApp1; try apply EApp1;
     try apply lem_step_leql_tint;    
-    try apply lemma_evals_trans with (Bc (Bool.eqb (n <=? n0) (n <=? n0)));
+    try apply lemma_evals_trans with (Bc (Bool.eqb (Z.leb n n0) (Z.leb n n0)));
     try apply lemma_semantics_refn_leq;  
-    set (b' := n <=? n0); assert (Bool.eqb b' b' = true)
+    set (b' := Z.leb n n0); assert (Bool.eqb b' b' = true)
       by (pose proof (Bool.eqb_refl b'); destruct (Bool.eqb b' b'); 
           try contradiction; reflexivity);
     try rewrite H10; try apply Refl; auto. 
@@ -418,16 +418,16 @@ Proof. unfold ty; rewrite Denotes_equation_4;
     assert (isInt v_x0)
       by (apply lem_den_ints with (TRefn TInt (psubBV_at 1 (Ic n) ps)); simpl; trivial);
     destruct v_x0 eqn:E0; try contradiction.
-    exists (Bc (n =? n0)); repeat split; unfold psubBV; simpl;
+    exists (Bc (Z.eqb n n0)); repeat split; unfold psubBV; simpl;
     try apply lem_step_evals; try apply lem_step_eqn;
     try apply FTBC; try apply PECons; try apply PEEmp.
     apply AddStep with  
-        (App (App (Prim Eqv) (App (App (Prim Eq) (Ic n)) (Ic n0))) (Bc (n =? n0)));
+        (App (App (Prim Eqv) (App (App (Prim Eq) (Ic n)) (Ic n0))) (Bc (Z.eqb n n0)));
     try apply EApp1; try apply EApp2; try apply EApp1; try apply EApp1;
     try apply lem_step_eql_tint;    
-    try apply lemma_evals_trans with (Bc (Bool.eqb (n =? n0) (n =? n0)));
+    try apply lemma_evals_trans with (Bc (Bool.eqb (Z.eqb n n0) (Z.eqb n n0)));
     try apply lemma_semantics_refn_eq;  
-    set (b' := n =? n0); assert (Bool.eqb b' b' = true)
+    set (b' := Z.eqb n n0); assert (Bool.eqb b' b' = true)
       by (pose proof (Bool.eqb_refl b'); destruct (Bool.eqb b' b'); 
           try contradiction; reflexivity);
     try rewrite H10; try apply Refl; auto. 

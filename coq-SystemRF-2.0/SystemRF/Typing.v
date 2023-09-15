@@ -1,4 +1,5 @@
 Require Import Arith.
+Require Import ZArith.
 
 Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names. 
@@ -112,7 +113,7 @@ Proof. intros; destruct t; reflexivity. Qed.
  
 Inductive Hastype : env -> expr -> type -> Prop :=
     | TBC   : forall (g:env) (b:bool), Hastype g (Bc b) (tybc b) 
-    | TIC   : forall (g:env) (m:nat),  Hastype g (Ic m) (tyic m) 
+    | TIC   : forall (g:env) (m:Z),  Hastype g (Ic m) (tyic m) 
     | TVar  : forall (g:env) (x:vname) (t:type) (k:kind),
           bound_in x t g -> WFtype g t k -> Hastype g (FV x) (self t (FV x) k)
     | TPrm  : forall (g:env) (c:prim), Hastype g (Prim c) (ty c)

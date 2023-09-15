@@ -22,6 +22,8 @@ Require Import SystemRF.SubstitutionLemmaTypTV.
 Require Import SystemRF.LemmasTransitive.
 Require Import SystemRF.LemmasInversion.
 
+Require Import ZArith.
+
 (* -- Lemma. Typing of \delta(c,v) and \delta_T(c,t) *)
 Lemma lem_delta_ty'c : forall (c:prim) (v:expr),
     ~ isPoly c -> isValue v -> Hastype Empty v (intype c)
@@ -34,14 +36,14 @@ Proof. intros c v np val p_v_inc; destruct c eqn:C;
   try apply (lem_int_values v val) in Hv;
   destruct v eqn:V; simpl in Hv; try contradiction;
   assert (isCompat c v) as pf by (rewrite C; rewrite V; constructor);
-  assert (forall m:nat, isCompat Leq (Ic m)) as pfL by constructor;
-  assert (forall m:nat, isCompat Eq  (Ic m)) as pfE by constructor;
+  assert (forall m:Z, isCompat Leq (Ic m)) as pfL by constructor;
+  assert (forall m:Z, isCompat Eq  (Ic m)) as pfE by constructor;
   assert (isCompatT Eql (TRefn TBool PEmpty)) as pfB by (apply isCptT_EqlB; trivial);
   assert (isCompatT Eql (TRefn TInt  PEmpty)) as pfZ by (apply isCptT_EqlZ; trivial);
-  assert (forall m:nat, delta Leq (Ic m) (pfL m) = Prim (Leqn m)) as delL
+  assert (forall m:Z, delta Leq (Ic m) (pfL m) = Prim (Leqn m)) as delL
       by (intro m; pose proof (delta_delta' Leq (Ic m) (pfL m)) as D; 
           simpl in D; injection D; trivial);
-  assert (forall m:nat, delta Eq  (Ic m) (pfE m) = Prim (Eqn m))  as delE
+  assert (forall m:Z, delta Eq  (Ic m) (pfE m) = Prim (Eqn m))  as delE
       by (intro m; pose proof (delta_delta' Eq  (Ic m) (pfE m)) as D; 
           simpl in D; injection D; trivial);
   assert ( Prim Eqv = deltaT Eql (TRefn TBool PEmpty) pfB ) as delTB

@@ -1,3 +1,16 @@
 .liquid/
+.stack-work/
+.*.swp
+.*.swo
+
+.*.aux
+*.glob
+*.aus
+*.vo
+*.vos
+*.vok
+
 not_for_git/
 a.hs
+unused_code.h
+Signatures.hs

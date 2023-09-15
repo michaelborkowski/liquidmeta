@@ -7,6 +7,8 @@ Require Import SystemRF.PrimitivesFTyping.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.Typing.
 
+Require Import ZArith.
+
 (*-----------------------------------------------------------------------------
 -- | Well-Formedness Facts about BUILT-IN PRIMITIVES
 -----------------------------------------------------------------------------*)
@@ -33,7 +35,7 @@ Proof. intros ; apply WFRefn with (binds g)
               ; try discriminate ; intuition.
               Qed.
 
-Lemma lem_wf_tyic : forall (g:env) (n:nat), WFtype g (tyic n) Base.
+Lemma lem_wf_tyic : forall (g:env) (n:Z), WFtype g (tyic n) Base.
 Proof. intros ; apply WFRefn with (binds g)
               ; try apply WFBase ; intros 
               ; try apply PFTCons
@@ -120,7 +122,7 @@ Proof. intros; destruct b; unfold tybc; simpl; unfold eqlPred;
   apply SBase with (binds g); intros; unfold unbindP; simpl;
   apply IRepeat. Qed.
   
-Lemma lem_tyic_exact : forall (g:env) (n:nat),
+Lemma lem_tyic_exact : forall (g:env) (n:Z),
     Subtype g (tyic n) (self (tyic n) (Ic n) Base).
 Proof. intros; unfold tyic; simpl; unfold eqlPred;
   apply SBase with (binds g); intros; unfold unbindP; simpl;

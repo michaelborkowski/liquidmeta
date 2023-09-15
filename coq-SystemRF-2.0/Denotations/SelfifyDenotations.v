@@ -16,7 +16,7 @@ Require Import Denotations.BasicPropsCSubst.
 Require Import Denotations.PrimitivesSemantics.
 Require Import Denotations.PrimitivesDenotations.
 
-Require Import Arith.
+Require Import ZArith.
 
 Lemma lem_denotations_selfify' : forall (n:nat) (g:env) (t:type) (k:kind) (v:expr),
     depth t <= n -> WFtype g t k -> g = Empty 
@@ -46,7 +46,7 @@ Proof. induction n.
       + (* Int *) assert (isInt v)
           by (apply lem_den_ints with (TRefn TInt ps); simpl; trivial);
         destruct v eqn:V; try contradiction.
-        assert ((n =? n) = true) by (apply Nat.eqb_eq; reflexivity);
+        assert ((Z.eqb n n) = true) by (apply Z.eqb_eq; reflexivity);
         rewrite <- H7; apply lemma_eql_int_semantics; apply Refl.
     * (* k = Star *) apply H4.
   - (* n > 0 *) intros; subst g; destruct t.

@@ -10,6 +10,7 @@ Require Import Denotations.ClosingSubstitutions.
 From Equations Require Import Equations.
 
 Require Import Arith.
+Require Import ZArith.
 
 Fixpoint quants (t : type) : nat :=
     match t with
@@ -173,11 +174,6 @@ Inductive DenotesEnv : env -> csub -> Prop :=
         DenotesEnv g th -> ~ in_env a g 
               -> isMono t -> noExists t -> WFtype Empty t k
               -> DenotesEnv (ConsT a k g) (CConsT a t th).
-(* the following spec. in the LH follow from Denotes th(t) v:
-    - isValue v
-    - Set_emp (fv v) && Set_emp (ftv v) && Set_emp (freeBV v) && Set_emp (freeBTV v) 
-   and the following follow from WFType Empty t k:
-    - Set_emp (free t) && Set_emp (freeTV t) && Set_emp (tfreeBV t) && Set_emp (tfreeBTV t) *)
 
 Lemma lem_binds_env_th : forall (g:env) (th:csub), 
     DenotesEnv g th -> binds g = bindsC th.
@@ -210,12 +206,3 @@ Proof. intros v t den_t_v; apply lem_den_hasftype in den_t_v;
   apply lem_fv_subset_bindsF in den_t_v; simpl in den_t_v;
   destruct den_t_v; split; apply no_elem_empty; intro x;
   apply not_elem_subset with empty; auto. Qed.
-  
-    (*
-{-@ lem_den_nobv :: v:Value -> t:Type -> ProofOf(Denotes t v) 
-        -> { pf:_ | Set_emp (freeBV v) && Set_emp (freeBTV v) } @-}
-lem_den_nobv :: Expr -> Type -> Denotes -> Proof
-lem_den_nobv v t den_t_v = lem_freeBV_emptyB FEmpty v (erase t) pf_v_bt
-  where
-    pf_v_bt = get_ftyp_from_den t v den_t_v *)
-   

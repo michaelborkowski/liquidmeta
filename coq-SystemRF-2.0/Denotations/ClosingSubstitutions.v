@@ -137,17 +137,6 @@ Fixpoint ctsubst (th : csub) (t : type) : type :=
     | (CConsT a t' th) => ctsubst th (tsubFTV a t' t)
     end.
 
-(*
-{-@ reflect csubst_tv @-}
-{-@ csubst_tv :: th:csub -> { a:vname | tv_in_csubst a th } 
-        -> { t':UserType | Set_emp (free t') && Set_emp (freeTV t') &&
-                           Set_emp (tfreeBV t') && Set_emp (tfreeBTV t') }@-}
-csubst_tv :: csub -> vname -> Type
-csubst_tv (CCons  x  v  th) a             = csubst_tv th a
-csubst_tv (CConsT a' t' th) a | a' == a   = t'
-                              | otherwise = csubst_tv th a
-*)
-
 Fixpoint concatCS (th th'0 : csub) : csub :=
     match th'0 with
     | CEmpty           => th
@@ -168,5 +157,4 @@ Fixpoint csubst_env (th0:csub) (g:env) : env :=
     | (CCons  z v_z th) => csubst_env th (esubFV  z v_z g)
     | (CConsT a t_a th) => csubst_env th (esubFTV a t_a g)
     end.
-(* Pre:  g:Env  | Set_emp (Set_cap (bindsC th) (binds g)) 
-   Post: g':Env | binds g == binds g' && vbinds g == vbinds g' && tvbinds g == tvbinds g' } *)
+    

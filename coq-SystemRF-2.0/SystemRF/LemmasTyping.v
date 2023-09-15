@@ -13,11 +13,13 @@ Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.SubstitutionLemmaWFTV.
 Require Import SystemRF.PrimitivesWFType.
 
+Require Import ZArith.
+
 Lemma lem_tsubFV_tybc : forall (x:vname) (v_x:expr) (b:bool),
     isValue v_x ->  tsubFV x v_x (tybc b) = tybc b.
 Proof. intros; destruct b; unfold tybc; reflexivity. Qed.
 
-Lemma lem_tsubFV_tyic : forall (x:vname) (v_x:expr) (n:nat),
+Lemma lem_tsubFV_tyic : forall (x:vname) (v_x:expr) (n:Z),
     isValue v_x-> tsubFV x v_x (tyic n) = tyic n.
 Proof. intros; unfold tyic; reflexivity. Qed.
 
@@ -29,7 +31,7 @@ Lemma lem_tsubFTV_tybc : forall (a:vname) (t_a:type) (b:bool),
     noExists t_a -> tsubFTV a t_a (tybc b) = tybc b.
 Proof. intros; destruct b; unfold tybc; reflexivity. Qed.
 
-Lemma lem_tsubFTV_tyic : forall (a:vname) (t_a:type) (n:nat),
+Lemma lem_tsubFTV_tyic : forall (a:vname) (t_a:type) (n:Z),
     noExists t_a -> tsubFTV a t_a (tyic n) = tyic n.
 Proof. intros; unfold tyic; reflexivity. Qed.
 

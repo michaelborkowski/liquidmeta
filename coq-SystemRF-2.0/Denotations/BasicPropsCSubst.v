@@ -10,6 +10,7 @@ Require Import SystemRF.Typing.
 Require Import Denotations.ClosingSubstitutions.
 
 Require Import Arith.
+Require Import ZArith.
 Require Import Lists.ListSet.
 
   (* -- | More Properties of Substitution *)
@@ -71,14 +72,14 @@ Proof. intros; rewrite <- (lem_subFV_notin' v y v_y) at 2;
    try apply lem_commute_subFV_general; assumption. Qed.
 
 Lemma lem_commute_tsubFV : forall (t:type) (x:vname) (v:expr) (y:vname) (v_y:expr),
-y <> x -> ~ Elem x (fv v_y) -> ~ Elem y (fv v)
-  -> tsubFV y v_y (tsubFV x v t) = tsubFV x v (tsubFV y v_y t).
+    y <> x -> ~ Elem x (fv v_y) -> ~ Elem y (fv v)
+      -> tsubFV y v_y (tsubFV x v t) = tsubFV x v (tsubFV y v_y t).
 Proof. intros; rewrite <- (lem_subFV_notin' v y v_y) at 2;
    try apply lem_commute_tsubFV_general; assumption. Qed.
 
 Lemma lem_commute_psubFV : forall (ps:preds) (x:vname) (v:expr) (y:vname) (v_y:expr),
-y <> x -> ~ Elem x (fv v_y) -> ~ Elem y (fv v)
-  -> psubFV y v_y (psubFV x v ps) = psubFV x v (psubFV y v_y ps).
+    y <> x -> ~ Elem x (fv v_y) -> ~ Elem y (fv v)
+      -> psubFV y v_y (psubFV x v ps) = psubFV x v (psubFV y v_y ps).
 Proof. intros; rewrite <- (lem_subFV_notin' v y v_y) at 2;
    try apply lem_commute_psubFV_general; assumption. Qed.
 
@@ -399,7 +400,7 @@ Lemma lem_csubst_bc : forall (th:csub) (b:bool) ,
     csubst th (Bc b) = Bc b.
 Proof. induction th; simpl; apply IHth || reflexivity. Qed.
 
-Lemma lem_csubst_ic : forall (th:csub) (n:nat),
+Lemma lem_csubst_ic : forall (th:csub) (n:Z),
     csubst th (Ic n) = Ic n.
 Proof. induction th; simpl; apply IHth || reflexivity. Qed.
 
@@ -515,30 +516,6 @@ Proof. induction th; simpl; intros.
       + subst a0; contradiction.
       + apply IHth; trivial.
   Qed.
-
-(*
-{-@ lem_ctsubst_refn_tv' :: th:csub -> { a:vname | tv_in_csubst a th } -> x:RVname -> p:preds
-        -> { b:Basic | b == TBool || b == TInt } -> z:RVname
-        -> { q:preds | (TRefn b z q) == csubst_tv th a }
-        -> { pf:_ | ctsubst th (TRefn (FTV a) x p) == TRefn b z (strengthen (csubst th p) q) } @-}
-lem_ctsubst_refn_tv' :: csub -> vname -> RVname -> expr -> Basic -> RVname -> expr -> Proof
-lem_ctsubst_refn_tv' th a x p b z q = () ? lem_ctsubst_refn_tv th a x p
-
-{-@ lem_ctsubst_refn_usertype :: g:Env -> th:csub -> ProofOf(DenotesEnv g th)
-        -> b:Basic -> x:RVname -> p:preds -> ProofOf(WFType g (TRefn b x p) Base)
-        -> { pf:_ | noExists (ctsubst th (TRefn b x p)) } @-}
-lem_ctsubst_refn_usertype :: Env -> csub -> DenotesEnv -> Basic -> RVname -> expr -> WFType -> Proof
-lem_ctsubst_refn_usertype g th den_g_th b x p p_g_t = case b of
-  (FTV a) -> case ( csubst_tv th (a ? lem_wf_refn_tv_in_env g a x p Base p_g_t
-                                    ? lem_binds_env_th g th den_g_th) ) of
-    (TRefn b' z q_) -> () ? lem_ctsubst_refn_tv th a x p
-                          ? toProof ( noExists (TRefn b' z (strengthen (csubst th p) q)) === True )
-      where
-        q = q_ ? lem_refn_is_pred (TRefn b' z q_) b' z q_
-    (TFunc {})     -> () ? lem_ctsubst_refn_tv th a x p
-    (TPoly {})     -> () ? lem_ctsubst_refn_tv th a x p 
-  _       -> () ? lem_ctsubst_refn    th b x p 
-*)
 
 Lemma lem_ctsubst_func : forall (th:csub) (t_x t:type),
     ctsubst th (TFunc t_x t) = TFunc (ctsubst th t_x) (ctsubst th t).
@@ -752,57 +729,6 @@ Proof. induction th; simpl; intros; try reflexivity;
   try apply lemma_tsubFV_noExists;
   try apply lemma_tsubFTV_noExists; try assumption. Qed.
   
-(* --- Compositional Laws
-
-{-@ lem_csubst_and_unbind :: x:vname -> y:vname 
-           -> v:Value -> bt:FType -> ProofOf(HasFType FEmpty v bt)
-           -> { th:csub | not (Set_mem y (bindsC th)) } -> { p:expr | not (Set_mem y (fv p)) }
-           -> { pf:_ | csubst (CCons y v th) (unbind x y p) == subBV x v (csubst th p) } @-}
-lem_csubst_and_unbind :: vname -> vname -> expr -> FType -> HasFType -> csub -> expr -> Proof
-lem_csubst_and_unbind x y v b pf_v_b th p = () {-toProof ( 
-       csubst (CCons y (v-}  ? lem_fv_subset_bindsF FEmpty v b pf_v_b{-) th) (unbind x y p) 
-   === csubst th (subFV y v (unbind x y p))-}
-     ? lem_subFV_unbind x y v p
---   === csubst th (subBV x v p)
-     ? lem_csubst_subBV x v b pf_v_b th p
---   === subBV x v (csubst th p) )
-
-{-@ lem_csubst_and_unbind_tv :: a:vname -> a':vname -> t_a:UserType -> k:kind -> ProofOf(WFType Empty t_a k)
-        -> { th:csub | not (Set_mem a' (bindsC th)) } -> { p:expr | not (Set_mem a' (ftv p)) }
-        -> { pf:_ | csubst (CConsT a' t_a th) (unbind_tv a a' p) == subBTV a t_a (csubst th p) } @-}
-lem_csubst_and_unbind_tv :: vname -> vname -> type -> kind -> WFType -> csub -> expr -> Proof
-lem_csubst_and_unbind_tv a a' t_a k pf_emp_ta th p 
-  = () ? lem_free_subset_binds Empty t_a k pf_emp_ta  
-       ? lem_tfreeBV_empty     Empty t_a k pf_emp_ta 
-       ? lem_subFTV_unbind_tv  a a' t_a p
-       ? lem_csubst_subBTV     a t_a k pf_emp_ta th p
-
-{-@ lem_ctsubst_and_unbindT :: x:vname -> y:vname
-           -> v:Value -> bt:FType -> ProofOf(HasFType FEmpty v bt)
-           -> { th:csub | not (Set_mem y (bindsC th)) } -> { t:type | not (Set_mem y (free t)) }
-           -> { pf:_ | ctsubst (CCons y v th) (unbindT x y t) == tsubBV x v (ctsubst th t) } @-}
-lem_ctsubst_and_unbindT :: vname -> vname -> expr -> FType -> HasFType 
-           -> csub -> type -> Proof
-lem_ctsubst_and_unbindT x y v bt pf_v_b th t = () {-toProof ( 
-       ctsubst (CCons y (v-} ? lem_fv_subset_bindsF FEmpty v bt pf_v_b{-) th) (unbindT x y t)
-   === ctsubst th (tsubFV y v (unbindT x y t))-}
-     ? lem_tsubFV_unbindT x y v t
---   === ctsubst th (tsubBV x v t)
-     ? lem_ctsubst_tsubBV x v bt pf_v_b th t
---   === tsubBV x v (ctsubst th t) )
-
-{-@ lem_ctsubst_and_unbind_tvT :: a1:vname -> a:vname -> t_a:UserType 
-        -> k:kind -> ProofOf(WFType Empty t_a k)
-        -> { th:csub | not (Set_mem a (bindsC th)) } -> { t:type | not (Set_mem a (freeTV t)) }
-        -> { pf:_ | ctsubst (CConsT a t_a th) (unbind_tvT a1 a t) == tsubBTV a1 t_a (ctsubst th t) } @-}
-lem_ctsubst_and_unbind_tvT :: vname -> vname -> type -> kind -> WFType  
-           -> csub -> type -> Proof
-lem_ctsubst_and_unbind_tvT a1 a t_a k p_emp_ta th t 
-  = () ? lem_free_subset_binds  Empty t_a k p_emp_ta
-       ? lem_tfreeBV_empty      Empty t_a k p_emp_ta 
-       ? lem_tsubFTV_unbind_tvT a1 a t_a t   
-       ? lem_ctsubst_tsubBTV    a1 t_a k p_emp_ta th t
-*)
   (* --- After applying a closing substitution there are no more free variables remaining *)
 
 Lemma lem_csubst_pres_noftv : forall (th:csub) (v:expr),

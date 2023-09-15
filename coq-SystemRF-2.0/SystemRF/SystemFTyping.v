@@ -2,6 +2,8 @@ Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 Require Import SystemRF.SystemFWellFormedness.
 
+Require Import ZArith.
+
 (*-------------------------------------------------------------------------
 ----- | REFINEMENT TYPES of BUILT-IN PRIMITIVES
 -------------------------------------------------------------------------*)
@@ -10,7 +12,7 @@ Definition tybc (b:bool) : type := (*Set_emp (free t) && Set_emp (freeTV t) *)
     TRefn TBool (PCons (App (App (AppT (Prim Eql) (TRefn TBool PEmpty)) 
                                  (Bc b)) (BV 0))  PEmpty).
 
-Definition tyic (n:nat) : type := (* Set_emp (free t) && Set_emp (freeTV t) *)
+Definition tyic (n:Z) : type := (* Set_emp (free t) && Set_emp (freeTV t) *)
     TRefn TInt  (PCons (App (App (AppT (Prim Eql) (TRefn TInt  PEmpty))
                                  (Ic n)) (BV 0))  PEmpty).
 
@@ -109,7 +111,7 @@ Proof. destruct c; simpl; reflexivity. Qed.
 
 Inductive HasFtype : fenv -> expr -> ftype -> Prop := 
     | FTBC   : forall (g:fenv) (b:bool),  HasFtype g (Bc b) (FTBasic TBool)
-    | FTIC   : forall (g:fenv) (n:nat),   HasFtype g (Ic n) (FTBasic TInt)
+    | FTIC   : forall (g:fenv) (n:Z),   HasFtype g (Ic n) (FTBasic TInt)
     | FTVar  : forall (g:fenv) (x:vname) (b:ftype),
           bound_inF x b g -> HasFtype g (FV x) b
     | FTPrm  : forall (g:fenv) (c:prim), HasFtype g (Prim c) (erase_ty c)

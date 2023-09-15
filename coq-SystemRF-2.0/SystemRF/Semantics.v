@@ -1,4 +1,5 @@
 Require Import Arith.
+Require Import ZArith.
 
 Require Import SystemRF.BasicDefinitions.
 
@@ -86,9 +87,9 @@ Definition delta (c : prim) (v : expr) (pf : isCompat c v) : expr :=
                         | false => Lambda (Bc true)
                         end
     | isCpt_Leq  n   => Prim (Leqn n)
-    | isCpt_Leqn n m => Bc (n <=? m)
+    | isCpt_Leqn n m => Bc (Z.leb n m)
     | isCpt_Eq   n   => Prim (Eqn n)
-    | isCpt_Eqn n m  => Bc (n =? m)
+    | isCpt_Eqn n m  => Bc (Z.eqb n m)
     end. 
 
 Definition delta' (c : prim) (v : expr) : option expr :=
@@ -104,9 +105,9 @@ Definition delta' (c : prim) (v : expr) : option expr :=
     | Imp      , (Bc true)  => Some  (Lambda (BV 0))
     | Imp      , (Bc false) => Some  (Lambda (Bc true))
     | Leq      , (Ic n)     => Some  (Prim (Leqn n))
-    | (Leqn n) , (Ic m)     => Some  (Bc (n <=? m))
+    | (Leqn n) , (Ic m)     => Some  (Bc (Z.leb n m))
     | Eq       , (Ic n)     => Some  (Prim (Eqn n))
-    | (Eqn n)  , (Ic m)     => Some  (Bc (n =? m))
+    | (Eqn n)  , (Ic m)     => Some  (Bc (Z.eqb n m))
     | _        , _          => None 
     end.
 

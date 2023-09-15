@@ -132,23 +132,6 @@ Proof. intro a; induction g; intros; simpl in H1.
       exists t_a; simpl; repeat split; auto.
   Qed.
 
-(*
-Lemma get_wftype_from_denv : forall (g:env) (th:csub) (a:vname),
-    DenotesEnv g th
-        -> a:Vname -> { k_a:Kind | tv_bound_in a k_a g }
-        -> (UserType, WFType)<{\t_a pf -> t_a == csubst_tv th a &&
-                                          propOf pf == WFType Empty t_a k_a }> @-}
-get_wftype_from_denv :: Env -> CSub -> DenotesEnv -> Vname -> Kind -> (Type, WFType)
-get_wftype_from_denv Empty          _   den_g_th   a k_a = case den_g_th of
-  DEmp -> impossible ""
-get_wftype_from_denv (Cons z t_z g) zth den_zg_zth a k_a = case den_zg_zth of
-  (DExt _g th den_g_th _ _ _ _) -> get_wftype_from_denv g th den_g_th a k_a
-get_wftype_from_denv (ConsT a' k' g) a'th den_a'g_a'th a k_a = case den_a'g_a'th of
-  (DExtT _g th den_g_th _ _ t' p_emp_t') -> case (a == a') of
-    True  -> (t', p_emp_t')
-    False -> get_wftype_from_denv g th den_g_th a k_a
-*)  
-
 (* Unfortunately, the self operator and tsubFTV do not quite 
    commute with each other, but are entirely semantically 
    equivalent. The next lemma shows that the denotation is

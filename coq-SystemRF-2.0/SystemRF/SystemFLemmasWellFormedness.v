@@ -178,22 +178,22 @@ Proof. intros; apply lem_subst_tv_wfft' with (concatF (FConsT a k_a g) g') k_a;
    -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- *)
 
 Lemma boundinF_wffe_wfft : forall (x:vname) (t:ftype) (g:fenv),
-  bound_inF x t g -> WFFE g -> WFFT g t Star.
+    bound_inF x t g -> WFFE g -> WFFT g t Star.
 Proof. intros x t g H p_wf_g; induction p_wf_g; simpl in H.
-- contradiction.
-- assert (FCons x0 t0 g = concatF (FCons x0 t0 g) FEmpty) as Henv by reflexivity;
-  rewrite Henv; apply lem_weaken_wfft; unfold in_envF; simpl;
-  try (apply wffe_uniqueF);
-  try (apply intersect_empty_r);
-  intuition; 
-  destruct H; subst t0; 
-  destruct k; assumption || apply WFFTKind; assumption.
-- assert (FConsT a k g = concatF (FConsT a k g) FEmpty) as Henv by reflexivity;
-  rewrite Henv; apply lem_weaken_tv_wfft; unfold in_envF; simpl;
-  try (apply wffe_uniqueF);
-  try (apply intersect_empty_r);
-  intuition.
-Qed.
+  - contradiction.
+  - assert (FCons x0 t0 g = concatF (FCons x0 t0 g) FEmpty) as Henv by reflexivity;
+    rewrite Henv; apply lem_weaken_wfft; unfold in_envF; simpl;
+    try (apply wffe_uniqueF);
+    try (apply intersect_empty_r);
+    intuition; 
+    destruct H; subst t0; 
+    destruct k; assumption || apply WFFTKind; assumption.
+  - assert (FConsT a k g = concatF (FConsT a k g) FEmpty) as Henv by reflexivity;
+    rewrite Henv; apply lem_weaken_tv_wfft; unfold in_envF; simpl;
+    try (apply wffe_uniqueF);
+    try (apply intersect_empty_r);
+    intuition.
+  Qed.
 
 (* -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- 
    -- Consequences of the System F Typing Judgments -

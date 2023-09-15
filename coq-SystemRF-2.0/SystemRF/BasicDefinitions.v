@@ -1,4 +1,5 @@
 Require Import Nat.
+Require Import ZArith.
 
 Definition index := nat.
 Definition vname := nat. (* can change this atoms later *)
@@ -10,9 +11,9 @@ Inductive prim : Set :=
     | Eqv 
     | Imp
     | Leq 
-    | Leqn (n : nat)
+    | Leqn (n : Z)
     | Eq  
-    | Eqn (n : nat)
+    | Eqn (n : Z)
     | Leql 
     | Eql.           (* Leql and Eql are polymorphic *)
 
@@ -43,7 +44,7 @@ Inductive kind : Set :=
 
 Inductive expr : Set :=  
     | Bc (b : bool)                 (* True, False *)
-    | Ic (n : nat)                  (* 0, 1, 2, *)
+    | Ic (n : Z)                  (* 0, 1, 2, *)
     | Prim (p : prim)               (* built-in primitive functions *)
     | BV (i : index)                (* BOUND Variables: bound to a Lambda, Let or :t *)
     | FV (x : vname)                (* FREE Variables: bound in an environment *)

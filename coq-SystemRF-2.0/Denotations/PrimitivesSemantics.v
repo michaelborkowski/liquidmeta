@@ -9,7 +9,7 @@ Require Import SystemRF.Typing.
 Require Import Denotations.ClosingSubstitutions.
 Require Import Denotations.Denotations.
 
-Require Import Nat.
+Require Import ZArith.
 
 Lemma lem_step_and_tt : Step (App (Prim And) (Bc true)) (Lambda (BV 0)).
 Proof. assert (isCompat And (Bc true)) as pfB by apply isCpt_And;
@@ -75,7 +75,7 @@ Proof. assert (isCompat Imp (Bc false)) as pfB by apply isCpt_Imp.
           simpl in D; injection D; trivial ); 
   rewrite <- H; apply EPrim; simpl; exact I. Qed.  
 
-Lemma lem_step_leq : forall (n:nat), 
+Lemma lem_step_leq : forall (n:Z), 
     Step (App (Prim Leq) (Ic n)) (Prim (Leqn n)).
 Proof. intro n. assert (isCompat Leq (Ic n)) as pfB by apply isCpt_Leq.
   assert (delta Leq (Ic n) pfB = Prim (Leqn n))
@@ -83,15 +83,15 @@ Proof. intro n. assert (isCompat Leq (Ic n)) as pfB by apply isCpt_Leq.
           simpl in D; injection D; trivial ). 
   rewrite <- H; apply EPrim; simpl; exact I. Qed.  
 
-Lemma lem_step_leqn : forall (n m:nat), 
-    Step (App (Prim (Leqn n)) (Ic m)) (Bc (n <=? m)).
+Lemma lem_step_leqn : forall (n m:Z), 
+    Step (App (Prim (Leqn n)) (Ic m)) (Bc (Z.leb n m)).
 Proof. intros n m. assert (isCompat (Leqn n) (Ic m)) as pfB by apply isCpt_Leqn.
-  assert (delta (Leqn n) (Ic m) pfB = (Bc (n <=? m)))
+  assert (delta (Leqn n) (Ic m) pfB = (Bc (Z.leb n m)))
       by (pose proof (delta_delta' (Leqn n) (Ic m) pfB) as D;
           simpl in D; injection D; trivial ). 
   rewrite <- H; apply EPrim; simpl; exact I. Qed.  
   
-Lemma lem_step_eq : forall (n:nat), 
+Lemma lem_step_eq : forall (n:Z), 
     Step (App (Prim Eq) (Ic n)) (Prim (Eqn n)).
 Proof. intro n. assert (isCompat Eq (Ic n)) as pfB by apply isCpt_Eq.
   assert (delta Eq (Ic n) pfB = Prim (Eqn n))
@@ -99,10 +99,10 @@ Proof. intro n. assert (isCompat Eq (Ic n)) as pfB by apply isCpt_Eq.
           simpl in D; injection D; trivial ). 
   rewrite <- H; apply EPrim; simpl; exact I. Qed.    
 
-Lemma lem_step_eqn : forall (n m:nat), 
-    Step (App (Prim (Eqn n)) (Ic m)) (Bc (n =? m)).
+Lemma lem_step_eqn : forall (n m:Z), 
+    Step (App (Prim (Eqn n)) (Ic m)) (Bc (Z.eqb n m)).
 Proof. intros n m. assert (isCompat (Eqn n) (Ic m)) as pfB by apply isCpt_Eqn.
-  assert (delta (Eqn n) (Ic m) pfB = (Bc (n =? m)))
+  assert (delta (Eqn n) (Ic m) pfB = (Bc (Z.eqb n m)))
       by (pose proof (delta_delta' (Eqn n) (Ic m) pfB) as D;
           simpl in D; injection D; trivial ). 
   rewrite <- H; apply EPrim; simpl; exact I. Qed.  
@@ -216,9 +216,9 @@ Proof. intros; apply lemma_evals_trans with (App (App (Prim Imp) (Bc b)) q).
       simpl; trivial. 
   Qed.
 
-Lemma lemma_leq_semantics : forall (p q:expr) (n m:nat),
+Lemma lemma_leq_semantics : forall (p q:expr) (n m:Z),
     EvalsTo p (Ic n) -> EvalsTo q (Ic m)
-        -> EvalsTo (App (App (Prim Leq) p) q) (Bc (n <=? m)).
+        -> EvalsTo (App (App (Prim Leq) p) q) (Bc (Z.leb n m)).
 Proof. intros; apply lemma_evals_trans with (App (App (Prim Leq) (Ic n)) q).
   - apply lemma_app_many; apply lemma_app_many2; simpl; trivial.
   - apply lemma_evals_trans with (App (Prim (Leqn n)) (Ic m));
@@ -226,15 +226,15 @@ Proof. intros; apply lemma_evals_trans with (App (App (Prim Leq) (Ic n)) q).
     apply lem_step_evals; apply lem_step_leq || apply lem_step_leqn.
   Qed.
   
-Lemma lemma_leqn_semantics : forall (q:expr) (n m:nat),
-    EvalsTo q (Ic m) -> EvalsTo (App (Prim (Leqn n)) q) (Bc (n <=? m)).
+Lemma lemma_leqn_semantics : forall (q:expr) (n m:Z),
+    EvalsTo q (Ic m) -> EvalsTo (App (Prim (Leqn n)) q) (Bc (Z.leb n m)).
 Proof. intros; apply lemma_evals_trans with (App (Prim (Leqn n)) (Ic m));
   try apply lemma_app_many2; simpl; trivial;
   apply lem_step_evals; apply lem_step_leqn. Qed.
   
-Lemma lemma_eq_semantics : forall (p q:expr) (n m:nat),
+Lemma lemma_eq_semantics : forall (p q:expr) (n m:Z),
     EvalsTo p (Ic n) -> EvalsTo q (Ic m)
-        -> EvalsTo (App (App (Prim Eq) p) q) (Bc (n =? m)).
+        -> EvalsTo (App (App (Prim Eq) p) q) (Bc (Z.eqb n m)).
 Proof. intros; apply lemma_evals_trans with (App (App (Prim Eq) (Ic n)) q).
   - apply lemma_app_many; apply lemma_app_many2; simpl; trivial.
   - apply lemma_evals_trans with (App (Prim (Eqn n)) (Ic m));
@@ -242,8 +242,8 @@ Proof. intros; apply lemma_evals_trans with (App (App (Prim Eq) (Ic n)) q).
     apply lem_step_evals; apply lem_step_eq || apply lem_step_eqn.
   Qed.
     
-Lemma lemma_eqn_semantics : forall (q:expr) (n m:nat),
-    EvalsTo q (Ic m) -> EvalsTo (App (Prim (Eqn n)) q) (Bc (n =? m)).
+Lemma lemma_eqn_semantics : forall (q:expr) (n m:Z),
+    EvalsTo q (Ic m) -> EvalsTo (App (Prim (Eqn n)) q) (Bc (Z.eqb n m)).
 Proof. intros; apply lemma_evals_trans with (App (Prim (Eqn n)) (Ic m));
   try apply lemma_app_many2; simpl; trivial;
   apply lem_step_evals; apply lem_step_eqn. Qed.
@@ -257,9 +257,9 @@ Proof. intros. apply lemma_evals_trans with (App (App (Prim Imp) p) q).
   - apply lemma_imp_semantics; trivial.
   Qed.
 
-Lemma lemma_leql_int_semantics : forall (p q:expr) (n m:nat),
+Lemma lemma_leql_int_semantics : forall (p q:expr) (n m:Z),
     EvalsTo p (Ic n) -> EvalsTo q (Ic m)  
-        -> EvalsTo (App (App (AppT (Prim Leql) (TRefn TInt PEmpty)) p) q) (Bc (n <=? m)).
+        -> EvalsTo (App (App (AppT (Prim Leql) (TRefn TInt PEmpty)) p) q) (Bc (Z.leb n m)).
 Proof. intros. apply lemma_evals_trans with (App (App (Prim Leq) p) q).
   - apply lem_step_evals; apply EApp1; apply EApp1;
     apply lem_step_leql_tint.
@@ -275,9 +275,9 @@ Proof. intros. apply lemma_evals_trans with (App (App (Prim Eqv) p) q).
   - apply lemma_eqv_semantics; trivial.
   Qed.
 
-Lemma lemma_eql_int_semantics : forall (p q:expr) (n m:nat),
+Lemma lemma_eql_int_semantics : forall (p q:expr) (n m:Z),
     EvalsTo p (Ic n) -> EvalsTo q (Ic m)  
-        -> EvalsTo (App (App (AppT (Prim Eql) (TRefn TInt PEmpty)) p) q) (Bc (n =? m)).
+        -> EvalsTo (App (App (AppT (Prim Eql) (TRefn TInt PEmpty)) p) q) (Bc (Z.eqb n m)).
 Proof. intros. apply lemma_evals_trans with (App (App (Prim Eq) p) q).
   - apply lem_step_evals; apply EApp1; apply EApp1;
     apply lem_step_eql_tint.
@@ -317,26 +317,26 @@ Lemma lemma_semantics_refn_imp  : forall (b b' b'' : bool),
 Proof. intros. apply lemma_eqv_semantics; try apply lemma_imp_semantics;
   apply Refl. Qed.      
 
-Lemma lemma_semantics_refn_leq : forall (n m : nat) (b'':bool),
+Lemma lemma_semantics_refn_leq : forall (n m : Z) (b'':bool),
     EvalsTo (App (App (Prim Eqv) (App (App (Prim Leq) (Ic n)) (Ic m))) (Bc b''))
-            (Bc (Bool.eqb (n <=? m) b'')).
+            (Bc (Bool.eqb (Z.leb n m) b'')).
 Proof. intros. apply lemma_eqv_semantics; try apply lemma_leq_semantics;
   apply Refl. Qed.
 
-Lemma lemma_semantics_refn_leqn : forall (n m : nat) (b'':bool),
+Lemma lemma_semantics_refn_leqn : forall (n m : Z) (b'':bool),
     EvalsTo (App (App (Prim Eqv) (App (Prim (Leqn n)) (Ic m))) (Bc b''))
-            (Bc (Bool.eqb (n <=? m) b'')).
+            (Bc (Bool.eqb (Z.leb n m) b'')).
 Proof. intros. apply lemma_eqv_semantics; try apply lemma_leqn_semantics;
   apply Refl. Qed.
 
-Lemma lemma_semantics_refn_eq : forall (n m : nat) (b'':bool),
+Lemma lemma_semantics_refn_eq : forall (n m : Z) (b'':bool),
     EvalsTo (App (App (Prim Eqv) (App (App (Prim Eq) (Ic n)) (Ic m))) (Bc b''))
-            (Bc (Bool.eqb (n =? m) b'')).
+            (Bc (Bool.eqb (Z.eqb n m) b'')).
 Proof. intros. apply lemma_eqv_semantics; try apply lemma_eq_semantics;
   apply Refl. Qed.
 
-Lemma lemma_semantics_refn_eqn : forall (n m : nat) (b'':bool),
+Lemma lemma_semantics_refn_eqn : forall (n m : Z) (b'':bool),
     EvalsTo (App (App (Prim Eqv) (App (Prim (Eqn n)) (Ic m))) (Bc b''))
-            (Bc (Bool.eqb (n =? m) b'')).
+            (Bc (Bool.eqb (Z.eqb n m) b'')).
 Proof. intros. apply lemma_eqv_semantics; try apply lemma_eqn_semantics;
   apply Refl. Qed.

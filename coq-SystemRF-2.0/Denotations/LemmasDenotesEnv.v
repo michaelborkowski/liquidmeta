@@ -329,4 +329,3 @@ Proof. intro g; induction g'; simpl; intros.
     try apply lem_denotesenv_closed with (concatE g g');
     try apply lem_denotesenv_substitutable with (concatE g g'); auto.
   Qed.
-
