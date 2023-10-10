@@ -113,3 +113,87 @@ Load up the virtual machine image, log in to Debian, and open a terminal in Debi
 has already been placed into the home directory; just `cd` into `liquid-SystemRF`.
 
 Follow the instructions above starting with "To build and check the mechanization..."
+
+## List of Claims/Theorems
+
+Requirement 1 of the paper (ln 577) corresponds to the following in the Coq mechanization:
+
+ * Part (1) is proven in `lem_wf_tybc` and `lem_wf_tyic` in `SystemRF/PrimitivesWFType.v`.
+
+ * Part (2) is proven in `lem_wf_ty` in `SystemRF/PrimitivesWFType.v`.
+
+ * Part (3) is proven in `lem_delta_ty'c` in `SystemRF/PrimitivesDeltaTyping.v`.
+
+ * Part (4) is proven in `lem_deltaT_ty'c` in `SystemRF/PrimitivesDeltaTyping.v`.
+
+In the LiquidHaskell mechanization:
+
+ * Part (1) is *assumed* in `lem_wf_tybc` and `lem_wf_tyic` in `PrimitivesWFType.hs`.
+
+ * Part (2) is *assumed* in `lem_wf_ty` in `PrimitivesWFType.hs`.
+
+ * Part (3) is *assumed* in `lem_delta_ty'c` in `PrimitivesWFType.hs`.
+
+ * Part (4) is *assumed* in `lem_deltaT_ty'c` in `PrimitivesWFType.hs`.
+
+Requirement 2 of the paper (ln 665) is implemented in Coq in the definition of datatype `Implies`
+in `Typing.hs`.
+
+Theorem 5.1 of the paper (Denotational Soundness, ln 787) is proven in Coq in `lem_denote_sound`
+in `Denotations/DenotationalSoundness.v`.
+This is not found in the LiquidHaskell mechanization because the Denotational Semantics could
+not be encoded in LiquidHaskell (ln 1020).
+
+Lemma 5.2 of the paper (Selfified Denotations, ln 793) is proven in Coq in
+`lem_denotations_selfify'` and `lem_denotations_selfify` in `Denotations/SelfifyDenotations.v`.
+This is not found in the LiquidHaskell mechanization because the Denotational Semantics could
+not be encoded in LiquidHaskell (ln 1020).
+
+Theorem 5.3 of the paper (Type Safety, ln 801)  is proven in Coq for System RF in 
+`thm_soundness` in `SystemRF/MainTheorems.v`. 
+In LiquidHaskell, it is proven in `thm_soundness` in `MainTheorems.hs`.
+We explicitly prove part (1). Part (2) follows trivially because `error` cannot be typed.
+
+
+Lemma 5.4 of the paper (Progress, ln 809) is proven in Coq for System RF in 
+`thm_progress'` and `thm_progress` in `SystemRF/MainTheorems.v`.
+In LiquidHaskell, it is proven in `thm_progress` in `MainTheorems.hs`.
+
+Lemma 5.5 of the paper (Preservation, ln 814) is proven in Coq for System RF in 
+`thm_preservation'` and `thm_preservation` in `SystemRF/MainTheorems.v`.
+In LiquidHaskell, it is proven in `thm_preservation` in `MainTheorems.hs`.
+
+Lemma 5.6 of the paper (Transitivity, ln 825) is proven in Coq for System RF in 
+`lem_sub_trans'` and `lem_sub_trans` in `SystemRF/LemmasTransitive.v`.
+In LiquidHaskell, it is proven in `lem_sub_trans` in `LemmasTransitive.hs`.
+
+Lemma 5.7 of the paper (Inversion of T-Abs/T-TAbs, ln 834) is proven in Coq for System RF in 
+`lem_invert_tabs` and `lem_invert_tabst` in `SystemRF/LemmasInversion.v`.
+In LiquidHaskell, it is proven in  em_invert_tabs` and `lem_invert_tabst` 
+in `LemmasInversion.hs`.
+
+Lemma 5.8 of the paper (Substitution, ln 851) is proven in Coq for SystemRF in 
+`lem_subst_typ'` in `SystemRF/SubstitutionLemmaTyp.v`
+and in `lem_subst_tv_typ'` in `SystemRF/SubstitutionLemmaTypTV.v`.
+In LiquidHaskell, it is proven in `lem_subst_typ` and `lem_subst_sub`
+in `SubstitutionLemmaTyp.hs` and in lem_subst_tv_typ` and `lem_subst_tv_sub`
+in `SubstitutionLemmaTypTV.hs`.
+
+Lemma 5.9 of the paper (Weakening, ln 862) is proven in Coq for SystemRF in 
+`lem_weaken_typ'` in `SystemRF/LemmasWeakenTyp.v`
+and in `lem_weaken_tv_typ'` in `SystemRF/LemmasWeakenTypTV.v`.
+In LiquidHaskell, it is proven in `lem_weaken_typ` and `lem_weaken_subtype`
+in `LemmasWeakenTyp.hs` and in lem_weaken_tv_typ` and `lem_weaken_tv_subtype`
+in `LemmasWeakenTypTV.hs`.
+
+For Lemma 5.10 of the paper (Narrowing, ln 872),
+part (1) is proven in Coq for SystemRF in `lem_narrow_wf` in `SystemRF/LemmasWellFormedness.v`, and
+parts (2-3) are proven in Coq for SystemRF in `lem_narrow_typ'` in `SystemRF/LemmasNarrowing.v`.
+In LiquidHaskell, part (1) is proven in `lem_narrow_wf` in `LemmasWellFormedness.hs`,
+and parts (2-3) are proven in `lem_narrow_typ` and `lem_narrow_sub` in `LemmasNarrowingTyp.hs`.
+
+For Lemma 5.11 of the paper (Exact Typing, ln 879),
+part (1) is proven in Coq for SystemRF in `lem_exact_subtype` in `SystemRF/LemmasExactness.v`, and
+part (2) is proven in Coq for SystemRF in `lem_exact_type` in `SystemRF/LemmasExactness.v`.
+In LiquidHaskell, part (1) is proven in `lem_exact_subtype` in `LemmasExactness.hs`,
+and part (2) is proven in `lem_exact_type` in `LemmasExactness.hs`.
