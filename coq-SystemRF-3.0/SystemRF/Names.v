@@ -914,13 +914,7 @@ Proof. intros; destruct t_a; simpl in H; try contradiction; unfold push.
   - (* TRefn *) apply fv_strengthen_elim.
   - (* TFunc *) apply subset_union_intro_r.
   - (* TPoly *) apply subset_union_intro_r.
-  - (* TList *) simpl; 
-    apply subset_trans with (union (free t_a) (union (fvP ps) (fvP ps0)));
-    try (apply subset_union_both; try apply fv_strengthen_elim; apply subset_refl).
-    apply subset_trans3 with (union (union (free t_a) (fvP ps)) (fvP ps0))
-                             (union (union (fvP ps) (free t_a)) (fvP ps0));
-    try apply subset_union_assoc; apply subset_union_both; 
-    try apply subset_union_commute; apply subset_refl.
+  - (* TList *) apply subset_union_intro_r.
   Qed.
 
 Lemma ftv_push_elim : forall (ps : preds) (t_a : type),
@@ -932,13 +926,7 @@ Proof. intros; destruct t_a; simpl in H; try contradiction; simpl.
     apply subset_add_both_intro; apply ftv_strengthen_elim.
   - (* TFunc *) apply subset_union_intro_r.
   - (* TPoly *) apply subset_union_intro_r.
-  - (* TList*) simpl;
-    apply subset_trans with (union (freeTV t_a) (union (ftvP ps) (ftvP ps0)));
-    try (apply subset_union_both; try apply ftv_strengthen_elim; apply subset_refl).
-    apply subset_trans3 with (union (union (freeTV t_a) (ftvP ps)) (ftvP ps0))
-                             (union (union (ftvP ps) (freeTV t_a)) (ftvP ps0));
-    try apply subset_union_assoc; apply subset_union_both; 
-    try apply subset_union_commute; apply subset_refl.
+  - (* TList*) apply subset_union_intro_r.
   Qed.
 
 

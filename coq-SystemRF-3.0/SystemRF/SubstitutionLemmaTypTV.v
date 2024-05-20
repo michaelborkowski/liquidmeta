@@ -259,16 +259,6 @@ Proof. apply ( judgments_mutind
           try apply lem_weaken_many_wf; 
           try apply esubFTV_unique; try rewrite esubFTV_binds; 
           trivial).
-    Focus 2. apply SList with (names_add a (union nms (binds (concatE g g')))).
-    apply lem_wflist_wftype in H7 as p_g_t. 
-    apply lem_sub_refl with Star.
-    apply lem_weaken_many_wf; try apply esubFTV_unique;
-    try rewrite esubFTV_binds; trivial.  
-    intros. pose proof psubFTV 
-    repeat rewrite lem_unbindP_strengthen.
-    pose proof IStren.
-
-
     apply SBase with (names_add a (union nms (binds (concatE g g')))); intros;
     apply not_elem_names_add_elim in H; destruct H;
     apply not_elem_union_elim in H11; destruct H11;
@@ -389,7 +379,26 @@ Proof. apply ( judgments_mutind
     try apply not_elem_subset with (union (binds (EConsT a k_a g)) (binds g'));
     try apply not_elem_union_intro;
     try apply not_elem_names_add_intro; 
-    simpl; try split; auto.  
+    simpl; try split; auto.
+  - (* SList *)  
+    apply lem_wflist_wftype in H10 as p_env_t1;
+    apply lem_wflist_wftype in H11 as p_env_t2;
+    apply SList with (names_add a (union nms (binds (concatE g g'))));
+    fold tsubFTV; fold psubFTV; fold subFTV;
+    try apply H with k_a Star Star; trivial; intros.
+    assert (ECons y (TList (tsubFTV a t_a t1) PEmpty) (concatE g (esubFTV a t_a g')) 
+              = concatE g (esubFTV a t_a (ECons y (TList t1 PEmpty) g')))
+      by reflexivity; rewrite H12.
+    apply not_elem_names_add_elim in H0; destruct H0; 
+    apply not_elem_union_elim in H13; destruct H13;
+    apply not_elem_concat_elim in H14; destruct H14.
+    repeat rewrite <- lem_commute_psubFTV_unbindP;
+    try apply ISubTV with k_a; 
+    try apply lem_wftype_islct with g k_a;
+    try apply not_elem_names_add_intro;
+    try apply intersect_names_add_intro_r;
+    apply lem_truncate_wfenv in H9 as p_ag; inversion p_ag; 
+    simpl; auto.
   Qed.
 
 Lemma lem_subst_tv_typ : forall (g g':env) (a:vname) (t_a:type) (k_a:kind) (e:expr) (t:type),

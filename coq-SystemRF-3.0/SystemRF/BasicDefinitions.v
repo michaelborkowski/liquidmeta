@@ -358,8 +358,8 @@ Fixpoint push (p : preds) (t0 : type) : type :=
     | (TExists   t_y t)  => TExists   t_y (push (shiftP p) t)
         (* wanted: match texists_not_usertype t_y t pf with end *)
     | (TPoly     k   t)  => TPoly     k   t
-    | (TList t ps)       => TList     t  (strengthen p ps) 
-    end.    (* also considered: TList   (push p t) (strengthen p ps) *)
+    | (TList t ps)       => TList     t   ps 
+    end.    (* also considered: TList   t (strengthen p ps) *)
 
 Fixpoint subFTV (a : vname) (t_a : type) (e0 : expr) : expr :=
     match e0 with

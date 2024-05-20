@@ -167,9 +167,7 @@ Proof. intros j k ps t_a H_j1 H_ut H_ps. (*destruct t_a as [t] eqn:E. simpl. *)
   - (* TFunc t1 t2 *) apply lem_islc_at_weaken; apply Nat.le_0_l.
   - (* TExists t1 t2 *) contradiction.
   - (* TPoly k1 k2 *) apply lem_islc_at_weaken; apply Nat.le_0_l.
-  - (* TList t *) simpl; intro; destruct H; split; try rewrite Hj;
-      try apply lem_islcp_at_strengthen; try assumption;
-      try apply lem_islc_at_weaken with 0 0; auto with *.
+  - (* TList t *)  apply lem_islc_at_weaken; apply Nat.le_0_l.
   Qed.
 
 Lemma lem_islc_at_subFTV : (
