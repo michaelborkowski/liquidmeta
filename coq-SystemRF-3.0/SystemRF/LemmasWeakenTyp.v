@@ -124,8 +124,8 @@ Proof. apply ( judgments_mutind
   - (* TCons *) apply TCons; try apply H; try apply H0; trivial.
   - (* TSwitch *) apply TSwit with t ps k (names_add x (union nms (binds (concatE g g'))));
     try apply H; intros; 
-    try assert (ECons y (TList t (PCons (eq (length t (BV 0)) (Ic 0)) ps)) (concatE (ECons x t_x g) g') 
-              = concatE (ECons x t_x g) (ECons y (TList t (PCons (eq (length t (BV 0)) (Ic 0)) ps)) g'))
+    try assert (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) (concatE (ECons x t_x g) g') 
+              = concatE (ECons x t_x g) (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g'))
       by reflexivity; try rewrite H9;
     try assert (ECons y (TList t ps) (concatE (ECons x t_x g) g') 
               = concatE (ECons x t_x g) (ECons y (TList t ps) g'))

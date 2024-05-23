@@ -251,7 +251,6 @@ Proof. intros. assert (Some (deltaM c v pf) = Some (deltaM c v pf')).
   - injection H. trivial. Qed. 
 
 
-
 Inductive Step : expr -> expr -> Prop :=
     | EPrim : forall (c:prim) (w : expr) (pf : isCompat c w), 
           isValue w -> Step (App (Prim c) w) (delta c w pf)
@@ -401,6 +400,23 @@ Lemma lemma_switch_many : forall (e0 e0' eN eC : expr),
 Proof. intros e0 e0' e1 e2 ev_e0_e0'; induction ev_e0_e0'.
   - apply Refl.
   - apply AddStep with (Switch e3 e1 e2); try apply ESwitch; assumption. Qed.
+
+Lemma deltaM_evals : forall (c : prim) (v : expr) (pf : isCompatM c v),
+    exists n, EvalsTo (deltaM c v pf) (Ic n).
+Proof. intros c v; induction pf.
+  - (* Nil *) exists 0 %Z; simpl; constructor.
+  - (* Cons *) destruct IHpf as [n' ev_n']; exists (Z.succ n').
+    assert (isCompat Succ (Ic n')) as pfn' by constructor.
+    assert (delta' Succ (Ic n') = Some (Ic (Z.succ n'))) as del'
+        by (destruct n'; try destruct p; simpl; trivial).
+    assert (delta Succ (Ic n') pfn' = Ic (Z.succ n')) as del
+        by (rewrite <- delta_delta' with Succ (Ic n') pfn' in del'; 
+            injection del'; trivial).
+    simpl; apply lemma_evals_trans with (App (Prim Succ) (Ic n'));
+    try apply lemma_app_many2;
+    try rewrite <- del; try (apply lem_step_evals; apply EPrim);
+    constructor || assumption.
+    Qed.
 
 (*--------------------------------------------------------------------------
 ----- | Basic LEMMAS of the OPERATIONAL SEMANTICS (Small Step)

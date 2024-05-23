@@ -206,10 +206,10 @@ Proof. apply ( judgments_mutind
     fold subFTV; fold tsubFTV; fold psubFTV; 
     simpl in H; try apply H with k_a; intros;
     try assert (ECons y (TList (tsubFTV a t_a t) 
-                          (PCons (eq (length (tsubFTV a t_a t) (BV 0)) (Ic 0)) (psubFTV a t_a ps))) 
+                          (PCons (eq (Ic 0) (length (tsubFTV a t_a t) (BV 0))) (psubFTV a t_a ps))) 
                       (concatE g (esubFTV a t_a g')) 
               = concatE g (esubFTV a t_a 
-                            (ECons y (TList t (PCons (eq (length t (BV 0)) (Ic 0)) ps)) g')))
+                            (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g')))
       by reflexivity; try rewrite H12;
     try assert (ECons y (TList (tsubFTV a t_a t) (psubFTV a t_a ps)) 
                       (concatE g (esubFTV a t_a g')) 

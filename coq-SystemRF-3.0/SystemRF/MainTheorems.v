@@ -24,15 +24,16 @@ Require Import SystemRF.PrimitivesDeltaTyping.
 Theorem thm_progress' : forall (g:env) (e:expr) (t:type),
     Hastype g e t -> g = Empty -> isValue e \/ exists e'', Step e e''.
 Proof. intros g e t p_e_t; induction p_e_t; intro emp; simpl; subst g;
-    (* values *) auto; right.
-  - (* App e e' *) inversion p_e_t1; 
+    (* TSub * ) try (apply IHp_e_t; reflexivity); *)
+    (* values *) try (left; constructor; assumption).
+  - (* App e e' *) right. inversion p_e_t1;
     try simpl in H0; try contradiction;
-    destruct IHp_e_t1 as [H'|H']; try reflexivity; 
+    destruct IHp_e_t1 as [H'|H']; try reflexivity;
     (* consider e not a value *)
-    try (subst e; simpl in H'; contradiction);
     try ( destruct H' as [e1' H']; exists (App e1' e'); apply EApp1; 
           subst e; try subst t0; assumption);
     (* else e must be a value *)
+    try (subst e; inversion H'; contradiction);
     (* consider e' not a value *)
     destruct IHp_e_t2 as [H''|H'']; try reflexivity;
     try ( destruct H'' as [e'' H'']; exists (App e e''); 
@@ -41,52 +42,67 @@ Proof. intros g e t p_e_t; induction p_e_t; intro emp; simpl; subst g;
     apply lem_typing_hasftype in p_e_t1 as p_e_ert1; 
     try apply WFEEmpty; simpl in p_e_ert1;
     apply lemma_function_values with e (erase t_x) (erase t) in H'; trivial;
-    try destruct e eqn:E; try discriminate H0; try discriminate H2;
-    simpl in H'; try contradiction;
+    try match goal with
+        | [ |- exists e'': expr, Step (App e e') _] 
+              => destruct e eqn:E; simpl in H'; try contradiction
+        end;
+    assert (Hastype Empty (App e e') (TExists t_x t)) 
+      as p_pe'_txt by (apply TApp; try rewrite <- E in p_e_t1; trivial);
     (* either e = Prim c ...*)
-    try (injection H0 as H0; subst c);
-    try ( assert (Hastype Empty (App (Prim p) e') (TExists t_x t)) as p_pe'_txt
-            by (apply TApp; trivial);
-          pose proof (lem_prim_compat_in_tapp p e' (TExists t_x t) 
+    try set (p := c); subst e;
+    try ( pose proof (lem_prim_compat_in_tapp p e' (TExists t_x t) 
                         H'' p_pe'_txt) as pf;
           apply compat_prop_set in pf; exists (delta p e' pf); 
           apply EPrim; trivial );
-    (* ... or e = Lambda e1 *)
-    try (injection H2 as H2; subst e0);
-    exists (subBV e' e1); apply EAppAbs; assumption.
+    (* or e = Lambda e1... *)
+    try (exists (subBV e' e0); apply EAppAbs; assumption);
+    try (exists (subBV e' e1); apply EAppAbs; assumption);
+    (* ... or e = (AppT (Prim Length) t0) *)
+    try subst e0; try destruct e0; try destruct e1; 
+    simpl in H'; try contradiction;
+    apply lem_prim_compatM_in_tappappT in p_pe'_txt as pf;
+    trivial; apply compatM_prop_set in pf;
+    exists (deltaM p e' pf); try apply EPrimM; apply H''.
   - (* AppT e rt *) inversion p_e_t;
     try simpl in H3; try contradiction;
     destruct IHp_e_t as [H'|H']; try reflexivity;
     (* consider e not a value *)
-    try (subst e; simpl in H'; contradiction);
-    try (destruct H' as [e' H']; exists (AppT e' t); apply EAppT;
+    try ( destruct H' as [e' H']; right; 
+          exists (AppT e' t); apply EAppT; 
           subst e; try subst k0; try subst t0; assumption);
     (* else e must be a value *)
+    try (subst e; inversion H'; contradiction);
     apply lem_typing_hasftype in p_e_t as p_e_ert; 
     try apply WFEEmpty; simpl in p_e_ert;
     apply lemma_tfunction_values with e k (erase s) in H'; trivial;
-    try destruct e eqn:E; 
-    try discriminate H3; try discriminate H4;
-    simpl in H'; try contradiction;
+    try match goal with
+        | [ |- isValue (AppT e t) \/ _] 
+              => destruct e eqn:E; simpl in H'; try contradiction
+        end;
+    subst e; simpl in H'; try contradiction;
     (* either e = Prim c ...*)
-    try (injection H3 as H3; subst c);
-    try ( assert (Hastype Empty (AppT (Prim p) t) (tsubBTV t s)) as p_pt_st
-            by (apply TAppT with k; trivial);
-          pose proof (lem_prim_compatT_in_tappT p t (tsubBTV t s)
-                        H0 p_pt_st) as pf;
-          apply compatT_prop_set in pf; exists (deltaT p t pf); 
-          apply EPrimT; trivial );
+    try destruct p; try destruct c; 
+    simpl in H5; try discriminate; try inversion p_e_ert;
+    try (left; constructor); right;
+    try assert (~ isMeasure c) as nomeas by (subst c; auto);
+    try assert (Hastype Empty (AppT (Prim c) t) (tsubBTV t s)) 
+      as p_pt_st
+      by (apply TAppT with k; subst c; trivial);
+    try ( pose proof (lem_prim_compatT_in_tappT c t (tsubBTV t s)
+                        nomeas H0 p_pt_st) as pf;
+          apply compatT_prop_set in pf; exists (deltaT c t pf);
+          subst c; apply EPrimT; trivial);
     (* ... or e = LambdaT k e1 *)
-    try (injection H4 as Hk0 He0; subst e0; subst k0 k);
-    exists (subBTV t e1); apply EAppTAbs; assumption.
-  - (* Let e_x e *) destruct IHp_e_t; try reflexivity.
+    try exists (subBTV t e1); try exists (subBTV t e0);
+    apply EAppTAbs; assumption.
+  - (* Let e_x e *) right; destruct IHp_e_t; try reflexivity.
       * (* e_x val *) exists (subBV e_x e); apply ELetV; apply H2.
       * (* otherw. *) destruct H2 as [e_x' H2]; exists (Let e_x' e);
         apply ELet; apply H2.
-  - (* Annot e t1 *) destruct IHp_e_t; try reflexivity.
+  - (* Annot e t1 *) right; destruct IHp_e_t; try reflexivity.
       * (* e val *) exists e; apply EAnnV; apply H0.
       * (* other *) destruct H0 as [e'' H0]; exists (Annot e'' t); apply EAnn; apply H0.
-  - (* If e1 e2 e3 *) destruct IHp_e_t; try reflexivity.
+  - (* If e1 e2 e3 *) right; destruct IHp_e_t; try reflexivity.
       * (* e0 val *) apply lem_typing_hasftype in p_e_t as p_e_ert;
         try apply lem_bool_values in p_e_ert as H_bool; 
         try assumption; try apply WFEEmpty.
@@ -94,6 +110,32 @@ Proof. intros g e t p_e_t; induction p_e_t; intro emp; simpl; subst g;
         destruct b; (exists e1; apply EIfT) || (exists e2; apply EIfF).
       * (* otherw *) destruct H4 as [e0' st_e0_e0']; exists (If e0' e1 e2); 
         apply EIf; apply st_e0_e0'.
+  - (* Cons eH eT *) destruct IHp_e_t1; destruct IHp_e_t2; 
+    try reflexivity;
+    (* eH not a value *)
+    try destruct H1 as [eH' st_eH_eH'];
+    try (right; exists (Cons eH' eT)); 
+    try apply ECons1; try apply st_eH_eH';
+    (* eT not a value *)
+    try destruct H2 as [eT' st_eT_eT'];
+    try (right; exists (Cons eH eT')); 
+    try apply ECons2; try apply st_eT_eT'; try apply H1;
+    (* both values *) left;
+    apply val_Cons; trivial.
+  - (* Switch e eN eC *) destruct IHp_e_t as [IH|IH]; 
+    try reflexivity;
+    (* e not a value *)
+    try destruct IH as [e' st_e_e'];
+    try (right; exists (Switch e' eN eC)); 
+    try apply ESwitch; try apply st_e_e'.
+    (* otherwise *) apply lem_typing_hasftype in p_e_t as p_e_ert;
+    try apply lemma_list_values in p_e_ert as H_list;
+    try assumption; try apply WFEEmpty; right.
+    destruct e; simpl in H_list; try contradiction; 
+    try (exists eN; apply ESwitchN); 
+    inversion IH; exists (App (App eC e1) e2); 
+    apply ESwitchC; trivial.
+  - (* TSub *) apply IHp_e_t; reflexivity.
   Qed.
 
 Theorem thm_progress : forall (e:expr) (t:type),
@@ -104,39 +146,40 @@ Theorem thm_preservation' : forall (g:env) (e:expr) (t:type) (e':expr),
     Hastype g e t -> g = Empty -> Step e e' -> Hastype Empty e' t.
 Proof. intros g e t e' p_e_t; revert e'; induction p_e_t; 
   intros e'' emp st_e_e''; simpl; subst g;
-  apply lem_value_stuck in st_e_e'' as H'; simpl in H'; try contradiction.
+  try (apply lem_value_stuck in st_e_e'' as H'; 
+       constructor || contradiction; reflexivity).
   - (* TApp e e' *) apply thm_progress in p_e_t1 as Hprog;
-    destruct e eqn:E; simpl in Hprog;
-    (* impossible cases: *)
-    apply lem_typing_hasftype in p_e_t1 as p_e_ert1; try simpl in p_e_ert1;
-    try assert (isValue e) as Hval by (subst e; simpl; tauto); try apply WFEEmpty;
-    try apply lemma_function_values with e (erase t_x) (erase t) in Hval as Hfval;
-    try (rewrite E; apply p_e_ert1);
-    try (subst e; simpl in Hfval; contradiction);
+    apply thm_progress in p_e_t2 as Hprog';
+    destruct Hprog; destruct Hprog';
     (* e not value: *)
-    rewrite <- E in st_e_e'';
-    try assert (exists e1 : expr, Step e e1) as HStep1 
-        by (rewrite E; intuition; apply Hprog);
-    try ( destruct HStep1 as [e1 HStep1]; 
-          apply lem_sem_det with (App e e') e'' (App e1 e') in st_e_e'' as He'';
-          try apply EApp1; try assumption; subst e'';
-          apply TApp; apply IHp_e_t1 || apply p_e_t2; subst e; trivial );
-    apply thm_progress in p_e_t2 as Hprog'; destruct Hprog';   
+    try destruct H as [e1 st_e_e1];
+    try apply lem_sem_det with (App e e') e'' (App e1 e') 
+      in st_e_e'' as He'';
+    try apply EApp1; try assumption; try subst e'';
+    try apply TApp; try apply IHp_e_t1; try apply p_e_t2; trivial; 
     (* e' not a value *)
-    try ( destruct H as [e'1 H];
-          apply lem_sem_det with (App e e') e'' (App e e'1) in st_e_e'' as He'';
-          try apply EApp2; try assumption; subst e'';
-          apply TApp; (subst e; apply p_e_t1) || apply IHp_e_t2; trivial ).
+    try destruct H0 as [e'1 st_e_e'1];
+    try apply lem_sem_det with (App e e') e'' (App e e'1) 
+      in st_e_e'' as He'';
+    try apply EApp2; try assumption; try subst e'';
+    try apply TApp; try apply p_e_t1; try apply IHp_e_t2; trivial.
+    (* both values *)
+    apply lem_typing_hasftype in p_e_t1 as p_e_ert1;
+    try simpl in p_e_ert1; try apply WFEEmpty;
+    try apply lemma_function_values with e (erase t_x) (erase t) 
+      in H as Hfval; trivial.
+    destruct e eqn:E; simpl in Hfval; try contradiction.
     * (* App (Prim p) val *) 
       assert (Hastype Empty (App (Prim p) e') (TExists t_x t))
         by (apply TApp; assumption);
-      pose proof (lem_prim_compat_in_tapp p e' (TExists t_x t) H H0) as pf;
+      rewrite <- E in H;
+      pose proof (lem_prim_compat_in_tapp p e' (TExists t_x t) H0 H1) as pf;
       apply compat_prop_set in pf; subst e;
       apply lem_sem_det with (App (Prim p) e') e'' (delta p e' pf) in st_e_e'' 
         as He''; try apply EPrim; try assumption; subst e'';
-      pose proof (lem_delta_typ p e' t_x t H p_e_t1 p_e_t2) as He''.
-      rewrite <- delta_delta' with p e' pf in He''; destruct He''; 
-      destruct H1; injection H1 as H1; subst x; assumption.
+      pose proof (lem_delta_typ p e' t_x t H0 p_e_t1 p_e_t2) as He''.
+      rewrite <- delta_delta' with p e' pf in He''; destruct He'';
+      destruct H2; injection H2 as H2; subst x; assumption.
     * (* App (Lambda e0) val *) subst e;
       assert (Hastype Empty (App (Lambda e0) e') (TExists t_x t)) as p_ee'_txt
         by (apply TApp; assumption);
@@ -144,19 +187,56 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
         as He''; try apply EAppAbs; try assumption; subst e'';
       apply lem_typing_wf in p_e_t1 as p_emp_txt; try apply WFEEmpty;
       pose proof lem_invert_tabs Empty e0 t_x t p_e_t1 WFEEmpty p_emp_txt;
-      destruct H0 as [nms p_e0_t];
+      destruct H1 as [nms p_e0_t];
       pose proof (fresh_not_elem nms) as Hy; set (y := fresh nms) in Hy;
       rewrite lem_subFV_unbind with y e' e0;
       try apply TSub with (tsubFV  y e' (unbindT y t)) Star;
       try apply lem_subst_typ_top with t_x; try apply p_e0_t;
-      try rewrite <- lem_tsubFV_unbindT; try apply lem_witness_sub with Star;
+      try rewrite <- lem_tsubFV_unbindT; 
+      try apply lem_witness_sub with Star;
       try apply lem_typing_wf with (App (Lambda e0) e');
       pose proof lem_fv_bound_in_fenv FEmpty (Lambda e0) 
                     (FTFunc (erase t_x) (erase t)) y p_e_ert1 as Hfv;
       pose proof lem_free_bound_in_env Empty (TFunc t_x t) Star y p_emp_txt as Hfr;
-      destruct Hfv; destruct Hfr; try simpl in H2;
-      try apply not_elem_union_elim in H2; try destruct H2;
-      try apply WFEEmpty; trivial.
+      destruct Hfv; destruct Hfr; try simpl in H3;
+      try apply not_elem_union_elim in H3; try destruct H3;
+      try apply WFEEmpty; intuition. 
+    * (* App (AppT Length t) *)
+      destruct e0 eqn:E0; try contradiction;
+      destruct p eqn:P; try contradiction.
+      assert (isCompatM' Length e') as pf
+        by (apply lem_prim_compatM_in_tappappT with t0 (TExists t_x t);
+            try apply TApp; trivial);
+      apply compatM_prop_set in pf.
+      assert (Hastype Empty (App (AppT (Prim Length) t0) e') 
+                      (TExists t_x t)) as p_ee'_txt
+        by (apply TApp; assumption).
+      apply lem_sem_det 
+        with (App (AppT (Prim Length) t0) e') e'' (deltaM Length e' pf) 
+        in st_e_e'' as He''; try apply EPrimM; try assumption. 
+      subst e''; inversion pf; subst e';
+
+      inversion p_e_t2; subst t_x.
+      simpl.
+
+        pose proof lem_deltaM_typ.
+
+        pose proof lem_deltaM_ftyp.
+    | EPrimM : forall (c : prim) (t : type) (w : expr) (pf : isCompatM c w),
+          isValue w -> Step (App (AppT (Prim c) t) w) (deltaM c w pf) 
+
+        inversion H7; rewrite <- H19 in H6; unfold ftsubBV in H6; 
+        injection H6 as H6 H6'; subst b. 
+        
+        apply lem_deltaM_ftyp with Length k t' e2 (erase t) in H4 as He'; 
+        simpl; trivial.  destruct He' as [del He']; destruct He'.
+        assert (del = deltaM Length e2 pf)
+          by (rewrite <- (deltaM_deltaM' Length e2 pf) in H16; 
+              injection H16 as H16; assumption).
+        subst del; assert (e' = deltaM Length e2 pf)
+          by (apply lem_sem_det with (App (AppT (Prim Length) t) e2); 
+              try apply EPrimM; assumption);
+        subst e' t0 b'; assumption.
   - (* TAppT e t *) apply thm_progress in p_e_t as Hprog;
     destruct e eqn:E; simpl in Hprog;
     (* impossible cases: *)

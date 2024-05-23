@@ -93,8 +93,15 @@ Proof. intros g e t p_e_t; induction p_e_t; intro p_g.
     unfold unbindP; simpl; rewrite Ht' with t 0 0 y0; trivial.
     apply PFTCons; try apply PFTEmp.
     apply FTApp with (FTBasic TInt);
-    apply FTApp with (FTBasic TInt); try apply FTPrm;
-    apply FTApp with (FTList (erase t)); try apply FTVar; 
+    match goal with 
+    | [ |- HasFtype _ _ (FTFunc _ _)] 
+                        => apply FTApp with (FTBasic TInt)
+    | [ |- HasFtype _ _ (FTBasic _)] 
+                        => apply FTApp with (FTList (erase t))
+    end;
+    try apply FTApp with (FTBasic TInt);
+    try apply FTApp with (FTList (erase t));
+    try apply FTPrm; try apply FTVar;
     assert (FTFunc (FTList (erase t)) (FTBasic TInt)
             = ftsubBV (erase t) (FTFunc (FTList (FTBasic (BTV 0))) (FTBasic TInt)))
       as Htype by (unfold ftsubBV; reflexivity);

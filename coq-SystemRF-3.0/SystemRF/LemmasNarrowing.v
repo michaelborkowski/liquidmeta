@@ -199,10 +199,10 @@ Proof. apply ( judgments_mutind
     try apply not_elem_names_add_elim in H2; try destruct H2;
     try apply not_elem_union_elim in H12; try destruct H12;
     try apply not_elem_concat_elim in H13; try destruct H13;
-    try assert (ECons y (TList t (PCons (eq (length t (BV 0)) (Ic 0)) ps)) 
+    try assert (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) 
                       (concatE (ECons x s_x g) g') 
                   = concatE (ECons x s_x g) 
-                            (ECons y (TList t (PCons (eq (length t (BV 0)) (Ic 0)) ps)) g'))
+                            (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g'))
       as Henv1 by reflexivity; try rewrite Henv1; 
     try assert (ECons y (TList t ps) (concatE (ECons x s_x g) g') 
                   = concatE (ECons x s_x g) (ECons y (TList t ps) g'))

@@ -209,10 +209,10 @@ Proof. apply ( judgments_mutind
     try apply lemma_tsubFV_isMono; try apply lemma_tsubFV_noExists;
     simpl in H; try apply H with t_x; intros;
     try assert (ECons y (TList (tsubFV x v_x t) 
-                          (PCons (eq (length (tsubFV x v_x t) (BV 0)) (Ic 0)) (psubFV x v_x ps))) 
+                          (PCons (eq (Ic 0) (length (tsubFV x v_x t) (BV 0))) (psubFV x v_x ps))) 
                       (concatE g (esubFV x v_x g')) 
               = concatE g (esubFV x v_x 
-                            (ECons y (TList t (PCons (eq (length t (BV 0)) (Ic 0)) ps)) g')))
+                            (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g')))
       by reflexivity; try rewrite H11;
     try assert (ECons y (TList (tsubFV x v_x t) (psubFV x v_x ps)) 
                       (concatE g (esubFV x v_x g')) 
@@ -225,12 +225,12 @@ Proof. apply ( judgments_mutind
     try apply Nat.eqb_neq in H2 as Hneqb;
     try assert ((TFunc (tsubFV x v_x t) 
                   (TFunc (TList (tsubFV x v_x t) 
-                          (PCons (eq (length (tsubFV x v_x t) (FV y)) 
-                                  (App (Prim Succ) (length (tsubFV x v_x t) (BV 0)))) 
+                          (PCons (eq (App (Prim Succ) (length (tsubFV x v_x t) (BV 0)))
+                                     (length (tsubFV x v_x t) (FV y)) ) 
                                  (psubFV x v_x ps))) (tsubFV x v_x t')))
-              = (tsubFV x v_x (TFunc t (TFunc (TList t (PCons (eq (length t (FV y)) 
-                                                          (App (Prim Succ) (length t (BV 0)))) 
-                                                        ps)) t'))))
+              = (tsubFV x v_x (TFunc t (TFunc (TList t (PCons (eq (App (Prim Succ) (length t (BV 0)))
+                                                                  (length t (FV y)) ) 
+                                                              ps)) t'))))
       by (simpl; rewrite Hneqb; reflexivity); try rewrite H16;
     try apply H0 with y t_x; try apply H1 with t_x;
     try apply lem_subst_wf with t_x; 

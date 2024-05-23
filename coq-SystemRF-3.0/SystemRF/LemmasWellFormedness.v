@@ -179,7 +179,7 @@ Proof. intros; inversion H; try inversion H0; try destruct k_t;
 
 Lemma lem_wflist_len_zero : forall (g:env) (t:type) (ps:preds),
   isMono t -> noExists t -> WFtype g (TList t ps) Star 
-      -> WFtype g (TList t (PCons (eq (length t (BV 0)) (Ic 0)) ps)) Star.
+      -> WFtype g (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) Star.
 Proof. intros. inversion H1; inversion H2; 
   apply WFListR with (union nms (binds g)) || apply WFListR with (binds g);
   try discriminate; apply lem_wflist_wftype in H1 as p_g_t;
@@ -189,8 +189,13 @@ Proof. intros. inversion H1; inversion H2;
   try apply not_elem_union_elim in H9; try destruct H9; try apply H9;
   (* y:[t],g |- length [t] y = 0 : bool  *) 
   apply FTApp with (FTBasic TInt);
-  try apply FTApp with (FTBasic TInt); try apply FTPrm;
-  try apply FTApp with (FTList (erase t));
+  match goal with 
+  | [ |- HasFtype _ _ (FTFunc _ _)] 
+                      => apply FTApp with (FTBasic TInt)
+  | [ |- HasFtype _ _ (FTBasic _)] 
+                      => apply FTApp with (FTList (erase t))
+  end;
+  try apply FTPrm;
   apply lem_wftype_islct in p_g_t as Ht;
   try rewrite lem_unbindT_lct;
   assert (FTFunc (FTList (erase t)) (FTBasic TInt)

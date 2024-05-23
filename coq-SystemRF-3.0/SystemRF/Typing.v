@@ -156,20 +156,20 @@ Inductive Hastype : env -> expr -> type -> Prop :=
             -> Hastype g (If e0 e1 e2) t
     | TNil  : forall (g : env) (t : type) (k:kind), 
           isMono t -> noExists t -> WFtype g t k 
-              -> Hastype g Nil (TList t (PCons (eq (length t (BV 0)) (Ic 0)) PEmpty))
+              -> Hastype g Nil (TList t (PCons (eq (Ic 0) (length t (BV 0))) PEmpty))
     | TCons : forall (g : env) (eH eT : expr) (t : type) (ps : preds),
           isMono t -> noExists t -> Hastype g eH t -> Hastype g eT (TList t ps) 
               -> Hastype g (Cons eH eT) 
                          (TExists (TList t ps) (TList t 
-                          (PCons (eq (length t (BV 0)) (App (Prim Succ) (length t (BV 1)))) PEmpty)))              
+                          (PCons (eq (App (Prim Succ) (length t (BV 1))) (length t (BV 0))) PEmpty)))              
     | TSwit : forall (g : env) (e eN eC : expr) (t t' : type) (ps : preds) (k:kind) (nms : names),
           isMono t -> noExists t -> Hastype g e (TList t ps) -> WFtype g t' k
               -> (forall (y:vname), ~ Elem y nms
-                    -> Hastype (ECons y (TList t (PCons (eq (length t (BV 0)) (Ic 0)) ps)) g) eN t')
+                    -> Hastype (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g) eN t')
               -> (forall (y:vname), ~ Elem y nms
                     -> Hastype (ECons y (TList t ps) g) eC 
                                (TFunc t (TFunc (TList t 
-                                  (PCons (eq (length t (FV y)) (App (Prim Succ) (length t (BV 0)))) ps)) t')) )
+                                  (PCons (eq (App (Prim Succ) (length t (BV 0))) (length t (FV y))) ps)) t')) )
               -> Hastype g (Switch e eN eC) t' 
     | TSub  : forall (g:env) (e:expr) (s:type) (t:type) (k:kind),
           Hastype g e s -> WFtype g t k -> Subtype g s t -> Hastype g e t
@@ -252,7 +252,12 @@ with Implies : env -> preds -> preds -> Prop :=
     | IEvals  : forall (g:env) (p p':expr) (ps:preds),
           EvalsTo p p' -> Implies g (PCons p ps) (PCons p' ps)
     | IEvals2 : forall (g:env) (p p':expr) (ps:preds),
-          EvalsTo p' p -> Implies g (PCons p ps) (PCons p' ps).
+          EvalsTo p' p -> Implies g (PCons p ps) (PCons p' ps)
+      (* If x : self(T, e) ∈ Γ then Γ |- ps ⇒ ps[x |-> e] *)
+    | IExactQ : forall (g:env) (x:vname) (v_x:expr) (t_x:type) (ps:preds),
+          isValue v_x -> Hastype g v_x t_x -> WFtype g t_x Base
+                      -> bound_in x (self t_x v_x Base) g
+                      -> Implies g ps (psubFV x v_x ps).
 
 Scheme Hastype_mutind  := Induction for Hastype  Sort Prop
 with   Subtype_mutind  := Induction for Subtype  Sort Prop.
