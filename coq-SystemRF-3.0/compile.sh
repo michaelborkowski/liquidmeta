@@ -71,18 +71,19 @@ echo "Checking LemmasTransitive.v ..."
 coqc -R SystemRF SystemRF SystemRF/LemmasTransitive.v
 echo "Checking LemmasInversion.v ..."
 coqc -R SystemRF SystemRF SystemRF/LemmasInversion.v
-#echo "Checking PrimitivesDeltaTyping.v ..."
-#coqc -R SystemRF SystemRF SystemRF/PrimitivesDeltaTyping.v
-#echo "Checking MainTheorems.v ..."
-#coqc -R SystemRF SystemRF SystemRF/MainTheorems.v
+echo "Checking PrimitivesDeltaTyping.v ..."
+coqc -R SystemRF SystemRF SystemRF/PrimitivesDeltaTyping.v
+echo "Checking MainTheorems.v ..."
+coqc -R SystemRF SystemRF SystemRF/MainTheorems.v
 
+echo ""
 echo "Up next: Implement the Denotational Semantics Development"
 echo "Checking ClosingSubstitutions.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/ClosingSubstitutions.v
 echo "Checking Denotations.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/Denotations.v
-#echo "Checking PrimitivesSemantics.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/PrimitivesSemantics.v
+echo "Checking PrimitivesSemantics.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/PrimitivesSemantics.v
 #echo "Checking BasicPropsCSubst.v ..."
 #coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsCSubst.v
 #echo "Checking BasicPropsDenotes.v ..."
@@ -103,6 +104,10 @@ coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/Denotations.v
 #coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/SelfifyDenotations.v
 #echo "Checking DenotationalSoundness.v ..."
 #coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/DenotationalSoundness.v
+
+echo "Up next: Implement the Bidirectional Typechecker / Proof Synthesizer"
+echo "Checking SynthWFFT.v ..."
+coqc -Q SystemRF SystemRF -R Bidirectional Bidirectional Bidirectional/SynthWFFT.v
 
 #echo "Examples"
 #echo "Checking Abs.v"

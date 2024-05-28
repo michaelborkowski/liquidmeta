@@ -2,5 +2,7 @@
 SystemRF
 -R Denotations Denotations 
 Denotations
+-R Bidirectional Bidirectional
+Bidirectional
 
 -docroot user-contrib/SystemRF

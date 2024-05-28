@@ -222,15 +222,15 @@ Proof. apply ( judgments_mutind
     try apply not_elem_union_elim in H13; try destruct H13;
     try apply not_elem_concat_elim in H14; try destruct H14;
     try apply Nat.neq_sym in H2;
-    try apply Nat.eqb_neq in H2 as Hneqb;
+    try apply Nat.eqb_neq in H2 as Hneqb; fold subFV;
     try assert ((TFunc (tsubFV x v_x t) 
                   (TFunc (TList (tsubFV x v_x t) 
-                          (PCons (eq (App (Prim Succ) (length (tsubFV x v_x t) (BV 0)))
-                                     (length (tsubFV x v_x t) (FV y)) ) 
-                                 (psubFV x v_x ps))) (tsubFV x v_x t')))
-              = (tsubFV x v_x (TFunc t (TFunc (TList t (PCons (eq (App (Prim Succ) (length t (BV 0)))
-                                                                  (length t (FV y)) ) 
-                                                              ps)) t'))))
+                          (PCons (eq (length (tsubFV x v_x t) (FV y))
+                                     (App (Prim Succ) (length (tsubFV x v_x t) (BV 0))) ) 
+                                 PEmpty)) (tsubFV x v_x t')))
+              = (tsubFV x v_x (TFunc t (TFunc (TList t (PCons (eq (length t (FV y)) 
+                                                                  (App (Prim Succ) (length t (BV 0))))
+                                                              PEmpty)) t'))))
       by (simpl; rewrite Hneqb; reflexivity); try rewrite H16;
     try apply H0 with y t_x; try apply H1 with t_x;
     try apply lem_subst_wf with t_x; 

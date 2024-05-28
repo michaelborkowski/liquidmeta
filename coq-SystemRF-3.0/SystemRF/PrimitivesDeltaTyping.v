@@ -16,6 +16,7 @@ Require Import SystemRF.Typing.
 Require Import SystemRF.LemmasWeakenWF.
 Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.SubstitutionLemmaWF.
+Require Import SystemRF.SubstitutionLemmaWFTV.
 Require Import SystemRF.LemmasTyping.
 Require Import SystemRF.LemmasSubtyping.
 Require Import SystemRF.LemmasExactness. 
@@ -369,7 +370,7 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
   - (* v = Cons *) 
     apply lem_invert_tlist in p_v as p_v2;
     try apply WFList with Star; try apply WFEEmpty; trivial;
-    try destruct p_v2 as [qs p_v2].
+    try destruct p_v2 as [qs [_ p_v2]].
 
     destruct IHHval2 as [n Hn];
     unfold tsubBTV; simpl; rewrite lem_push_empty;
@@ -771,6 +772,51 @@ Proof. intros c t k s' nomeas mono noex p_c_ks' p_emp_t; inversion p_c_ks';
     try apply H17; auto.
   Qed.
 
+Lemma lem_invert_primM  : forall (g:env) (pc:expr) (t:type),
+  Hastype g pc t -> (forall (c : prim) (s_x s' t' : type),
+    pc = AppT (Prim c) t' -> isMeasure c
+                -> WFEnv g -> Subtype g t (TFunc s_x s')
+                -> WFtype g (TFunc s_x s') Star
+                -> Subtype g (tsubBTV t' (TFunc (intype c) (ty' c))) (TFunc s_x s')).
+Proof. apply ( Hastype_ind
+    ( fun (g:env) (pc:expr) (t:type) => forall (c : prim) (s_x s' t' : type),
+        pc = AppT (Prim c) t' -> isMeasure c 
+                -> WFEnv g -> Subtype g t (TFunc s_x s')
+                -> WFtype g (TFunc s_x s') Star
+                -> Subtype g (tsubBTV t' (TFunc (intype c) (ty' c))) (TFunc s_x s'))
+  ); try discriminate; intros.
+  - (* isTAppT *) injection H4 as C; subst e t;
+    apply lem_typing_wf in H as p_g_ks; try apply H6;
+    inversion p_g_ks; try inversion H4.
+    assert (Subtype g (ty c) (TPoly k s))
+      by (apply lem_invert_primTM with (Prim c) (TPoly k s);
+          try apply lem_sub_refl with Star;
+          try assumption; try reflexivity).
+    destruct c; simpl in H5; try contradiction; subst g0 k0 t.
+    pose proof (lem_wf_ty g Length) as p_g_tyc; 
+    unfold ty in p_g_tyc; inversion p_g_tyc; try inversion H4.
+    apply lem_sub_trans with (tsubBTV t' s) Star Star Star;
+      try assumption;
+    unfold ty in H13; inversion H13; subst k0 k t1 t2 g0; (* or simpl first *)
+    set (a := fresh_var (union nms (union nms0 nms1)) g); subst g1 k1;
+    pose proof (fresh_var_not_elem (union nms (union nms0 nms1)) g) as Ha; 
+    destruct Ha;
+    apply not_elem_union_elim in H4;  destruct H4;
+    apply not_elem_union_elim in H16; destruct H16;
+    try rewrite lem_tsubFTV_unbind_tvT 
+      with a t' (TFunc (intype Length) (ty' Length));
+    try rewrite lem_tsubFTV_unbind_tvT with a t' s;
+    try apply lem_subst_tv_wf_top with Star;
+    try apply lem_subst_tv_subtype_top with Star Star Star;
+    destruct k_t0; try (apply WFKind; apply H11); try apply H11;
+    destruct k_t;  try (apply WFKind; apply H10); try apply H10;
+    try apply lem_free_bound_in_env with g (TPoly Star s) Star a 
+      in p_g_ks as Hfree; try simpl in Hfree; try destruct Hfree;
+    try apply wfenv_unique; simpl; auto.
+  - (* isTSub *) apply H0; try apply lem_sub_trans with t Star k Star;
+    try (apply lem_typing_wf with e; assumption); assumption.
+  Qed.
+
 Lemma lem_deltaM_typ : 
   forall (c:prim) (s:type) (v:expr) (t_x t:type),
     isMeasure c -> isValue v -> isCompatM c v
@@ -783,7 +829,8 @@ Proof.  intros c s v t_x t Hmeas Hval.
   destruct c; simpl in Hmeas; try contradiction;
   apply lem_typing_hasftype in p_cs_txt as p_cs_ertxt;
   apply lem_typing_hasftype in p_v_tx as p_v_ertx;
-  try apply WFEEmpty; 
+  apply lem_typing_wf in p_cs_txt as p_emp_txt;
+  try apply WFEEmpty;
   simpl in p_cs_ertxt; simpl in p_v_ertx;
   inversion p_cs_ertxt; inversion H2; subst t';
   unfold ftsubBV in H1; simpl in H1;
@@ -791,64 +838,105 @@ Proof.  intros c s v t_x t Hmeas Hval.
   rewrite <- Hertx in p_v_ertx;
   apply lemma_list_values in p_v_ertx as Hlist;
   try constructor; trivial;
-  try simpl in Hlist; try contradiction.
-  
-  (*
-  try apply lem_typing_wf in p_v_ltps as p_emp_ltps;
-  try apply lem_wflist_wftype in p_emp_ltps as p_emp_t;
-  try apply WFEEmpty. *)
-  
-  - (* v = Nil *) apply lem_deltaM_ty'c; 
-    try apply val_Nil; trivial.
-    unfold tsubBTV; simpl; rewrite lem_push_empty;
-    try apply TSub with (TList t ps) Star;
-    try apply SList with empty;
-    try apply lem_sub_refl with Star;
-    intros; try apply IFaith;
-    try apply WFList with Star; trivial.
-  - (* v = Cons v1 v2*) 
-    apply lem_deltaM_ty'c; try apply val_Cons;
-    unfold tsubBTV; simpl; try rewrite lem_push_empty;  
-    try apply TSub with (TList t ps) Star;
-    try apply SList with empty;
-    try apply lem_sub_refl with Star;
-    intros; try apply IFaith;
-    try apply WFList with Star; trivial.
+  try simpl in Hlist; try contradiction;
+
+  apply lem_invert_primM 
+    with Empty (AppT (Prim Length) s) (TFunc t_x t) Length t_x t s 
+    in p_cs_txt as Hinv; try apply lem_sub_refl with Star;
+    try apply WFEEmpty; trivial;
+  assert (tsubBTV s (TFunc (intype Length) (ty' Length))
+      = TFunc (tsubBTV s (intype Length)) (tsubBTV s (ty' Length)))
+    as Htys by reflexivity; rewrite Htys in Hinv;
+  inversion Hinv; subst g1 s1 t1 s2 t2;
+
+  assert (WFtype Empty s Star) as p_emp_s
+    by (apply (lem_appT_wf Empty (Prim Length) s t_x t);
+        try apply WFEEmpty; trivial);
+  apply lem_wftype_islct in p_emp_s as Hlct;
+  pose proof lem_open_at_lc_at as [_ [H' _]];
+  set (v := Cons v1 v2) || set (v := Nil);
+
+
+  assert (Hastype Empty (App (AppT (Prim Length) s) v) (TExists t_x t))
+    as p_lenv_ext by (apply TApp; trivial);
+  apply lem_typing_wf in p_lenv_ext as p_emp_ext; 
+  try apply WFEEmpty;
+
+  (* v = Nil *) (
+    
+    pose proof (lem_deltaM_ty'c Length s Nil);
+    destruct H1 as [n Hn];
+    try apply lem_appT_wf with (Prim Length) t_x t;
+    try apply WFEEmpty; try apply val_Nil; trivial;
+    unfold tsubBTV; simpl; try rewrite lem_push_empty;
+    try apply TSub
+      with (TList s (PCons (eq (Ic 0) (length s (BV 0))) PEmpty)) Star;
+    try apply TNil with Star; try apply WFList with Star;
+    try apply SList with empty; intros; try apply IFaith;
+    try apply lem_sub_refl with Star; trivial;
+    destruct Hn as [Hn p_n_int]; simpl in Hn;       
+    exists n; split; try apply Hn;
+    apply TSub with (tsubBV Nil (tsubBTV s (ty' Length))) Star;
+    try assumption;
+    apply SWitn with Nil; try apply val_Nil; try assumption;
+    inversion p_emp_ext; try subst t_x0 g1 t0; try inversion H1;
+    set (y:= fresh_varT (union nms (*(union*) nms0 (*nms2)*)) Empty t); 
+    pose proof (fresh_varT_not_elem (union nms (*(union*) nms0 (*nms2)*)) Empty t) 
+      as Hy;
+    destruct Hy as [Hfr [Hftv [Hnms Hemp]]];
+    apply not_elem_union_elim in Hnms;   destruct Hnms   as [Hnms Hnms02];
+    rewrite lem_tsubFV_unbindT with y Nil (tsubBTV s (ty' Length));
+    try rewrite lem_tsubFV_unbindT with y Nil t;
+    try apply lem_subst_subtype_top with t_x Star Star;
+    try apply H18; try apply H19; try (apply WFKind; apply H22);
+    try (destruct k2; apply H26 || (apply WFFTKind; apply H26))
+  ) ||
+  (* v = Cons v1 v2*)   (
+    pose proof (lem_deltaM_ty'c Length s (Cons v1 v2));
+    pose proof H16 as p_tx_ls; unfold tsubBTV in p_tx_ls;
+    simpl in p_tx_ls; rewrite lem_push_empty in p_tx_ls; trivial;
+    assert (Hastype Empty (Cons v1 v2) (TList s PEmpty))
+      as p_v_ls by (apply TSub with t_x Star;
+                    try apply WFList with Star; trivial);
+    destruct H1 as [n Hn];
+    try apply val_Cons; unfold tsubBTV;  
+    try (simpl; rewrite lem_push_empty); trivial;
+    destruct Hn as [Hn p_n_int];
+    exists n; split; try apply Hn;
+    apply TSub with (tsubBV v (tsubBTV s (ty' Length))) Star;
+    try assumption;
+    apply SWitn with v; try apply val_Cons; try assumption;
+
+    inversion p_emp_ext; try subst t_x0 g1 t0; try inversion H1;
+    set (y:= fresh_varT (union nms nms0) Empty t); 
+    pose proof (fresh_varT_not_elem (union nms nms0) Empty t) as Hy;
+    destruct Hy as [Hfr [Hftv [Hnms Hemp]]];
+    apply not_elem_union_elim in Hnms; destruct Hnms   as [Hnms Hnms0];
+    rewrite lem_tsubFV_unbindT with y v (tsubBTV s (ty' Length));
+    try rewrite lem_tsubFV_unbindT with y v t;
+    try apply lem_subst_subtype_top with t_x Star Star;
+    try apply H18; try apply H19; try (apply WFKind; apply H22);
+    try (destruct k2; apply H26 || (apply WFFTKind; apply H26))
+  );
+    unfold unbindT; unfold tsubBTV; simpl;
+    try rewrite lem_push_empty; 
+    assert (0 =? 0 = true) as H00 by intuition;
+    try apply WFKind; try apply WFRefn with (singleton y);
+    try apply WFBase; intros; 
+    try apply PFTCons; try apply PFTEmp; fold openT_at;
+    try rewrite H' with s 1 0 y;
+    try rewrite H' with s 0 0 y0; try rewrite H00; 
+    try apply FTApp with (FTBasic TInt);
+    try apply FTApp with (FTBasic TInt);
+    try apply FTApp with (erase t_x);
+    try apply FTPrm; try apply FTVar;
+    try apply lem_weaken_ftyp_top;
+    try apply lem_weaken_ftyp_top; try rewrite Hert;
+    try apply lem_islc_at_weaken with 0 0;
+    try apply WFEEmpty; 
+    try apply val_Nil; try apply val_Cons;
+    try apply not_elem_union_intro;
+    try apply not_elem_union_intro; 
+    try apply (lem_free_bound_in_env Empty s Star y);
+    try discriminate; unfold bound_inF; simpl; auto.
   Qed.
-
-
-
-Lemma lem_deltaM_typ : 
-  forall (c:prim) (k:kind) (s:type) (v:expr) (t:type) (ps:preds),
-    isMeasure c -> isValue v -> isMono t -> noExists t
-          -> Hastype Empty (Prim c) (TPoly k s) -> Hastype Empty v (TList t ps) 
-          -> exists e, Some e = deltaM' c v 
-                /\ Hastype Empty e (TExists (TList t ps) (tsubBTV t (ty' c))).
-Proof. Admitted. (*intros c k s v t ps Hmeas Hval mono noex. 
-  induction Hval; intros p_c_ks p_v_ltps; 
-  destruct c; simpl in Hmeas; try contradiction;
-  apply lem_typing_hasftype in p_v_ltps as p_v_lert;
-  try apply WFEEmpty; simpl in p_v_lert;
-  apply lemma_list_values in p_v_lert as Hlist;
-  try constructor; try apply Hval1; try apply Hval2;
-  try (simpl in Hlist; contradiction);
-  try apply lem_typing_wf in p_v_ltps as p_emp_ltps;
-  try apply lem_wflist_wftype in p_emp_ltps as p_emp_t;
-  try apply WFEEmpty. 
-  - (* v = Nil *) apply lem_deltaM_ty'c; 
-    try apply val_Nil; trivial.
-    unfold tsubBTV; simpl; rewrite lem_push_empty;
-    try apply TSub with (TList t ps) Star;
-    try apply SList with empty;
-    try apply lem_sub_refl with Star;
-    intros; try apply IFaith;
-    try apply WFList with Star; trivial.
-  - (* v = Cons v1 v2*) 
-    apply lem_deltaM_ty'c; try apply val_Cons;
-    unfold tsubBTV; simpl; try rewrite lem_push_empty;  
-    try apply TSub with (TList t ps) Star;
-    try apply SList with empty;
-    try apply lem_sub_refl with Star;
-    intros; try apply IFaith;
-    try apply WFList with Star; trivial.
-  Qed.*)

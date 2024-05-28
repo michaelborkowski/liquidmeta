@@ -169,7 +169,9 @@ Inductive Hastype : env -> expr -> type -> Prop :=
               -> (forall (y:vname), ~ Elem y nms
                     -> Hastype (ECons y (TList t ps) g) eC 
                                (TFunc t (TFunc (TList t 
-                                  (PCons (eq (App (Prim Succ) (length t (BV 0))) (length t (FV y))) ps)) t')) )
+                                  (PCons (eq (length t (FV y)) 
+                                             (App (Prim Succ) (length t (BV 0))))
+                                         PEmpty)) t')) )
               -> Hastype g (Switch e eN eC) t' 
     | TSub  : forall (g:env) (e:expr) (s:type) (t:type) (k:kind),
           Hastype g e s -> WFtype g t k -> Subtype g s t -> Hastype g e t
@@ -244,6 +246,10 @@ with Implies : env -> preds -> preds -> Prop :=
     | IEqlSub : forall (g:env) (b:basic) (y:vname) (e:expr) (ps:preds),
           Implies g (PCons (App (App (AppT (Prim Eql) (TRefn b PEmpty)) e) (FV y)) PEmpty)
                     (PCons (App (App (AppT (Prim Eql) (TRefn b ps    )) e) (FV y)) PEmpty) 
+    | ILenSub : forall (g:env) (s t:type) (y:vname) (e:expr) (ps:preds),
+          Subtype g s t 
+              -> Implies g (PCons (eq e (length s (FV y))) ps)
+                           (PCons (eq e (length t (FV y))) ps)
     | IStren  : forall (y:vname) (b':basic) (qs:preds) (g:env) (p1s:preds) (p2s:preds),
           ~ in_env y g -> ~ Elem y (fvP qs)
               -> Implies (ECons y (TRefn b' qs)     g) p1s p2s
@@ -258,6 +264,7 @@ with Implies : env -> preds -> preds -> Prop :=
           isValue v_x -> Hastype g v_x t_x -> WFtype g t_x Base
                       -> bound_in x (self t_x v_x Base) g
                       -> Implies g ps (psubFV x v_x ps).
+
 
 Scheme Hastype_mutind  := Induction for Hastype  Sort Prop
 with   Subtype_mutind  := Induction for Subtype  Sort Prop.

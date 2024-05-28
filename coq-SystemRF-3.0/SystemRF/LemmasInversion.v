@@ -14,6 +14,8 @@ Require Import SystemRF.SubstitutionLemmaTyp.
 Require Import SystemRF.LemmasNarrowing.
 Require Import SystemRF.LemmasTransitive. 
 
+Require Import ZArith.
+
 (* -- A collection of Lemmas about inverting typing judgements for abstraction types. In our
    --   system this is not trivial because TSub could be used finitely many times to produce
    --   the judgment. The key point is to use transitivity of subtyping to collapse a chain
@@ -112,19 +114,83 @@ Proof. intros; inversion H.
   - (* isTSub  *) apply lem_lambdaT_tpoly_same_kind'
        with g (LambdaT k e) s e t; trivial. Qed.
 
+Lemma lem_appT_wf' : forall (g:env) (es:expr) (t:type),
+    Hastype g es t -> ( forall (e:expr) (s s_x s':type),
+        es = AppT e s -> WFEnv g -> Subtype g t (TFunc s_x s')
+                      -> WFtype g (TFunc s_x s') Star
+                      -> WFtype g s Star ).
+Proof. apply ( Hastype_ind
+    ( fun (g:env) (es:expr) (t:type) => forall (e:expr) (s s_x s':type),
+        es = AppT e s -> WFEnv g -> Subtype g t (TFunc s_x s')
+                      -> WFtype g (TFunc s_x s') Star
+                      -> WFtype g s Star) 
+); try discriminate; intros. 
+  - (* isTAppT *) injection H4 as H4'; subst e0 s0;
+    destruct k; try apply H3; apply WFKind; apply H3.
+  - (* isTSub *) apply H0 with e0 s_x s';
+    try apply lem_sub_trans with t Star k Star; trivial;
+    try apply lem_typing_wf with e; trivial. Qed.
+
+Lemma lem_appT_wf : forall (g:env) (e:expr) (t s_x s:type),
+    Hastype g (AppT e t) (TFunc s_x s) 
+        -> WFEnv g -> WFtype g (TFunc s_x s) Star  
+        -> WFtype g t Star.
+Proof. intros; inversion H.
+  - (* isTAppT *) destruct k; try apply H9; apply WFKind; apply H9.
+  - (* isTSub  *) apply lem_appT_wf'
+        with (AppT e t) (TFunc s_x s) e s_x s; 
+      try apply lem_sub_refl with Star; trivial. Qed.    
+
+Lemma lem_invert_nil' : forall (g:env) (nl:expr) (t:type),
+  Hastype g nl t -> (forall (s : type) (qs : preds),
+    nl = Nil -> WFEnv g -> Subtype g t (TList s qs)
+             -> WFtype g (TList s qs) Star
+             -> exists s', Subtype g s' s /\ WFtype g s' Star /\
+                           isMono s' /\ noExists s' /\
+                  Subtype g (TList s' (PCons (eq (Ic 0) (length s' (BV 0))) PEmpty)) 
+                            (TList s  qs)).
+Proof. apply ( Hastype_ind
+    ( fun (g:env) (nl:expr) (t:type) => forall (s : type) (qs : preds),
+        nl = Nil -> WFEnv g -> Subtype g t (TList s qs)
+            -> WFtype g (TList s qs) Star
+            -> exists s', Subtype g s' s /\ WFtype g s' Star /\
+                          isMono s' /\ noExists s' /\
+                Subtype g (TList s' (PCons (eq (Ic 0) (length s' (BV 0))) PEmpty)) 
+                          (TList s  qs))
+  ); try discriminate; intros.
+  - (* isTNil *) inversion H4; subst g0 t1 p1 t2 p2.
+    exists t; repeat try split; destruct k;
+    try apply H1; try apply WFKind; trivial.
+  - (* isTSub *) apply H0; try apply lem_sub_trans with t Star k Star;
+    try (apply lem_typing_wf with e; assumption); assumption.
+  Qed.      
+
+Lemma lem_invert_nil : forall (g:env) (t:type) (ps:preds),
+    Hastype g Nil (TList t ps) 
+            -> WFEnv g -> WFtype g (TList t ps) Star
+            -> exists s', Subtype g s' t /\ WFtype g s' Star /\
+                          isMono s' /\ noExists s' /\
+                Subtype g (TList s' (PCons (eq (Ic 0) (length s' (BV 0))) PEmpty))
+                          (TList t ps).
+Proof. intros. apply lem_invert_nil' with Nil (TList t ps); 
+  try apply lem_sub_refl with Star; trivial.
+ Qed.      
+
 Lemma lem_invert_cons : forall (g:env) (ce:expr) (t:type),
   Hastype g ce t -> (forall (v1 v2 : expr) (s : type) (qs : preds),
     ce = Cons v1 v2 -> isValue v2
                     -> WFEnv g -> Subtype g t (TList s qs)
                     -> WFtype g (TList s qs) Star
-                    -> exists (rs : preds), Hastype g v2 (TList s rs)).
+                    -> exists (rs : preds), Hastype g v1 s /\
+                        Hastype g v2 (TList s rs)).
 Proof. apply ( Hastype_ind
     ( fun (g:env) (ce:expr) (t:type) 
       => forall (v1 v2 : expr) (s : type) (qs : preds),
             ce = Cons v1 v2 -> isValue v2
                     -> WFEnv g -> Subtype g t (TList s qs)
                     -> WFtype g (TList s qs) Star
-                    -> exists (rs : preds), Hastype g v2 (TList s rs))
+                    -> exists (rs : preds), Hastype g v1 s /\
+                        Hastype g v2 (TList s rs))
   ); try discriminate; intros.  
   - (* isTCons *) injection H5 as Hv1 Hv2; subst eH eT.
     apply lem_typing_wf in H1 as p_g_t;
@@ -140,12 +206,15 @@ Proof. apply ( Hastype_ind
     apply lem_subst_subtype_top
       with g y v2 (TList t ps) t s Star Star in H21;
     try rewrite Hsub in H21; try rewrite Hsub in H21;
-    try exists ps; try apply H3;
-    try apply TSub with (TList t ps) Star;
+    try exists ps; try split; try apply H3;
+    try match goal with
+        | [ |- Hastype _ v1 _] => apply TSub with t Star
+        | [ |- Hastype _ v2 _] => apply TSub with (TList t ps) Star
+        end;
     try apply SList with nms; intros; try apply IRefl;
     try apply lem_typing_wf in H3 as p_g_tps;
     try apply lem_free_bound_in_env with g Star;
-    apply lem_wflist_wftype in H9 as p_g_s;
+    apply lem_wflist_wftype in H9 as p_g_s; trivial;
     try apply lem_weaken_wf_top;
     try apply wfenv_unique; trivial.
     inversion p_g_tps; try inversion H24;
@@ -153,7 +222,7 @@ Proof. apply ( Hastype_ind
     try apply WFListR with nms1; try apply WFList with Star;
     try rewrite <- lem_erase_subtype with g t s;
     trivial.
-  - (* TSub *) apply H0 with v1 qs;
+  - (* TSub *) apply H0 with qs;
     try apply lem_sub_trans with t Star k Star;
     try apply lem_typing_wf in H; trivial.
   Qed.
@@ -162,7 +231,8 @@ Lemma lem_invert_tlist : forall (g:env) (v1 v2:expr) (t:type) (ps:preds),
     Hastype g (Cons v1 v2) (TList t ps) 
                   -> WFEnv g -> WFtype g (TList t ps) Star
                   -> isValue v1 -> isValue v2
-                  -> exists qs:preds, Hastype g v2 (TList t qs).
+                  -> exists qs:preds, Hastype g v1 t /\
+                        Hastype g v2 (TList t qs).
 Proof. intros; inversion H.
-  apply lem_invert_cons with (Cons v1 v2) s v1 ps; trivial.
+  apply lem_invert_cons with (Cons v1 v2) s ps; trivial.
  Qed.      

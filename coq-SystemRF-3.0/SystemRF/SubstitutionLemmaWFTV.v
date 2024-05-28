@@ -200,6 +200,17 @@ Lemma lem_subst_tv_wf' : forall (g g':env) (a:vname) (t_a:type) (k_a:kind) (t:ty
 Proof. intros; apply lem_subst_tv_wf with k_a; try apply lem_erase_env_wfenv;
   assumption || reflexivity.  Qed.
 
+Lemma lem_subst_tv_wf_top : 
+  forall (g:env) (a:vname) (t_a:type) (k_a:kind) (t:type) (k_t:kind),
+    WFtype (EConsT a k_a g) t k_t 
+                    -> unique g -> ~ (in_env a g)
+                    -> isMono t_a -> noExists t_a 
+                    -> WFtype g t_a k_a -> WFEnv g
+                    -> WFtype g (tsubFTV a t_a t) k_t.
+Proof. intros; assert (g = concatE g (esubFTV a t_a Empty)) by reflexivity;
+  rewrite H6; apply lem_subst_tv_wf' with k_a; simpl; 
+  try apply intersect_empty_r; intuition. Qed.
+
 Lemma lem_subst_tv_wfenv : forall (g g':env) (a:vname) (t_a:type) (k_a:kind),
     WFEnv (concatE (EConsT a k_a g) g' )
         -> unique g -> unique g'
