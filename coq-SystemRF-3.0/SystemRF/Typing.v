@@ -166,11 +166,13 @@ Inductive Hastype : env -> expr -> type -> Prop :=
           isMono t -> noExists t -> Hastype g e (TList t ps) -> WFtype g t' k
               -> (forall (y:vname), ~ Elem y nms
                     -> Hastype (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g) eN t')
-              -> (forall (y:vname), ~ Elem y nms
-                    -> Hastype (ECons y (TList t ps) g) eC 
-                               (TFunc t (TFunc (TList t 
+              -> (forall (y z:vname), ~ Elem y nms -> ~ Elem z nms -> z <> y
+                    -> Hastype (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                                   (length t (BV 0))) ps)) 
+                                      (ECons y (TList t PEmpty) g)) 
+                            eC (TFunc t (TFunc (TList t 
                                   (PCons (eq (length t (FV y)) 
-                                             (App (Prim Succ) (length t (BV 0))))
+                                             (length t (BV 0)))
                                          PEmpty)) t')) )
               -> Hastype g (Switch e eN eC) t' 
     | TSub  : forall (g:env) (e:expr) (s:type) (t:type) (k:kind),

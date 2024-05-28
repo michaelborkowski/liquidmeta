@@ -178,18 +178,33 @@ Proof. intros g e t p_e_t; induction p_e_t; intro p_g.
     set (y := fresh_varE nms g (Switch e eN eC));
     pose proof (fresh_varE_not_elem nms g (Switch e eN eC));
     apply lem_strengthen_hasftype_top with y (FTList (erase t));
+    set (z := fresh_varE (names_add y nms) g (Switch e eN eC));
+    pose proof (fresh_varE_not_elem (names_add y nms) g (Switch e eN eC));
+    try match goal with 
+        | [ |- HasFtype _ eC _] 
+                => apply lem_strengthen_hasftype_top with  z (FTList (erase t))
+    end;
     try apply H3; try apply H5;
-    try apply WFEBind with Star;
+    try apply WFEBind with Star; try apply WFEBind with Star;    
     try apply lem_wflist_len_zero;
     apply lem_typing_wf in p_e_t as p_g_t; try apply p_g_t;
-    try apply WFListR with (union nms (union (binds g) (fv (Switch e eN eC)))); 
-    intros; unfold unbindP; simpl;
+    try apply lem_wflist_wftype in p_g_t as p_t;  
+    try apply lem_wftype_islct in p_t as Hlct;
+    pose proof lem_open_at_lc_at as [_ [Hopt _]];
+    try apply lem_free_subset_binds in p_t as Hsub;
+    try destruct Hsub as [Hsub Hsub'];
+    try apply lem_wflist_len_succ;  
     destruct H6 as [Hfv [_ [Hnms Hg]]]; simpl in Hfv;
     apply not_elem_union_elim in Hfv; destruct Hfv as [Hfve Hfv];
-    apply not_elem_union_elim in Hfv; destruct Hfv as [HfveN HfveC];
-    unfold in_envF;
-    try rewrite <-   binds_erase_env;
-    try discriminate; auto.
+    apply not_elem_union_elim in Hfv; destruct Hfv as [HfveN HfveC];  
+    destruct H7 as [Hzfv [_ [Hznms Hzg]]];  simpl in Hzfv;
+    apply not_elem_union_elim in Hzfv; destruct Hzfv as [Hzfve Hzfv];
+    apply not_elem_union_elim in Hzfv; destruct Hzfv as [HzfveN HzfveC];
+    apply not_elem_names_add_elim in Hznms; destruct Hznms;
+    unfold bound_inF; unfold in_envF; simpl;
+    try apply not_elem_names_add_intro;
+    try rewrite <-   binds_erase_env;  
+    try split; auto.
   - (* TSub *) rewrite <- lem_erase_subtype with g s t; try apply IHp_e_t; trivial.
   Qed.
 

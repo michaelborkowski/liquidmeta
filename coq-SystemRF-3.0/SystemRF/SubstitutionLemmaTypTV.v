@@ -200,36 +200,56 @@ Proof. apply ( judgments_mutind
   - (* TCons *) apply TCons; fold tsubFTV;
     try apply lemma_tsubFTV_isMono; try apply lemma_tsubFTV_noExists;
     try apply H with k_a; try apply H0 with k_a; trivial.
-  - (* TSwitch *) apply TSwit with (tsubFTV a t_a t) (psubFTV a t_a ps) 
+  - (* TSwitch *)   apply TSwit with (tsubFTV a t_a t) (psubFTV a t_a ps) 
                               k (names_add a (union nms (binds (concatE g g'))));
     try apply lemma_tsubFTV_isMono; try apply lemma_tsubFTV_noExists;
     fold subFTV; fold tsubFTV; fold psubFTV; 
-    simpl in H; try apply H with k_a; intros;
+    simpl in H; try apply H with k_a;
+    try intros y z Hy Hz Hyz; try intros y Hy;
     try assert (ECons y (TList (tsubFTV a t_a t) 
-                          (PCons (eq (Ic 0) (length (tsubFTV a t_a t) (BV 0))) (psubFTV a t_a ps))) 
-                      (concatE g (esubFTV a t_a g')) 
+                          (PCons (eq (Ic 0) (length (tsubFTV a t_a t) (BV 0))) 
+                            (psubFTV a t_a ps))) (concatE g (esubFTV a t_a g')) 
               = concatE g (esubFTV a t_a 
-                            (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g')))
-      by reflexivity; try rewrite H12;
-    try assert (ECons y (TList (tsubFTV a t_a t) (psubFTV a t_a ps)) 
-                      (concatE g (esubFTV a t_a g')) 
-              = concatE g (esubFTV a t_a  (ECons y (TList t ps ) g')))
-      by reflexivity; try rewrite H13; 
-    try apply not_elem_names_add_elim in H2; try destruct H2;
-    try apply not_elem_union_elim in H14; try destruct H14;
-    try apply not_elem_concat_elim in H15; try destruct H15; 
+                            (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) 
+                                                ps)) g')))
+      as Henv1 by reflexivity; try rewrite Henv1;
+    try apply not_elem_names_add_elim in Hy; try destruct Hy as [Hya Hy]; 
+    try apply not_elem_union_elim in Hy; try destruct Hy as [Hynms Hy];
+    try apply not_elem_concat_elim in Hy as Hyenv; 
+    try destruct Hyenv as [Hyg Hyg'];
+    try apply not_elem_names_add_elim in Hz; try destruct Hz as [Hza Hz];   
+    try apply not_elem_union_elim in Hz; try destruct Hz as [Hznms Hz];
+    try apply not_elem_concat_elim in Hz as Hzenv; 
+    try destruct Hzenv as [Hzg Hzg'];
+    try assert (ECons z (TList (tsubFTV a t_a t) 
+                          (PCons (eq (App (Prim Succ) (length (tsubFTV a t_a t) (FV y))) 
+                                     (length (tsubFTV a t_a t) (BV 0))) PEmpty)) 
+                  (ECons y (TList (tsubFTV a t_a t) (psubFTV a t_a ps)) 
+                    (concatE g (esubFTV a t_a g')))
+              = concatE g (esubFTV a t_a 
+                  (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                               (length t (BV 0))) PEmpty)) 
+                    (ECons y (TList t ps) g'))) )
+      as Henv2 by reflexivity; try rewrite Henv2; 
     simpl in H1; 
-    try apply H0 with y k_a; try apply H1 with k_a; 
+    try apply H0 with y k_a; try apply H1 with z k_a;  
     try apply lem_subst_tv_wf with k_a; 
-    try apply WFEBind with Star;  
-    apply lem_typing_wf in h as p_env_tps; try apply p_env_tps; 
-    try apply lem_wflist_len_zero; 
-    try apply intersect_names_add_intro_r; unfold in_env; 
-    try apply not_elem_concat_intro; 
-    try apply not_elem_names_add_intro;
+    try apply WFEBind with Star;
+    try apply WFEBind with Star;
+    apply lem_typing_wf in h as p_env_tps; try apply p_env_tps;
+    try apply lem_wflist_len_zero; try assumption;          
+    try apply lem_wflist_len_succ; simpl; try split; try split;
+
+    try apply intersect_names_add_intro_r;  
+    try apply intersect_names_add_intro_r;      
+    unfold in_env; fold concatE;  simpl;
+    try apply not_elem_concat_intro;  
+    try apply not_elem_names_add_intro; try split;
+    try apply not_elem_concat_intro;  
+    try apply not_elem_names_add_intro; try split;
     apply lem_truncate_wfenv in H11 as p_xg; inversion p_xg; 
     try apply lem_erase_env_wfenv; 
-    fold subFV; simpl; auto.
+    fold subFV; simpl;  try discriminate; auto.
   - (* TSub *) apply TSub with (tsubFTV a t_a s) k; 
     apply lem_truncate_wfenv in H10 as H10'; inversion H10'; subst a0 k0 g0;
     try apply H with k_a; try apply lem_subst_tv_wf' with k_a;

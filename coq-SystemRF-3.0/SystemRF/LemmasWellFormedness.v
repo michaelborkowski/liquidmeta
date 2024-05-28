@@ -6,6 +6,7 @@ Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 Require Import SystemRF.LocalClosure.
 Require Import SystemRF.Strengthenings.
+Require Import SystemRF.SystemFWellFormedness.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.BasicPropsSubstitution.
@@ -217,6 +218,58 @@ Proof. intros. inversion H1; inversion H2;
   apply lem_free_subset_binds in p_g_t as Hb; destruct Hb;
   simpl in H3; simpl in H4;
   try apply intersect_empty_r; simpl; auto.
+Qed.
+
+Lemma lem_wflist_len_succ : 
+  forall (g:env) (y:vname) (t:type) (ps:preds),
+    isMono t -> noExists t -> ~ (in_env y g)
+      -> WFtype g (TList t ps) Star 
+      -> WFtype (ECons y (TList t ps) g) 
+            (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                (length t (BV 0))) PEmpty)) Star.
+Proof. intros. inversion H2; try (inversion H3; contradiction);
+  try subst ps;
+  try apply lem_wflist_wftype in H2 as p_t;  
+  try apply lem_wftype_islct in p_t as Hlct;
+  pose proof lem_open_at_lc_at as [_ [Hopt _]];
+  try apply lem_free_subset_binds in p_t as Hsub;
+  try destruct Hsub as [Hsub Hsub'];
+  apply WFListR with (names_add y (union nms (binds g)))
+    || apply WFListR with (names_add y (binds g));
+  try discriminate; try apply lem_weaken_wf_top; try assumption;
+  intros; unfold unbindP; simpl; apply PFTCons;
+  try apply PFTEmp;
+  try (apply not_elem_names_add_elim in H4; destruct H4 as [Hy Hy0]);
+  try (apply not_elem_names_add_elim in H6; destruct H6 as [Hy Hy0g]);
+  try (apply not_elem_union_elim in Hy0; destruct Hy0 as [Hy0n Hy0g]);
+  try rewrite Hopt with t 0 0 y0;
+  try apply FTApp with (FTBasic TInt);
+  try match goal with 
+  | [ |- HasFtype _ _ (FTFunc _ _)] 
+                      => apply FTApp with (FTBasic TInt)
+  | [ |- HasFtype _ _ (FTBasic _)] 
+                      => apply FTApp with (FTList (erase t))
+  end;
+  try apply FTApp with (FTBasic TInt);
+  try apply FTApp with (FTList (erase t));
+  assert (FTFunc (FTList (erase t)) (FTBasic TInt)
+      = ftsubBV (erase t) (FTFunc (FTList (FTBasic (BTV 0))) (FTBasic TInt)))
+      as Hert by reflexivity; try rewrite Hert;
+  try apply FTAppT with Star;
+  try apply FTPrm; try apply FTVar;
+  try repeat apply lem_weaken_wfft_top;
+  try apply lem_erase_wftype;
+
+  unfold in_envF;
+  unfold tvbindsF; fold tvbindsF;   
+  unfold bindsF; fold bindsF;
+  unfold in_envF; unfold bound_inF;
+  try apply subset_add_intro; try apply subset_add_intro;
+  try rewrite <-   binds_erase_env;
+  try rewrite <-  vbinds_erase_env;
+  try rewrite <- tvbinds_erase_env;
+  try apply not_elem_names_add_intro; try split;
+  try apply not_elem_names_add_intro; auto. 
 Qed.
 
 Lemma boundin_wfenv_wftype : forall (x:vname) (t:type) (g:env),

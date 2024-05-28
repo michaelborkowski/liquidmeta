@@ -207,42 +207,63 @@ Proof. apply ( judgments_mutind
   - (* TSwitch *) apply TSwit with (tsubFV x v_x t) (psubFV x v_x ps) 
                               k (names_add x (union nms (binds (concatE g g'))));
     try apply lemma_tsubFV_isMono; try apply lemma_tsubFV_noExists;
-    simpl in H; try apply H with t_x; intros;
+    simpl in H; try apply H with t_x; 
+    try intros y z Hy Hz Hyz; try intros y Hy;
     try assert (ECons y (TList (tsubFV x v_x t) 
-                          (PCons (eq (Ic 0) (length (tsubFV x v_x t) (BV 0))) (psubFV x v_x ps))) 
-                      (concatE g (esubFV x v_x g')) 
+                          (PCons (eq (Ic 0) (length (tsubFV x v_x t) (BV 0))) 
+                            (psubFV x v_x ps))) (concatE g (esubFV x v_x g')) 
               = concatE g (esubFV x v_x 
-                            (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g')))
-      by reflexivity; try rewrite H11;
-    try assert (ECons y (TList (tsubFV x v_x t) (psubFV x v_x ps)) 
-                      (concatE g (esubFV x v_x g')) 
-              = concatE g (esubFV x v_x (ECons y (TList t ps ) g')))
-      by reflexivity; try rewrite H12;
-    try apply not_elem_names_add_elim in H2; try destruct H2; 
-    try apply not_elem_union_elim in H13; try destruct H13;
-    try apply not_elem_concat_elim in H14; try destruct H14;
-    try apply Nat.neq_sym in H2;
-    try apply Nat.eqb_neq in H2 as Hneqb; fold subFV;
+                            (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) 
+                                                ps)) g')))
+      as Henv1 by reflexivity; try rewrite Henv1;
+    try apply not_elem_names_add_elim in Hy; try destruct Hy as [Hyx Hy]; 
+    try apply not_elem_union_elim in Hy; try destruct Hy as [Hynms Hy];
+    try apply not_elem_concat_elim in Hy as Hyenv; 
+    try destruct Hyenv as [Hyg Hyg'];
+    try apply not_elem_names_add_elim in Hz; try destruct Hz as [Hzx Hz];   
+    try apply not_elem_union_elim in Hz; try destruct Hz as [Hznms Hz];
+    try apply not_elem_concat_elim in Hz as Hzenv; 
+    try destruct Hzenv as [Hzg Hzg'];
+    try apply Nat.neq_sym in Hyx;
+    try apply Nat.eqb_neq in Hyx as Hneqb; fold subFV;
+    try assert (
+      ECons z (TList (tsubFV x v_x t) 
+                (PCons (eq (App (Prim Succ) (length (tsubFV x v_x t) (FV y))) 
+                           (length (tsubFV x v_x t) (BV 0))) PEmpty)) 
+        (ECons y (TList (tsubFV x v_x t) (psubFV x v_x ps)) 
+          (concatE g (esubFV x v_x g')))
+      = concatE g (esubFV x v_x
+          (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                  (length t (BV 0))) PEmpty)) 
+            (ECons y (TList t ps) g'))) 
+    ) as Henv2 by (simpl; rewrite Hneqb; reflexivity); try rewrite Henv2;
     try assert ((TFunc (tsubFV x v_x t) 
                   (TFunc (TList (tsubFV x v_x t) 
-                          (PCons (eq (length (tsubFV x v_x t) (FV y))
-                                     (App (Prim Succ) (length (tsubFV x v_x t) (BV 0))) ) 
-                                 PEmpty)) (tsubFV x v_x t')))
+                          (PCons (eq (length (tsubFV x v_x t) (FV y)) 
+                                     (length (tsubFV x v_x t) (BV 0))) PEmpty)) 
+                         (tsubFV x v_x t')))
               = (tsubFV x v_x (TFunc t (TFunc (TList t (PCons (eq (length t (FV y)) 
-                                                                  (App (Prim Succ) (length t (BV 0))))
+                                                                  (length t (BV 0)))
                                                               PEmpty)) t'))))
-      by (simpl; rewrite Hneqb; reflexivity); try rewrite H16;
-    try apply H0 with y t_x; try apply H1 with t_x;
+      as Htyp by (simpl; rewrite Hneqb; reflexivity); try rewrite Htyp;
+    try apply H0 with y t_x; try apply H1 with z t_x;
     try apply lem_subst_wf with t_x; 
     try apply WFEBind with Star;
+    try apply WFEBind with Star;
     apply lem_typing_wf in h as p_env_tps; try apply p_env_tps;
-    try apply lem_wflist_len_zero;
-    try apply lem_typing_hasftype;
-    try apply intersect_names_add_intro_r; unfold in_env;
-    try apply not_elem_concat_intro;
-    try apply not_elem_names_add_intro;
+    try apply lem_wflist_len_zero; try assumption;          
+    try apply lem_wflist_len_succ; trivial;
+
+    try apply lem_typing_hasftype; simpl; try split;  try split;
+    try apply intersect_names_add_intro_r;  
+    try apply intersect_names_add_intro_r;      
+    unfold in_env; fold concatE;  simpl;
+    try apply not_elem_concat_intro;  
+    try apply not_elem_names_add_intro; try split;
+    try apply not_elem_concat_intro;  
+    try apply not_elem_names_add_intro; try split;
     apply lem_truncate_wfenv in H10 as p_xg; inversion p_xg; 
-    fold subFV; simpl; try split; try discriminate; auto.
+    fold subFV; simpl;  try discriminate; auto.
   - (* TSub *)   
     apply TSub with (tsubFV x v_x s) k; 
     apply lem_truncate_wfenv in H9 as H9'; inversion H9'; subst x0 t0 g0;

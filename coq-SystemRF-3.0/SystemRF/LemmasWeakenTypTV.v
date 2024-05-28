@@ -125,26 +125,42 @@ Proof. apply ( judgments_mutind
   - (* TNil *) apply TNil with k; try apply lem_weaken_tv_wf; auto.
   - (* TCons *) apply TCons; try apply H; try apply H0; trivial.
   - (* TSwitch *) apply TSwit with t ps k (names_add a (union nms (binds (concatE g g'))));
-    try apply H; intros; 
+    try apply H; try intros y z Hy Hz Hyz; try intros y Hy;
     try assert (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) (concatE (EConsT a k_a g) g') 
               = concatE (EConsT a k_a g) (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g'))
-      by reflexivity; try rewrite H9;
-    try assert (ECons y (TList t ps) (concatE (EConsT a k_a g) g') 
-              = concatE (EConsT a k_a g) (ECons y (TList t ps) g'))
-      by reflexivity; try rewrite H10;
-    try apply H0 with y; try apply H1;
+      as Henv1 by reflexivity; try rewrite Henv1;
+    try assert (
+      ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                  (length t (BV 0))) PEmpty)) 
+        (ECons y (TList t ps) (concatE (EConsT a k_a g) g'))
+      = concatE (EConsT a k_a g) 
+          (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                  (length t (BV 0))) PEmpty)) 
+            (ECons y (TList t ps) g'))
+    ) as Henv2 by reflexivity; try rewrite Henv2;
+    try apply H0 with y; try apply H1 with z;  
     try apply lem_weaken_tv_wf;
+    try apply WFEBind with Star;  
     try apply WFEBind with Star;
     apply lem_typing_wf in h;
-    try apply lem_wflist_len_zero;
-    try apply not_elem_names_add_elim in H2; try destruct H2; 
-    try apply not_elem_union_elim in H11; try destruct H11;
-    try apply not_elem_concat_elim in H12; try destruct H12;
-    try apply intersect_names_add_intro_r;
-    unfold in_env; fold concatE;
+    try apply lem_wflist_len_zero; try assumption;          
+    try apply lem_wflist_len_succ; trivial;
+    
+    try apply not_elem_names_add_elim in Hy; try destruct Hy as [Hyx Hy]; 
+    try apply not_elem_union_elim in Hy; try destruct Hy as [Hynms Hy];
+    try apply not_elem_concat_elim in Hy as Hyenv; 
+    try destruct Hyenv as [Hyg Hyg'];
+    try apply not_elem_names_add_elim in Hz; try destruct Hz as [Hzx Hz];   
+    try apply not_elem_union_elim in Hz; try destruct Hz as [Hznms Hz];
+    try apply not_elem_concat_elim in Hz as Hzenv; 
+    try destruct Hzenv as [Hzg Hzg'];  simpl;  try split; try split;
+    try apply intersect_names_add_intro_r;  
+    try apply intersect_names_add_intro_r;    
+    unfold in_env; fold concatE;  simpl; auto;
+    try apply not_elem_names_add_intro; try split;
     try apply not_elem_names_add_intro;
     try apply not_elem_concat_intro;
-    simpl; try split; try discriminate; auto.  
+    simpl; try split; try discriminate; auto.
   - (* TSub *) apply TSub with s k; try apply H; try apply lem_weaken_tv_wf;
     try apply H0 with Star k; try apply lem_typing_wf with e; trivial.
   - (* SBase *) apply SBase with (names_add a (union nms (binds (concatE g g')))); intros;

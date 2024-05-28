@@ -193,30 +193,48 @@ Proof. apply ( judgments_mutind
     try apply lem_narrow_wf with t_x; trivial.
   - (* TCons *) apply TCons; try apply H with t_x k_sx k_tx;
     try apply H0 with t_x k_sx k_tx; trivial.
-  - (* TSwit *) apply TSwit with t ps k (names_add x (union nms (binds (concatE g g'))));
-    try apply H with t_x k_sx k_tx; intros;
+  - (* TSwit *) 
+    apply TSwit with t ps k (names_add x (union nms (binds (concatE g g'))));
+    try apply H with t_x k_sx k_tx;
+    try intros y z Hy Hz Hyz; try intros y Hy;
     try apply lem_narrow_wf with t_x;
-    try apply not_elem_names_add_elim in H2; try destruct H2;
-    try apply not_elem_union_elim in H12; try destruct H12;
-    try apply not_elem_concat_elim in H13; try destruct H13;
+    try apply not_elem_names_add_elim in Hy; try destruct Hy as [Hyx Hy]; 
+    try apply not_elem_union_elim in Hy; try destruct Hy as [Hynms Hy];
+    try apply not_elem_concat_elim in Hy as Hyenv; 
+    try destruct Hyenv as [Hyg Hyg'];
+    try apply not_elem_names_add_elim in Hz; try destruct Hz as [Hzx Hz];   
+    try apply not_elem_union_elim in Hz; try destruct Hz as [Hznms Hz];
+    try apply not_elem_concat_elim in Hz as Hzenv; 
+    try destruct Hzenv as [Hzg Hzg'];       
     try assert (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) 
                       (concatE (ECons x s_x g) g') 
                   = concatE (ECons x s_x g) 
                             (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g'))
       as Henv1 by reflexivity; try rewrite Henv1; 
-    try assert (ECons y (TList t ps) (concatE (ECons x s_x g) g') 
-                  = concatE (ECons x s_x g) (ECons y (TList t ps) g'))
+    try assert (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                            (length t (BV 0))) PEmpty)) 
+                  (ECons y (TList t ps) (concatE (ECons x s_x g) g'))
+                = concatE (ECons x s_x g) 
+                    (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                            (length t (BV 0))) PEmpty)) 
+                      (ECons y (TList t ps) g')) )
       as Henv2 by reflexivity; try rewrite Henv2;     
     try apply H0 with y t_x k_sx k_tx;
-    try apply H1 with t_x k_sx k_tx; 
-    try apply WFEBind with Star; unfold in_env; 
-    try apply lem_sub_refl with k_tx;
-    try apply lem_wflist_len_zero; 
-    try apply lem_typing_wf with e;
-    try apply H with t_x k_sx k_tx;
-    try apply intersect_names_add_intro_r; 
-    try apply not_elem_concat_intro;
-    try apply not_elem_names_add_intro; simpl; auto.
+    try apply H1 with z t_x k_sx k_tx; 
+    try apply WFEBind with Star; 
+    try apply WFEBind with Star;   unfold in_env; 
+    try apply lem_wflist_len_zero;         
+    try apply lem_wflist_len_succ; 
+    try apply lem_typing_wf with e; 
+    try apply H with t_x k_sx k_tx; simpl; try split; try split;
+    try apply intersect_names_add_intro_r;  
+    try apply intersect_names_add_intro_r;      
+    unfold in_env; fold concatE;  simpl;
+    try apply not_elem_concat_intro;  
+    try apply not_elem_names_add_intro; try split;
+    try apply not_elem_concat_intro;  
+    try apply not_elem_names_add_intro; try split;
+    fold subFV; simpl;  try discriminate; auto.
   - (* TSub *) apply TSub with s k;
     try apply H0 with t_x k_sx k_tx Star k; 
     try apply lem_typing_wf with e;
