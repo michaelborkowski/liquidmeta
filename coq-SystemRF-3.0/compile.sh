@@ -71,6 +71,8 @@ echo "Checking LemmasTransitive.v ..."
 coqc -R SystemRF SystemRF SystemRF/LemmasTransitive.v
 echo "Checking LemmasInversion.v ..."
 coqc -R SystemRF SystemRF SystemRF/LemmasInversion.v
+echo "Checking LemmasLists.v ..."
+coqc -R SystemRF SystemRF SystemRF/LemmasLists.v
 echo "Checking PrimitivesDeltaTyping.v ..."
 coqc -R SystemRF SystemRF SystemRF/PrimitivesDeltaTyping.v
 echo "Checking MainTheorems.v ..."

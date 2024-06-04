@@ -220,29 +220,28 @@ Proof. intros. inversion H1; inversion H2;
   try apply intersect_empty_r; simpl; auto.
 Qed.
 
-Lemma lem_wflist_len_succ : 
-  forall (g:env) (y:vname) (t:type) (ps:preds),
-    isMono t -> noExists t -> ~ (in_env y g)
-      -> WFtype g (TList t ps) Star 
-      -> WFtype (ECons y (TList t ps) g) 
-            (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
-                                (length t (BV 0))) PEmpty)) Star.
-Proof. intros. inversion H2; try (inversion H3; contradiction);
+Lemma lem_wflist_eq_succ_length : 
+  forall (g:env) (t:type) (ps:preds) (v:expr),
+      isMono t -> noExists t -> WFtype g (TList t ps) Star 
+          -> HasFtype (erase_env g) v (FTList (erase t))
+          -> WFtype g (TList t (PCons (eq (App (Prim Succ) (length t v)) 
+                                          (length t (BV 0))) ps)) Star.
+Proof. intros. inversion H1; try (inversion H3; contradiction);
   try subst ps;
-  try apply lem_wflist_wftype in H2 as p_t;  
+  apply lem_ftyp_islc in H2 as Hv;
+  try apply lem_wflist_wftype in H1 as p_t;  
   try apply lem_wftype_islct in p_t as Hlct;
-  pose proof lem_open_at_lc_at as [_ [Hopt _]];
+  pose proof lem_open_at_lc_at as [Hope [Hopt _]];
   try apply lem_free_subset_binds in p_t as Hsub;
   try destruct Hsub as [Hsub Hsub'];
-  apply WFListR with (names_add y (union nms (binds g)))
-    || apply WFListR with (names_add y (binds g));
+  apply WFListR with (union nms (binds g))
+    || apply WFListR with (binds g);
   try discriminate; try apply lem_weaken_wf_top; try assumption;
-  intros; unfold unbindP; simpl; apply PFTCons;
-  try apply PFTEmp;
-  try (apply not_elem_names_add_elim in H4; destruct H4 as [Hy Hy0]);
-  try (apply not_elem_names_add_elim in H6; destruct H6 as [Hy Hy0g]);
-  try (apply not_elem_union_elim in Hy0; destruct Hy0 as [Hy0n Hy0g]);
-  try rewrite Hopt with t 0 0 y0;
+  intros; unfold unbindP; simpl; 
+  try rewrite Hope with v 0 0 y;
+  try rewrite Hopt with t 0 0 y;
+  try (apply not_elem_union_elim in H4; destruct H4 as [Hyn Hyg]);
+  try apply PFTCons; try apply PFTEmp; try apply H8; trivial;
   try apply FTApp with (FTBasic TInt);
   try match goal with 
   | [ |- HasFtype _ _ (FTFunc _ _)] 
@@ -256,7 +255,8 @@ Proof. intros. inversion H2; try (inversion H3; contradiction);
       = ftsubBV (erase t) (FTFunc (FTList (FTBasic (BTV 0))) (FTBasic TInt)))
       as Hert by reflexivity; try rewrite Hert;
   try apply FTAppT with Star;
-  try apply FTPrm; try apply FTVar;
+  try apply FTPrm; try apply FTVar; 
+  try apply lem_weaken_ftyp_top;  
   try repeat apply lem_weaken_wfft_top;
   try apply lem_erase_wftype;
 
@@ -264,12 +264,68 @@ Proof. intros. inversion H2; try (inversion H3; contradiction);
   unfold tvbindsF; fold tvbindsF;   
   unfold bindsF; fold bindsF;
   unfold in_envF; unfold bound_inF;
+  try apply intersect_names_add_intro_r;    
+  try apply intersect_empty_r;
   try apply subset_add_intro; try apply subset_add_intro;
   try rewrite <-   binds_erase_env;
   try rewrite <-  vbinds_erase_env;
   try rewrite <- tvbinds_erase_env;
   try apply not_elem_names_add_intro; try split;
   try apply not_elem_names_add_intro; auto. 
+Qed.
+
+Lemma lem_wflist_len_succ : 
+  forall (g:env) (y:vname) (t:type) (ps:preds),
+    isMono t -> noExists t -> ~ (in_env y g)
+      -> WFtype g (TList t ps) Star 
+      -> WFtype (ECons y (TList t PEmpty) g) 
+            (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                (length t (BV 0))) ps)) Star.
+Proof. intros. apply lem_wflist_eq_succ_length;
+  try apply lem_weaken_wf_top; try apply FTVar; simpl; auto.
+  Qed.
+
+Lemma lem_wflist_eq_length : forall (g:env) (t:type) (ps:preds) (v:expr),
+  isMono t -> noExists t -> WFtype g (TList t ps) Star 
+      -> HasFtype (erase_env g) v (FTList (erase t))
+      -> WFtype g (TList t (PCons (eq (length t v) (length t (BV 0))) ps)) Star.
+Proof. intros. inversion H1; try (inversion H3; contradiction);
+  apply WFListR with (union nms (binds g)) || apply WFListR with (binds g);
+  try discriminate; apply lem_wflist_wftype in H1 as p_g_t;
+  (* g |-w [t]{} : Star *) try apply WFList with Star; try apply p_g_t;
+  intros; unfold unbindP; simpl; apply PFTCons;
+  try apply PFTEmp; try apply H8;
+  try apply not_elem_union_elim in H9; try destruct H9; try apply H9;
+  (* y:[t],g |- length [t] v = length [t] ; : bool  *) 
+  apply FTApp with (FTBasic TInt);
+  match goal with 
+  | [ |- HasFtype _ _ (FTFunc _ _)] 
+                      => apply FTApp with (FTBasic TInt)
+  | [ |- HasFtype _ _ (FTBasic _)] 
+                      => apply FTApp with (FTList (erase t))
+  end;
+  try apply FTApp with (FTList (erase t));
+  apply lem_ftyp_islc in H2 as Hv;
+  apply lem_wftype_islct in p_g_t as Ht;
+  try rewrite lem_unbind_lc;
+  try rewrite lem_unbindT_lct;
+  assert (FTFunc (FTList (erase t)) (FTBasic TInt)
+          = ftsubBV (erase t) (FTFunc (FTList (FTBasic (BTV 0))) (FTBasic TInt)))
+    as Htype by (unfold ftsubBV; reflexivity);
+  try rewrite Htype; try apply FTAppT with Star;
+  try apply FTPrm; try apply FTVar; try apply FTIC;
+  assert (FCons y (FTList (erase t)) (erase_env g) 
+          = concatF (FCons y (FTList (erase t)) (erase_env g)) FEmpty) 
+        as Henv by reflexivity; try rewrite Henv;
+  try apply lem_weaken_ftyp;
+  try apply lem_weaken_wfft; try apply lem_erase_wftype;
+  unfold in_envF;  simpl;
+  try apply subset_add_intro;
+  try rewrite <-   binds_erase_env;
+  try rewrite <-  vbinds_erase_env;
+  try rewrite <- tvbinds_erase_env;   
+  apply lem_free_subset_binds in p_g_t as Hb; destruct Hb;
+  try apply intersect_empty_r; simpl; auto.
 Qed.
 
 Lemma boundin_wfenv_wftype : forall (x:vname) (t:type) (g:env),

@@ -229,13 +229,13 @@ Proof. apply ( judgments_mutind
     try assert (
       ECons z (TList (tsubFV x v_x t) 
                 (PCons (eq (App (Prim Succ) (length (tsubFV x v_x t) (FV y))) 
-                           (length (tsubFV x v_x t) (BV 0))) PEmpty)) 
-        (ECons y (TList (tsubFV x v_x t) (psubFV x v_x ps)) 
+                           (length (tsubFV x v_x t) (BV 0))) (psubFV x v_x ps))) 
+        (ECons y (TList (tsubFV x v_x t) PEmpty) 
           (concatE g (esubFV x v_x g')))
       = concatE g (esubFV x v_x
           (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
-                                  (length t (BV 0))) PEmpty)) 
-            (ECons y (TList t ps) g'))) 
+                                  (length t (BV 0))) ps)) 
+            (ECons y (TList t PEmpty) g'))) 
     ) as Henv2 by (simpl; rewrite Hneqb; reflexivity); try rewrite Henv2;
     try assert ((TFunc (tsubFV x v_x t) 
                   (TFunc (TList (tsubFV x v_x t) 
@@ -252,7 +252,9 @@ Proof. apply ( judgments_mutind
     try apply WFEBind with Star;
     apply lem_typing_wf in h as p_env_tps; try apply p_env_tps;
     try apply lem_wflist_len_zero; try assumption;          
-    try apply lem_wflist_len_succ; trivial;
+    try apply lem_wflist_len_succ; trivial; fold concatE;
+    try (inversion p_env_tps; try subst ps; 
+         try inversion H2; assumption);
 
     try apply lem_typing_hasftype; simpl; try split;  try split;
     try apply intersect_names_add_intro_r;  

@@ -223,13 +223,13 @@ Proof. apply ( judgments_mutind
     try destruct Hzenv as [Hzg Hzg'];
     try assert (ECons z (TList (tsubFTV a t_a t) 
                           (PCons (eq (App (Prim Succ) (length (tsubFTV a t_a t) (FV y))) 
-                                     (length (tsubFTV a t_a t) (BV 0))) PEmpty)) 
-                  (ECons y (TList (tsubFTV a t_a t) (psubFTV a t_a ps)) 
+                                     (length (tsubFTV a t_a t) (BV 0))) (psubFTV a t_a ps))) 
+                  (ECons y (TList (tsubFTV a t_a t) PEmpty) 
                     (concatE g (esubFTV a t_a g')))
               = concatE g (esubFTV a t_a 
                   (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
-                                               (length t (BV 0))) PEmpty)) 
-                    (ECons y (TList t ps) g'))) )
+                                               (length t (BV 0))) ps)) 
+                    (ECons y (TList t PEmpty) g'))) )
       as Henv2 by reflexivity; try rewrite Henv2; 
     simpl in H1; 
     try apply H0 with y k_a; try apply H1 with z k_a;  
@@ -239,6 +239,8 @@ Proof. apply ( judgments_mutind
     apply lem_typing_wf in h as p_env_tps; try apply p_env_tps;
     try apply lem_wflist_len_zero; try assumption;          
     try apply lem_wflist_len_succ; simpl; try split; try split;
+    try (inversion p_env_tps; try subst ps; 
+         try inversion H2; assumption);
 
     try apply intersect_names_add_intro_r;  
     try apply intersect_names_add_intro_r;      

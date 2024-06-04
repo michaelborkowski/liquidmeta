@@ -185,7 +185,7 @@ Proof. intros g e t p_e_t; induction p_e_t; intro p_g.
                 => apply lem_strengthen_hasftype_top with  z (FTList (erase t))
     end;
     try apply H3; try apply H5;
-    try apply WFEBind with Star; try apply WFEBind with Star;    
+    try apply WFEBind with Star; try apply WFEBind with Star;   
     try apply lem_wflist_len_zero;
     apply lem_typing_wf in p_e_t as p_g_t; try apply p_g_t;
     try apply lem_wflist_wftype in p_g_t as p_t;  
@@ -193,7 +193,8 @@ Proof. intros g e t p_e_t; induction p_e_t; intro p_g.
     pose proof lem_open_at_lc_at as [_ [Hopt _]];
     try apply lem_free_subset_binds in p_t as Hsub;
     try destruct Hsub as [Hsub Hsub'];
-    try apply lem_wflist_len_succ;  
+    try apply lem_wflist_len_succ; 
+    try apply WFList with Star;
     destruct H6 as [Hfv [_ [Hnms Hg]]]; simpl in Hfv;
     apply not_elem_union_elim in Hfv; destruct Hfv as [Hfve Hfv];
     apply not_elem_union_elim in Hfv; destruct Hfv as [HfveN HfveC];  

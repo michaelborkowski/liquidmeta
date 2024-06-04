@@ -198,6 +198,14 @@ Lemma lem_weaken_pftyp : forall (g g' : fenv) (ps : preds) (x:vname) (t_x:ftype)
                               -> PHasFtype (concatF (FCons x t_x g) g') ps.
 Proof. intros; apply lem_weaken_pftyp' with (concatF g g'); intuition. Qed.
 
+Lemma lem_weaken_pftyp_top : forall (g : fenv) (ps : preds) (x:vname) (t_x:ftype),
+    PHasFtype g ps -> ~ (in_envF x g)
+                   -> PHasFtype (FCons x t_x g) ps.
+Proof. intros; assert (FCons x t_x g = concatF (FCons x t_x g) FEmpty) 
+    by reflexivity;
+  rewrite H1; apply lem_weaken_pftyp; simpl; 
+  try apply intersect_empty_r; intuition. Qed.
+
 Lemma lem_weaken_tv_pftyp' : forall (g'g : fenv) (ps : preds),
     PHasFtype g'g ps -> ( forall (g g':fenv) (a:vname) (k:kind),
         g'g = concatF g g' -> intersect (bindsF g) (bindsF g') = empty

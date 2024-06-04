@@ -129,12 +129,12 @@ Proof. apply ( judgments_mutind
       as Henv1 by reflexivity; try rewrite Henv1;
     try assert (
       ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
-                                  (length t (BV 0))) PEmpty)) 
-        (ECons y (TList t ps) (concatE (ECons x t_x g) g'))
+                                  (length t (BV 0))) ps)) 
+        (ECons y (TList t PEmpty) (concatE (ECons x t_x g) g'))
       = concatE (ECons x t_x g) 
           (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
-                                  (length t (BV 0))) PEmpty)) 
-            (ECons y (TList t ps) g'))
+                                  (length t (BV 0))) ps)) 
+            (ECons y (TList t PEmpty) g'))
     ) as Henv2 by reflexivity; try rewrite Henv2;
     try apply H0 with y; try apply H1 with z;  
     try apply lem_weaken_wf;
@@ -143,6 +143,7 @@ Proof. apply ( judgments_mutind
     apply lem_typing_wf in h;              
     try apply lem_wflist_len_zero; try assumption;          
     try apply lem_wflist_len_succ; trivial;
+    try (inversion h; try subst ps; try inversion H2; assumption);
     
     try apply not_elem_names_add_elim in Hy; try destruct Hy as [Hyx Hy]; 
     try apply not_elem_union_elim in Hy; try destruct Hy as [Hynms Hy];

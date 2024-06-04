@@ -1,5 +1,6 @@
 Require Import SystemRF.BasicDefinitions. 
 Require Import SystemRF.Names.
+Require Import SystemRF.LocalClosure.
 Require Import SystemRF.Semantics.
 Require Import SystemRF.SystemFTyping.
 Require Import SystemRF.BasicPropsSubstitution.
@@ -7,7 +8,9 @@ Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.WellFormedness.
 Require Import SystemRF.PrimitivesFTyping.
 Require Import SystemRF.BasicPropsWellFormedness.
+Require Import SystemRF.SystemFLemmasWeaken.
 Require Import SystemRF.Typing.
+Require Import SystemRF.LemmasWeakenWF.
 Require Import SystemRF.LemmasWeakenTyp.
 Require Import SystemRF.LemmasWellFormedness.
 Require Import SystemRF.LemmasTyping.
@@ -16,7 +19,9 @@ Require Import SystemRF.LemmasExactness.
 Require Import SystemRF.SubstitutionLemmaTyp.
 Require Import SystemRF.SubstitutionLemmaTypTV.
 Require Import SystemRF.LemmasNarrowing.
+Require Import SystemRF.LemmasTransitive.
 Require Import SystemRF.LemmasInversion.
+Require Import SystemRF.LemmasLists.
 Require Import SystemRF.PrimitivesDeltaTyping.
 
 Require Import Arith.
@@ -370,7 +375,7 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
     try apply lem_wftype_islct in p_emp_t as Hlct; 
     unfold isLCT in Hlct; simpl in Hlct;
     destruct Hlct as [Hlct Hlcp1];
-    pose proof lem_open_at_lc_at as [Hope [Hopt _]];
+    pose proof lem_open_at_lc_at as [Hope [Hopt Hopp]];
     apply lemma_list_values in p_e_ert as Hfval; 
     try apply H6; destruct e eqn:E; simpl in Hfval; try contradiction.
     * (* e = Nil *) clear H3 H5 IHp_e_t.
@@ -425,57 +430,1036 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
       try apply (lem_wflist_wftype Empty t ps Star);
       try apply WFEEmpty; trivial. 
     * (* e = Cons v1 v2 *)  clear H3 H5 IHp_e_t.
+      (* We must have Switch e eN eC ~> App (App eC v1) v2 *)
       inversion H6; subst e0_1 e0_2.
       apply lem_sem_det 
         with (Switch (Cons v1 v2) eN eC) e'' (App (App eC v1) v2) 
         in st_e_e'' as He''; try apply ESwitchC;
         try assumption; subst e''. 
 
-      pose proof (fresh_varE_not_elem nms Empty eC) as Hy; 
-      set (y := fresh_varE nms Empty eC) in Hy. 
-      simpl in Hy; destruct Hy as [Hfv [Hftv [Hnms Hemp]]].   
+      (* Invert the typing judgment for e *)
+      apply lem_invert_tlist in p_e_t as Hinv_t;
+      try destruct Hinv_t as [ps' [p_v1_t p_v2_tps']];
+      try apply lem_invert_cons in p_e_t as Hinv;
+      try destruct Hinv 
+        as [s' [rs [p_s'_t [p_emp_s' [Hs'1 [Hs'2 
+              [p_v1_s' [p_v2_s'rs p_ls'_ltps]]]]]]]];
+      try inversion p_ls'_ltps;
+      try unfold unbindT in H12; try simpl in H12;
+      try apply lem_wftype_islct in p_emp_s' as Hlcs';
+      try unfold isLCT in Hlcs';
+      try apply WFEEmpty; try apply p_emp_t; trivial.
+      pose proof lem_islc_at_weaken as [Hwke [Hwkt _]].
+      
+      (* boilerplate: set up our fresh variables *)
+      pose proof (fresh_varE_not_elem (union nms nms0) Empty (Annot eC t')) 
+        as Hy; 
+      set (y := fresh_varE (union nms nms0) Empty (Annot eC t')) in Hy; 
+      simpl in Hy; destruct Hy as [Hyfv [Hyftv [Hynms Hemp]]]; 
+      apply not_elem_union_elim in Hynms; destruct Hynms;
+      apply not_elem_union_elim in Hyfv; 
+      destruct Hyfv as [Hyfv Hyfv'];
+      apply not_elem_union_elim in Hyftv; 
+      destruct Hyftv as [Hyftv Hyftv'];
+
+      try apply H12 in H14 as p_y_ls'_lt;
+      try rewrite Hopt with s' 0 0 y in p_y_ls'_lt;
+      try rewrite Hopt with s' 1 0 y in p_y_ls'_lt;
+      try apply Hwkt with 0 0; auto;
+      inversion p_y_ls'_lt; try subst g0 t1 p1 t2 p2.
+
+      pose proof (fresh_varE_not_elem (names_add y nms) Empty eC) as Hz; 
+      set (z := fresh_varE (names_add y nms) Empty eC) in Hz. 
+      simpl in Hz; destruct Hz as [Hfv' [Hftv' [Hynms' Hemp']]].
+      apply not_elem_names_add_elim in Hynms';
+      destruct Hynms' as [Hzy Hnms'].
+
       apply lem_free_bound_in_env with Empty t' k y in H1 as Hfr'; 
-      try apply Hemp; destruct Hfr' as [Hfr' _].
+      try apply Hemp; destruct Hfr' as [Hfr' _];
       apply lem_free_bound_in_env with Empty (TList t ps) Star y 
         in p_emp_t as Hfr;  
       try apply Hemp; destruct Hfr as [Hfr _]; simpl in Hfr;
-      apply not_elem_union_elim in Hfr; destruct Hfr as [Hfr HfvP].
+      apply not_elem_union_elim in Hfr; destruct Hfr as [Hfr HfvP];
+
+      apply lem_free_bound_in_env with Empty t' k z in H1 as Hzfr'; 
+      try apply Hemp; destruct Hzfr' as [Hzfr' _];      
+      apply lem_free_bound_in_env with Empty (TList t ps) Star z 
+        in p_emp_t as Hzfr;  
+      try apply Hemp; destruct Hzfr as [Hzfr _]; simpl in Hzfr;
+      apply not_elem_union_elim in Hzfr; destruct Hzfr as [Hzfr HzfvP].
+
+      (* setup more judgments *)
       pose proof lem_subFV_notin as Hnot; 
       destruct Hnot as [Hnot_e [Hnot_t _]].
+      assert (WFtype Empty t' Star) as p_emp_t'
+        by (destruct k; try apply H1; apply WFKind; apply H1);
+      apply lem_wftype_islct in p_emp_t' as Hlct' .
+      apply lem_typ_islc in p_e_t as Hlcv;
+      try apply WFEEmpty; unfold isLC in Hlcv;
+      destruct Hlcv as [Hlcv1 Hlcv2];
+      assert (WFtype Empty t Star) as p_emp_t_star
+        by (apply lem_wflist_wftype with ps Star; trivial);
+      assert (WFtype Empty (TList t PEmpty) Star) as p_emp_lt_star
+        by (apply WFList with Star; trivial);
+      assert (Hastype Empty v2 (TList s' PEmpty)) as p_v2_ls'
+        by (apply TSub with (TList s' rs) Star;
+            try apply SList with empty;
+            try apply lem_sub_refl with Star;
+            try apply WFList with Star;
+            intros; unfold unbindP; simpl; 
+            try apply IFaith; trivial);
+      apply lem_erase_subtype in p_s'_t as Hersub.
 
+      (* Goal: Hastype Empty (App (App eC v1) v2) t' *)
       apply TSub with 
-        (TExists (TList t (PCons (eq (length t (Cons v1 v2)) 
-                                     (App (Prim Succ) (length t (BV 0))))
-                                 PEmpty))
-                 t') Star;
+        (TExists (TList t (PCons (eq (length t v2) 
+                                     (length t (BV 0))) PEmpty)) 
+                 t') k;
       try apply TApp;
-      try match goal with
-          | [ |- Hastype _ (App eC v1) ?ltt' ]
-                => apply TSub with (TExists t ltt') Star
-          end;
-        (*  (TFunc (TList t (PCons (eq (length t (Cons v1 v2)) 
-                                     (App (Prim Succ) (length t (BV 0))))
-                                 PEmpty))
+      try apply SBind with empty; intros; unfold unbindT;
+      try rewrite Hopt with t' 0 0 y0;
+      try apply lem_sub_refl with Star;
+      try apply lem_weaken_wf_top; 
+      try apply lem_list_eq_length; 
+      try apply WFEEmpty; trivial;
+
+      match goal with
+      | [ |- Hastype _ (App eC v1) ?ltt' ]
+              => apply TSub with (TExists t ltt') Star
+      | [ |- Hastype _ v2 _ ]
+              => apply TSub with (TList s' rs) Star;
+                try apply SList with empty; intros;
+                unfold unbindP; simpl; try apply IFaith; trivial
+      end;
+        (*  (TFunc (TList t (PCons (eq (length t (FV y)) 
+                                       (length t (BV 0))) PEmpty)) 
                  t')) Star.*)
-      try apply TApp;      
-      (* eC typing: substitution *)
-      try rewrite <- Hnot_e with eC y (Cons v1 v2);
-      try assert (y =? y = true) by (apply Nat.eqb_eq; reflexivity);
+      try apply TApp;
+      try apply WFFunc with Star Star (binds g);
+      try apply lem_typing_hasftype in p_v2_tps' as p_v2_erlt;
+      try apply lem_wflist_eq_length; intros; unfold unbindT;
+      try rewrite Hopt with t' 0 0 y0;
+      try apply lem_weaken_wf_top; 
+      try apply WFEEmpty; trivial;
+
+      try apply SBind with empty; intros;
+      unfold unbindT; unfold isLCT; simpl; try repeat split; 
+      try rewrite Hopt with t  0 0 y0;
+      try rewrite Hopt with t  1 0 y0;
+      try rewrite Hopt with t' 1 0 y0;
+      try rewrite Hope with v2 1 0 y0;
+      try apply Hwke with 0 0;
+      try apply Hwkt with 0 0; auto;
+      try apply SFunc with (singleton y0);
+      try apply SList with (singleton y0);
+      intros; try apply lem_sub_refl with Star; 
+      try apply IRefl; unfold unbindT;
+      try rewrite Hopt with t' 0 0 y1;
+      try repeat apply lem_weaken_wf_top;   trivial.
+      
+      (* (1) eC typing: substitution *)
+      try rewrite <- Hnot_e with eC y v2;
+      try assert (y =? y = true) as Hyeq 
+        by (apply Nat.eqb_eq; reflexivity);
       try assert (
-        TFunc t (TFunc (TList t (PCons (eq (length t (Cons v1 v2)) 
-                                           (App (Prim Succ) (length t (BV 0)))) 
+        TFunc t (TFunc (TList t (PCons (eq (length t v2) 
+                                           (length t (BV 0)))
                                 PEmpty)) t')
-          = tsubFV y (Cons v1 v2)
+          = tsubFV y v2
               (TFunc t (TFunc (TList t (PCons (eq (length t (FV y))
-                                                  (App (Prim Succ) (length t (BV 0)))) 
+                                                  (length t (BV 0)))
                                       PEmpty)) t'))
       ) as Htsub by (unfold eq; unfold length; unfold tsubFV; 
                      fold tsubFV; fold subFV; rewrite Hnot_t; 
-                     try rewrite H3; try rewrite Hnot_t; trivial);
+                     try rewrite Hyeq; try rewrite Hnot_t; trivial);
       try rewrite Htsub;
-      try apply lem_subst_typ_top with (TList t ps);
-      try apply H4; 
-      try apply wfenv_unique; try apply WFEEmpty; trivial;
+      (*try apply lem_subst_typ_top with (TList t PEmpty);*)
+      try apply lem_subst_typ_top with (TList s' (PCons (eqlLenPred s' v2) PEmpty)) (*rs*);
+
+      try rewrite <- Hnot_e with eC z (Cons v1 v2);
+      try rewrite <- Hnot_t with 
+        (TFunc t (TFunc (TList t (PCons (eq (length t (FV y)) 
+                                            (length t (BV 0))) PEmpty)) 
+                        t')) z (Cons v1 v2);
+      try apply lem_subst_typ_top 
+        with (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                 (length t (BV 0))) ps)); auto;
+      assert ( 
+        ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                    (length t (BV 0))) ps)) 
+          (ECons y (TList s' (PCons (eqlLenPred s' v2) PEmpty)) (*rs*) Empty)
+        = concatE (ECons y (TList s'(PCons (eqlLenPred s' v2) PEmpty)) (*rs*) Empty)
+            (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                    (length t (BV 0))) ps)) Empty)
+      ) as Henv_eC by reflexivity; try rewrite Henv_eC; 
+      try apply lem_narrow_typ with (TList t PEmpty) Star Star;
+      try apply H4; try split;
+
+      try apply SList with empty;
+      intros; unfold unbindP; simpl; try apply IFaith;
+
+      try apply lem_list_eq_length;
+      
+      try apply WFEBind with Star;
+      try apply WFEBind with Star;
+      try apply lem_wflist_eq_length;
+      try apply lem_wflist_eq_succ_length;
+      try apply lem_typing_hasftype in p_v2_s'rs as p_v2_erls';
+      try apply lem_weaken_wf_top; try apply p_emp_t;
+      try apply WFList with Star;
+
+      try (apply FTVar; simpl; rewrite Hersub);
+      try rewrite Hnot_e;
+      try repeat apply not_elem_union_intro;
+      try apply not_elem_names_add_intro; try split;
+      try apply not_elem_union_intro;
+      try apply WFEEmpty; auto.
+(*
+      assert(
+        Subtype Empty 
+          (TExists (TList s' (PCons (eqlLenPred s' v2) PEmpty)) 
+                (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) (length s' (BV 0))) PEmpty))) 
+          (TList t ps)
+          (* (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) (length t (BV 0))) ps)) *)
+        ) as H_s'exact_tps
+        by (pose proof lem_subBV_at_lc_at as [Hsbe [Hsbt _]];
+            apply lem_sub_trans with
+              (TExists (TList s' rs) (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) 
+                                                          (length s' (BV 0))) PEmpty))) Star Star Star;
+            try apply p_ls'_ltps;
+            try apply lem_sub_trans with
+              (TList s' (PCons (eq (App (Prim Succ) (length s' v2)) 
+                                  (length s' (BV 0))) PEmpty)) Star Star Star;
+            try apply SBind with empty; 
+            intros; unfold unbindT;
+            unfold isLCT; simpl; try repeat split;
+            try apply SList with (singleton y0);
+            intros; unfold unbindP; simpl;
+            try rewrite Hopt with s' 0 0 y0;
+            try rewrite Hopt with s' 1 0 y0;
+            try rewrite Hopt with s' 0 0 y1;
+            try rewrite Hope with v2 0 0 y1;
+            try apply not_elem_names_add_elim in H16; try destruct H16;
+            try assert (y0 =? y0 = true) as Hy0eq 
+              by (apply Nat.eqb_eq; reflexivity);
+            try assert (y0 =? y1 = false) 
+              as Hny0eq by (apply Nat.eqb_neq; symmetry; trivial);
+            try assert (
+                PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') v2)))
+                                          (App (AppT (Prim Length) s') (FV y1))) PEmpty
+                  = psubFV y0 v2 (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y0)))) 
+                                                            (App (AppT (Prim Length) s') (FV y1))) PEmpty)
+              ) as Hexact0 by (unfold psubFV; fold tsubFV;
+                              rewrite Hy0eq; rewrite Hny0eq; rewrite Hnot_t;
+                              try apply lem_free_bound_in_env with Empty Star; trivial);
+            try rewrite Hexact0;
+            try apply IExactLen with s' PEmpty;
+
+            try apply SWitn with v2;
+            unfold tsubBV; simpl;
+            try rewrite Hsbt with s' 0 v2 0 0;
+            try rewrite Hsbt with s' 1 v2 0 0;
+            try apply lem_sub_refl with Star;
+
+            try repeat apply lem_weaken_typ_top;
+            try apply WFEBind with Star;
+            try apply WFExis with Star empty;
+            intros; unfold unbindT; simpl; fold openT_at;
+            try rewrite Hopt with s' 0 0 y0;
+            try rewrite Hopt with s' 1 0 y0;
+            try apply lem_wflist_eq_succ_length;
+            try apply lem_wflist_eq_length;
+            try repeat apply lem_weaken_wf_top;
+            try apply WFList with Star;
+            try ( apply lem_typing_wf with v2; 
+                  try apply p_v2_s'rs; apply WFEEmpty);
+            try apply FTVar; simpl;
+            try apply not_elem_names_add_intro; try split;
+            try apply Hwke with 0 0;
+            try apply Hwkt with 0 0;
+            try apply WFEEmpty; simpl; intuition). *)
+
+
+
+.0 0       Subtype (ECons y (TList s' (PCons (eqlLenPred s' v2) PEmpty)) Empty) 
+          (TExists (TList s' (PCons (eqlLenPred s' v2) PEmpty)) 
+                (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) (length s' (BV 0))) PEmpty))) 
+          (*TList t ps*)
+          (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) (length t (BV 0))) ps)) 
+      ) as H_ls'_tps. (*
+        by ( *)
+            apply SBind with empty; 
+            intros; unfold unbindT;
+            unfold isLCT; simpl; try repeat split;
+            try rewrite Hopt with s' 0 0 y0;
+            try rewrite Hopt with s' 1 0 y0;
+            try apply lem_list_subtype_conj;
+            (*9try apply SLis*)
+            
+            try apply Hwkt with 0 0;
+            try apply WFEEmpty; simpl; intuition.
+
+            apply lem_list_subtype_conj
+
+
+
+
+            pose proof lem_subBV_at_lc_at as [Hsbe [Hsbt _]];
+            apply lem_sub_trans with (* *** *** *** *** *)
+              (TExists (TList s' rs) (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) 
+                                                          (length s' (BV 0))) PEmpty))) Star Star Star;
+            try apply p_ls'_ltps;
+            try apply lem_sub_trans with
+              (TList s' (PCons (eq (App (Prim Succ) (length s' v2)) 
+                                  (length s' (BV 0))) PEmpty)) Star Star Star;
+            try apply SBind with empty; 
+            intros; unfold unbindT;
+            unfold isLCT; simpl; try repeat split;
+            try apply SList with (singleton y0);
+            intros; unfold unbindP; simpl;
+            try rewrite Hopt with s' 0 0 y1;
+            try rewrite Hope with v2 0 0 y1;
+            try apply not_elem_names_add_elim in H16; try destruct H16;
+            try assert (y0 =? y0 = true) as Hy0eq 
+              by (apply Nat.eqb_eq; reflexivity);
+            try assert (y0 =? y1 = false) 
+              as Hny0eq by (apply Nat.eqb_neq; symmetry; trivial);
+            try assert (
+                PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') v2)))
+                                          (App (AppT (Prim Length) s') (FV y1))) PEmpty
+                  = psubFV y0 v2 (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y0)))) 
+                                                            (App (AppT (Prim Length) s') (FV y1))) PEmpty)
+              ) as Hexact0 by (unfold psubFV; fold tsubFV;
+                              rewrite Hy0eq; rewrite Hny0eq; rewrite Hnot_t;
+                              try apply lem_free_bound_in_env with Empty Star; trivial);
+            try rewrite Hexact0;
+            try apply IExactLen with s' PEmpty;
+
+            try apply SWitn with v2;
+            unfold tsubBV; simpl;
+            try rewrite Hsbt with s' 0 v2 0 0;
+            try rewrite Hsbt with s' 1 v2 0 0;
+            try apply lem_sub_refl with Star;
+
+            try repeat apply lem_weaken_typ_top;
+            try apply WFEBind with Star;
+            try apply WFExis with Star empty;
+            intros; unfold unbindT; simpl; fold openT_at;
+            try rewrite Hopt with s' 0 0 y0;
+            try rewrite Hopt with s' 1 0 y0;
+            try apply lem_wflist_eq_succ_length;
+            try apply lem_wflist_eq_length;
+            try repeat apply lem_weaken_wf_top;
+            try apply WFList with Star;
+            try ( apply lem_typing_wf with v2; 
+                  try apply p_v2_s'rs; apply WFEEmpty);
+            try apply FTVar; simpl;
+            try apply not_elem_names_add_intro; try split;
+            try apply Hwke with 0 0;
+            ).
+
+      (* Final Goal:
+            Hastype (ECons y (TList s' (PCons (eqlLenPred s' v2) PEmpty)) Empty) 
+                    (Cons v1 v2) (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                                                      (length t (BV 0))) ps)) *)
+      
+
+
+      apply TSub with      (* third subtyping obligation *)
+        (TList s' (PCons (eq (App (Prim Succ) (length s' (FV y))) 
+                            (length s' (BV 0))) PEmpty)) Star;
+      try apply TSub with  (* second subtyping obligation *)
+        (TExists (TList s' (PCons (eq (length s' (*v2*) (FV y)) (length s' (BV 0))) PEmpty))
+          (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) 
+                              (length s' (BV 0))) PEmpty))) Star;
+
+      try apply TCons;  
+      try (apply lem_weaken_typ_top; auto; try apply wfenv_unique; apply WFEEmpty);
+      try apply TSub with (* first subtyping obigation *)
+          (TList s' (PCons (eq (length s' v2) (length s' (BV 0))) PEmpty)) Star;
+
+      try apply SList with (singleton y); 
+      try apply lem_sub_refl with Star;
+      intros; unfold unbindP; simpl;
+      try rewrite Hope with v2 0 0 y0;
+      try rewrite Hopt with s' 0 0 y0;
+        
+      try apply lem_list_eq_length;
+      try apply lem_weaken_typ_top;
+      try apply WFEBind with Star;
+      try apply lem_wflist_eq_succ_length;
+      try apply lem_wflist_eq_length;
+      try apply lem_weaken_wf_top;
+      try apply WFList with Star;
+      try (apply FTVar; simpl; try rewrite Hersub);
+      try apply wfenv_unique; try apply WFEEmpty;   auto.
+
+      (* prove first subtyping obligation *)
+      apply not_elem_names_add_elim in H15; destruct H15;
+      assert (y =? y0 = false) 
+        as Hnyeq by (apply Nat.eqb_neq; symmetry; trivial);
+      assert (
+        PCons (App (App (Prim Eq) (App (AppT (Prim Length) s') v2)) 
+                                  (App (AppT (Prim Length) s') (FV y0))) PEmpty
+          = psubFV y v2 (PCons (App (App (Prim Eq) (App (AppT (Prim Length) s') (FV y))) 
+                                                   (App (AppT (Prim Length) s') (FV y0))) PEmpty)
+      ) as Hexact by (unfold psubFV; fold tsubFV;
+                      rewrite Hyeq; rewrite Hnyeq; rewrite Hnot_t;
+                      try apply lem_free_bound_in_env with Empty Star; trivial);
+      try rewrite Hexact; try apply IExactLenRev with s' PEmpty;
+      try repeat apply lem_weaken_typ_top;
+      try repeat apply lem_weaken_wf_top;
+      try apply WFEBind with Star;
+      try apply lem_wflist_eq_length;
+      try apply WFList with Star; 
+      simpl;   try apply not_elem_names_add_intro; 
+      try apply WFEEmpty; intuition.
+
+      (* prove second subtyping obligation *)
+      apply SBind with (singleton y); 
+      intros; unfold unbindT; simpl;
+      try apply not_elem_names_add_elim in H15; try destruct H15 as [H15 H15e];
+      try rewrite Hopt with s' 0 0 y0;
+      try rewrite Hopt with s' 1 0 y0;
+      try apply SList with (names_add y0 (singleton y));
+      try apply lem_sub_refl with Star;  
+
+      intros; unfold unbindP; simpl;
+      try rewrite Hopt with s' 0 0 y1;
+      try apply not_elem_names_add_elim in H16; try destruct H16;
+      try assert (y0 =? y0 = true) 
+        as Hy0eq by (apply Nat.eqb_eq; trivial);
+      try assert (y0 =? y1 = false) 
+        as Hnyeq by (apply Nat.eqb_neq; symmetry; trivial);
+      try assert (
+        PCons (eq (App (Prim Succ) (length s' (FV y))) (length s' (FV y1))) PEmpty
+          = psubFV y0 (FV y) (PCons (eq (App (Prim Succ) (length s' (FV y0))) (length s' (FV y1))) PEmpty)
+      ) as Hexact2 by ( simpl; rewrite Hy0eq; 
+                        rewrite Hnyeq; rewrite Hnot_t;
+                        try apply lem_free_bound_in_env with Empty Star; trivial);
+      try unfold eq in Hexact2;  try unfold length in Hexact2;
+      try rewrite Hexact2; 
+      try apply IExactLen with s' PEmpty;
+      try apply TSub with
+        (self (TList s' (PCons (eqlLenPred s' v2) PEmpty)) (FV y) Star) Star;
+      try apply TVar;
+      try apply SList with empty;
+      try apply lem_sub_refl with Star;
+      intros; unfold unbindP; simpl; try apply IFaith;
+      try apply lem_wflist_eq_length;
+      try repeat apply lem_weaken_ftyp_top;
+      try repeat apply lem_weaken_wf_top;
+      unfold isLCT; simpl; try repeat split; 
+      try apply WFList with Star;
+      simpl;   try apply not_elem_names_add_intro; try split;
+      try apply Hwkt with 0 0; try apply val_FV;
+      try (right; split); intuition.
+
+      (* third subtyping obligation *)
+      try apply lem_weaken_subtype_top with Star Star; 
+      try apply wfenv_unique; try apply WFEEmpty; trivial.
+      rewrite Hopt with t 0 0 y0.
+      inversion H_s'exact_tps; subst g0 t_x0 t1 t'1.
+
+
+ (*     (* typing for v2 *)
+      apply TSub with
+        (TExists (TList s' (PCons (eq (length s' v2) (length s' (BV 0))) PEmpty))
+          (TList s' (PCons (eq (length s' (BV 1)) (length s' (BV 0))) PEmpty))) Star;
+      try apply TSub with      (* 1st subtyping obligation *)
+        (TList s' (PCons (eq (length s' v2) (length s' (BV 0))) PEmpty)) Star.
+
+        Focus 5.*)
+      
+
+
+
+(*
+
+      try assert (z =? z = true) 
+        as Hzz by (apply Nat.eqb_eq; reflexivity); simpl in Hzz;
+      assert (v2 = subFV z v2 (FV z)) as Hsubz1
+        by (simpl; rewrite Hzz; reflexivity).
+      rewrite Hsubz1 at 2;
+      rewrite <- Hnot_t with 
+        (TList s' (PCons (eq (length s' (FV y)) (length s' (BV 0))) PEmpty)) z v2;
+      try ( apply not_elem_union_intro; fold free; fold fv;
+            try repeat apply not_elem_union_intro; simpl;
+            try apply lem_free_bound_in_env with Empty Star; intuition);
+      apply lem_subst_typ_top with (TList s' (PCons (eqlLenPred s' v2) PEmpty));
+      
+      trivial.
+
+
+
+
+      pose proof (TVar (ECons y (TList s' (PCons (eqlLenPred s' v2) PEmpty)) Empty)
+                       y (TList s' (PCons (eqlLenPred s' v2) PEmpty)) Star)
+        as 
+      .*)
+
+(*)
+      shelve. shelve.
+      (* 1 *)
+      
+
+      shelve.
+      
+       shelve. shelve. shelve. shelve. shelve. shelve. 
+
+      apply lem_sub_trans with 
+        (TList s' (PCons (eq (App (Prim Succ) (length s' v2)) 
+                             (length s' (BV 0))) PEmpty)) Star Star Star.
+
+
+
+
+
+      
+      apply TSub with
+        (TList t (PCons (eq (App (Prim Succ) (length t v2)) (length t (BV 0))) ps)) Star;
+      try apply lem_wflist_eq_succ_length;
+      try apply lem_weaken_wf_top;
+      try (apply FTVar; simpl; rewrite Hersub); auto.
+
+      shelve.
+      apply SList with empty;
+      try apply lem_sub_refl with Star;
+      try apply lem_weaken_wf_top; trivial.
+      intros.
+
+
+
+
+
+      pose proof TCons.
+
+      .
+
+
+      try ( apply lem_typing_wf with v2; 
+            apply p_v2_s'rs || apply WFEEmpty);
+      try apply lem_narrow_wf_top with (TList t PEmpty);
+      try apply lem_wflist_len_succ;
+      try apply WFFunc with Star k empty;
+                                              try apply lem_wflist_eq_length; 
+      intros; unfold unbindT;
+      try rewrite Hopt with t' 0 0 y0; 
+      try apply lem_weaken_wf_top;
+
+      try apply SList with empty;
+      intros; unfold unbindP; simpl; try apply IFaith;
+
+      try apply not_elem_names_add_intro; simpl; try split;  
+      try repeat apply not_elem_union_intro; 
+      try apply not_elem_names_add_intro; simpl; try split;   
+      try apply not_elem_union_intro; 
+      
+      try rewrite Hnot_e;
+      try apply wfenv_unique; 
+      try apply WFEEmpty;
+      auto.
+
+
+      apply TSub with
+          (TList s' (PCons (eq (App (Prim Succ) (length s' (FV y)))
+                              (length s' (BV 0))) PEmpty)) Star.
+      try apply TSub with 
+        (TExists (TList s' (PCons (eqlLenPred s' (FV y)) rs)) (*rs*)
+          (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1)))
+                              (length s' (BV 0))) PEmpty))) Star;
+      try apply lem_narrow_wf_top with (TList s' PEmpty);
+      try apply lem_wflist_len_succ;
+      try (apply SList with empty; intros;
+           try apply lem_sub_refl with Star;
+           unfold unbindP; simpl; trivial; apply IFaith);
+      try apply WFList with Star;
+      try apply TCons; 
+      try apply wfenv_unique; 
+      try apply WFEEmpty;
+      trivial.
+
+
+      shelve (* v2 *). 
+      shelve.
+
+      apply SBind with (names_add y empty).
+      unfold isLCT; simpl; try repeat split;
+      try apply Hwkt with 0 0; auto.
+      intros; unfold unbindT; simpl;
+      try rewrite Hopt with s' 0 0 y0; 
+      try rewrite Hopt with s' 1 0 y0; 
+      try apply Hwkt with 0 0; auto.
+      apply SList with (names_add y0 (names_add y empty));
+      try apply lem_sub_refl with Star;
+      try repeat apply lem_weaken_wf_top; trivial.
+
+      intros; unfold unbindP; simpl;
+      try rewrite Hopt with s' 0 0 y1; trivial.
+      apply not_elem_names_add_elim in H16; destruct H16;
+      apply not_elem_names_add_elim in H17; destruct H17;
+      try assert (y0 =? y0 = true) 
+        as Hy0eq by (apply Nat.eqb_eq; reflexivity);
+      assert (
+          PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y)))) 
+                      (App (AppT (Prim Length) s') (FV y1))) PEmpty
+        = (psubFV y0 (FV y)
+            (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y0)))) 
+              (App (AppT (Prim Length) s') (FV y1))) PEmpty))
+      ) as Heqp 
+        by (unfold psubFV; simpl; fold tsubFV;
+            rewrite Hnyeq; rewrite Hy0eq; rewrite Hnot_t;
+            try apply lem_free_bound_in_env with Empty Star; trivial).
+      rewrite Heqp. 
+      pose proof IExactLen.
+(*
+      Implies 
+        (ECons y1 (TList s' PEmpty) 
+          (ECons y0 (TList s' (PCons (eqlLenPred s' v2) PEmpty)) 
+            (ECons y (TList s' (PCons (eqlLenPred s' v2) PEmpty)) Empty))) 
+        (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y0)))) 
+                    (App (AppT (Prim Length) s') (FV y1))) PEmpty) 
+        (psubFV y0 (FV y) 
+          (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y0)))) 
+                    (App (AppT (Prim Length) s') (FV y1))) PEmpty))
+      *)
+      apply IExactLen with s' PEmpty;
+      assert (TList s' (PCons (eqlLenPred s' v2) PEmpty) 
+              = self (TList s' (PCons (eqlLenPred s' v2) PEmpty)) (FV y) Star)
+        as Hself by reflexivity;
+      try match goal with
+      | [ |- Hastype _ (FV y) _ ]
+            => apply TSub with 
+                (TList s' (PCons (eqlLenPred s' v2) PEmpty)) Star;
+                try (rewrite Hself; apply TVar)
+      end;
+      try (apply SList with empty; intros;
+           try apply lem_sub_refl with Star;
+           try repeat apply lem_weaken_wf_top;
+           try apply not_elem_names_add_intro;
+           unfold unbindP; simpl; auto; apply IFaith);
+      
+      try apply val_FV;
+      simpl; intuition.
+      shelve. shelve. shelve. shelve. (* all WF *)
+
+  
+      apply SList with (names_add y nms1); 
+      try apply lem_weaken_subtype_top with Star Star;
+      try apply wfenv_unique; try apply WFEEmpty;
+      trivial; intros.
+      assert (
+        unbindP y0 (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                              (length t (BV 0))) ps)
+            = strengthen 
+                (unbindP y0 (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                       (length t (BV 0))) PEmpty)) 
+                (unbindP y0 ps) )
+        as Hpred by reflexivity. rewrite Hpred.
+      apply IConj;
+      unfold unbindP; simpl;
+      try rewrite Hopt with s' 0 0 y0;
+      try rewrite Hopt with t  0 0 y0; trivial;
+      try apply not_elem_names_add_elim in H16; destruct H16.
+      (* 1 *)
+      try apply ILenSub2;
+      try (repeat apply lem_weaken_subtype_top with Star Star;
+           try apply p_s'_t);
+      
+      simpl;
+      try apply not_elem_names_add_intro; try split;
+      try apply WFEBind with Star;
+      try apply lem_weaken_wf_top;
+      (* WFtype Empty (TList s' (PCons (eqlLenPred s' v2) PEmpty)) Star *)
+      try ( apply lem_typing_wf with v2;
+            try apply lem_list_eq_length; trivial;
+            apply WFEEmpty);(*
+      try (apply lem_typing_wf with v2; 
+           apply p_v2_s'rs || apply WFEEmpty);*)
+      try (apply wfenv_unique;  apply WFEEmpty);
+      try apply WFEEmpty;
+      auto.
+
+      (* 2 *)
+      apply H21 in H17 as Himpl; 
+      unfold unbindP in Himpl; simpl in Himpl;
+      try rewrite Hopt with s' 0 0 y0 in Himpl.
+      assert (
+
+      );
+      rewrite
+      try apply INarrow with (TList s' rs) Star Star
+      try apply Himpl; trivial.
+
+
+
+
+*)
+
+
+
+(*
+
+
+
+
+*** *** ***
+      assert
+
+
+
+      apply SBind with (singleton y). shelve. intros.
+    unfold unbindT; simpl;
+      try rewrite Hopt with t  0 0 y0;
+      try rewrite Hopt with t  1 0 y0;
+      try apply Hwkt with 0 0; auto.
+      apply SList with (names_add y0 (singleton y));
+      try apply lem_sub_refl with Star.
+      apply lem_weaken_wf_top;
+      try apply lem_weaken_wf_top; auto.
+      intros.
+
+forall y : vname, ~ Elem y nms0 -> 
+  Subtype (ECons y (TList s' rs) Empty) (TList (openT_at 0 y s') (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) (openT_at 1 y s')) (FV y)))) (App (AppT (Prim Length) (openT_at 1 y s')) (BV 0))) PEmpty)) (TList t ps)
+
+forall y0 : vname, ~ Elem y0 nms1 -> 
+  Implies (ECons y0 (TList s' PEmpty) (ECons y (TList s' rs) Empty)) 
+    (unbindP y0 (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y)))) 
+                            (App (AppT (Prim Length) s') (BV 0))) PEmpty)) 
+    (unbindP y0 ps)
+
+      
+      Focus 3. apply lem_narrow_wf_top with (TList t PEmpty).
+              apply lem_wflist_len_succ.
+
+      pose proof (TCons Empty v1 v2 s' rs Hs'1 Hs'2
+                    p_v1_s' p_v2_s'rs) as p_v_ls'.
+      (* p_v_ls' : Hastype Empty (Cons v1 v2) 
+        (TExists (TList s' rs) 
+          (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) 
+                               (length s' (BV 0))) PEmpty)))*)
+      
+
+      (*)
+      p_v1_s' : Hastype Empty v1 s'
+
+p_v2_s'rs : Hastype Empty v2 (TList s' rs)
+
+
+
+
+
+      (* (2) v1 typing -- invert TList typing *)
+      apply lem_invert_tlist in p_e_t as Hinvls;
+      try apply WFEEmpty; trivial;
+      try destruct Hinvls as [qs [p_v1_t p_v2_tqs]];
+      try apply p_v1_t;
+      try match goal with
+          | [ |- Hastype _ v2 (TList t PEmpty) ]
+              => apply TSub with (TList t qs) Star
+      end; try apply p_v2_tqs;
+      try apply SList with empty;
+      try apply lem_sub_refl with Star;
+      intros; try apply IFaith; trivial.
+
+      
+*)
+      try apply TSub
+        with (TExists (TList s' rs) 
+                (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) 
+                                     (length s' (BV 0))) PEmpty))) Star;
+      try apply TCons;
+      try apply lem_weaken_typ_top; trivial;(*
+      try (apply TSub with (TList s' rs) Star;
+           try apply SList with empty;
+           try apply lem_sub_refl with Star; 
+           intros; try apply IFaith; trivial ); *)
+      try apply WFList with Star;
+      try apply lem_wflist_len_succ;
+      try apply wfenv_unique;
+      try apply WFEEmpty; trivial.
+
+      apply SBind with (singleton y); 
+      unfold isLCT; simpl; intuition;
+      try apply Hwkt with 0 0; auto.
+      unfold unbindT; simpl;
+      try rewrite Hopt with s' 0 0 y0;
+      try rewrite Hopt with s' 1 0 y0;
+      try apply Hwkt with 0 0; auto.
+      apply SList with empty;
+      try repeat apply lem_weaken_subtype_top with Star Star;
+      intros; unfold unbindP; simpl;
+      try rewrite Hopt with s' 0 0 y1;
+      try rewrite Hopt with t  0 0 y1;
+      try apply not_elem_names_add_intro; try split;
+      try apply WFEBind with Star; 
+      try apply lem_weaken_wf_top;
+      try apply wfenv_unique;
+      try apply WFEEmpty; 
+      auto.
+
+      pose proof H21 as H21'.
+      apply H21.
+   *)   
+      (* Subtype (ECons y (TList t PEmpty) Empty) 
+          (TExists (TList s' PEmpty) 
+            (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) 
+                                                  (length s' (BV 0))) PEmpty))) 
+          (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
+                                               (length t (BV 0))) ps))
+      *)
+
+(*
+      apply TSub with (TList s' rs) Star.
+           try apply SList with empty;
+           try apply lem_sub_refl with Star; 
+           intros; apply IFaith; trivial
+
+
+      apply TSub with (TList t qs) Star;
+           try apply SList with empty;
+           try apply lem_sub_refl with Star; 
+           try apply WFList with Star;
+           intros; unfold unbindP; 
+           try apply IFaith; trivial.
+
+      apply TSub 
+        with (TList s' (PCons (eq (App (Prim Succ) (length s' (FV y))) 
+                                  (length s' (BV 0))) PEmpty)) Star.
+      
+      Focus 3.
+      apply SList with (names_add y nms1);
+      try apply lem_weaken_subtype_top with Star Star; intros; 
+      try rewrite Hopt with s' 0 0 y0;
+      try rewrite Hopt with t  0 0 y0;
+      try apply not_elem_names_add_elim in H16;
+      try destruct H16 as [Hy0y Hy0nms1];
+      try apply wfenv_unique;
+      try apply WFEEmpty; trivial.
+
+
+      Implies (ECons y0 (TList s' PEmpty) 
+                (ECons y (TList s' rs) Empty)) 
+        (unbindP y0 (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y)))) (App (AppT (Prim Length) s') (BV 0))) PEmpty)) (unbindP y0 ps)
+      
+      apply H21.
+      unfold unbindP; simpl;
+      try rewrite Hopt with t  0 0 y0;
+      try rewrite Hopt with s' 0 0 y0;
+      try apply ILenSub; 
+      try apply lem_weaken_subtype_top with Star Star;
+      try apply (lem_wflist_wftype Empty t ps Star);
+      try apply WFEEmpty; trivial. 
+      
+
+      H21 : forall y0 : vname, ~ Elem y0 nms1 -> 
+      Implies (ECons y0 (TList s' PEmpty) 
+                (ECons y (TList s' rs) Empty)) 
+      (unbindP y0 (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y)))) 
+                              (App (AppT (Prim Length) s') (BV 0))) PEmpty)) 
+      (unbindP y0 ps)
+      
+
+      try apply TSub
+        with (TExists (TList s' PEmpty) 
+                (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) 
+                                     (length s' (BV 0))) PEmpty))) Star;
+      try apply TCons; 
+      try apply lem_weaken_typ_top; trivial;
+      try (apply TSub with (TList s' rs) Star;
+           try apply SList with empty;
+           try apply lem_sub_refl with Star; 
+           intros; try apply IFaith; trivial ); 
+      try apply WFList with Star;
+      try apply wfenv_unique;
+      try apply WFEEmpty; trivial.
+
+      apply TSub with (TList s' rs) Star.
+           try apply SList with empty;
+           try apply lem_sub_refl with Star; 
+           intros; apply IFaith; trivial
+
+
+      apply TSub with (TList t qs) Star;
+           try apply SList with empty;
+           try apply lem_sub_refl with Star; 
+           try apply WFList with Star;
+           intros; unfold unbindP; 
+           try apply IFaith; trivial.
+
+      
+
+     apply SBind with (names_add y nms1); 
+      unfold isLCT; simpl; try repeat split;
+      try apply Hwkt with 0 0; auto; intros.
+      unfold unbindT; simpl;
+      try rewrite Hopt with t 0 0 y0;
+      try rewrite Hopt with t 1 0 y0.
+      intuition.
+
+
+      intuition.
+*)
+
+(* *** *** ***
+      try match goal with
+          | [ |- Hastype _ v2 _]
+              => destruct v2; simpl in Hfval; try contradiction      
+          end;      
+      try match goal with
+          | [ |- Hastype _ Nil _]
+              => apply TSub with
+                  (TList t (PCons (eq (Ic 0) (length t (BV 0))) 
+                              PEmpty)) Star
+          | [ |- Hastype _ (Cons v2_1 v2_2) _]
+              => apply TSub with
+                (TExists ()
+                  (TList t (PCons (eq (Ic 0) (length t (BV 0))) 
+                              PEmpty))) Star
+      
+          end;
+
+      trivial.
+
+      Focus 6.
+      .
+
+      try apply TNil with Star; 
+      try apply SList with empty;
+      try apply lem_sub_refl with Star;
+      intros; try apply IEvals2;
+      simpl; fold openT_at; trivial.
+      (* can do 4 *)
+
+      Focus 5.
+
+    *** *** *** *)       
+ (*     
+      (* (3) Cons v1 v2 typing : TCons inversion *)
+            try apply lem_invert_cons in p_e_t as Hinv;
+            try destruct Hinv 
+              as [s' [rs [p_s'_t [p_emp_s' [Hs'1 [Hs'2 
+                    [p_v1_s' [p_v2_s'rs p_ls'_ltps]]]]]]]];
+            try inversion p_ls'_ltps;
+            try unfold unbindT in H13; try simpl in H13;
+            try apply lem_wftype_islct in p_emp_s' as Hlcs';
+            try unfold isLCT in Hlcs';
+            try apply WFEEmpty; try apply p_emp_t;
+            trivial;
+            
+            pose proof (fresh_varE_not_elem (union nms nms0) Empty (Annot eC t')) 
+              as Hy'; 
+            set (y' := fresh_varE (union nms nms0) Empty (Annot eC t')) in Hy'; 
+            simpl in Hy'; destruct Hy' as [Hy'fv [Hy'ftv [Hy'nms Hy'emp]]]; 
+            apply not_elem_union_elim in Hy'nms; destruct Hy'nms;
+            apply not_elem_union_elim in Hy'fv; 
+            destruct Hy'fv as [Hy'fv Hy'fv'];
+            apply not_elem_union_elim in Hy'ftv; 
+            destruct Hy'ftv as [Hy'ftv Hy'ftv'];
+            try apply H13 in H15 as p_y'_ls'_lt;
+            try rewrite Hopt with s' 0 0 y' in p_y'_ls'_lt;
+            try rewrite Hopt with s' 1 0 y' in p_y'_ls'_lt;
+            
+            try apply Hwkt with 0 0; auto;
+            inversion p_y'_ls'_lt; try subst g0 t1 p1 t2 p2.
+
+      apply TSub 
+        with (TList s' (PCons (eq (App (Prim Succ) (length s' (FV y))) 
+                                  (length s' (BV 0))) PEmpty)) Star.
+      Focus 3.
+      apply SList with (names_add y nms1);
+      try apply lem_weaken_subtype_top with Star Star;
+      intros; unfold unbindP; simpl;
+      try rewrite Hopt with s' 0 0 y0;
+      try rewrite Hopt with t  0 0 y0;
+      try apply not_elem_names_add_elim in H16;
+      try destruct H16 as [Hy0y Hy0nms1];
+      try apply H22;
+      try apply wfenv_unique;
+      try apply WFEEmpty; trivial.
+      
+
+      try apply TSub
+        with (TExists (TList s' PEmpty) 
+                (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) 
+                                     (length s' (BV 0))) PEmpty))) Star;
+      try apply TCons; 
+      try apply lem_weaken_typ_top; trivial;
+      try (apply TSub with (TList s' rs) Star;
+           try apply SList with empty;
+           try apply lem_sub_refl with Star; 
+           intros; try apply IFaith; trivial ); 
+      try apply WFList with Star;
+      try apply wfenv_unique;
+      try apply WFEEmpty; trivial.
+
+      apply TSub with (TList s' rs) Star.
+           try apply SList with empty;
+           try apply lem_sub_refl with Star; 
+           intros; apply IFaith; trivial
+
+
+      apply TSub with (TList t qs) Star;
+           try apply SList with empty;
+           try apply lem_sub_refl with Star; 
+           try apply WFList with Star;
+           intros; unfold unbindP; 
+           try apply IFaith; trivial.
+
+      
+
+      Focus 2. apply SBind with (names_add y nms1); 
+      unfold isLCT; simpl; try repeat split;
+      try apply Hwkt with 0 0; auto; intros.
+      unfold unbindT; simpl;
+      try rewrite Hopt with t 0 0 y0;
+      try rewrite Hopt with t 1 0 y0.
+      intuition.
+
+
+      intuition.
+
+
+
+
+
+      apply TSub 
+        with (TList s' (PCons (eq (App (Prim Succ) (length s' (FV y))) 
+                                  (length s' (BV 0))) PEmpty)) Star;
+      try apply TSub
+        with (TExists (TList s' PEmpty) 
+                (TList s' (PCons (eq (App (Prim Succ) (length s' (BV 1))) 
+                                     (length s' (BV 0))) PEmpty))) Star;
+      try apply TCons; trivial.
+
+      (* v1 and v2 typing *)
+
+
+      try apply TNil with Star;
+      try apply lem_wflist_len_zero;
+
+      try apply SList with (union nms nms0);
+      try apply p_s'_t; intros;
+      try apply not_elem_union_elim in H14; try destruct H14;
+      try apply WFEEmpty; auto.
+
+      assert (
+        unbindP y0 (PCons (eq (Ic 0) (length t (BV 0))) ps)
+            = strengthen 
+                (unbindP y0 (PCons (eq (Ic 0) (length t (BV 0))) PEmpty)) 
+                (unbindP y0 ps) )
+        as Hpred by reflexivity; try rewrite Hpred.
+      apply IConj; try apply H11;
+      unfold unbindP; simpl;
+      try rewrite Hopt with t  0 0 y0;
+      try rewrite Hopt with s' 0 0 y0;
+      try apply ILenSub; 
+      try apply lem_weaken_subtype_top with Star Star;
+      try apply (lem_wflist_wftype Empty t ps Star);
+      try apply WFEEmpty; trivial. 
+
+
+
       (* v1 typing: inversion lemma *)
       apply lem_invert_tlist in p_e_t as Hv1v2;
       try apply WFEEmpty; trivial;
@@ -487,6 +1471,22 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
       (* 2x subtyping: SBind *)
       (* 2x wellformedness *)
       
+
+
+*)
+
+
+
+
+
+
+
+
+
+
+
+
+(*
       try apply H4. apply H4.
       
       
@@ -547,7 +1547,7 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
     * (* e = Cons v1 v2 *)
       apply lem_sem_det 
         with (Switch (Cons v1 v2) eN eC) e'' (App (App eC v1) v2)
-        in st_e_e'' as He''; try apply ESwitchC; subst e''.
+        in st_e_e'' as He''; try apply ESwitchC; subst e''.*)
 
   - (* TSub e, s <: t *) apply TSub with s k; try apply IHp_e_t; trivial.
   Qed.

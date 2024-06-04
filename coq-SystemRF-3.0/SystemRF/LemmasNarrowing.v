@@ -212,21 +212,25 @@ Proof. apply ( judgments_mutind
                             (ECons y (TList t (PCons (eq (Ic 0) (length t (BV 0))) ps)) g'))
       as Henv1 by reflexivity; try rewrite Henv1; 
     try assert (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
-                                            (length t (BV 0))) PEmpty)) 
-                  (ECons y (TList t ps) (concatE (ECons x s_x g) g'))
+                                            (length t (BV 0))) ps)) 
+                  (ECons y (TList t PEmpty) (concatE (ECons x s_x g) g'))
                 = concatE (ECons x s_x g) 
                     (ECons z (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) 
-                                            (length t (BV 0))) PEmpty)) 
-                      (ECons y (TList t ps) g')) )
+                                            (length t (BV 0))) ps)) 
+                      (ECons y (TList t PEmpty) g')) )
       as Henv2 by reflexivity; try rewrite Henv2;     
     try apply H0 with y t_x k_sx k_tx;
     try apply H1 with z t_x k_sx k_tx; 
     try apply WFEBind with Star; 
-    try apply WFEBind with Star;   unfold in_env; 
+    try apply WFEBind with Star;   unfold in_env;
     try apply lem_wflist_len_zero;         
-    try apply lem_wflist_len_succ; 
-    try apply lem_typing_wf with e; 
-    try apply H with t_x k_sx k_tx; simpl; try split; try split;
+    try apply lem_wflist_len_succ;   
+    assert (WFtype (concatE(ECons x s_x g) g') (TList t ps) Star)
+      as p_senv_tps by (apply lem_typing_wf with e;
+                        try apply H with t_x k_sx k_tx; trivial);
+    try (inversion p_senv_tps; try subst ps; 
+         try inversion H2; assumption);
+    simpl; try split; try split;
     try apply intersect_names_add_intro_r;  
     try apply intersect_names_add_intro_r;      
     unfold in_env; fold concatE;  simpl;

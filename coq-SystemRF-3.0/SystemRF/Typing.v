@@ -117,6 +117,54 @@ Proof. intros; destruct t; reflexivity. Qed.
 Definition length (t : type) (e : expr) : expr := App (AppT (Prim Length) t) e.  
 Definition eq (e1 e2 : expr) : expr := App (App (Prim Eq) e1) e2.
 
+Definition eqlLenPred (t : type) (e : expr) : expr :=
+  eq (length t e) (length t (BV 0)).
+
+Definition isAppTLength (e : expr) : Prop :=
+    match e with
+    | (AppT e' t)    => e' = (Prim Length)
+    | _              => False
+    end.
+
+Fixpoint safeListVarUseE (x:vname) (e : expr) : Prop  :=
+    match e with
+    | (Bc _)         => True
+    | (Ic _)         => True
+    | (Prim _)       => True
+    | (BV i)         => True
+    | (FV y)         => x <> y
+    | (Lambda e')    => safeListVarUseE x e'
+    | (App e1 e2)    => (isAppTLength e1 /\ e2 = (FV x))
+                          \/ (safeListVarUseE x e1 /\ safeListVarUseE x e2)
+    | (LambdaT k e') => safeListVarUseE x e'
+    | (AppT e' t)    => (e' = Prim Length) (* then we don't use t *)
+                          \/ (safeListVarUseE x e' /\ safeListVarUseT x t)
+    | (Let ex e')    => safeListVarUseE x ex /\ safeListVarUseE x e'  
+    | (Annot e' t)   => safeListVarUseE x e' /\ safeListVarUseT x t
+    | (If e0 e1 e2)  => safeListVarUseE x e0 /\ safeListVarUseE x e1 
+                                             /\ safeListVarUseE x e2
+    | Nil            => True
+    | (Cons e1 e2)   => safeListVarUseE x e1 /\ safeListVarUseE x e2 
+    | (Switch e eN eC) => safeListVarUseE x e /\ safeListVarUseE x eN  
+                                              /\ safeListVarUseE x eC
+    | Error          => True
+    end
+
+with safeListVarUseT (x : vname) (t0 : type) : Prop := 
+    match t0 with
+    | (TRefn   b  rs) => safeListVarUseP x rs
+    | (TFunc   t_x t) => safeListVarUseT x t_x /\ safeListVarUseT x t
+    | (TExists t_x t) => safeListVarUseT x t_x /\ safeListVarUseT x t
+    | (TPoly   k   t) =>                          safeListVarUseT x t
+    | (TList    t ps) => safeListVarUseT x t   /\ safeListVarUseP x ps
+    end
+
+with safeListVarUseP (x : vname) (ps0 : preds) : Prop := 
+    match ps0 with
+    | PEmpty       => True
+    | (PCons p ps) => safeListVarUseE x p /\ safeListVarUseP x ps
+    end.
+
 (*------------------------------------------------------------------------------
 ----- | TYPING & SUBTYPING JUDGMENTS and UNINTERPRETED IMPLICATION 
 ------------------------------------------------------------------------------*)
@@ -248,10 +296,19 @@ with Implies : env -> preds -> preds -> Prop :=
     | IEqlSub : forall (g:env) (b:basic) (y:vname) (e:expr) (ps:preds),
           Implies g (PCons (App (App (AppT (Prim Eql) (TRefn b PEmpty)) e) (FV y)) PEmpty)
                     (PCons (App (App (AppT (Prim Eql) (TRefn b ps    )) e) (FV y)) PEmpty) 
+(*    | ILenSub : forall (g:env) (x:vname) (s t:type) (e e':expr) (ps:preds),
+          Subtype g s t -> ~ in_env x g -> ~ Elem x (fvP ps)
+              -> Implies g 
+                  (psubFV x (AppT (Prim Length) s) (PCons (eq e e') ps))
+                  (psubFV x (AppT (Prim Length) t) (PCons (eq e e') ps))*)
     | ILenSub : forall (g:env) (s t:type) (y:vname) (e:expr) (ps:preds),
           Subtype g s t 
               -> Implies g (PCons (eq e (length s (FV y))) ps)
                            (PCons (eq e (length t (FV y))) ps)
+    | ILenSub2 : forall (g:env) (s t:type) (y:vname) (e:expr) (ps:preds),
+          Subtype g s t 
+              -> Implies g (PCons (eq (App (Prim Succ) (length s e)) (length s (FV y))) ps)
+                           (PCons (eq (App (Prim Succ) (length t e)) (length t (FV y))) ps) 
     | IStren  : forall (y:vname) (b':basic) (qs:preds) (g:env) (p1s:preds) (p2s:preds),
           ~ in_env y g -> ~ Elem y (fvP qs)
               -> Implies (ECons y (TRefn b' qs)     g) p1s p2s
@@ -265,7 +322,19 @@ with Implies : env -> preds -> preds -> Prop :=
     | IExactQ : forall (g:env) (x:vname) (v_x:expr) (t_x:type) (ps:preds),
           isValue v_x -> Hastype g v_x t_x -> WFtype g t_x Base
                       -> bound_in x (self t_x v_x Base) g
-                      -> Implies g ps (psubFV x v_x ps).
+                      -> Implies g ps (psubFV x v_x ps)
+    | IExactLen: forall (g:env) (x:vname) (v:expr) (t:type) (ps qs:preds),
+          isValue v -> Hastype g v (TList t ps) 
+                    -> WFtype g (TList t ps) Star
+                    -> bound_in x (TList t (PCons (eqlLenPred t v) ps)) g
+                    -> safeListVarUseP x qs
+                    -> Implies g qs (psubFV x v qs)
+    | IExactLenRev: forall (g:env) (x:vname) (v:expr) (t:type) (ps qs:preds),
+          isValue v -> Hastype g v (TList t ps) 
+                    -> WFtype g (TList t ps) Star
+                    -> bound_in x (TList t (PCons (eqlLenPred t v) ps)) g
+                    -> safeListVarUseP x qs
+                    -> Implies g (psubFV x v qs) qs.
 
 
 Scheme Hastype_mutind  := Induction for Hastype  Sort Prop

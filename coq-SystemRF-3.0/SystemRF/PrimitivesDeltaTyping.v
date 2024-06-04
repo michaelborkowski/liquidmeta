@@ -24,6 +24,7 @@ Require Import SystemRF.SubstitutionLemmaTyp.
 Require Import SystemRF.SubstitutionLemmaTypTV.
 Require Import SystemRF.LemmasTransitive.
 Require Import SystemRF.LemmasInversion.
+Require Import SystemRF.LemmasLists.
 
 Require Import ZArith.
 
