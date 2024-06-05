@@ -475,3 +475,17 @@ Proof. intros. inversion H; subst g0 t1 p1 t2 p2;
   apply IConj; apply H7 || apply H9;
   apply not_elem_union_elim in H1; destruct H1; trivial.
   Qed.
+
+Lemma lem_exists_list_subtype_conj : 
+  forall (g:env) (t_x s:type) (ps:preds) (t:type) (q:expr) (qs:preds),
+         Subtype g (TExists t_x (TList s ps)) (TList t (PCons q PEmpty))
+      -> Subtype g (TExists t_x (TList s ps)) (TList t qs)
+      -> Subtype g (TExists t_x (TList s ps)) (TList t (PCons q qs)).
+Proof. intros. inversion H; subst g0 t_x0 t0 t';
+  inversion H0; subst g0 t_x0 t0 t'.
+  apply SBind with (union nms nms0); unfold isLCT in *;
+  simpl in *; destruct H5; repeat destruct H4; auto;
+  intros; apply not_elem_union_elim in H7; destruct H7; 
+  unfold unbindT in *; simpl in *.
+  apply lem_list_subtype_conj; apply H6 || apply H8; assumption.
+  Qed.
