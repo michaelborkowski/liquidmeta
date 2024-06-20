@@ -35,7 +35,7 @@ import LemmasExactness
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTVar1 p_e_t}
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_typ_tvar1 :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tvar1 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar1 _env z t' k' p_env_t) 
@@ -65,7 +65,7 @@ lem_subst_typ_tvar1 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar1 _env z t' k' p_env_
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTVar2 p_e_t}
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_typ_tvar2 :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tvar2 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar2 env_ z _t p_z_t w_ t_w) 
@@ -101,7 +101,7 @@ lem_subst_typ_tvar2 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar2 env_ z _t p_z_t w_ 
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTVar3 p_e_t}
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_typ_tvar3 :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tvar3 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar3 env_ z _t p_z_t a_ k_a) 
@@ -132,7 +132,7 @@ lem_subst_typ_tvar3 g g' x v_x t_x p_vx_tx p_g_wf e t (TVar3 env_ z _t p_z_t a_ 
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTAbs p_e_t}
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_typ_tabs :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tabs g g' x v_x t_x p_vx_tx p_g_wf e t 
@@ -161,7 +161,7 @@ lem_subst_typ_tabs g g' x v_x t_x p_vx_tx p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTApp p_e_t}
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_typ_tapp :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tapp g g' x v_x t_x p_vx_tx p_g_wf e t 
@@ -180,7 +180,7 @@ lem_subst_typ_tapp g g' x v_x t_x p_vx_tx p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTAbsT p_e_t}
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_typ_tabst :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tabst g g' x v_x t_x p_vx_tx p_g_wf e t 
@@ -208,7 +208,7 @@ lem_subst_typ_tabst g g' x v_x t_x p_vx_tx p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTAppT p_e_t}
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_typ_tappt :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tappt g g' x v_x t_x p_vx_tx p_g_wf e t 
@@ -229,7 +229,7 @@ lem_subst_typ_tappt g g' x v_x t_x p_vx_tx p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTLet p_e_t}
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_typ_tlet :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tlet g g' x v_x t_x p_vx_tx p_g_wf e t 
@@ -260,7 +260,7 @@ lem_subst_typ_tlet g g' x v_x t_x p_vx_tx p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t && isTSub p_e_t}
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_typ_tsub :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ_tsub g g' x v_x t_x p_vx_tx p_g_wf e t 
@@ -280,7 +280,7 @@ lem_subst_typ_tsub g g' x v_x t_x p_vx_tx p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (Cons x t_x g) g') e t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFV x v_x g')) 
                                                       (subFV x v_x e) (tsubFV x v_x t) }
-         / [typSize p_e_t, 1] @-}
+         / [sizeOf p_e_t, 1] @-}
 lem_subst_typ :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_typ g g' x v_x t_x p_vx_tx p_g_wf e t (TBC _env b) 
@@ -319,7 +319,7 @@ lem_subst_typ g g' x v_x t_x p_vx_tx p_g_wf e t p_e_t@(TSub {})
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSBase p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) 
                                                          (tsubFV x v_x s) (tsubFV x v_x t) }
-         / [ subtypSize p_s_t, 0 ] @-}
+         / [ sizeOf p_s_t, 0 ] @-}
 lem_subst_sub_sbase :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_sub_sbase g g' x v_x t_x p_vx_tx p_g_wf s t 
@@ -347,7 +347,7 @@ lem_subst_sub_sbase g g' x v_x t_x p_vx_tx p_g_wf s t
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSFunc p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) 
                                                          (tsubFV x v_x s) (tsubFV x v_x t)  }
-         / [ subtypSize p_s_t, 0 ] @-}
+         / [ sizeOf p_s_t, 0 ] @-}
 lem_subst_sub_sfunc :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_sub_sfunc g g' x v_x t_x p_vx_tx p_g_wf ty1 ty2 
@@ -377,7 +377,7 @@ lem_subst_sub_sfunc g g' x v_x t_x p_vx_tx p_g_wf ty1 ty2
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSWitn p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) 
                                                          (tsubFV x v_x s) (tsubFV x v_x t)  }
-         / [ subtypSize p_s_t, 0 ] @-}
+         / [ sizeOf p_s_t, 0 ] @-}
 lem_subst_sub_switn :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_sub_switn g g' x v_x t_x p_vx_tx p_g_wf t t2 
@@ -398,7 +398,7 @@ lem_subst_sub_switn g g' x v_x t_x p_vx_tx p_g_wf t t2
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSBind p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) 
                                                          (tsubFV x v_x s) (tsubFV x v_x t)  }
-         / [ subtypSize p_s_t, 0 ] @-}
+         / [ sizeOf p_s_t, 0 ] @-}
 lem_subst_sub_sbind :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_sub_sbind g g' x v_x t_x p_vx_tx p_g_wf t1 t' 
@@ -425,7 +425,7 @@ lem_subst_sub_sbind g g' x v_x t_x p_vx_tx p_g_wf t1 t'
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t && isSPoly p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) 
                                                          (tsubFV x v_x s) (tsubFV x v_x t)  }
-         / [ subtypSize p_s_t, 0 ] @-}
+         / [ sizeOf p_s_t, 0 ] @-}
 lem_subst_sub_spoly :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_sub_spoly g g' x v_x t_x p_vx_tx p_g_wf t1 t2 
@@ -454,7 +454,7 @@ lem_subst_sub_spoly g g' x v_x t_x p_vx_tx p_g_wf t1 t2
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (Cons x t_x g) g') s t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFV x v_x g')) 
                                                          (tsubFV x v_x s) (tsubFV x v_x t)  }
-         / [ subtypSize p_s_t, 1 ] @-}
+         / [ sizeOf p_s_t, 1 ] @-}
 lem_subst_sub :: Env -> Env -> Vname -> Expr -> Type -> HasType -> WFEnv
                     -> Type -> Type  -> Subtype -> Subtype
 lem_subst_sub g g' x v_x t_x p_vx_tx p_g_wf s t p_s_t@(SBase {}) 

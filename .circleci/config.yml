@@ -2,28 +2,94 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: fpco/stack-build:lts-18.27
+      - image: fpco/stack-build:lts
         auth:
           username: mydockerhub-user
           password: $DOCKERHUB_PASSWORD 
-                                                          
+    
     steps:
-      - run: apt-get update && apt-get install -y curl git ssh unzip wget libtinfo-dev gcc make libstdc++6
-
+      - run: sudo apt-key del 7fa2af80 && sudo apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/3bf863cc.pub
+      - run: apt-get update && apt-get install -y git ssh unzip
+      - checkout
+      - add_ssh_keys
+      
+      - restore_cache:
+          keys: 
+             - z3491 
+            
       - run: 
           name: Install z3 
           command: |
-            wget https://github.com/Z3Prover/z3/releases/download/z3-4.8.17/z3-4.8.17-x64-glibc-2.31.zip
-            unzip z3-4.8.17-x64-glibc-2.31.zip
-            rm -f z3-4.8.17-x64-glibc-2.31.zip
-            cp z3-4.8.17-x64-glibc-2.31/bin/libz3.a /usr/local/lib
-            cp z3-4.8.17-x64-glibc-2.31/bin/z3 /usr/local/bin
-            cp z3-4.8.17-x64-glibc-2.31/include/* /usr/local/include
-            rm -rf z3-4.8.17-x64-glibc-2.31
-            z3 --version
-      - checkout
-      - add_ssh_keys
+            if test -f "~/cachedflags/z3491.flag"; then 
+              echo "z3491 exists"
+              z3 --version 
+            else 
+              wget https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.9.1.tar.gz
+              tar -xvzf z3-4.9.1.tar.gz
+              mkdir z3-z3-4.9.1/build
+              cd z3-z3-4.9.1/build 
+              cmake -G "Unix Makefiles" ../
+              make -j4
+              cp z3 /usr/bin/
+              z3 --version
+              ls 
+              which z3
+              mkdir -p ~/cachedflags && touch ~/cachedflags/z3491.flag
+            fi 
+            
+      - save_cache: 
+          key: z3491
+          paths: 
+            - /usr/bin
+            - ~/cachedflags
+
+            
+      - restore_cache:
+          keys: 
+            - deps-fp
+            - deps-lh
+            - deps
+      
+      - run:
+          name: Dependencies FP 
+          command: |
+            cd popl23-submission
+            stack --no-terminal setup
+            stack --no-terminal build liquid-fixpoint       
+          
+      - save_cache: 
+          key: deps-fp 
+          paths: 
+            - ~/popl23-submission/.stack
+            - ./popl23-submission/.stack-work
+
+      - run:
+          name: Dependencies LH 
+          command: |
+            cd popl23-submission
+            stack --no-terminal setup
+            stack --no-terminal build liquidhaskell    
+          
+      - save_cache: 
+          key: deps-lh 
+          paths: 
+            - ~/popl23-submission/.stack
+            - ./popl23-submission/.stack-work
+
+      - run:
+          name: Dependencies  
+          command: |
+            cd popl23-submission
+            stack --no-terminal setup
+            stack --no-terminal build --only-dependencies    
+          
+      - save_cache: 
+          key: deps 
+          paths: 
+            - ~/popl23-submission/.stack
+            - ./popl23-submission/.stack-work
+
 
       - run:
           name: Test Examples 
-          command: cd icfp22-submission; stack setup && stack build
+          command: cd popl23-submission; stack setup && stack build

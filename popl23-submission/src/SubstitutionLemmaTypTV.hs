@@ -40,7 +40,7 @@ import LemmasExactnessSubst
         -> { p_e_t:HasType | propOf p_e_t  == HasType (concatE (ConsT a k_a g) g') e t && isTVar1 p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tvar1 :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ_tvar1 g g' a t_a k_a p_g_ta p_g_wf e t (TVar1 _env z t' k' p_env_t') 
@@ -81,7 +81,7 @@ lem_subst_tv_typ_tvar1 g g' a t_a k_a p_g_ta p_g_wf e t (TVar1 _env z t' k' p_en
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTVar2 p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tvar2 :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ_tvar2 g g' a t_a k_a p_g_ta p_g_wf e t p_env_z_t@(TVar2 env_ z _t p_z_t w_ t_w) 
@@ -107,7 +107,7 @@ lem_subst_tv_typ_tvar2 g g' a t_a k_a p_g_ta p_g_wf e t p_env_z_t@(TVar2 env_ z 
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTVar3 p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tvar3 :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ_tvar3 g g' a t_a k_a p_g_ta p_g_wf e t p_env_z_t@(TVar3 env_ z _t p_z_t a'_ k_a') 
@@ -139,7 +139,7 @@ lem_subst_tv_typ_tvar3 g g' a t_a k_a p_g_ta p_g_wf e t p_env_z_t@(TVar3 env_ z 
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTAbs p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tabs :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ_tabs g g' a t_a k_a p_g_ta p_g_wf e t 
@@ -167,7 +167,7 @@ lem_subst_tv_typ_tabs g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTApp p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tapp :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ_tapp g g' a t_a k_a p_g_ta p_g_wf e t 
@@ -186,7 +186,7 @@ lem_subst_tv_typ_tapp g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTAbsT p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tabst :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ_tabst g g' a t_a k_a p_g_ta p_g_wf e t 
@@ -214,7 +214,7 @@ lem_subst_tv_typ_tabst g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTAppT p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tappt :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ_tappt g g' a t_a k_a p_g_ta p_g_wf e t 
@@ -234,7 +234,7 @@ lem_subst_tv_typ_tappt g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTLet p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tlet :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ_tlet g g' a t_a k_a p_g_ta p_g_wf e t 
@@ -264,7 +264,7 @@ lem_subst_tv_typ_tlet g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t && isTSub p_e_t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 0] @-}
+         / [sizeOf p_e_t, 0] @-}
 lem_subst_tv_typ_tsub :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ_tsub g g' a t_a k_a p_g_ta p_g_wf e t 
@@ -283,7 +283,7 @@ lem_subst_tv_typ_tsub g g' a t_a k_a p_g_ta p_g_wf e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE (ConsT a k_a g) g') e t }
         -> {p'_e_t:HasType | propOf p'_e_t == HasType (concatE g (esubFTV a t_a g')) 
                                                       (subFTV a t_a e) (tsubFTV a t_a t) }
-         / [typSize p_e_t, 1] @-}
+         / [sizeOf p_e_t, 1] @-}
 lem_subst_tv_typ :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Expr -> Type -> HasType -> HasType
 lem_subst_tv_typ g g' a t_a k_a p_g_ta p_g_wf e t (TBC _env b)
@@ -362,7 +362,7 @@ lem_subst_tv_sub_sbase_ftv g g' a b' qs k_a p_g_ta p_g_wf p1 p2
         -> { p_s_t:Subtype | propOf p_s_t  == Subtype (concatE (ConsT a k_a g) g') s t && isSBase p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) }
-         / [subtypSize p_s_t, 0] @-}
+         / [subsizeOf p_s_t, 0] @-}
 lem_subst_tv_sub_sbase :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_tv_sub_sbase g g' a t_a k_a p_g_ta p_g_wf s t 
@@ -406,7 +406,7 @@ lem_subst_tv_sub_sbase g g' a t_a k_a p_g_ta p_g_wf s t
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t && isSFunc p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) }
-         / [subtypSize p_s_t, 0] @-}
+         / [subsizeOf p_s_t, 0] @-}
 lem_subst_tv_sub_sfunc :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_tv_sub_sfunc g g' a t_a k_a p_g_ta p_g_wf ty1 ty2 
@@ -434,7 +434,7 @@ lem_subst_tv_sub_sfunc g g' a t_a k_a p_g_ta p_g_wf ty1 ty2
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t && isSWitn p_s_t}
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) }
-         / [subtypSize p_s_t, 0] @-}
+         / [subsizeOf p_s_t, 0] @-}
 lem_subst_tv_sub_switn :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_tv_sub_switn g g' a t_a k_a p_g_ta p_g_wf t t2 
@@ -455,7 +455,7 @@ lem_subst_tv_sub_switn g g' a t_a k_a p_g_ta p_g_wf t t2
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t && isSBind p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) }
-         / [subtypSize p_s_t, 0] @-}
+         / [subsizeOf p_s_t, 0] @-}
 lem_subst_tv_sub_sbind :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_tv_sub_sbind g g' a t_a k_a p_g_ta p_g_wf t1 t' 
@@ -482,7 +482,7 @@ lem_subst_tv_sub_sbind g g' a t_a k_a p_g_ta p_g_wf t1 t'
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t && isSPoly p_s_t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) }
-         / [subtypSize p_s_t, 0] @-}
+         / [subsizeOf p_s_t, 0] @-}
 lem_subst_tv_sub_spoly :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_g_wf t1 t2 
@@ -510,7 +510,7 @@ lem_subst_tv_sub_spoly g g' a t_a k_a p_g_ta p_g_wf t1 t2
         -> { p_s_t:Subtype | propOf p_s_t == Subtype (concatE (ConsT a k_a g) g') s t }
         -> {p'_s_t:Subtype | propOf p'_s_t == Subtype (concatE g (esubFTV a t_a g')) 
                                                       (tsubFTV a t_a s) (tsubFTV a t_a t) }
-         / [subtypSize p_s_t, 1] @-}
+         / [subsizeOf p_s_t, 1] @-}
 lem_subst_tv_sub :: Env -> Env -> Vname -> Type -> Kind -> WFType -> WFEnv
                     -> Type -> Type -> Subtype -> Subtype
 lem_subst_tv_sub g g' a t_a k_a p_g_ta p_g_wf s t p_t_t'@(SBase {}) 

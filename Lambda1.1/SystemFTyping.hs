@@ -39,27 +39,27 @@ data HasFType where
 
 {-@ data HasFType where
         FTBC   :: g:FEnv -> b:Bool -> ProofOf(HasFType g (Bc b) (FTBasic TBool))
-     |  FTIC   :: g:FEnv -> n:Int -> ProofOf(HasFType g (Ic n) (FTBasic TInt))
-     |  FTVar1 :: g:FEnv -> { x:Vname | not (in_envF x g) } -> b:FType 
+        FTIC   :: g:FEnv -> n:Int -> ProofOf(HasFType g (Ic n) (FTBasic TInt))
+        FTVar1 :: g:FEnv -> { x:Vname | not (in_envF x g) } -> b:FType 
                     -> ProofOf(HasFType (FCons x b g) (FV x) b)
-     |  FTVar2 :: g:FEnv -> { x:Vname | in_envF x g } -> b:FType -> ProofOf(HasFType g (FV x) b)
+        FTVar2 :: g:FEnv -> { x:Vname | in_envF x g } -> b:FType -> ProofOf(HasFType g (FV x) b)
                     -> { y:Vname | y != x && not (in_envF y g) } -> b':FType 
                     -> ProofOf(HasFType (FCons y b' g) (FV x) b)
-     |  FTPrm  :: g:FEnv -> c:Prim  -> ProofOf(HasFType g (Prim c) (erase_ty c))
-     |  FTAbs  :: g:FEnv -> x:Vname -> b:FType -> e:Expr -> b':FType
+        FTPrm  :: g:FEnv -> c:Prim  -> ProofOf(HasFType g (Prim c) (erase_ty c))
+        FTAbs  :: g:FEnv -> x:Vname -> b:FType -> e:Expr -> b':FType
                   -> { y:Vname | not (in_envF y g) && not (Set_mem y (fv e)) }
                   -> ProofOf(HasFType (FCons y b g) (unbind x y e) b')
                   -> ProofOf(HasFType g (Lambda x e) (FTFunc b b'))
-     |  FTApp  :: g:FEnv -> e:Expr -> b:FType -> b':FType
+        FTApp  :: g:FEnv -> e:Expr -> b:FType -> b':FType
                   -> ProofOf(HasFType g e (FTFunc b b')) 
                   -> e':Expr -> ProofOf(HasFType g e' b) 
                   -> ProofOf(HasFType g (App e e') b')
-     |  FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
+        FTLet  :: g:FEnv -> e_x:Expr -> b:FType -> ProofOf(HasFType g e_x b)
                 -> x:Vname -> e:Expr -> b':FType 
                 -> { y:Vname | not (in_envF y g) && not (Set_mem y (fv e)) }
                 -> ProofOf(HasFType (FCons y b g) (unbind x y e) b')
                 -> ProofOf(HasFType g (Let x e_x e) b')
-     |  FTAnn  :: g:FEnv -> e:Expr -> b:FType 
+        FTAnn  :: g:FEnv -> e:Expr -> b:FType 
                 -> { t1:Type | (erase t1 == b) && Set_sub (free t1) (bindsF g) && Set_emp (tfreeBV t1) }
                 -> ProofOf(HasFType g e b) -> ProofOf(HasFType g (Annot e t1) b) @-} 
 

@@ -29,7 +29,7 @@ import LemmasWeakenTyp
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTVar1 p_e_t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 0 ] @-}
+         / [ sizeOf p_e_t, 0 ] @-}
 lem_weaken_tv_typ_tvar1 :: Env -> Env ->  Expr -> Type -> HasType -> Vname -> Kind -> HasType  
 lem_weaken_tv_typ_tvar1 g g' e t p_y_t@(TVar1 gg y t_y k_y p_gg_ty) a k_a
     = case g' of     -- env == concatE g (Cons y t_y g'')
@@ -44,7 +44,7 @@ lem_weaken_tv_typ_tvar1 g g' e t p_y_t@(TVar1 gg y t_y k_y p_gg_ty) a k_a
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTVar2 p_e_t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 0 ] @-}
+         / [ sizeOf p_e_t, 0 ] @-}
 lem_weaken_tv_typ_tvar2 :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Kind -> HasType
 lem_weaken_tv_typ_tvar2 g g' e t p_y_ty@(TVar2 gg y t_y p_gg_y_ty z t_z) a k_a
     = case g' of
@@ -60,7 +60,7 @@ lem_weaken_tv_typ_tvar2 g g' e t p_y_ty@(TVar2 gg y t_y p_gg_y_ty z t_z) a k_a
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTVar3 p_e_t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 0 ] @-}
+         / [ sizeOf p_e_t, 0 ] @-}
 lem_weaken_tv_typ_tvar3 :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Kind -> HasType
 lem_weaken_tv_typ_tvar3 g g' e t p_z_tz@(TVar3 gg z t_z p_z_t a' k_a') a k_a
     = case g' of
@@ -74,7 +74,7 @@ lem_weaken_tv_typ_tvar3 g g' e t p_z_tz@(TVar3 gg z t_z p_z_t a' k_a') a k_a
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTAbs p_e_t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 0 ] @-}
+         / [ sizeOf p_e_t, 0 ] @-}
 lem_weaken_tv_typ_tabs :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Kind -> HasType
 lem_weaken_tv_typ_tabs g g' e t p_e_t@(TAbs env t_y k_y p_gg'_ty e' t' nms mk_p_y_e'_t') a k_a
     = TAbs (concatE (ConsT a k_a g) g') t_y k_y p_gag'_ty e' t'  nms' mk_p_ya_e'_t'
@@ -92,7 +92,7 @@ lem_weaken_tv_typ_tabs g g' e t p_e_t@(TAbs env t_y k_y p_gg'_ty e' t' nms mk_p_
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTApp p_e_t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 0 ] @-}
+         / [ sizeOf p_e_t, 0 ] @-}
 lem_weaken_tv_typ_tapp :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Kind -> HasType
 lem_weaken_tv_typ_tapp g g' e t (TApp env e1 s s' p_env_e1_ss' e2 p_env_e2_s) a k_a
     = TApp (concatE (ConsT a k_a g) g') e1 s s' p_env'_e1_ss' e2 p_env'_e2_s
@@ -105,7 +105,7 @@ lem_weaken_tv_typ_tapp g g' e t (TApp env e1 s s' p_env_e1_ss' e2 p_env_e2_s) a 
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTAbsT p_e_t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 0 ] @-}
+         / [ sizeOf p_e_t, 0 ] @-}
 lem_weaken_tv_typ_tabst :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Kind -> HasType
 lem_weaken_tv_typ_tabst g g' e t p_e_t@(TAbsT env k1 e' t' nms mk_p_a'g_e'_t') a k_a
     = TAbsT (concatE (ConsT a k_a g) g') k1 e' t'  nms' mk_p_a'a_e'_t'
@@ -122,7 +122,7 @@ lem_weaken_tv_typ_tabst g g' e t p_e_t@(TAbsT env k1 e' t' nms mk_p_a'g_e'_t') a
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTAppT p_e_t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 0 ] @-}
+         / [ sizeOf p_e_t, 0 ] @-}
 lem_weaken_tv_typ_tappt :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Kind -> HasType 
 lem_weaken_tv_typ_tappt g g' e t p_e_t@(TAppT env e' k1 s p_e'_a1s t' p_env_t') a k_a
     = TAppT (concatE (ConsT a k_a g) g') e' k1 s p_env'_e'_a1s t' p_env'_t'
@@ -135,7 +135,7 @@ lem_weaken_tv_typ_tappt g g' e t p_e_t@(TAppT env e' k1 s p_e'_a1s t' p_env_t') 
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTLet p_e_t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 0 ] @-}
+         / [ sizeOf p_e_t, 0 ] @-}
 lem_weaken_tv_typ_tlet :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Kind -> HasType
 lem_weaken_tv_typ_tlet g g' e t 
                p_e_t@(TLet env e_y t_y p_env_ey_ty e' t' k' p_env_t' nms mk_p_yenv_e'_t') a k_a
@@ -156,7 +156,7 @@ lem_weaken_tv_typ_tlet g g' e t
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t && isTAnn p_e_t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 0 ] @-}
+         / [ sizeOf p_e_t, 0 ] @-}
 lem_weaken_tv_typ_tann :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Kind -> HasType 
 lem_weaken_tv_typ_tann g g' e t (TAnn env e' _t p_env_e'_t) a k_a
     = TAnn (concatE (ConsT a k_a g) g') e' t p_env'_e'_t
@@ -168,7 +168,7 @@ lem_weaken_tv_typ_tann g g' e t (TAnn env e' _t p_env_e'_t) a k_a
         -> { p_e_t:HasType | propOf p_e_t == HasType (concatE g g') e t }
         -> { a:Vname | (not (in_env a g)) && (not (in_env a g')) } -> k_a:Kind
         -> { p'_e_t:HasType | propOf p'_e_t == HasType (concatE (ConsT a k_a g) g') e t }
-         / [ typSize p_e_t, 1 ] @-}
+         / [ sizeOf p_e_t, 1 ] @-}
 lem_weaken_tv_typ :: Env -> Env -> Expr -> Type -> HasType -> Vname -> Kind -> HasType 
 lem_weaken_tv_typ g g' e t (TBC _g b) a k_a = TBC  (concatE (ConsT a k_a g) g') b
 lem_weaken_tv_typ g g' e t (TIC _g n) a k_a = TIC  (concatE (ConsT a k_a g) g') n
@@ -218,7 +218,7 @@ lem_weaken_many_typ g (ConsT a k_a g') e t p_g_e_t
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSBase p_t_t' }
       -> { a:Vname | not (in_env a g) && not (in_env a g') } -> k_a:Kind
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a k_a g) g') t t' } 
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_tv_subtype_sbase :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Kind -> Subtype
 lem_weaken_tv_subtype_sbase g g'  t  t' (SBase env b p1 p2 nms mk_pf_yenv_p1_p2) a k_a
     = SBase env' b p1 p2 nms' mk_pf_yenv'_p1_p2 
@@ -236,7 +236,7 @@ lem_weaken_tv_subtype_sbase g g'  t  t' (SBase env b p1 p2 nms mk_pf_yenv_p1_p2)
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSFunc p_t_t' }
       -> { a:Vname | not (in_env a g) && not (in_env a g') } -> k_a:Kind
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a k_a g) g') t t' }
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_tv_subtype_sfunc :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Kind -> Subtype
 lem_weaken_tv_subtype_sfunc g g' ft1 ft2 
                        (SFunc env s1 s2 p_env_s2_s1 t1 t2 nms mk_p_wenv_t1_t2) a k_a
@@ -256,7 +256,7 @@ lem_weaken_tv_subtype_sfunc g g' ft1 ft2
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSWitn p_t_t' }
       -> { a:Vname | not (in_env a g) && not (in_env a g') } -> k_a:Kind
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a k_a g) g') t t' }
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_tv_subtype_switn :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Kind -> Subtype
 lem_weaken_tv_subtype_switn g g' t t2 (SWitn env v_z t_z p_env_vz_tz _t t' p_env_t_t'vz) a k_a
     = SWitn env' v_z t_z p_env'_vz_tz t t' p_env'_t_t'vz
@@ -270,7 +270,7 @@ lem_weaken_tv_subtype_switn g g' t t2 (SWitn env v_z t_z p_env_vz_tz _t t' p_env
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSBind p_t_t' }
       -> { a:Vname | not (in_env a g) && not (in_env a g') } -> k_a:Kind
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a k_a g) g') t t' }
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_tv_subtype_sbind :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Kind -> Subtype
 lem_weaken_tv_subtype_sbind g g'  t1  t' (SBind env t_z t _t' nms mk_p_zenv_t_t') a k_a
     = SBind env' t_z t t' nms' mk_p_zenv'_t_t'
@@ -288,7 +288,7 @@ lem_weaken_tv_subtype_sbind g g'  t1  t' (SBind env t_z t _t' nms mk_p_zenv_t_t'
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' && isSPoly p_t_t' }
       -> { a:Vname | not (in_env a g) && not (in_env a g') } -> k_a:Kind
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a k_a g) g') t t' }
-       / [ subtypSize p_t_t', 0 ] @-}
+       / [ sizeOf p_t_t', 0 ] @-}
 lem_weaken_tv_subtype_spoly :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Kind -> Subtype
 lem_weaken_tv_subtype_spoly g g' t1 t2 (SPoly env k' t1' t2' nms mk_p_a1g_t1'_t2') a k_a
     = SPoly (concatE (ConsT a k_a g) g') k' t1' t2' nms' mk_p_a1a_t1'_t2'
@@ -306,7 +306,7 @@ lem_weaken_tv_subtype_spoly g g' t1 t2 (SPoly env k' t1' t2' nms mk_p_a1g_t1'_t2
       -> { p_t_t':Subtype | propOf p_t_t' == Subtype (concatE g g') t t' }
       -> { a:Vname | not (in_env a g) && not (in_env a g') } -> k_a:Kind
       -> { p'_t_t':Subtype | propOf p'_t_t' == Subtype (concatE (ConsT a k_a g) g') t t' }
-       / [ subtypSize p_t_t', 1 ] @-}
+       / [ sizeOf p_t_t', 1 ] @-}
 lem_weaken_tv_subtype :: Env -> Env -> Type -> Type -> Subtype -> Vname -> Kind -> Subtype
 lem_weaken_tv_subtype g g' t  t' p_t_t'@(SBase {}) a_ k_a
     = lem_weaken_tv_subtype_sbase g g' t t' p_t_t' a_ k_a
