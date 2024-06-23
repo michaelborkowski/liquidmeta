@@ -302,11 +302,11 @@ with Implies : env -> preds -> preds -> Prop :=
                   (psubFV x (AppT (Prim Length) s) (PCons (eq e e') ps))
                   (psubFV x (AppT (Prim Length) t) (PCons (eq e e') ps))*)
     | ILenSub : forall (g:env) (s t:type) (y:vname) (e:expr) (ps:preds),
-          Subtype g s t 
+          Subtype g s t -> isValue e
               -> Implies g (PCons (eq e (length s (FV y))) ps)
                            (PCons (eq e (length t (FV y))) ps)
     | ILenSub2 : forall (g:env) (s t:type) (y:vname) (e:expr) (ps:preds),
-          Subtype g s t 
+          Subtype g s t -> isValue e
               -> Implies g (PCons (eq (App (Prim Succ) (length s e)) (length s (FV y))) ps)
                            (PCons (eq (App (Prim Succ) (length t e)) (length t (FV y))) ps) 
     | IStren  : forall (y:vname) (b':basic) (qs:preds) (g:env) (p1s:preds) (p2s:preds),

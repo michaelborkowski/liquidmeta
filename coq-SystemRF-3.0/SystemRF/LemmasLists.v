@@ -262,7 +262,7 @@ Proof. intros g; induction v; intros;
     apply ITrans with 
       (PCons (App (App (Prim Eq) (Ic 0)) 
                   (App (AppT (Prim Length) s) (FV y))) PEmpty);
-    try apply ILenSub;
+    try apply ILenSub; try apply val_Ic;
     try apply lem_weaken_subtype_top with Star Star;
     try apply IEvals2; try apply lem_step_evals;
     try apply EApp1; try apply EApp2; try apply val_Prm;

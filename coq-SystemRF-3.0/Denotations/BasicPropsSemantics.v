@@ -1,0 +1,149 @@
+Require Import SystemRF.BasicDefinitions.
+Require Import SystemRF.Names.
+Require Import SystemRF.Strengthenings.
+Require Import SystemRF.Semantics.
+Require Import SystemRF.SystemFTyping.
+Require Import SystemRF.PrimitivesFTyping.
+Require Import SystemRF.WellFormedness.
+Require Import SystemRF.BasicPropsSubstitution.
+Require Import SystemRF.BasicPropsEnvironments.
+Require Import Denotations.ClosingSubstitutions.
+Require Import Denotations.Denotations.
+Require Import Denotations.BasicPropsCSubst.
+
+Require Import ZArith.
+
+Lemma lemma_strengthen_semantics : forall (ps qs:preds),
+    PEvalsTrue ps -> PEvalsTrue qs -> PEvalsTrue (strengthen ps qs).
+Proof. induction ps; simpl; trivial; intros.
+  apply PECons; inversion H; try apply IHps; assumption. Qed.
+
+Lemma lemma_semantics_strengthen : forall (ps qs:preds),
+    PEvalsTrue (strengthen ps qs) -> PEvalsTrue ps /\ PEvalsTrue qs.
+Proof. induction ps; simpl; intros; split;
+  try apply PEEmp; try apply PECons; try apply H;
+  inversion H; apply IHps in H3; destruct H3; assumption. Qed.  
+
+  (* Lemma. If p ~> q then th(p) ~> th(q). *)
+
+Lemma lem_csubst_isCompat : forall (c:prim) (w:expr) (th:csub),
+    isCompat c w -> csubst th w = w.
+Proof. intros; inversion H;
+  try rewrite lem_csubst_bc; try rewrite lem_csubst_ic;
+  reflexivity. Qed.
+
+Lemma lem_csubst_delta : 
+  forall (c:prim) (w:expr) (pf:isCompat c w) (th:csub),
+    csubst th (delta c w pf) = delta c w pf.
+Proof. intros; pose proof (delta_delta' c w pf);
+  inversion pf; subst c; subst w; 
+  try destruct b; unfold delta' in H; injection H as H;
+  rewrite H; try rewrite lem_csubst_lambda;
+  try rewrite lem_csubst_bc; try rewrite lem_csubst_ic; 
+  try rewrite lem_csubst_prim;
+  try rewrite lem_csubst_bv; try reflexivity. Qed.
+
+Lemma lem_ctsubst_isCompatT : forall (c:prim) (t:type) (th:csub),
+    isCompatT c t -> isCompatT c (ctsubst th t).
+Proof. intros; inversion H.
+  - apply isCptT_EqlB; apply lem_ctsubst_erase_basic; simpl; auto.
+  - apply isCptT_EqlZ; apply lem_ctsubst_erase_basic; simpl; auto.
+  - apply isCptT_LeqlB; apply lem_ctsubst_erase_basic; simpl; auto.
+  - apply isCptT_LeqlZ; apply lem_ctsubst_erase_basic; simpl; auto.
+  Qed.
+
+Lemma lem_ctsubst_deltaT : 
+  forall (th:csub) (c:prim) (t:type) (pf:isCompatT c t) (pf':isCompatT c (ctsubst th t)),
+    csubst th (deltaT c t pf) = deltaT c (ctsubst th t) pf'.
+Proof. intros; pose proof (deltaT_deltaT' c t pf);
+  pose proof (deltaT_deltaT' c (ctsubst th t) pf');
+  inversion pf; subst c; simpl in H; simpl in H0;
+  apply (lem_ctsubst_erase_basic th) in H1 as H2; 
+  rewrite H1 in H; try rewrite H2 in H0;
+  injection H as H; try injection H0 as H0;
+  try rewrite <- H; try rewrite <- H0;
+  try rewrite lem_csubst_prim; simpl; try left; trivial. Qed.
+
+Lemma lem_compatM_list : forall (c : prim) (v : expr),
+    isCompatM c v -> isList v.
+Proof. intros c v pf; induction pf; simpl; apply IHpf || exact I. Qed.
+
+Lemma lem_csubst_isCompatM : forall (c:prim) (v:expr) (th:csub),
+    isCompatM c v -> isCompatM c (csubst th v).
+Proof. intro c; induction v; intros; inversion H;
+  try rewrite lem_csubst_nil; try rewrite lem_csubst_cons;
+  constructor; subst c; apply IHv2; apply H2. Qed.
+
+Lemma lem_csubst_deltaM : 
+  forall (th:csub) (c:prim) (v:expr) (pf:isCompatM c v) (pf':isCompatM c (csubst th v)),
+    csubst th (deltaM c v pf) = deltaM c (csubst th v) pf'.
+Proof. intros th c v; induction pf; intros; simpl in pf'; simpl.
+  - assert (Some (csubst th (Ic 0)) = Some (deltaM Length (csubst th Nil) pf'))
+      by (rewrite deltaM_deltaM'; rewrite lem_csubst_ic;
+          rewrite lem_csubst_nil; auto); injection H as H; trivial.
+  - match goal with
+    | [ |- ?lhs = ?rhs ] => assert (Some lhs = Some rhs)
+        by (rewrite deltaM_deltaM'; rewrite lem_csubst_app; 
+            rewrite lem_csubst_prim; rewrite lem_csubst_cons; simpl;
+            rewrite lem_csubst_cons in pf'; inversion pf';
+            rewrite <- deltaM_deltaM' with Length (csubst th es) H1;
+            rewrite IHpf with H1; trivial)
+    end.
+    injection H as H; trivial.
+  Qed.
+
+Lemma lem_csubst_step : forall (th:csub) (p q:expr),
+    loc_closed th -> substitutable th -> Step p q 
+        -> Step (csubst th p) (csubst th q).
+Proof. intros th p q Hlc Hth H; induction H.
+  - (* EPrim *) rewrite lem_csubst_app; rewrite lem_csubst_prim;
+    rewrite lem_csubst_isCompat with c w th; 
+    try rewrite lem_csubst_delta; try apply EPrim; assumption.
+  - (* EApp1 *) repeat rewrite lem_csubst_app; apply EApp1;
+    apply IHStep.
+  - (* EApp2 *) repeat rewrite lem_csubst_app; apply EApp2;
+    try apply lem_csubst_value; try apply IHStep; assumption.
+  - (* EAppAbs *) rewrite lem_csubst_app; rewrite lem_csubst_lambda;
+    rewrite lem_csubst_subBV; try apply EAppAbs;
+    try apply lem_csubst_value; assumption.
+  - (* EPrimT *) rewrite lem_csubst_appT; rewrite lem_csubst_prim;
+    apply lem_ctsubst_isCompatT with c t th in pf as pf';
+    rewrite (lem_ctsubst_deltaT th c t pf pf'); apply EPrimT;
+    apply lem_ctsubst_noExists; assumption.
+  - (* EPrimM *) rewrite lem_csubst_app; rewrite lem_csubst_appT;
+    rewrite lem_csubst_prim;
+    apply lem_csubst_isCompatM with c w th in pf as pf';
+    rewrite lem_csubst_deltaM with th c w pf pf'; apply EPrimM;
+    apply lem_csubst_value; trivial.
+  - (* EAppT *) repeat rewrite lem_csubst_appT; apply EAppT;
+    try apply IHStep; apply lem_ctsubst_noExists; assumption.
+  - (* EAppTAbs *) rewrite lem_csubst_appT; 
+    rewrite lem_csubst_lambdaT; rewrite lem_csubst_subBTV;
+    try apply EAppTAbs; try apply lem_ctsubst_noExists;
+    assumption.
+  - (* ELet *) repeat rewrite lem_csubst_let; apply ELet; apply IHStep.
+  - (* ELetV *) rewrite lem_csubst_let; rewrite lem_csubst_subBV;
+    try apply ELetV; try apply lem_csubst_value; assumption.
+  - (* EAnn *) repeat rewrite lem_csubst_annot; apply EAnn; apply IHStep.
+  - (* EAnnV *) rewrite lem_csubst_annot; apply EAnnV;
+    apply lem_csubst_value; assumption. 
+  - (* EIf *) repeat rewrite lem_csubst_if; apply EIf; apply IHStep.
+  - (* EIfT *) rewrite lem_csubst_if; rewrite lem_csubst_bc; apply EIfT.
+  - (* EIfF *) rewrite lem_csubst_if; rewrite lem_csubst_bc; apply EIfF.
+  - (* ECons1 *) repeat rewrite lem_csubst_cons; apply ECons1; apply IHStep.
+  - (* ECons2 *) repeat rewrite lem_csubst_cons; apply ECons2;
+    try apply lem_csubst_value; trivial.
+  - (* ESwitch *) repeat rewrite lem_csubst_switch; apply ESwitch; apply IHStep.
+  - (* ESwitchN *) rewrite lem_csubst_switch; rewrite lem_csubst_nil;
+    apply ESwitchN.
+  - (* ESwitchC *) rewrite lem_csubst_switch; rewrite lem_csubst_cons;  
+    repeat rewrite lem_csubst_app; apply ESwitchC; apply lem_csubst_value; trivial.
+  Qed.
+
+Lemma lem_csubst_evals : forall (th:csub) (p q:expr),
+    loc_closed th -> substitutable th -> EvalsTo p q 
+        -> EvalsTo (csubst th p) (csubst th q).
+Proof. intros th p q H1 H2 Hpq; induction Hpq.
+  - apply Refl.
+  - apply AddStep with (csubst th e2); try apply lem_csubst_step;
+    assumption. Qed.

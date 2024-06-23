@@ -137,6 +137,12 @@ Proof. intros. assert (Some (delta c v pf) = Some (delta c v pf')).
   - transitivity (delta' c v); (apply delta_delta' || symmetry; apply delta_delta'). 
   - injection H. trivial. Qed. 
 
+Lemma lem_delta_value : forall (c : prim) (v : expr) (pf : isCompat c v),
+    isValue (delta c v pf).
+Proof. intros. destruct pf; try destruct b; simpl;  
+  try apply val_Lam; try apply val_Bc; try apply val_Prm;
+  apply val_Ic. Qed.
+
 
 Inductive isCompatT : prim -> type -> Set :=
     | isCptT_EqlB  : forall t, erase t = FTBasic TBool  ->  isCompatT Eql t

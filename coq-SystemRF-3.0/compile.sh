@@ -86,30 +86,34 @@ echo "Checking Denotations.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/Denotations.v
 echo "Checking PrimitivesSemantics.v ..."
 coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/PrimitivesSemantics.v
-#echo "Checking BasicPropsCSubst.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsCSubst.v
-#echo "Checking BasicPropsDenotes.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsDenotes.v
-#echo "Checking EnvironmentSubstitutions.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/EnvironmentSubstitutions.v
-#echo "Checking BasicPropsSemantics.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsSemantics.v
-#echo "Checking LemmasWidening.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/LemmasWidening.v
-#echo "Checking MultiSubstitutionLemmas.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/MultiSubstitutionLemmas.v
-#echo "Checking LemmasDenotesEnv.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/LemmasDenotesEnv.v
-#echo "Checking PrimitivesDenotations.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/PrimitivesDenotations.v
-#echo "Checking SelfifyDenotations.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/SelfifyDenotations.v
-#echo "Checking DenotationalSoundness.v ..."
-#coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/DenotationalSoundness.v
+echo "Checking BasicPropsCSubst.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsCSubst.v
+echo "Checking BasicPropsDenotes.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsDenotes.v
+echo "Checking EnvironmentSubstitutions.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/EnvironmentSubstitutions.v
+echo "Checking BasicPropsSemantics.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/BasicPropsSemantics.v
+echo "Checking LemmasWidening.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/LemmasWidening.v
+echo "Checking MultiSubstitutionLemmas.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/MultiSubstitutionLemmas.v
+echo "Checking LemmasDenotesEnv.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/LemmasDenotesEnv.v
+echo "Checking PrimitivesDenotations.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/PrimitivesDenotations.v
+echo "Checking SelfifyDenotations.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/SelfifyDenotations.v
+echo "Checking DenotationalSoundness.v ..."
+coqc -Q SystemRF SystemRF -R Denotations Denotations Denotations/DenotationalSoundness.v
 
 echo "Up next: Implement the Bidirectional Typechecker / Proof Synthesizer"
 echo "Checking SynthWFFT.v ..."
-coqc -Q SystemRF SystemRF -R Bidirectional Bidirectional Bidirectional/SynthWFFT.v
+coqc -Q SystemRF SystemRF -Q Denotations Denotations -R Bidirectional Bidirectional Bidirectional/SynthWFFT.v
+echo "Checking SynthFType.v ..."
+coqc -Q SystemRF SystemRF -Q Denotations Denotations -R Bidirectional Bidirectional Bidirectional/SynthFType.v
+echo "Checking SynthWFType.v ..."
+coqc -Q SystemRF SystemRF -Q Denotations Denotations -R Bidirectional Bidirectional Bidirectional/SynthWFType.v
 
 #echo "Examples"
 #echo "Checking Abs.v"

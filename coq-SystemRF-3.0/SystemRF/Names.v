@@ -171,6 +171,11 @@ Lemma subset_union_intro_r : forall (xs zs : names),
 Proof. unfold Subset; split; intros;
   apply set_union_intro; intuition. Qed.
 
+Lemma subset_union_elim_l : forall (xs ys zs : names),
+    Subset (union xs ys) zs -> Subset xs zs /\ Subset ys zs.
+Proof. unfold Subset; intros; split; intros; apply H;
+  apply set_union_intro; [left | right]; apply H0. Qed.
+  
 Lemma subset_union_assoc : forall (xs ys zs : names),
     Subset (union (union xs ys) zs) (union xs (union ys zs)) /\
     Subset (union xs (union ys zs)) (union (union xs ys) zs).

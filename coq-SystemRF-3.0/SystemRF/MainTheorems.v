@@ -425,7 +425,7 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
       unfold unbindP; simpl;
       try rewrite Hopt with t  0 0 y0;
       try rewrite Hopt with s' 0 0 y0;
-      try apply ILenSub; 
+      try apply ILenSub; try apply val_Ic;
       try apply lem_weaken_subtype_top with Star Star;
       try apply (lem_wflist_wftype Empty t ps Star);
       try apply WFEEmpty; trivial. 
@@ -707,7 +707,7 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
             try apply ITrans with 
               (PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') (FV y)))) 
                           (App (AppT (Prim Length) s') (FV y1))) PEmpty);
-            try apply ILenSub2;
+            try apply ILenSub2; try apply val_FV;
             try apply IExactLenRev with s' PEmpty;
             
             try repeat apply lem_weaken_subtype_top with Star Star;
