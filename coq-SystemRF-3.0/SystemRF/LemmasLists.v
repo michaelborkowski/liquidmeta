@@ -348,18 +348,20 @@ Proof. intros g; induction v; intros;
     try apply IExactLen with s' qs;
     try apply lem_weaken_wf_top; try apply lem_weaken_wf_top;
     try apply not_elem_names_add_intro;
+    try apply lem_fv_bound_in_env with g (TList s' qs);
     simpl; intuition;
 
     try repeat apply lem_weaken_typ_top;
     try apply TSub with (TList t ps) Star;
     try apply SList with empty; intros; try apply IFaith; 
-    try apply WFEBind with Star;
+    try repeat apply WFEBind with Star;
     try repeat apply lem_weaken_wf_top;
 
     unfold unique; simpl; try repeat split; fold unique;
     try apply not_elem_names_add_intro; try repeat split;
     try apply lem_wflist_eq_length;
-    try (apply wfenv_unique; apply H0); auto. 
+    try apply WFList with Star;
+    try (apply wfenv_unique; apply H0); auto.
 
     pose proof (fresh_var_not_elem nms g);
     set (y0 := fresh_var nms g) in H5; destruct H5;

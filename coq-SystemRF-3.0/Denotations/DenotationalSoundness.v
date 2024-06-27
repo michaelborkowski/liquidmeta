@@ -30,6 +30,7 @@ Require Import Denotations.PrimitivesDenotations.
 Require Import Denotations.SelfifyDenotations.
 
 Require Import Arith.
+Require Import ZArith.
 Require Import Lists.ListSet.
 
 (* Helper lemma requires its own induction *)
@@ -999,7 +1000,7 @@ Proof. apply ( judgments_mutind3
     try apply lem_denotesenv_uniqueC
       with (concatE (EConsT a k_a g) g');  auto.
   - (* ISub *) apply DImp; intros th Hden Hps;
-    inversion H0; 
+    inversion H0;
     apply lem_add_var_denote_env with g g' x v_x t_x th 
       in Hden as Hth';
     try destruct Hth' as [th' [den_env_th' [Hcs [Hcs' Hcs'']]]];
@@ -1046,6 +1047,39 @@ Proof. apply ( judgments_mutind3
     try apply lem_denotesenv_substitutable with g; simpl; trivial.
 
   - (* ILenSub *) apply DImp; intros th den_g_th.
+    apply lem_csubst_value with th e in i;
+    try apply lem_denotesenv_substitutable with g; trivial.
+    repeat rewrite lem_cpsubst_pcons;
+    unfold eq; unfold length;
+    repeat rewrite lem_csubst_app;
+    repeat rewrite lem_csubst_appT;
+    repeat rewrite lem_csubst_prim; intros.
+    try apply PECons; inversion H0; try apply H4; subst p ps0.
+    inversion H3; subst e1 e3.    
+    (* investigate e2 *)
+    inversion H1; try inversion H7; subst e0 e1 e2; clear H9.
+    inversion H8; try apply lem_value_stuck in H9; try apply val_Prm;
+                  try apply lem_value_stuck in H10; try apply i;
+                  try contradiction.
+    assert (isValue e') by (subst e'; apply lem_delta_value).
+    apply AddStep
+      with (App e' (App (AppT (Prim Length) (ctsubst th t)) (csubst th (FV y))));
+    try apply EApp1; try apply H8.
+    (* investigate e' *)
+    inversion H2; subst e1 e3;
+    inversion H11; try (inversion H16; contradiction);
+                   try apply lem_value_stuck in H16; try apply H10;
+                   try contradiction; subst v e0.
+    inversion H17; try apply lem_value_stuck in H19; try apply val_Len;
+                   try apply lem_value_stuck in H20;
+                   try apply lem_csubst_value; try apply val_FV;
+                   try apply lem_denotesenv_substitutable with g;
+                   trivial; try contradiction.
+    apply AddStep with (App e' e'0); try (subst e2; apply H12);
+    apply EApp2; try apply H15; subst e'0; apply EPrimM; apply H20.
+  - (* ILenSub2 *) apply DImp; intros th den_g_th.
+    apply lem_csubst_value with th e in i;
+    try apply lem_denotesenv_substitutable with g; trivial.
     repeat rewrite lem_cpsubst_pcons;
     unfold eq; unfold length;
     repeat rewrite lem_csubst_app;
@@ -1055,29 +1089,81 @@ Proof. apply ( judgments_mutind3
     inversion H3; subst e1 e3.    
     (* investigate e2 *)
     inversion H1;  try inversion H7; subst e0 e1 e2; clear H9.
-    inversion H8;  try apply lem_value_stuck in H9;
-                   try apply val_Prm; try contradiction;
+    inversion H8;  try (inversion H9; contradiction).
+    inversion H10; try (inversion H14; contradiction).
+    inversion H15; try apply lem_value_stuck in H19; try apply val_Len;
+                   try apply lem_value_stuck in H20; try apply i;
+                   try contradiction.
+    assert (isList (csubst th e)) as the_lis
+      by (apply lem_compatM_list with Length; apply pf).
+    subst v0 e'0 e' e1 c t0 w.
+    (* evaluate LHS of goal down to a value *)           
+    pose proof (lemma_length_list_semantics (ctsubst th s) 
+                  (csubst th e) i the_lis) as ev_lens_the_n.
+    destruct ev_lens_the_n as [n ev_lens_the_n].
+    assert (EvalsTo e'1 (Ic n)) as ev_e'1_n
+      by (apply lem_decompose_evals with 
+          (App (AppT (Prim Length) (ctsubst th s)) (csubst th e));
+          try apply ev_lens_the_n; try apply val_Ic; 
+          try apply lem_step_evals; apply H15).
     apply AddStep
-      with (App e' (App (AppT (Prim Length) (ctsubst th t)) (csubst th (FV y))));
-    try apply EApp1; try apply H8; try clear H10.
-    (* investigate e' *)
-    inversion H2; subst v e0 e1 e3 || subst e1 e3.
-    inversion H10; try (inversion H15; contradiction).
-
-
-    assert (isCompatT Eql (ctsubst th (TRefn b ps))) as pf'
-      by (inversion pf; 
-          (apply isCptT_EqlB; rewrite <- H20) || 
-              (apply isCptT_EqlZ; rewrite <- H20);
-          apply lem_erase_ctsubst;
-          try apply lem_denotesenv_substitutable with g; auto). 
-    pose proof (deltaT_exchange_type Eql (ctsubst th (TRefn b PEmpty)) 
-                                         (ctsubst th (TRefn b ps)) pf pf');
-    rewrite H20; try apply lem_erase_ctsubst;
-    try apply EPrimT; try apply lem_ctsubst_noExists;
-    try apply lem_denotesenv_substitutable with g; simpl; trivial.
-
-
+      with (App (App (Prim Eq) (App (Prim Succ) e'1)) 
+                (App (AppT (Prim Length) (ctsubst th t)) (csubst th (FV y))));
+    try apply EApp1; try apply EApp2; try apply EApp2;
+    try apply val_Prm; try (subst e'1; apply EPrimM); try apply i.
+    apply lemma_evals_trans with 
+      (App (App (Prim Eq) (Ic (1 + n)))
+           (App (AppT (Prim Length) (ctsubst th t)) (csubst th (FV y))));
+    try apply lemma_app_many; try apply lemma_app_many2;
+    try apply val_Prm; try apply lemma_succ_semantics; try apply ev_e'1_n.
+    apply AddStep
+      with (App (Prim (Eqn (1 + n))) 
+                (App (AppT (Prim Length) (ctsubst th t)) (csubst th (FV y))));
+    try apply EApp1; try apply lem_step_eq.
+    (* evaluate LHS of H2 down to a value *)  
+    assert (EvalsTo (App (App (Prim Eq) (App (Prim Succ) e'1)) 
+                         (App (AppT (Prim Length) (ctsubst th s)) (csubst th (FV y))))
+                    (App (Prim (Eqn (1 + n))) 
+                         (App (AppT (Prim Length) (ctsubst th s)) (csubst th (FV y))))
+      ) as H2'
+      by (apply lemma_app_many; 
+          apply lemma_evals_trans with (App (Prim Eq) (Ic (1+n)));
+          try apply lemma_app_many2; try apply val_Prm;
+          try apply lemma_succ_semantics; try apply ev_e'1_n;
+          apply lem_step_evals; apply lem_step_eq).
+    apply (lem_decompose_evals 
+                    (App (App (Prim Eq) (App (Prim Succ) e'1)) 
+                         (App (AppT (Prim Length) (ctsubst th s)) (csubst th (FV y))))
+                    (App (Prim (Eqn (1 + n))) 
+                         (App (AppT (Prim Length) (ctsubst th s)) (csubst th (FV y))))
+                    (Bc true) (val_Bc true) H2') in H2.
+    (* now work on the RHS *)
+    inversion H2; (* as e1 ~> e2 ~>...~> true *) set (m:=(1+n)%Z) in *.
+    (* investigate e2; prove th(y) is a value and a list *)
+    assert (isValue (csubst th (FV y))) as valy
+      by (apply lem_csubst_value; try apply val_FV;
+          apply lem_denotesenv_substitutable with g; apply den_g_th).
+    inversion H9;  try (inversion H21; contradiction).
+    inversion H22; try apply lem_value_stuck in H26; try apply val_Len;
+                   try apply lem_value_stuck in H27; try apply valy;
+                   try contradiction.
+    assert (isList (csubst th (FV y))) as the_lis'
+      by (apply lem_compatM_list with Length; apply pf0).
+    subst v0 e3 c t0 w.
+    (* evaluate RHS of goal down to a value *)   
+    pose proof (lemma_length_list_semantics (ctsubst th s) 
+                  (csubst th (FV y)) valy the_lis') as ev_lens_thy_n'.
+    destruct ev_lens_thy_n' as [n' ev_lens_thy_n'].
+    assert (EvalsTo e' (Ic n')) as ev_e'_n'
+      by (apply lem_decompose_evals with 
+          (App (AppT (Prim Length) (ctsubst th s)) (csubst th (FV y)));
+          try apply ev_lens_thy_n'; try apply val_Ic; 
+          try apply lem_step_evals; trivial).
+    apply AddStep with (App (Prim (Eqn m)) e');
+    try apply EApp2; try apply val_Prm;
+    try (subst e'; apply EPrimM); try apply valy.
+    (* H11 now matches goal *)  
+    subst e2; apply H11.
   - (* IStren *) apply DImp; intros; inversion H.
     rewrite lem_cpsubst_strengthen;
     rewrite lem_cpsubst_strengthen in H1.
@@ -1131,7 +1217,7 @@ Proof. apply ( judgments_mutind3
     try apply lem_decompose_evals with (csubst th p);
     try apply lem_denotesenv_loc_closed with g;
     try apply lem_denotesenv_substitutable with g; 
-    simpl; auto.
+    try apply val_Bc; simpl; auto.
   - (* IEvals2 *) apply DImp; intros;
     rewrite lem_cpsubst_pcons in H0;
     rewrite lem_cpsubst_pcons; inversion H0;
@@ -1140,4 +1226,45 @@ Proof. apply ( judgments_mutind3
     try apply lemma_evals_trans with (csubst th p);
     try apply lem_denotesenv_loc_closed with g;
     try apply lem_denotesenv_substitutable with g; auto.
+  - (* IExactQ *) apply DImp; intros.
+    apply lem_bound_in_denotesenv_denotes 
+      with x (self t_x v_x Base) g th in H0 as H'; trivial;
+    destruct H' as [v [den_v b']].
+    apply lem_denotes_self_ctsubst in den_v;
+    try apply lem_denotes_self_equal in den_v.
+    (* Lemma lem_bound_in_denotesenv_denotes :
+        forall (x:vname) (t:type) (g:env) (th:csub),
+          DenotesEnv g th -> bound_in x t g -> WFEnv g
+              -> exists v, Denotes (ctsubst th t) v /\ bound_inC x v th. *)
+    (* Lemma lem_denotes_ctsubst_self : 
+        forall (th:csub) (t:type) (v v':expr) (k:kind),
+          closed th -> loc_closed th -> substitutable th -> uniqueC th 
+              -> isLC v -> ftv v = empty
+              -> Denotes (self (ctsubst th t) (csubst th v) k) v'
+              -> Denotes (ctsubst th (self t v k)) v'. *)
+    (* Lemma lem_denotes_self_equal : forall (t:type) (v v':expr),
+        WFtype Empty t Base -> noExists t
+            -> isValue v -> HasFtype FEmpty v (erase t)
+            -> Denotes (self t v Base) v' -> v = v'. *)
+    try rewrite lem_remove_cpsubst with th x (psubFV x v_x ps).
+    try rewrite <- lem_cpsubst_psubFV;
+    try rewrite <- lem_remove_csubst with th x v_x;
+    try rewrite den_v;
+    try rewrite <- lem_reorder_unroll_cpsubst;
+    
+    (*try apply lem_denotesenv_closed with g;
+    try apply lem_denotesenv_substitutable with g;
+    try apply lem_denotesenv_uniqueC with g;*)
+    try apply lem_boundinC_incsubst with v;
+    trivial.
+
+    pose bound_
+
+
+    (* Lemma lem_denotes_self_eqlLen : forall (t:type) (ps:preds) (v v':expr),
+          WFtype Empty (TList t ps) Star 
+              -> isValue v -> HasFtype FEmpty v (FTList (erase t))
+              -> Denotes (TList t (PCons (eqlLenPred t v) ps)) v' 
+              -> exists n:Z, EvalsTo (length t v) (Ic n)
+                              /\ EvalsTo (length t v') (Ic n). *)
   Qed.

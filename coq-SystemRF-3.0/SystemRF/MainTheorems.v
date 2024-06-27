@@ -693,7 +693,7 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
             try rewrite Hexact0;
             try apply IExactLen with s' PEmpty;
 
-             try assert (y =? y1 = false) 
+            try assert (y =? y1 = false) 
               as Hnyeq by (apply Nat.eqb_neq; symmetry; trivial);
             try assert (
               PCons (App (App (Prim Eq) (App (Prim Succ) (App (AppT (Prim Length) s') v2))) 
@@ -726,6 +726,7 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
 
             try rewrite Hersub; unfold in_env;
             try apply not_elem_names_add_intro; (*try split;*)
+            try apply lem_fv_bound_in_env with Empty (TList s' PEmpty);
             try apply WFEEmpty; simpl; (*try split;*)
             try apply Hwke with 0 0;
             try apply Hwkt with 0 0; intuition).

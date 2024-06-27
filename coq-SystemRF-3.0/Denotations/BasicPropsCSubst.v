@@ -1150,6 +1150,48 @@ Proof. induction th; unfold in_csubst; simpl; intros;
   destruct H; apply Nat.eqb_neq in H; rewrite H;
   f_equal; apply IHth; trivial. Qed.
 
+Lemma lem_remove_csubst : forall (th:csub) (x:vname) (e:expr),
+    Elem x (bindsC th) -> ~ Elem x (fv e) -> ~ Elem x (ftv e)
+        -> closed th -> uniqueC th -> substitutable th
+        -> csubst th e = csubst (remove_fromCS th x) e.
+Proof. induction th; intros; simpl.
+  - (* CEmpty *) reflexivity.
+  - (* CCons  *) destruct (x0 =? x) eqn:X.
+    * apply Nat.eqb_eq in X; subst x0; 
+      rewrite lem_subFV_notin'; trivial.
+    * simpl; apply IHth; simpl in H;
+      apply set_add_elim in H; destruct H;
+      try (apply Nat.eqb_neq in X; contradiction);
+      simpl in *; destruct H2 as [H2 [H2' Hcl]];
+      destruct H3; destruct H4;
+      pose proof fv_subFV_elim as [H' _];
+      pose proof ftv_subFV_elim as [H'' _]; 
+      unfold not; intros;
+      try apply H' in H7; try apply H'' in H7;
+      try rewrite H2 in H7; try rewrite H2' in H7;
+      try revert H7;
+      try apply not_elem_union_intro; unfold not; intros;
+      try apply (set_diff_elim1 Nat.eq_dec) in H7; 
+      try contradiction; auto.
+  - (* CConsT *) destruct (x =? a) eqn:X.
+    * apply Nat.eqb_eq in X; subst a; 
+      rewrite lem_subFTV_notin'; trivial.
+    * simpl; apply IHth; simpl in H;
+      apply set_add_elim in H; destruct H;
+      try (apply Nat.eqb_neq in X; contradiction);
+      simpl in *; destruct H2 as [H2 [H2' Hcl]];
+      destruct H3; destruct H4; destruct H6;
+      pose proof fv_subFTV_elim as [H' _];
+      pose proof ftv_subFTV_elim as [H'' _]; 
+      unfold not; intros;
+      try apply H' in H8; try apply H'' in H8;
+      try rewrite H2 in H8; try rewrite H2' in H8;
+      try revert H8;
+      try apply not_elem_union_intro; unfold not; intros;
+      try apply (set_diff_elim1 Nat.eq_dec) in H8; 
+      try contradiction; auto.
+  Qed.
+    
 Lemma lem_remove_ctsubst : forall (th:csub) (x:vname) (t:type),
     Elem x (bindsC th) -> ~ Elem x (free t) -> ~ Elem x (freeTV t)
         -> closed th -> uniqueC th -> substitutable th
@@ -1234,3 +1276,34 @@ Proof. induction th; intros; simpl.
       try contradiction; auto.
   Qed.
     
+Lemma lem_reorder_unroll_cpsubst : forall (th:csub) (x:vname) (v_x:expr) (ps:preds),
+    bound_inC x v_x th (*-> fv v_x = empty /\ ftv v_x = empty *)
+        -> closed th -> substitutable th -> uniqueC th
+        -> cpsubst th ps = cpsubst (remove_fromCS th x) (psubFV x v_x ps).
+Proof. induction th; intros; try contradiction.
+  - (* CCons x0 v_x0 th *) destruct (x0 =? x) eqn:X.
+    * (* x0 = x *) destruct H; simpl in H2; destruct H2;
+      try ( apply lem_boundinC_incsubst in H;
+            apply Nat.eqb_eq in X; subst x0; contradiction );
+      simpl; rewrite X; destruct H; subst x0 v_x0; reflexivity.
+    * (* x0 <> x *) destruct H; 
+      try ( destruct H; apply Nat.eqb_neq in X; apply X in H;
+            contradiction );
+      simpl; rewrite X; simpl; rewrite lem_commute_psubFV;
+      try apply IHth; simpl in H0; simpl in H1; simpl in H2;
+      destruct H0; destruct H1; destruct H2; destruct H3;
+      apply Nat.eqb_neq in X; try apply Nat.neq_sym;
+      try apply empty_no_elem; trivial.
+      apply lem_boundinC_closed in H; try destruct H; trivial.
+  - (* CConsT *) destruct (x =? a) eqn:X;
+    simpl in H; apply lem_boundinC_incsubst in H as H';
+    simpl in H2; destruct H2; 
+    try apply Nat.eqb_eq in X; try subst a;
+    try apply H2 in H'; try contradiction;
+    simpl; rewrite X; simpl;
+    rewrite <- lem_commute_psubFV_psubFTV; try apply IHth;
+    simpl in H0; destruct H0; destruct H4;
+    simpl in H1; destruct H1; destruct H6;
+    apply lem_boundinC_closed in H as H''; try destruct H''; 
+    try apply empty_no_elem; trivial.
+  Qed.       

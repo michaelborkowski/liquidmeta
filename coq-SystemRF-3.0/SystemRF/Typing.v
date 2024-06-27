@@ -320,18 +320,22 @@ with Implies : env -> preds -> preds -> Prop :=
           EvalsTo p' p -> Implies g (PCons p ps) (PCons p' ps)
       (* If x : self(T, e) ∈ Γ then Γ |- ps ⇒ ps[x |-> e] *)
     | IExactQ : forall (g:env) (x:vname) (v_x:expr) (t_x:type) (ps:preds),
-          isValue v_x -> Hastype g v_x t_x -> WFtype g t_x Base
-                      -> bound_in x (self t_x v_x Base) g
+          isValue v_x -> Hastype g v_x t_x 
+                      -> ~ Elem x (fv v_x) -> ~ Elem x (ftv v_x)
+                      -> WFtype g t_x Base -> WFEnv g
+                      -> bound_in x (self t_x v_x Base) g -> noExists t_x
                       -> Implies g ps (psubFV x v_x ps)
     | IExactLen: forall (g:env) (x:vname) (v:expr) (t:type) (ps qs:preds),
           isValue v -> Hastype g v (TList t ps) 
-                    -> WFtype g (TList t ps) Star
+                    -> ~ Elem x (fv v) -> ~ Elem x (ftv v)
+                    -> WFtype g (TList t ps) Star -> WFEnv g
                     -> bound_in x (TList t (PCons (eqlLenPred t v) ps)) g
                     -> safeListVarUseP x qs
                     -> Implies g qs (psubFV x v qs)
     | IExactLenRev: forall (g:env) (x:vname) (v:expr) (t:type) (ps qs:preds),
           isValue v -> Hastype g v (TList t ps) 
-                    -> WFtype g (TList t ps) Star
+                    -> ~ Elem x (fv v)  -> ~ Elem x (ftv v)
+                    -> WFtype g (TList t ps) Star -> WFEnv g
                     -> bound_in x (TList t (PCons (eqlLenPred t v) ps)) g
                     -> safeListVarUseP x qs
                     -> Implies g (psubFV x v qs) qs.

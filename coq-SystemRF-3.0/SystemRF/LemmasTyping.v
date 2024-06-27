@@ -214,6 +214,14 @@ Lemma lem_fv_subset_binds : forall (g:env) (e:expr) (t:type),
 Proof. intros; rewrite vbinds_erase_env; rewrite tvbinds_erase_env;
   apply lem_fv_subset_bindsF with (erase t); apply lem_typing_hasftype; assumption. Qed.
 
+Lemma lem_fv_bound_in_env : forall (g : env) (e : expr) (t : type) (x : vname),
+    Hastype g e t -> WFEnv g -> ~ (in_env x g)
+        -> ~ Elem x (fv e) /\ ~ Elem x (ftv e).
+Proof. intros; unfold in_env in H1;
+  pose proof (vbinds_subset g) as Hv;
+  pose proof (tvbinds_subset g) as Htv;
+  apply lem_fv_subset_binds in H; intuition. Qed.
+
 Lemma lem_typ_islc : forall (g:env) (e:expr) (t:type),
     Hastype g e t -> WFEnv g -> isLC e.
 Proof. intros; apply lem_ftyp_islc with (erase_env g) (erase t); 

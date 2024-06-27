@@ -511,6 +511,7 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
       by (unfold psubFV; rewrite y_eqb; rewrite y_neqb; reflexivity);
     try rewrite Hpreds;
     try apply IExactQ with (TRefn TInt PEmpty);
+    try repeat apply WFEBind with Star;
     try apply TSub with (tyic n') Base; try apply TIC;
     unfold tyic; simpl; unfold eqlPred; simpl;
     try (apply SBase with (names_add y0 (singleton y));

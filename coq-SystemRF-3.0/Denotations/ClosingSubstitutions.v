@@ -75,6 +75,12 @@ Fixpoint bound_inC (x : vname) (v_x : expr) (th : csub) : Prop :=
     | (CConsT a t_a th)  => bound_inC x v_x th
     end.
 
+Lemma lem_boundinC_incsubst: forall (x:vname) (v_x:expr) (th:csub),
+    bound_inC x v_x th -> in_csubst x th.
+Proof. intros. induction th; simpl in H; simpl; try contradiction;
+  try (apply set_add_intro); try (destruct H); try (apply IHg in H); intuition. 
+Qed.
+
 Fixpoint tv_bound_inC (a : vname) (t_a : type) (th : csub) : Prop :=
     match th with
     | CEmpty               => False
@@ -94,6 +100,14 @@ Fixpoint closed (th0 : csub) : Prop :=
     | (CCons  x v_x th) => fv v_x = empty /\ ftv v_x = empty /\ closed th
     | (CConsT a t   th) => free t = empty /\ freeTV t = empty /\ closed th
     end.  
+
+Lemma lem_boundinC_closed: forall (x:vname) (v_x:expr) (th:csub),
+    bound_inC x v_x th -> closed th -> fv v_x = empty /\ ftv v_x = empty.
+Proof. intros. induction th; simpl in H; simpl; try contradiction;
+  simpl in H0; destruct H0; destruct H1.
+  - destruct H; try (destruct H; subst v_x0); intuition. 
+  - apply IHth; auto.
+Qed.
 
 Fixpoint loc_closed (th0 : csub) : Prop :=
     match th0 with
