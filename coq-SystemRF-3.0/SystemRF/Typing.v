@@ -126,6 +126,28 @@ Definition isAppTLength (e : expr) : Prop :=
     | _              => False
     end.
 
+(* This is to establish a restriction on which predicates the
+    implication rule I-ExactLen and I-ExactLenRev below will
+    apply to. Basically, we want to guarantee that e[x/v] and 
+    e[x/v'] evaluate to the same thing whenver len v == len v'. 
+  
+  To make this simpler for the handful of application of these
+    rules in the metatheory (or any examples), we don't allow
+    (FV x) to appear def'ns Lambda or LambdaT (b/c we can't 
+    evaluate under a binder) and don't allow the refinements
+    within the predicate to be non-trivial at all except 
+    possibly the types t that appear
+    as (AppT (Prim Length) t). *)
+
+Fixpoint safeListVarUseT (x : vname) (t0 : type) : Prop := 
+    match t0 with
+    | (TRefn   b  rs) => ~ Elem x (fvP rs)
+    | (TFunc   t_x t) => safeListVarUseT x t_x /\ safeListVarUseT x t
+    | (TExists t_x t) => safeListVarUseT x t_x /\ safeListVarUseT x t
+    | (TPoly   k   t) =>                          safeListVarUseT x t
+    | (TList    t ps) => safeListVarUseT x t   /\ ~ Elem x (fvP ps)
+    end.
+
 Fixpoint safeListVarUseE (x:vname) (e : expr) : Prop  :=
     match e with
     | (Bc _)         => True
@@ -133,13 +155,13 @@ Fixpoint safeListVarUseE (x:vname) (e : expr) : Prop  :=
     | (Prim _)       => True
     | (BV i)         => True
     | (FV y)         => x <> y
-    | (Lambda e')    => safeListVarUseE x e'
+    | (Lambda e')    => ~ Elem x (fv e') (*safeListVarUseE x e'*)
     | (App e1 e2)    => (isAppTLength e1 /\ e2 = (FV x))
+                          \/ (isAppTLength e1 /\ safeListVarUseE x e2)
                           \/ (safeListVarUseE x e1 /\ safeListVarUseE x e2)
-    | (LambdaT k e') => safeListVarUseE x e'
-    | (AppT e' t)    => (e' = Prim Length) (* then we don't use t *)
-                          \/ (safeListVarUseE x e' /\ safeListVarUseT x t)
-    | (Let ex e')    => safeListVarUseE x ex /\ safeListVarUseE x e'  
+    | (LambdaT k e') => ~ Elem x (fv e')  (*safeListVarUseE x e'*)
+    | (AppT e' t)    => safeListVarUseE x e' /\ safeListVarUseT x t
+    | (Let ex e')    => safeListVarUseE x ex /\ ~ Elem x (fv e') (* safeListVarUseE x e' *)
     | (Annot e' t)   => safeListVarUseE x e' /\ safeListVarUseT x t
     | (If e0 e1 e2)  => safeListVarUseE x e0 /\ safeListVarUseE x e1 
                                              /\ safeListVarUseE x e2
@@ -148,18 +170,9 @@ Fixpoint safeListVarUseE (x:vname) (e : expr) : Prop  :=
     | (Switch e eN eC) => safeListVarUseE x e /\ safeListVarUseE x eN  
                                               /\ safeListVarUseE x eC
     | Error          => True
-    end
+    end.
 
-with safeListVarUseT (x : vname) (t0 : type) : Prop := 
-    match t0 with
-    | (TRefn   b  rs) => safeListVarUseP x rs
-    | (TFunc   t_x t) => safeListVarUseT x t_x /\ safeListVarUseT x t
-    | (TExists t_x t) => safeListVarUseT x t_x /\ safeListVarUseT x t
-    | (TPoly   k   t) =>                          safeListVarUseT x t
-    | (TList    t ps) => safeListVarUseT x t   /\ safeListVarUseP x ps
-    end
-
-with safeListVarUseP (x : vname) (ps0 : preds) : Prop := 
+Fixpoint safeListVarUseP (x : vname) (ps0 : preds) : Prop := 
     match ps0 with
     | PEmpty       => True
     | (PCons p ps) => safeListVarUseE x p /\ safeListVarUseP x ps
@@ -322,7 +335,7 @@ with Implies : env -> preds -> preds -> Prop :=
     | IExactQ : forall (g:env) (x:vname) (v_x:expr) (t_x:type) (ps:preds),
           isValue v_x -> Hastype g v_x t_x 
                       -> ~ Elem x (fv v_x) -> ~ Elem x (ftv v_x)
-                      -> WFtype g t_x Base -> WFEnv g
+                      -> WFtype g t_x Base -> WFEnv g -> ~ Elem x (ftvP ps)
                       -> bound_in x (self t_x v_x Base) g -> noExists t_x
                       -> Implies g ps (psubFV x v_x ps)
     | IExactLen: forall (g:env) (x:vname) (v:expr) (t:type) (ps qs:preds),
@@ -330,14 +343,14 @@ with Implies : env -> preds -> preds -> Prop :=
                     -> ~ Elem x (fv v) -> ~ Elem x (ftv v)
                     -> WFtype g (TList t ps) Star -> WFEnv g
                     -> bound_in x (TList t (PCons (eqlLenPred t v) ps)) g
-                    -> safeListVarUseP x qs
+                    -> safeListVarUseP x qs -> ~ Elem x (ftvP qs)
                     -> Implies g qs (psubFV x v qs)
     | IExactLenRev: forall (g:env) (x:vname) (v:expr) (t:type) (ps qs:preds),
           isValue v -> Hastype g v (TList t ps) 
                     -> ~ Elem x (fv v)  -> ~ Elem x (ftv v)
                     -> WFtype g (TList t ps) Star -> WFEnv g
                     -> bound_in x (TList t (PCons (eqlLenPred t v) ps)) g
-                    -> safeListVarUseP x qs
+                    -> safeListVarUseP x qs -> ~ Elem x (ftvP qs)
                     -> Implies g (psubFV x v qs) qs.
 
 

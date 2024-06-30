@@ -147,3 +147,221 @@ Proof. intros th p q H1 H2 Hpq; induction Hpq.
   - apply Refl.
   - apply AddStep with (csubst th e2); try apply lem_csubst_step;
     assumption. Qed.
+
+Lemma lem_app_evals_val' : forall (e v:expr),
+  EvalsTo e v -> (forall e1 e2, e = App e1 e2 -> isValue v -> 
+    exists (v1 v2:expr), isValue v1 /\ isValue v2
+                   /\ EvalsTo e1 v1 /\ EvalsTo e2 v2).
+Proof. apply ( EvalsTo_ind 
+  (fun (e v : expr) => forall (e1 e2 : expr),
+      e = App e1 e2 -> isValue v -> 
+          exists (v1 v2:expr), isValue v1 /\ isValue v2
+                         /\ EvalsTo e1 v1 /\ EvalsTo e2 v2));
+  [intros | intros e e' v st_ee' ev_e'v IH e1 e2]; intros.
+  - (* Refl *) subst e; inversion H0.
+  - (* AddStep *) subst e; inversion st_ee'.
+    * (* EPrim *) exists e1, e2; repeat split; subst e1;
+      try apply val_Prm; try apply Refl; trivial.
+    * (* EApp1 *) symmetry in H1; apply IH in H1; try apply H0.
+      destruct H1 as [v1 [v2 [val1 [val2 [ev_e'0_v1 ev_e2_v2]]]]];
+      exists v1, v2; repeat split; try assumption;
+      try apply AddStep with e'0;  trivial.
+    * (* EApp2 *) exists e1; symmetry in H3; apply IH in H3;
+      try apply H0; destruct H3 as [_ [v2 [_ [val2 [_ ev_e'0_v2]]]]].
+      exists v2; repeat split; try apply Refl;
+      try apply AddStep with e'0; trivial.
+    * (* EAppAbs *) exists (Lambda e), e2; repeat split;
+      try apply val_Lam; try apply Refl; trivial.
+    * (* EPrimM *) exists e1, e2; repeat split; subst e1;
+      try apply Refl; try apply H3; inversion pf; subst c;
+      try apply val_Len.
+  Qed.
+
+Lemma lem_app_evals_val : forall (e1 e2 v:expr),
+  EvalsTo (App e1 e2) v -> isValue v -> 
+    exists (v1 v2:expr), isValue v1 /\ isValue v2
+                   /\ EvalsTo e1 v1 /\ EvalsTo e2 v2.
+Proof. intros; apply lem_app_evals_val' with (App e1 e2) v; trivial. Qed.
+
+Lemma lem_appT_evals_val' : forall (e v:expr),
+  EvalsTo e v -> (forall (e':expr) (t:type), 
+    e = AppT e' t -> isValue v -> 
+        exists (v':expr), isValue v' /\ EvalsTo e' v').
+Proof. apply ( EvalsTo_ind 
+  (fun (e v : expr) => forall (e' : expr) (t : type),
+      e = AppT e' t -> isValue v -> 
+        exists (v':expr), isValue v' /\ EvalsTo e' v'));
+  [intros | intros e e1 v st_ee1 ev_e1v IH e' t]; intros.
+  - (* Refl *) subst e; inversion H0;
+    exists e'; split; subst e'; try apply Refl; apply val_Prm.
+  - (* AddStep *) subst e; inversion st_ee1.
+    * (* EPrimT *) exists e'; repeat split; subst e';
+      try apply val_Prm; try apply Refl; trivial.
+    * (* EAppT *) symmetry in H3; apply IH in H3; try apply H0.
+      destruct H3 as [v' [val' ev_e'0_v']];
+      exists v'; split; try assumption;
+      try apply AddStep with e'0;  trivial.
+    * (* EAppTAbs *) exists (LambdaT k e); split;
+      try apply val_LamT; try apply Refl; trivial.
+  Qed.
+
+Lemma lem_appT_evals_val : forall (e' v:expr) (t : type),
+  EvalsTo (AppT e' t) v -> isValue v -> 
+    exists (v':expr), isValue v' /\ EvalsTo e' v'.
+Proof. intros; apply lem_appT_evals_val' with (AppT e' t) v t; trivial. Qed.
+
+Lemma lem_let_evals_val' : forall (e v:expr),
+  EvalsTo e v -> (forall e1 e2, e = Let e1 e2 -> isValue v -> 
+    exists (v1 : expr), isValue v1 
+                   /\ EvalsTo e1 v1 /\ EvalsTo (subBV v1 e2) v).
+Proof. apply ( EvalsTo_ind 
+  (fun (e v : expr) => forall (e1 e2 : expr),
+      e = Let e1 e2 -> isValue v -> 
+          exists (v1 : expr), isValue v1 
+                   /\ EvalsTo e1 v1 /\ EvalsTo (subBV v1 e2) v));
+  [intros | intros e e' v st_ee' ev_e'v IH e1 e2]; intros.
+  - (* Refl *) subst e; inversion H0.
+  - (* AddStep *) subst e; inversion st_ee'.
+    * (* ELet *) symmetry in H1; apply IH in H1; try apply H0.
+      subst e_x e; destruct H1 as [v1 [val1 [ev_ex'_v1 ev_e2v1_v]]];
+      exists v1; repeat split; try assumption;
+      try apply AddStep with e_x';  trivial.
+    * (* ELetV *) exists e1; repeat split; try assumption;
+      try apply Refl; subst e'; trivial.
+  Qed.
+
+Lemma lem_let_evals_val : forall (e1 e2 v:expr),
+  EvalsTo (Let e1 e2) v -> isValue v -> 
+    exists (v1 : expr), isValue v1 
+                   /\ EvalsTo e1 v1 /\ EvalsTo (subBV v1 e2) v.
+Proof. intros; apply lem_let_evals_val' with (Let e1 e2); trivial. Qed.
+
+Lemma lem_ann_evals_val' : forall (e v:expr),
+  EvalsTo e v -> (forall (e':expr) (t:type), 
+    e = Annot e' t -> isValue v -> 
+        exists (v':expr), isValue v' /\ EvalsTo e' v').
+Proof. apply ( EvalsTo_ind 
+  (fun (e v : expr) => forall (e' : expr) (t : type),
+      e = Annot e' t -> isValue v -> 
+        exists (v':expr), isValue v' /\ EvalsTo e' v'));
+  [intros | intros e e1 v st_ee1 ev_e1v IH e' t]; intros.
+  - (* Refl *) subst e; inversion H0;
+    exists e'; split; subst e'; try apply Refl; apply val_Prm.
+  - (* AddStep *) subst e; inversion st_ee1.
+    * (* EAnn *) symmetry in H1; apply IH in H1; try apply H0.
+      destruct H1 as [v' [val' ev_e'0_v']];
+      exists v'; split; try assumption;
+      try apply AddStep with e'0;  trivial.
+    * (* EAnnV *) exists e1; split; try apply Refl; trivial.
+  Qed.
+
+Lemma lem_ann_evals_val : forall (e' v:expr) (t : type),
+  EvalsTo (Annot e' t) v -> isValue v -> 
+    exists (v':expr), isValue v' /\ EvalsTo e' v'.
+Proof. intros; apply lem_ann_evals_val' with (Annot e' t) v t; trivial. Qed.
+
+Lemma lem_if_evals_val' : forall (e v:expr),
+  EvalsTo e v -> (forall e0 e1 e2, e = If e0 e1 e2 -> isValue v -> 
+    exists (v':expr), isValue v'
+                /\ (   (EvalsTo e0 (Bc true)  /\ EvalsTo e1 v')
+                    \/ (EvalsTo e0 (Bc false) /\ EvalsTo e2 v'))).
+Proof. apply ( EvalsTo_ind 
+  (fun (e v : expr) => forall (e0 e1 e2 : expr),
+      e = If e0 e1 e2 -> isValue v -> 
+        exists (v':expr), isValue v'
+                /\ (   (EvalsTo e0 (Bc true)  /\ EvalsTo e1 v')
+                    \/ (EvalsTo e0 (Bc false) /\ EvalsTo e2 v'))));
+  [intros | intros e e' v st_ee' ev_e'v IH e0 e1 e2]; intros.
+  - (* Refl *) subst e; inversion H0.
+  - (* AddStep *) subst e; inversion st_ee'.
+    * (* EIf *) symmetry in H1; apply IH in H1; try apply H0.
+      destruct H1 as [v' [val' Hif]]; 
+      destruct Hif as [[ev_e0_tt ev_e1_v'] | [ev_e0_ff ev_e2_v']].
+      exists v'; split; try left; try split; try assumption;
+      try apply AddStep with e0';  trivial.
+      exists v'; split; try right; try split; try assumption;
+      try apply AddStep with e0';  trivial.
+    * (* EIfT *) subst e0 e'; exists v; split; 
+      try left; try apply val_Bc; try split; try apply Refl; trivial.
+    * (* EIfF *) subst e0 e'; exists v; split; 
+      try right; try apply val_Bc; try split; try apply Refl; trivial.
+Qed.
+  
+Lemma lem_if_evals_val : forall (e0 e1 e2 v:expr),
+  EvalsTo (If e0 e1 e2) v -> isValue v -> 
+    exists (v':expr), isValue v'
+                /\ (   (EvalsTo e0 (Bc true)  /\ EvalsTo e1 v')
+                    \/ (EvalsTo e0 (Bc false) /\ EvalsTo e2 v')).
+Proof. intros; apply lem_if_evals_val' with (If e0 e1 e2) v; trivial. Qed.
+
+Lemma lem_cons_evals_val' : forall (e v:expr),
+  EvalsTo e v -> (forall e1 e2, e = Cons e1 e2 -> isValue v -> 
+    exists (v1 v2:expr), isValue v1 /\ isValue v2
+                   /\ EvalsTo e1 v1 /\ EvalsTo e2 v2).
+Proof. apply ( EvalsTo_ind 
+  (fun (e v : expr) => forall (e1 e2 : expr),
+      e = Cons e1 e2 -> isValue v -> 
+          exists (v1 v2:expr), isValue v1 /\ isValue v2
+                         /\ EvalsTo e1 v1 /\ EvalsTo e2 v2));
+  [intros | intros e e' v st_ee' ev_e'v IH e1 e2]; intros.
+  - (* Refl *) subst e; inversion H0; exists e1, e2;
+    repeat split; try apply Refl; trivial.
+  - (* AddStep *) subst e; inversion st_ee'.
+    * (* ECons1 *) symmetry in H1; apply IH in H1; try apply H0.
+      destruct H1 as [v1 [v2 [val1 [val2 [ev_e'0_v1 ev_e2_v2]]]]];
+      exists v1, v2; repeat split; try assumption;
+      try apply AddStep with e'0;  trivial.
+    * (* ECons2 *) exists e1; symmetry in H3; apply IH in H3;
+      try apply H0; destruct H3 as [_ [v2 [_ [val2 [_ ev_e'0_v2]]]]].
+      exists v2; repeat split; try apply Refl;
+      try apply AddStep with e'0; trivial.
+  Qed.
+
+Lemma lem_cons_evals_val : forall (e1 e2 v:expr),
+  EvalsTo (Cons e1 e2) v -> isValue v -> 
+    exists (v1 v2:expr), isValue v1 /\ isValue v2
+                   /\ EvalsTo e1 v1 /\ EvalsTo e2 v2.
+Proof. intros; apply lem_cons_evals_val' with (Cons e1 e2) v; trivial. Qed.
+
+Lemma lem_switch_evals_val' : forall (e v:expr),
+  EvalsTo e v -> (forall e0 eN eC, e = Switch e0 eN eC -> isValue v -> 
+    exists (v':expr), isValue v' 
+       /\ (    (EvalsTo e0 Nil /\ EvalsTo eN v' )
+            \/ (exists (v1 v2:expr), isValue v1 /\ isValue v2 
+                        /\ EvalsTo e0 (Cons v1 v2)
+                        /\ EvalsTo (App (App eC v1) v2) v'))).
+Proof. apply ( EvalsTo_ind 
+  (fun (e v : expr) => forall e0 eN eC, 
+    e = Switch e0 eN eC -> isValue v -> 
+      exists (v':expr), isValue v' 
+       /\ (    (EvalsTo e0 Nil /\ EvalsTo eN v' )
+            \/ (exists (v1 v2:expr), isValue v1 /\ isValue v2 
+                        /\ EvalsTo e0 (Cons v1 v2)
+                        /\ EvalsTo (App (App eC v1) v2) v'))));
+  [intros | intros e e' v st_ee' ev_e'v IH e0 eN eC]; intros.
+  - (* Refl *) subst e; inversion H0.
+  - (* AddStep *) subst e; inversion st_ee'.
+    * (* ESwitch *) symmetry in H1; apply IH in H1; try apply H0.
+      destruct H1 as [v' [val' Hv']];
+      destruct Hv' 
+        as [[ev_e0_nil ev_eN_v'] | [v1 [v2 [val1 [val2 [ev_e0_cn ev_eC_v']]]]]].
+      exists v'; split; try left; try split; try assumption;
+      try apply AddStep with e'0;  trivial.
+      exists v'; split; try right; try apply val';
+      exists v1, v2; repeat split; try assumption;
+      try apply AddStep with e'0;  trivial.
+    * (* ESwitchN *) subst e0 e'; exists v; split; try left;
+      try split; try apply Refl; trivial.
+    * (* ESwitchC *) subst e0 e'; exists v; split; try right;
+      try exists v1, v2; repeat split; try apply Refl; trivial.
+Qed.
+  
+Lemma lem_switch_evals_val : forall (e0 eN eC v:expr),
+  EvalsTo (Switch e0 eN eC) v -> isValue v -> 
+    exists (v':expr), isValue v' 
+       /\ (    (EvalsTo e0 Nil /\ EvalsTo eN v' )
+            \/ (exists (v1 v2:expr), isValue v1 /\ isValue v2 
+                        /\ EvalsTo e0 (Cons v1 v2)
+                        /\ EvalsTo (App (App eC v1) v2) v')).
+Proof. intros; apply lem_switch_evals_val' with (Switch e0 eN eC) v; 
+  trivial. Qed.

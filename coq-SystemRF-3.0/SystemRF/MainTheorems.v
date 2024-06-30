@@ -630,7 +630,7 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
           *)
           (TList t (PCons (eq (App (Prim Succ) (length t (FV y))) (length t (BV 0))) ps)) 
       ) as H_ls'_tps
-        by (pose proof lem_subBV_at_lc_at as [Hsbe [Hsbt _]];
+        by ( pose proof lem_subBV_at_lc_at as [Hsbe [Hsbt _]];
             apply lem_typing_wf in p_v2_s'rs as p_s'rs; try apply WFEEmpty;
             apply lem_wftype_islct in p_s'rs; 
             unfold isLCT in p_s'rs; simpl in p_s'rs;
@@ -726,6 +726,8 @@ Proof. intros g e t e' p_e_t; revert e'; induction p_e_t;
 
             try rewrite Hersub; unfold in_env;
             try apply not_elem_names_add_intro; (*try split;*)
+            try repeat apply not_elem_union_intro;
+            fold freeTV; try apply lem_free_bound_in_env with Empty Star;
             try apply lem_fv_bound_in_env with Empty (TList s' PEmpty);
             try apply WFEEmpty; simpl; (*try split;*)
             try apply Hwke with 0 0;

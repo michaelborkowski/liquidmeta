@@ -1226,45 +1226,208 @@ Proof. apply ( judgments_mutind3
     try apply lemma_evals_trans with (csubst th p);
     try apply lem_denotesenv_loc_closed with g;
     try apply lem_denotesenv_substitutable with g; auto.
-  - (* IExactQ *) apply DImp; intros.
+  - (* IExactQ *) apply DImp; intros;
     apply lem_bound_in_denotesenv_denotes 
       with x (self t_x v_x Base) g th in H0 as H'; trivial;
     destruct H' as [v [den_v b']].
     apply lem_denotes_self_ctsubst in den_v;
-    try apply lem_denotes_self_equal in den_v.
-    (* Lemma lem_bound_in_denotesenv_denotes :
-        forall (x:vname) (t:type) (g:env) (th:csub),
-          DenotesEnv g th -> bound_in x t g -> WFEnv g
-              -> exists v, Denotes (ctsubst th t) v /\ bound_inC x v th. *)
-    (* Lemma lem_denotes_ctsubst_self : 
-        forall (th:csub) (t:type) (v v':expr) (k:kind),
-          closed th -> loc_closed th -> substitutable th -> uniqueC th 
-              -> isLC v -> ftv v = empty
-              -> Denotes (self (ctsubst th t) (csubst th v) k) v'
-              -> Denotes (ctsubst th (self t v k)) v'. *)
-    (* Lemma lem_denotes_self_equal : forall (t:type) (v v':expr),
-        WFtype Empty t Base -> noExists t
-            -> isValue v -> HasFtype FEmpty v (erase t)
-            -> Denotes (self t v Base) v' -> v = v'. *)
-    try rewrite lem_remove_cpsubst with th x (psubFV x v_x ps).
+    try apply lem_denotes_self_equal in den_v;
+    try rewrite lem_remove_cpsubst with th x (psubFV x v_x ps);
     try rewrite <- lem_cpsubst_psubFV;
     try rewrite <- lem_remove_csubst with th x v_x;
     try rewrite den_v;
     try rewrite <- lem_reorder_unroll_cpsubst;
+    try apply lem_ctsubst_wf with g;
     
-    (*try apply lem_denotesenv_closed with g;
+    try apply lem_ctsubst_noExists;
+    try apply lem_csubst_value;
+    try apply lem_typing_hasftype in h as p_vx;
+    try apply lem_ftyp_islc in p_vx as Hlc;
+    try apply lem_csubst_hasftype with g;
+    try apply lem_erase_env_wfenv;
+
+    try apply lem_fv_subset_binds in h as Hfv;
+    try destruct Hfv as [Hfv Hftv];
+    try rewrite lem_vbinds_env_th with g th in Hfv;
+    try rewrite lem_tvbinds_env_th with g th in Hftv;
+    try apply subset_add_elim with x;
+    try ( apply subset_trans with (vbindsC th);
+          apply Hfv || apply lem_vbindsC_add_remove);
+    try ( apply subset_trans with (tvbindsC th);
+          apply Hftv || apply lem_tvbindsC_add_remove);        
+
+    try apply not_incsubst_remove_fromCS;
+    try apply lem_remove_fromCS_closed;
+    try apply lem_remove_fromCS_substitutable;
+    try apply lem_remove_fromCS_uniqueC;
+    try apply lem_denotesenv_closed with g;
+    try apply lem_denotesenv_loc_closed with g;
     try apply lem_denotesenv_substitutable with g;
-    try apply lem_denotesenv_uniqueC with g;*)
-    try apply lem_boundinC_incsubst with v;
+    try apply lem_denotesenv_unique with th;
+    try apply lem_denotesenv_uniqueC with g;
+    try apply lem_boundinC_incsubst with v;  trivial.
+    apply not_elem_subset 
+      with (union (diff (fvP ps) (singleton x)) (fv v_x));
+    try apply fv_subFV_elim; apply not_elem_union_intro;
+    try apply not_elem_diff_singleton; trivial.
+    apply not_elem_subset with (union (ftvP ps) (ftv v_x));
+    try apply ftv_subFV_elim; apply not_elem_union_intro;
     trivial.
+  - (* IExactLen *) apply DImp; intros;
+    apply lem_ctsubst_wf with g (TList t ps) Star th in w as p_thtps;
+    try rewrite lem_ctsubst_list in p_thtps;
+    try apply lem_typing_hasftype in h as p_v_ertps;
+    try apply lem_ftyp_islc in p_v_ertps as Hlc;
+    try apply lem_fv_subset_bindsF in p_v_ertps as Hfv;
+    try simpl in Hfv; try destruct Hfv as [Hfv Hftv];
+    try rewrite <- vbinds_erase_env in Hfv;
+    try rewrite <- tvbinds_erase_env in Hftv;
+    try apply lem_csubst_hasftype with g v (TList t ps) th in p_v_ertps;
+    try rewrite lem_ctsubst_list in p_v_ertps;
+    try apply lem_fv_subset_bindsF in p_v_ertps as Hfv';
+    try simpl in Hfv'; try destruct Hfv' as [Hfv' Hftv'];
+    try apply lem_erase_env_wfenv; try apply wfenv_unique;
 
-    pose bound_
+    apply lem_bound_in_denotesenv_denotes 
+      with x (TList t (PCons (eqlLenPred t v) ps)) g th in H0 as H'; 
+    trivial; destruct H' as [v' [den_v' b']].
+    apply lem_den_isvalue 
+      with v' (ctsubst th (TList t (PCons (eqlLenPred t v) ps)))  
+      in den_v' as val';
+    apply lem_denotes_eqlLen_ctsubst in den_v';
+    try apply lem_denotes_self_eqlLen in den_v' as evs;
+    try destruct evs as [m [ev_lentv ev_lentv']];
+    apply lem_reorder_unroll_cpsubst_left 
+      with th x v' qs in b' as Hth; try rewrite Hth in H1;
+    try rewrite lem_remove_cpsubst with th x (psubFV x v qs); 
+    try rewrite <- lem_cpsubst_psubFV; 
+    try rewrite <- lem_remove_csubst with th x v;
+    assert (cpsubst (remove_fromCS th x) (psubFV x (csubst th v) qs)
+              = cpsubst (CCons x (csubst th v) (remove_fromCS th x)) qs )
+      by reflexivity; try rewrite H2;
+    try rewrite lem_unroll_cpsubst_left;
 
+    try apply lem_safeListVarUseP_eqlLen with (ctsubst th t) v' m;
+    try apply lem_safeListVarUseP_csubst;
+    try apply lem_csubst_value; 
+    pose proof fv_subFV_elim as [_ [_ H']];
+    pose proof ftv_subFV_elim as [_ [_ H'']]; 
+    rewrite lem_vbinds_env_th with g th in Hfv;
+    rewrite lem_tvbinds_env_th with g th in Hftv;
+    
+    try split; 
+    try apply lem_boundinC_incsubst with v';
+    try apply not_incsubst_remove_fromCS;
+    try apply lem_remove_fromCS_closed;
+    try apply lem_remove_fromCS_substitutable;
+    try apply lem_remove_fromCS_uniqueC;
+    try apply lem_denotesenv_closed with g;
+    try apply lem_denotesenv_loc_closed with g;
+    try apply lem_denotesenv_substitutable with g;    
+    try apply lem_denotesenv_uniqueC with g;
+    try assumption;
+    try apply no_elem_empty; intros;
+    try (apply not_elem_subset with empty; auto; exact I);
+    match goal with
+    | [ |- Subset (fv v) _ ] 
+          => apply subset_trans with (diff (vbindsC th) (singleton x))
+    | [ |- Subset (ftv v) _ ] 
+          => apply subset_trans with (diff (tvbindsC th) (singleton x))
+    | _ => unfold not; intro hyp
+    end; 
+    try apply subset_add_to_diff;
+    try apply lem_vbindsC_add_remove; try apply lem_tvbindsC_add_remove;
+    try apply subset_diff_singleton;
+    try apply Hfv in hyp; try apply Hftv in hyp; simpl;
+    try apply lem_denotesenv_uniqueC with g;
+    try apply H' in hyp; try apply H'' in hyp; 
+    try apply set_union_elim in hyp; try destruct hyp as [hyp|hyp];
+    try apply set_diff_iff in hyp;
+    try apply n in hyp; try apply n0 in hyp; try apply n1 in hyp;
+    try destruct hyp as [_ hyp]; try apply hyp;
+    try apply elem_sing; trivial.
+  - (* IExactLenRev *) apply DImp; intros;
+    apply lem_ctsubst_wf with g (TList t ps) Star th in w as p_thtps;
+    try rewrite lem_ctsubst_list in p_thtps;
+    try apply lem_typing_hasftype in h as p_v_ertps;
+    try apply lem_ftyp_islc in p_v_ertps as Hlc;
+    try apply lem_fv_subset_bindsF in p_v_ertps as Hfv;
+    try simpl in Hfv; try destruct Hfv as [Hfv Hftv];
+    try rewrite <- vbinds_erase_env in Hfv;
+    try rewrite <- tvbinds_erase_env in Hftv;
+    try apply lem_csubst_hasftype with g v (TList t ps) th in p_v_ertps;
+    try rewrite lem_ctsubst_list in p_v_ertps;
+    try apply lem_fv_subset_bindsF in p_v_ertps as Hfv';
+    try simpl in Hfv'; try destruct Hfv' as [Hfv' Hftv'];
+    try apply lem_erase_env_wfenv; try apply wfenv_unique;
 
-    (* Lemma lem_denotes_self_eqlLen : forall (t:type) (ps:preds) (v v':expr),
-          WFtype Empty (TList t ps) Star 
-              -> isValue v -> HasFtype FEmpty v (FTList (erase t))
-              -> Denotes (TList t (PCons (eqlLenPred t v) ps)) v' 
-              -> exists n:Z, EvalsTo (length t v) (Ic n)
-                              /\ EvalsTo (length t v') (Ic n). *)
-  Qed.
+    apply lem_bound_in_denotesenv_denotes 
+      with x (TList t (PCons (eqlLenPred t v) ps)) g th in H0 as H'; 
+    trivial; destruct H' as [v' [den_v' b']].
+    apply lem_den_isvalue 
+      with v' (ctsubst th (TList t (PCons (eqlLenPred t v) ps)))  
+      in den_v' as val';
+    apply lem_denotes_eqlLen_ctsubst in den_v';
+    try apply lem_denotes_self_eqlLen in den_v' as evs;
+    try destruct evs as [m [ev_lentv ev_lentv']];
+    apply lem_reorder_unroll_cpsubst_left 
+      with th x v' qs in b' as Hth; try rewrite Hth; 
+    try apply lem_csubst_value; 
+    try apply lem_boundinC_incsubst with v';
+    try apply lem_denotesenv_closed with g;
+    try apply lem_denotesenv_loc_closed with g;
+    try apply lem_denotesenv_substitutable with g;    
+    try apply lem_denotesenv_uniqueC with g; try assumption;
+
+    rewrite lem_remove_cpsubst with th x (psubFV x v qs) in H1; 
+    unfold not; try intro hyp;
+    pose proof fv_subFV_elim as [_ [_ H']];
+    pose proof ftv_subFV_elim as [_ [_ H'']]; 
+    try apply H' in hyp; try apply H'' in hyp; 
+    try apply set_union_elim in hyp; try destruct hyp as [hyp|hyp];
+    try apply set_diff_iff in hyp;
+    try apply n in hyp; try apply n0 in hyp; try apply n1 in hyp;
+    try destruct hyp as [_ hyp]; try apply hyp;
+    try apply elem_sing; 
+
+    try apply lem_boundinC_incsubst with v';
+    try apply lem_denotesenv_closed with g;
+    try apply lem_denotesenv_substitutable with g;    
+    try apply lem_denotesenv_uniqueC with g; trivial.
+
+    try rewrite <- lem_cpsubst_psubFV in H1;  
+    try rewrite <- lem_remove_csubst with th x v in H1;
+    assert (cpsubst (remove_fromCS th x) (psubFV x (csubst th v) qs)
+              = cpsubst (CCons x (csubst th v) (remove_fromCS th x)) qs )
+      by reflexivity; try rewrite H2 in H1;
+    try rewrite lem_unroll_cpsubst_left in H1;
+
+    try apply lem_safeListVarUseP_eqlLen with (ctsubst th t) (csubst th v) m;
+    try apply lem_safeListVarUseP_csubst;
+    try apply lem_csubst_value;  
+    rewrite lem_vbinds_env_th with g th in Hfv;
+    rewrite lem_tvbinds_env_th with g th in Hftv; 
+    
+    try split; 
+    try apply lem_boundinC_incsubst with v';
+    try apply not_incsubst_remove_fromCS; 
+    try apply lem_remove_fromCS_closed;
+    try apply lem_remove_fromCS_substitutable;
+    try apply lem_remove_fromCS_uniqueC;
+    try apply lem_denotesenv_closed with g;
+    try apply lem_denotesenv_substitutable with g;    
+    try apply lem_denotesenv_uniqueC with g;
+    try apply no_elem_empty; intros;
+    try (apply not_elem_subset with empty; auto; exact I); 
+    match goal with
+    | [ |- Subset (fv v) _ ] 
+          => apply subset_trans with (diff (vbindsC th) (singleton x))
+    | [ |- Subset (ftv v) _ ] 
+          => apply subset_trans with (diff (tvbindsC th) (singleton x))
+    | _ => try assumption
+    end; 
+    try apply subset_add_to_diff;
+    try apply lem_vbindsC_add_remove; try apply lem_tvbindsC_add_remove;
+    try apply subset_diff_singleton; 
+    try apply lem_denotesenv_uniqueC with g;  trivial.
+Qed.

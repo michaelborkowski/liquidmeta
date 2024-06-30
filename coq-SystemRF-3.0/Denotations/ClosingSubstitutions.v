@@ -81,6 +81,15 @@ Proof. intros. induction th; simpl in H; simpl; try contradiction;
   try (apply set_add_intro); try (destruct H); try (apply IHg in H); intuition. 
 Qed.
 
+Lemma lem_vbindsC_boundinC : forall (x:vname) (th:csub),
+    Elem x (vbindsC th) -> exists v_x, bound_inC x v_x th.
+Proof. intro x; induction th; simpl; intros; try contradiction.
+  - apply set_add_elim in H; destruct H.
+    exists v_x; left; auto.
+    apply IHth in H as [ta' H]; exists ta'; right; apply H.
+  - apply IHth; apply H.
+Qed.
+
 Fixpoint tv_bound_inC (a : vname) (t_a : type) (th : csub) : Prop :=
     match th with
     | CEmpty               => False
@@ -92,6 +101,15 @@ Lemma lem_tvboundinC_incsubst: forall (a:vname) (t_a:type) (th:csub),
     tv_bound_inC a t_a th -> in_csubst a th.
 Proof. intros. induction th; simpl in H; simpl; try contradiction;
   try (apply set_add_intro); try (destruct H); try (apply IHg in H); intuition. 
+Qed.
+
+Lemma lem_tvbindsC_tvboundinC : forall (a:vname) (th:csub),
+    Elem a (tvbindsC th) -> exists t_a, tv_bound_inC a t_a th.
+Proof. intro a; induction th; simpl; intros; try contradiction.
+  - apply IHth; apply H.
+  - apply set_add_elim in H; destruct H.
+    exists t_a; left; auto.
+    apply IHth in H as [ta' H]; exists ta'; right; apply H.
 Qed.
 
 Fixpoint closed (th0 : csub) : Prop :=
@@ -109,6 +127,14 @@ Proof. intros. induction th; simpl in H; simpl; try contradiction;
   - apply IHth; auto.
 Qed.
 
+Lemma lem_tvboundinC_closed: forall (a:vname) (t_a:type) (th:csub),
+    tv_bound_inC a t_a th -> closed th -> free t_a = empty /\ freeTV t_a = empty.
+Proof. intros. induction th; simpl in H; simpl; try contradiction;
+  simpl in H0; destruct H0; destruct H1. 
+  - apply IHth; auto.
+  - destruct H; try (destruct H; subst t_a0); intuition.
+Qed.
+
 Fixpoint loc_closed (th0 : csub) : Prop :=
     match th0 with
     | CEmpty            => True
@@ -122,6 +148,15 @@ Fixpoint substitutable (th0 : csub) : Prop :=
     | (CCons  x v_x th) => isValue v_x /\ substitutable th
     | (CConsT a t   th) => isMono t /\ noExists t /\ substitutable th
     end.  
+
+Lemma lem_tvboundinC_substitutable: forall (a:vname) (t_a:type) (th:csub),
+    tv_bound_inC a t_a th -> substitutable th 
+        -> isMono t_a /\ noExists t_a.
+Proof. intros. induction th; simpl in H; simpl; try contradiction;
+  simpl in H0; destruct H0. 
+  - apply IHth; auto.
+  - destruct H; try (destruct H; subst t_a0); intuition.
+Qed.
 
 Fixpoint uniqueC (th0 : csub) : Prop :=
     match th0 with
@@ -164,6 +199,93 @@ Fixpoint remove_fromCS (th:csub) (x:vname) : csub :=
     | (CCons  y v th) => if x =? y then th else CCons  y v (remove_fromCS th x)
     | (CConsT a t th) => if x =? a then th else CConsT a t (remove_fromCS th x)
     end.
+
+Lemma not_incsubst_remove_fromCS : 
+  forall (th : csub) (x : vname), 
+      uniqueC th -> ~ in_csubst x (remove_fromCS th x).
+Proof. induction th; intros; unfold in_csubst; simpl.
+  - auto.
+  - destruct (x0 =? x) eqn:X; simpl; simpl in H.
+    * apply Nat.eqb_eq in X; subst x0; destruct H; trivial.
+    * apply Nat.eqb_neq in X; apply not_elem_names_add_intro;
+      destruct H; split; try apply IHth; trivial.
+  - destruct (x =? a) eqn:X; simpl; simpl in H.
+    * apply Nat.eqb_eq in X; subst a; destruct H; trivial.
+    * apply Nat.eqb_neq in X; apply not_elem_names_add_intro;
+      destruct H; split; try apply IHth; trivial. Qed.
+  
+Lemma bindsC_remove_fromCS_subset : 
+  forall (th : csub) (x : vname), 
+      uniqueC th -> Subset (bindsC (remove_fromCS th x)) (bindsC th).
+Proof. induction th; intros; simpl; simpl in H.
+  - apply subset_empty_l.
+  - destruct (x0 =? x) eqn:X; simpl; destruct H.
+    * apply subset_add_intro; apply subset_refl.
+    * apply subset_add_both_intro; apply IHth; apply H0. 
+  - destruct (x =? a) eqn:X; simpl; destruct H.
+    * apply subset_add_intro; apply subset_refl.
+    * apply subset_add_both_intro; apply IHth; apply H0.
+Qed.
+
+Lemma lem_vbindsC_add_remove : forall (th : csub) (x : vname), 
+      uniqueC th -> 
+        Subset (vbindsC th) (names_add x (vbindsC (remove_fromCS th x))).
+Proof. induction th; intros; simpl; simpl in H.
+  - apply subset_empty_l.
+  - destruct (x0 =? x) eqn:X; simpl; destruct H.
+    * apply Nat.eqb_eq in X; subst x0; apply subset_refl.
+    * apply subset_trans 
+        with (names_add x (names_add x0 (vbindsC (remove_fromCS th x0))));
+      try apply subset_add_commute;
+      apply subset_add_both_intro; apply IHth; apply H0.
+  - destruct (x =? a) eqn:X; simpl; destruct H.
+    * apply subset_add_intro; apply subset_refl.
+    * apply IHth; apply H0.
+Qed.
+  
+Lemma lem_tvbindsC_add_remove : forall (th : csub) (x : vname), 
+      uniqueC th -> 
+        Subset (tvbindsC th) (names_add x (tvbindsC (remove_fromCS th x))).
+Proof. induction th; intros; simpl; simpl in H.
+  - apply subset_empty_l.
+  - destruct (x0 =? x) eqn:X; simpl; destruct H.
+    * apply subset_add_intro; apply subset_refl.
+    * apply IHth; apply H0.
+  - destruct (x =? a) eqn:X; simpl; destruct H.
+    * apply Nat.eqb_eq in X; subst a. apply subset_refl.
+    * apply subset_trans 
+        with (names_add a (names_add x (tvbindsC (remove_fromCS th x))));
+      try apply subset_add_commute;
+      apply subset_add_both_intro; apply IHth; apply H0.
+Qed.
+  
+Lemma lem_remove_fromCS_closed : forall (th:csub) (x:vname),
+    closed th -> closed (remove_fromCS th x).
+Proof. induction th; intros; trivial;
+  simpl in H; destruct H; destruct H0.
+  - destruct (x0 =? x) eqn:X; simpl; rewrite X; simpl; auto.
+  - destruct (x =? a) eqn:X; simpl; rewrite X; simpl; auto.
+Qed.
+  
+Lemma lem_remove_fromCS_substitutable : forall (th:csub) (x:vname),
+    substitutable th -> substitutable (remove_fromCS th x).
+Proof. induction th; intros; trivial;
+  simpl in H; destruct H; try destruct H0.
+  - destruct (x0 =? x) eqn:X; simpl; rewrite X; simpl; auto.
+  - destruct (x =? a) eqn:X; simpl; rewrite X; simpl; auto.
+Qed.
+    
+Lemma lem_remove_fromCS_uniqueC : forall (th:csub) (x:vname),
+    uniqueC th -> uniqueC (remove_fromCS th x).
+Proof. induction th; intros; trivial;
+  simpl in H; destruct H.
+  - destruct (x0 =? x) eqn:X; simpl; rewrite X; simpl; try split;
+    try apply IHth; try apply not_elem_subset with (bindsC th);
+    try apply bindsC_remove_fromCS_subset; trivial.
+  - destruct (x =? a) eqn:X; simpl; rewrite X; simpl; try split;
+    try apply IHth; try apply not_elem_subset with (bindsC th);
+    try apply bindsC_remove_fromCS_subset; trivial.
+Qed.
     
 Fixpoint csubst_env (th0:csub) (g:env) : env :=
     match th0 with  

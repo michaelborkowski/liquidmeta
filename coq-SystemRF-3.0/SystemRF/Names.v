@@ -20,6 +20,9 @@ Definition Elem := @set_In vname.
 Definition Subset (xs : names) (ys: names) : Prop :=
     forall (x : vname), Elem x xs -> Elem x ys.
 
+Lemma elem_dec : forall (x:vname) (xs : names),
+    Elem x xs \/ ~ Elem x xs.
+Proof. intros. destruct (set_In_dec Nat.eq_dec x xs); intuition. Qed.
 
 Lemma no_elem_empty : forall (ys : names),
     (forall (x:vname), ~ Elem x ys) -> ys = empty.
@@ -63,6 +66,11 @@ Proof. unfold not; intros; split; intro Hx;
   apply set_union_intro1 with vname Nat.eq_dec x xs ys in Hx ||
     apply set_union_intro2 with vname Nat.eq_dec x xs ys in Hx ;  
   intuition. Qed.
+
+Lemma not_elem_diff_singleton : forall (x : vname) (xs : names),
+    ~ Elem x (diff xs (singleton x)).
+Proof. unfold not; intros. apply set_diff_iff in H;
+  destruct H; simpl in H0; auto. Qed.
 
 Lemma subset_refl : forall (xs : names),
     Subset xs xs.
@@ -154,6 +162,14 @@ Proof. intros; unfold Subset; intros;
   try apply Nat.eqb_eq in X; try (left; apply X);
   apply Nat.eqb_neq in X; right; apply H;
   apply set_diff_iff; split; simpl; intuition. Qed.
+
+Lemma subset_diff_singleton : forall (x : vname) (xs ys : names),
+    ~ Elem x xs -> Subset xs ys -> Subset xs (diff ys (singleton x)).
+Proof. intros; unfold Subset; intros; apply set_diff_iff; split.
+  - apply H0; apply H1.
+  - unfold not; intros; apply elem_sing in H2; subst x0;
+    apply H in H1; contradiction.
+Qed.
 
 Lemma union_empty_l : forall (ys : names), 
     Subset ys (union empty ys) /\ Subset (union empty ys) ys.

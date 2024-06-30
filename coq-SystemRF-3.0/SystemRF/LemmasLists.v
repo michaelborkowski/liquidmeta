@@ -349,6 +349,8 @@ Proof. intros g; induction v; intros;
     try apply lem_weaken_wf_top; try apply lem_weaken_wf_top;
     try apply not_elem_names_add_intro;
     try apply lem_fv_bound_in_env with g (TList s' qs);
+    try repeat apply not_elem_union_intro;
+    fold freeTV; try apply lem_free_bound_in_env with g Star;
     simpl; intuition;
 
     try repeat apply lem_weaken_typ_top;
