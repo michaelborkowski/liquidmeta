@@ -489,32 +489,32 @@ Proof. intro x; induction e; intros; simpl in H;
       try (apply lem_value_stuck in H20; try apply val_Bc; contradiction).
       subst e4; apply AddStep with (subFV x v' e3);
       try apply EIfF; apply IHe3 with t v m; trivial.
-  - (* Nil *) shelve.
-  - (* Cons *) shelve. (*
-    destruct H; apply lem_cons_evals_val in H5 as Happ;
+  - (* Nil *) rewrite lem_safeListVarUseT_tsubFV in *; trivial.
+  - (* Cons *) rewrite lem_safeListVarUseT_tsubFV in *; 
+    destruct H as [Ht [He1 He2]]; try apply Ht;
+    apply lem_cons_evals_val in H5 as Happ;
     try destruct Happ as [v1 [v2 [val1 [val2 [ev_e1v_v1 ev_e2v_v2]]]]];
     try apply H2;
-    apply IHe1 with t v v' v1 m in ev_e1v_v1 as ev_e1v'_v1; 
-    try apply IHe2 with t v v' v2 m in ev_e2v_v2 as ev_e2v'_v2;
-    trivial; assert (EvalsTo (Cons (tsubFV x v t) (subFV x v e1) (subFV x v e2)) (Cons t v1 v2))
+    apply IHe1 with t0 v v' v1 m in ev_e1v_v1 as ev_e1v'_v1; 
+    try apply IHe2 with t0 v v' v2 m in ev_e2v_v2 as ev_e2v'_v2;
+    trivial; assert (EvalsTo (Cons t (subFV x v e1) (subFV x v e2)) (Cons t v1 v2))
       by (apply lemma_cons_both_many; trivial);
-    apply lemma_evals_trans with (Cons v1 v2);
+    apply lemma_evals_trans with (Cons t v1 v2);
     try apply lemma_cons_both_many; trivial;
-    apply lem_decompose_evals with (Cons (tsubFV x v t) (subFV x v e1) (subFV x v e2)); trivial.
-    *)
+    apply lem_decompose_evals with (Cons t (subFV x v e1) (subFV x v e2)); trivial.
   - (* Switch *) destruct H; destruct H6;
     try apply lem_switch_evals_val in H5 as Hsw; try apply H2;
     destruct Hsw as [v'' [val' Hsw]]; destruct Hsw. 
-    shelve. (*
-    * destruct H8; apply IHe1 with t v v' (Nil t0) m in H8 as ev_e1v'_nl; 
+    * destruct H8 as [t0 [H8 H9]];
+      apply IHe1 with t v v' (Nil t0) m in H8 as ev_e1v'_nl; 
       try apply val_Nil; trivial.
       assert (EvalsTo (Switch (subFV x v e1) (subFV x v e2) (subFV x v e3)) 
                       (Switch (Nil t0) (subFV x v e2) (subFV x v e3)))
         by (apply lemma_switch_many; trivial).
       apply lemma_evals_trans 
-        with (Switch Nil (subFV x v' e2) (subFV x v' e3));
+        with (Switch (Nil t0) (subFV x v' e2) (subFV x v' e3));
       try apply lemma_switch_many; trivial.
-      assert (EvalsTo (Switch Nil  (subFV x v e2) (subFV x v e3)) vf)
+      assert (EvalsTo (Switch (Nil t0) (subFV x v e2) (subFV x v e3)) vf)
         by (apply lem_decompose_evals 
               with (Switch (subFV x v e1) (subFV x v e2) (subFV x v e3)); trivial).
       inversion H11; try (subst vf; inversion H2; contradiction);
@@ -522,17 +522,16 @@ Proof. intro x; induction e; intros; simpl in H;
       try (apply lem_value_stuck in H20; try apply val_Nil; contradiction).
       subst e4; apply AddStep with (subFV x v' e2);
       try apply ESwitchN; apply IHe2 with t v m; trivial.
-      *) shelve. (*
-    * destruct H8 as [v1 [v2 [val1 [val2 [ev_e1v_cn ev_e3v_v'']]]]];
-      apply IHe1 with t v v' (Cons v1 v2) m in ev_e1v_cn as ev_e1v'_cn; 
+    * destruct H8 as [t0 [v1 [v2 [val1 [val2 [ev_e1v_cn ev_e3v_v'']]]]]];
+      apply IHe1 with t v v' (Cons t0 v1 v2) m in ev_e1v_cn as ev_e1v'_cn; 
       try apply val_Cons; trivial.
       assert (EvalsTo (Switch (subFV x v e1) (subFV x v e2) (subFV x v e3)) 
-                      (Switch (Cons v1 v2) (subFV x v e2) (subFV x v e3)))
+                      (Switch (Cons t0 v1 v2) (subFV x v e2) (subFV x v e3)))
         by (apply lemma_switch_many; trivial).
       apply lemma_evals_trans 
-        with (Switch (Cons v1 v2) (subFV x v' e2) (subFV x v' e3));
+        with (Switch (Cons t0 v1 v2) (subFV x v' e2) (subFV x v' e3));
       try apply lemma_switch_many; trivial.
-      assert (EvalsTo (Switch (Cons v1 v2)  (subFV x v e2) (subFV x v e3)) vf)
+      assert (EvalsTo (Switch (Cons t0 v1 v2) (subFV x v e2) (subFV x v e3)) vf)
         by (apply lem_decompose_evals 
               with (Switch (subFV x v e1) (subFV x v e2) (subFV x v e3)); trivial).
       inversion H9; try (subst vf; inversion H2; contradiction);
@@ -540,23 +539,22 @@ Proof. intro x; induction e; intros; simpl in H;
       try ( apply lem_value_stuck in H18; try apply val_Cons; 
             trivial; contradiction ).
       subst e4; apply AddStep with (App (App (subFV x v' e3) v1) v2);
-      try apply ESwitchC; try apply IHe3 with t v m; trivial.
+      try apply ESwitchC; (*try apply IHe3 with t v m;*) trivial.
       apply lem_app_evals_val in H11; try apply H2;
       destruct H11 as [v3' [_ [val3' [_ [ev_e3v'_v3' _]]]]];
       apply lem_app_evals_val in ev_e3v'_v3'; try apply val3';
       destruct ev_e3v'_v3' as [v3'' [_ [val3'' [_ [ev_e3v_v3'' _]]]]];
       apply IHe3 with t v v' v3'' m in ev_e3v_v3'' as ev_e3v'_v3'';
       trivial; apply lemma_evals_trans with (App (App v3'' v1) v2);
-      try apply lemma_app_many; try apply lemma_app_many; trivial.
+      try apply lemma_app_many; try apply lemma_app_many; trivial;
       inversion H9; try (subst vf e5; inversion H2; contradiction).
       inversion H11;
-      try ( apply lem_value_stuck in H27; try apply val_Cons; 
+      try ( apply lem_value_stuck in H28; try apply val_Cons; 
             trivial; contradiction ).
       subst e6; apply lem_decompose_evals 
         with (App (App (subFV x v e3) v1) v2); 
       try apply lemma_app_many; try apply lemma_app_many; trivial.
-*) Admitted. (*
-Qed.*)
+Qed.
 
 Lemma lem_safeListVarUseP_eqlLen : 
   forall (x:vname) (ps:preds) (t:type) (v v':expr) (m:Z),

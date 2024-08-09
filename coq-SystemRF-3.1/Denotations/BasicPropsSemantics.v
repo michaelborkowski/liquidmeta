@@ -343,27 +343,18 @@ Proof. apply ( EvalsTo_ind
   - (* AddStep *) subst e; inversion st_ee'.
     * (* ESwitch *) symmetry in H1; apply IH in H1; try apply H0.
       destruct H1 as [v' [val' Hv']];
-      destruct Hv' 
-        as [[ev_e0_nil ev_eN_v'] | [v1 [v2 [val1 [val2 [ev_e0_cn ev_eC_v']]]]]].
-      shelve. shelve. (*
-      exists v'; split; try left; try split; try assumption;
+      destruct Hv' as [[t0 [ev_e0_nil ev_eN_v']] 
+                     | [t0 [v1 [v2 [val1 [val2 [ev_e0_cn ev_eC_v']]]]]]];
+      exists v'; split; try apply val'.
+      left; exists t0; split; try assumption;
+      apply AddStep with e'0;  trivial.
+      right; exists t0, v1, v2; repeat split; try assumption;
       try apply AddStep with e'0;  trivial.
-      exists v'; split; try right; try apply val';
-      exists v1, v2; repeat split; try assumption;
-      try apply AddStep with e'0;  trivial.
-        *)
-    * (* ESwitchN *) 
-      shelve. (*
-      subst e0 e'; exists v; split; try left;
-      try split; try apply Refl; trivial.
-      *)
-    * (* ESwitchC *) 
-      shelve. (*
-      subst e0 e'; exists v; split; try right;
-      try exists v1, v2; repeat split; try apply Refl; trivial.
-      *)
-      Admitted. (*
-Qed. *)
+    * (* ESwitchN *) subst e0 e'; exists v; split; 
+      try left; try exists t; try split; try apply Refl; trivial.
+    * (* ESwitchC *) subst e0 e'; exists v; split; try right;
+      try exists t, v1, v2; repeat split; try apply Refl; trivial.
+Qed. 
   
 Lemma lem_switch_evals_val : forall (e0 eN eC v:expr),
   EvalsTo (Switch e0 eN eC) v -> isValue v -> 

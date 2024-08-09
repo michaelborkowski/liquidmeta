@@ -544,17 +544,19 @@ Lemma lem_den_len_zero_nil : forall (th:csub) (t t0:type) (ps:preds),
 Proof. intros th t t0 ps Hlc Hsub; intros; 
   rewrite Denotes_equation_17 in H; destruct H.
   rewrite Denotes_equation_17; split; simpl; simpl in H; try apply H.
-  shelve. (*
   rewrite lem_cpsubst_pcons;
   unfold psubBV; try apply PECons;
   fold subBV_at; fold psubBV_at; try apply H0.
-  rewrite <- lem_csubst_nil with th t0.
+  apply lem_fv_subset_bindsF in H as Hfr; simpl in Hfr; 
+  destruct Hfr as [Hfr Hfrt].
+  rewrite <- lem_ctsubst_nofree with th t0;
+  try apply no_elem_empty;
+  try rewrite <- lem_csubst_nil;
   try rewrite <- lem_csubst_subBV; unfold subBV; simpl;
   try rewrite <- lem_csubst_bc with th true;
   try apply lem_csubst_evals;
   try apply lemma_semantics_refn_length_nil; trivial.
-  *) Admitted. (*
-  Qed.*)
+Qed.
 
 Lemma lem_den_len_succ_cons : 
   forall (y:vname) (v1 v2:expr) (th:csub) (t t0:type) (ps:preds),
@@ -611,10 +613,13 @@ Lemma lem_den_eqlLenPred : forall (v:expr) (th:csub) (t:type),
                                             (App (AppT (Prim Length) t) (BV 0))) PEmpty))) v.
 Proof. intros v th t Hlc Hsub Hlis Hlcv; intros; destruct v eqn:V;
   simpl in Hlis; try contradiction.
-  shelve. shelve. (*
   - rewrite Denotes_equation_17 in H; destruct H.
     rewrite Denotes_equation_17; split; simpl; simpl in H; try apply H.
-    rewrite <- (lem_csubst_nil th) at 1;
+    apply lem_fv_subset_bindsF in H as Hfr; simpl in Hfr; 
+    destruct Hfr as [Hfr Hfrtv];
+    rewrite <- lem_ctsubst_nofree with th t0;
+    try apply no_elem_empty;
+    try rewrite <- lem_csubst_nil;
     try rewrite <- lem_cpsubst_psubBV; unfold psubBV; simpl;
     try rewrite lem_cpsubst_pcons; try apply PECons;
     try rewrite lem_cpsubst_pempty; 
@@ -622,27 +627,29 @@ Proof. intros v th t Hlc Hsub Hlis Hlcv; intros; destruct v eqn:V;
     try apply lem_csubst_evals;
     assert ((Z.eqb 0 0) = true) by (apply Z.eqb_eq; reflexivity);
     try rewrite <- H1; try apply lemma_eq_semantics;
-    try apply lem_step_evals; try apply lem_step_length_nil; trivial.
+    try apply lem_step_evals; try rewrite lem_csubst_nil;
+    try apply lem_step_length_nil; trivial.
   - rewrite Denotes_equation_18 in H; destruct H
       as [p_v1v2 [val1 [val2 [den_tht_v1 [den_thts_v2 ev_psv1v2_tt]]]]];
     rewrite Denotes_equation_18; repeat split; 
     unfold erase; fold erase; trivial.
-    apply lemma_length_list_semantics with (tsubBV_at 0 (Cons e1 e2) t) e2
+    apply lemma_length_list_semantics with (tsubBV_at 0 (Cons t0 e1 e2) t) e2
       in Hlis as exists_n; try apply val2;
     destruct exists_n as [n ev_lenv2_n].
     apply lem_fv_subset_bindsF in p_v1v2 as Hfv; simpl in Hfv;
     destruct Hfv as [Hfv Hftv];
-    rewrite <- (lem_csubst_nofv th (Cons e1 e2)) at 1;
+    rewrite <- (lem_csubst_nofv th (Cons t0 e1 e2)) at 1;
     try apply no_elem_empty; try apply not_elem_subset with empty;
     try rewrite <- lem_cpsubst_psubBV; unfold psubBV; simpl;
     try rewrite lem_cpsubst_pcons; try rewrite lem_cpsubst_pempty;
     try apply PECons; try rewrite <- lem_csubst_bc with th true;
     try apply lem_csubst_evals; 
-    unfold isLC  in Hlcv; simpl in Hlcv; destruct Hlcv;
+    unfold isLC  in Hlcv; simpl in Hlcv; destruct Hlcv as [H [H0 H0']];
     try repeat rewrite lem_subBV_lc;
     assert ((Z.eqb (1+n) (1+n)) = true) by (apply Z.eqb_eq; reflexivity);
     try rewrite <- H1; try apply lemma_eq_semantics;
-    try apply lemma_length_cons_semantics with e1 e2;
-    try apply Refl;    trivial.  *)
-    Admitted. (*
-  Qed.      *)
+    try apply lemma_length_cons_semantics with t0 e1 e2;
+    pose proof (lem_tsubBV_lct (Cons t0 e1 e2) t0);
+    unfold tsubBV in H2; try rewrite H2;
+    try apply Refl; trivial. 
+Qed.      

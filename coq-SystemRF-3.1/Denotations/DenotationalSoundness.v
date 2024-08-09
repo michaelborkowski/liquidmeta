@@ -347,78 +347,96 @@ Proof. apply ( judgments_mutind3
       pose proof vbinds_subset; trivial;
       apply not_elem_subset with (vbinds g);
       try apply not_elem_subset with (binds g); trivial.
-  - (* TNil *) shelve. (*
+  - (* TNil *) 
     rewrite lem_csubst_nil; rewrite lem_ctsubst_list;
     apply lem_den_evalsdenotes;
     try rewrite Denotes_equation_17; repeat split; simpl;
     try apply FTNil with k; apply lem_wftype_islct in w as Hlct;
     apply lem_ctsubst_wf with g t k th in w;
     try apply lem_erase_wftype in w as p_emp_tht; 
+    try apply lem_wftype_islct in w as Hlctht;
+    try apply lem_free_subset_binds in w as Hfr;
+    destruct Hfr as [Hfr Hfrtv]; 
     try rewrite lem_cpsubst_pcons;
-    try rewrite lem_cpsubst_pempty;
-    try rewrite <- lem_csubst_nil with th;
-    unfold psubBV; (*unfold eq; unfold length;*)
-    try apply PECons; try apply PEEmp; fold subBV_at; 
-    try rewrite <- lem_csubst_subBV; unfold subBV; simpl;
+    try rewrite lem_cpsubst_pempty;   
+    try rewrite <- lem_csubst_nil; 
+    unfold psubBV; try apply PECons; try apply PEEmp; fold subBV_at; 
+    try rewrite <- lem_csubst_subBV; unfold subBV; simpl; 
     try rewrite <- lem_csubst_bc with th true;
-    try apply lem_csubst_evals;
-    pose proof lem_subBV_at_lc_at as [_ [Hsubt _]];
-    try rewrite Hsubt with t 0 Nil 0 0;
-    try apply lemma_semantics_refn_length_nil;
+    try apply lem_csubst_evals;  
+    pose proof lem_subBV_at_lc_at as [_ [Hsubt _]]; 
+    try rewrite Hsubt with t 0 (Nil t) 0 0; 
+    try apply lemma_semantics_refn_length_nil; 
     try apply wfenv_unique;
+    try apply lem_ctsubst_isMono;
+    try apply lem_ctsubst_noExists;
     try apply lem_denotesenv_loc_closed with g;
-    try apply lem_denotesenv_substitutable with g;
-    trivial. *)
-  - (* TCons *) shelve. (*
+    try apply lem_denotesenv_substitutable with g; trivial. 
+  - (* TCons *) 
     rewrite lem_csubst_cons; rewrite lem_ctsubst_exis;
-    apply H in H2 as HvH; try apply H0 in H2 as HvT; try apply H1;
+    apply H in H2 as HvH; try apply H0 in H2 as HvT; try apply H1.
     apply lem_typing_wf in h as p_g_t;
     try apply lem_wftype_islct in p_g_t as Hlct; try apply H1.
     unfold EvalsDenotes in HvH; unfold EvalsDenotes in HvT;
     destruct HvH as [vH [val1 [ev_theH_vH HvH]]];
     destruct HvT as [vT [val2 [ev_theT_vT HvT]]];
-    unfold EvalsDenotes; exists (Cons vH vT); split; try split;
+    unfold EvalsDenotes; exists (Cons (ctsubst th t) vH vT); split; try split;
     try rewrite Denotes_equation_3; try split; try split;
     try apply val_Cons; try apply lemma_cons_both_many; trivial;
     simpl; try (rewrite lem_ctsubst_list; apply FTCons);
     try apply lem_den_hasftype in HvH as p_vH;
     try apply lem_den_hasftype in HvT as p_vT; 
     rewrite lem_ctsubst_list in p_vT; simpl in p_vT; 
-    apply lem_ftyp_islc in p_vT as HlcvT; trivial.
-    exists vT; split; try split; trivial;
+    apply lem_ftyp_islc in p_vT as HlcvT; 
+    apply lem_ctsubst_wf with g t Star th in p_g_t as p_tht; 
+    try apply lem_wftype_islct in p_tht as Hlctht; 
+    try apply lem_free_subset_binds in p_tht as Hfr;
+    try destruct Hfr as [Hfr Hfrtv];
+    try apply wfenv_unique;
+    try apply lem_ctsubst_isMono;
+    try apply lem_ctsubst_noExists;
+    try apply lem_denotesenv_loc_closed with g;
+    try apply lem_denotesenv_substitutable with g; trivial;
+    try apply lem_fv_subset_bindsF in p_vH as Hfv;  simpl in Hfv;
+    try apply lem_fv_subset_bindsF in p_vT as Hfv'; simpl in Hfv';
+    destruct Hfv; destruct Hfv'.
+
+    exists vT; split; try split; trivial.
     try rewrite <- (lem_csubst_nofv th vT) at 1;
     try rewrite <- lem_ctsubst_tsubBV; unfold tsubBV; simpl;
     pose proof lem_subBV_at_lc_at as [Hsube [Hsubt _]];
     try rewrite Hsubt with t 0 vT 0 0;
     try rewrite Hsubt with t 1 vT 0 0;
     try rewrite lem_ctsubst_list;
-
     try rewrite Denotes_equation_18; try repeat split; simpl;
     try apply FTCons;
-    try rewrite <- (lem_csubst_nofv th (Cons vH vT));
+    assert ( Cons (ctsubst th t) vH vT = csubst th (Cons t vH vT))
+      by (rewrite <- (lem_csubst_nofv th vH) at 1;
+          try rewrite <- (lem_csubst_nofv th vT) at 1;
+          try rewrite lem_csubst_cons; try apply no_elem_empty;
+          trivial); try rewrite H7; 
     try rewrite <- lem_cpsubst_psubBV; unfold psubBV; simpl;
-    try rewrite Hsube with vT 0 (Cons vH vT) 0 0;
-    try rewrite Hsubt with t  0 (Cons vH vT) 0 0;
+    try rewrite Hsube with vT 0 (Cons t vH vT) 0 0;
+    try rewrite Hsubt with t  0 (Cons t vH vT) 0 0;
     try rewrite lem_cpsubst_pcons; try apply PECons;
     try rewrite lem_cpsubst_pempty; try apply PEEmp;
     try rewrite <- lem_csubst_bc with th true;
-    try apply lem_csubst_evals;
+    try apply lem_csubst_evals;  
     try apply lemma_semantics_refn_length_cons;
-    try apply lem_denotes_list_pempty with (cpsubst th ps);
+    try apply lem_denotes_list_pempty with (cpsubst th ps); 
     rewrite lem_ctsubst_list in HvT; 
     try apply lem_den_list with (erase (ctsubst th t)) in HvT as lst;
     try apply lem_den_lists 
       with (TList (ctsubst th t) (cpsubst th ps)) (ctsubst th t) vT 
       in HvT as lst;
     
-    try apply lem_fv_subset_bindsF in p_vH as Hfv;  simpl in Hfv;
-    try apply lem_fv_subset_bindsF in p_vT as Hfv'; simpl in Hfv';
-    destruct Hfv; destruct Hfv'; try apply no_elem_empty;
+    try apply no_elem_empty;
     intros; try apply not_elem_union_intro; try revert x;
+    try apply lem_ctsubst_isMono;
+    try apply lem_ctsubst_noExists;
     try apply lem_denotesenv_loc_closed with g;
     try apply lem_denotesenv_substitutable with g;
     try apply val_Cons; simpl; auto.
-    *)
   - (* TSwitch *) assert (Hastype g (Switch e eN eC) t' ) 
       as p_swt_t' by (apply TSwit with t ps k nms; trivial);  
     apply lem_free_subset_binds in w as Hfr_t';
@@ -443,8 +461,8 @@ Proof. apply ( judgments_mutind3
     apply lem_den_lists with (TList (ctsubst th t) (cpsubst th ps)) (ctsubst th t) v 
       in den_thtps_v as lst_v; trivial.
     destruct v eqn:V; simpl in lst_v; try contradiction.
-    * (* th(e) ~>* v = Nil *) shelve. (*
-      apply H0 with y (CCons y Nil th) in Hy as evden_eN;
+    * (* th(e) ~>* v = Nil *) 
+      apply H0 with y (CCons y (Nil t0) th) in Hy as evden_eN;
       try apply DExt; try rewrite lem_ctsubst_list;
       try apply lem_den_len_zero_nil;
       try apply WFEBind with Star;
@@ -459,17 +477,17 @@ Proof. apply ( judgments_mutind3
       try apply not_elem_subset with (binds g); trivial;
       unfold EvalsDenotes; exists vN; split; try split; trivial.
       (* th(Switch e eN eC) ~>* vN *)
-      apply lemma_evals_trans with (Switch Nil (csubst th eN) (csubst th eC));
+      apply lemma_evals_trans with (Switch (Nil t0) (csubst th eN) (csubst th eC));
       try apply lemma_switch_many; try apply ev_the_v;
       try apply AddStep with (csubst th eN); 
       try apply ESwitchN; apply ev_ytheN_vN.
       (* vN \in [[ th(t') ]] *)
       simpl in den_ytht'_vN; rewrite lem_tsubFV_notin in den_ytht'_vN;
       try apply not_elem_subset with (vbinds g); 
-      try apply not_elem_subset with (binds g); trivial. *)
-    * (* th(e) ~>* v = Cons v1 v2 *) shelve. (*
+      try apply not_elem_subset with (binds g); trivial. 
+    * (* th(e) ~>* v = Cons v1 v2 *) 
       set (v1 := e0_1) in *; set (v2 := e0_2) in *.
-      apply H1 with y z (CCons z (Cons v1 v2) (CCons y v2 th))
+      apply H1 with y z (CCons z (Cons t0 v1 v2) (CCons y v2 th))
                in Hy as evden_eC;
       try repeat apply WFEBind with Star;
       try repeat apply DExt; 
@@ -486,11 +504,13 @@ Proof. apply ( judgments_mutind3
       destruct den_thtps_v as [p_v1v2 [val1 [val2 [den_tht_v1 [den_thts_v2 ev_psv1v2]]]]];
       try rewrite lem_cpsubst_pempty;
       try apply lem_ftyp_islc in p_v1v2 as v1v2_lc; 
-      simpl in v1v2_lc; destruct v1v2_lc;
+      simpl in v1v2_lc; destruct v1v2_lc as [H4 [H5 H5']];
       try apply lem_fv_subset_bindsF in p_v1v2;
       simpl in p_v1v2; destruct p_v1v2 as [Hfv1 Hfv2];
       apply subset_union_elim_l in Hfv1; destruct Hfv1;
       apply subset_union_elim_l in Hfv2; destruct Hfv2;
+      apply subset_union_elim_l in H7; destruct H7;
+      apply subset_union_elim_l in H9; destruct H9;
       try apply no_elem_empty;
       try apply (lem_ctsubst_wf g (TList t ps) Star th) in p_g_tps as p_thtps;
       try rewrite lem_ctsubst_list in p_thtps;
@@ -565,7 +585,7 @@ Proof. apply ( judgments_mutind3
       (* th(Switch e eN eC) ~>* v'' *)
       unfold EvalsDenotes; exists v''; split; try split; trivial.
       apply lemma_evals_trans 
-        with (Switch (Cons v1 v2) (csubst th eN) (csubst th eC));
+        with (Switch (Cons t0 v1 v2) (csubst th eN) (csubst th eC));
       try apply lemma_switch_many; try apply ev_the_v;
       try apply AddStep with (App (App (csubst th eC) v1) v2); 
       try apply ESwitchC; 
@@ -575,7 +595,7 @@ Proof. apply ( judgments_mutind3
       try apply lemma_evals_trans with (App v' v2);
       try apply lemma_app_many; try apply ev_vCv1_v;
       try apply ev_v'v2_v''; trivial.
-      (* v'' \in [[ th(t') ]]  handled above? *)  *)
+      (* v'' \in [[ th(t') ]]  handled above? *) 
   - (* TSub *) unfold EvalsDenotes; apply H in H2 as H'; 
     try apply H1; try unfold EvalsDenotes in H';
     destruct H' as [v [Hv [ev_the_v den_ths_v]]];
@@ -865,7 +885,7 @@ Proof. apply ( judgments_mutind3
       in H6 as Hlis; trivial;
     destruct v eqn:V; try simpl in Hlis; try contradiction;
     rewrite lem_ctsubst_list.
-    * (* v = Nil *) shelve. (*
+    * (* v = Nil t *) 
       rewrite Denotes_equation_17; split;
       rewrite Denotes_equation_17 in H6; destruct H6;
       simpl in H6; simpl;
@@ -875,13 +895,15 @@ Proof. apply ( judgments_mutind3
       pose proof (fresh_var_not_elem nms g) as Hy;
       set (y:=fresh_var nms g ) in Hy; destruct Hy.
       apply H0 in H8 as Himp; inversion Himp.
-      rewrite <- (lem_csubst_nil th t) at 1;
+      rewrite <- (lem_ctsubst_nofree th t);
+      try rewrite <- (lem_csubst_nil th t);
       try rewrite <- lem_cpsubst_psubBV;
-      try rewrite lem_psubFV_unbindP with y Nil p2;
-      try apply (H10 (CCons y Nil th)); simpl;
+      try rewrite lem_psubFV_unbindP with y (Nil t) p2;
+      try apply (H10 (CCons y (Nil t) th)); simpl;
       try rewrite <- lem_psubFV_unbindP;
       try rewrite lem_cpsubst_psubBV;
       try rewrite lem_csubst_nil;
+      try rewrite (lem_ctsubst_nofree th t);
 
       try apply DExt; try rewrite lem_ctsubst_list;
       try rewrite Denotes_equation_17; try split;
@@ -896,8 +918,11 @@ Proof. apply ( judgments_mutind3
       try apply not_elem_subset with (binds g);
       try apply (vbinds_subset g);
       try apply lem_denotesenv_loc_closed with g;
-      try apply lem_denotesenv_substitutable with g; trivial. *)
-    * (* v = Cons v1 v2 *) shelve. (*
+      try apply lem_denotesenv_substitutable with g; 
+      
+      try apply lem_fv_subset_bindsF in H6 as Hfr; 
+      simpl in Hfr; destruct Hfr; try apply no_elem_empty; trivial.
+    * (* v = Cons v1 v2 *) 
       apply lem_wflist_wftype in H2 as p_g_t1;
       apply lem_wflist_wftype in H3 as p_g_t2;
       rewrite Denotes_equation_18; repeat split;
@@ -913,13 +938,13 @@ Proof. apply ( judgments_mutind3
       pose proof (fresh_var_not_elem nms g) as Hy;
       set (y:=fresh_var nms g ) in Hy; destruct Hy;
       apply H0 in H7 as Himp; inversion Himp;
-      try rewrite <- (lem_csubst_nofv th (Cons e1 e2));
+      try rewrite <- (lem_csubst_nofv th (Cons t e1 e2));
       try rewrite <- lem_cpsubst_psubBV;
-      try rewrite lem_psubFV_unbindP with y (Cons e1 e2) p2;
-      try apply (H9 (CCons y (Cons e1 e2) th)); simpl;
+      try rewrite lem_psubFV_unbindP with y (Cons t e1 e2) p2;
+      try apply (H9 (CCons y (Cons t e1 e2) th)); simpl;
       try rewrite <- lem_psubFV_unbindP;
       try rewrite lem_cpsubst_psubBV;
-      try rewrite (lem_csubst_nofv th (Cons e1 e2));
+      try rewrite (lem_csubst_nofv th (Cons t e1 e2));
       try apply DExt;  
       try rewrite lem_ctsubst_list;
       try rewrite lem_cpsubst_pempty;
@@ -940,7 +965,7 @@ Proof. apply ( judgments_mutind3
       try apply lem_denotesenv_substitutable with g; trivial.     
       (* v2 \in [[ th([t2]{tt}) ]] *)
       apply lem_den_subtype_lift_list with g t1;
-      try apply H with Star Star; trivial. *)
+      try apply H with Star Star; trivial. 
 
   - (* IRefl *) apply DImp; trivial.
   - (* ITrans *) apply DImp; inversion H; inversion H0.
@@ -1434,5 +1459,4 @@ Proof. apply ( judgments_mutind3
     try apply lem_vbindsC_add_remove; try apply lem_tvbindsC_add_remove;
     try apply subset_diff_singleton; 
     try apply lem_denotesenv_uniqueC with g;  trivial.
-    Admitted. (*
-Qed.*)
+Qed.

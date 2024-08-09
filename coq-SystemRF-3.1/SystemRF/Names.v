@@ -42,6 +42,11 @@ Proof. intros; split; simpl; intro H.
   - destruct H; symmetry; (trivial || contradiction).
   - intuition. Qed.
 
+Lemma not_elem_sing : forall (x y : vname),
+    ~ Elem x (singleton y) <-> x <> y.
+Proof.  intros; apply not_iff_compat; apply elem_sing.
+Qed.
+  
 Lemma not_elem_subset : forall (x : vname) (xs ys : names),
     Subset xs ys -> ~ Elem x ys -> ~ Elem x xs.
 Proof. unfold Subset; unfold not; intros; intuition. Qed.

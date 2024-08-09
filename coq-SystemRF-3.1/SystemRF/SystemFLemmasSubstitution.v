@@ -141,12 +141,53 @@ Proof. apply ( HasFtype_ind
     try apply lem_ftyp_islc with g t_x;  intuition.
   - (* FTIf *) apply FTIf; 
     apply H0 with t_x || apply H2 with t_x || apply H4 with t_x; trivial.
-  - (* FTNil *) shelve. (*apply FTNil with k; apply lem_strengthen_wfft with x t_x;
-    assumption.*)
-  - (* FTCons *) shelve. (*apply FTCons; apply H0 with t_x || apply H2 with t_x; trivial.*)
+  - (* FTNil *) simpl. rewrite <- lem_erase_tsubFV with x v_x rt.
+    apply FTNil with k;  
+    try apply lemma_tsubFV_isMono; try apply lemma_tsubFV_noExists;   
+    pose proof (lem_tvbinds_cons_concatF g g' x t_x); destruct H5;
+    apply (subset_trans _ _ _ H2) in H13;
+    pose proof (lem_vbinds_cons_concatF  g g' x t_x); destruct H14;
+    apply (subset_trans _ _ _ H1) in H15;
+    apply lem_fv_subset_bindsF in H12 as H16; destruct H16;
+    assert (Subset (vbindsF g) (union (vbindsF g) (vbindsF g'))) 
+      by apply subset_union_intro_r;
+    assert (Subset (tvbindsF g) (union (tvbindsF g) (tvbindsF g'))) 
+      by apply subset_union_intro_r;
+    pose proof (lem_vbinds_concatF g g');
+    pose proof (lem_tvbinds_concatF g g');
+    apply (subset_trans3 _ _ _ _ H16 H18) in H20;
+    apply (subset_trans3 _ _ _ _ H17 H19) in H21;
+    try apply free_tsubFV_bounded;
+    try apply freeTV_tsubFV_bounded;
+    try apply lem_islc_at_subFV;
+    try apply lem_ftyp_islc with g t_x;  
+    try rewrite lem_erase_tsubFV;
+    try apply lem_strengthen_wfft with x t_x;  trivial.
+  - (* FTCons *) simpl. rewrite <- lem_erase_tsubFV with x v_x rt;
+    apply FTCons; 
+    try apply lemma_tsubFV_isMono; try apply lemma_tsubFV_noExists;   
+    pose proof (lem_tvbinds_cons_concatF g g' x t_x); destruct H8;
+    apply (subset_trans _ _ _ H2) in H16;
+    pose proof (lem_vbinds_cons_concatF  g g' x t_x); destruct H17;
+    apply (subset_trans _ _ _ H1) in H18;
+    apply lem_fv_subset_bindsF in H15 as H19; destruct H19;
+    assert (Subset (vbindsF g) (union (vbindsF g) (vbindsF g'))) 
+      by apply subset_union_intro_r;
+    assert (Subset (tvbindsF g) (union (tvbindsF g) (tvbindsF g'))) 
+      by apply subset_union_intro_r;
+    pose proof (lem_vbinds_concatF g g');
+    pose proof (lem_tvbinds_concatF g g');
+    apply (subset_trans3 _ _ _ _ H19 H21) in H23;
+    apply (subset_trans3 _ _ _ _ H20 H22) in H24;
+    try apply free_tsubFV_bounded;
+    try apply freeTV_tsubFV_bounded;
+    try apply lem_islc_at_subFV;
+    try apply lem_ftyp_islc with g t_x;  
+    try rewrite lem_erase_tsubFV;
+    try apply H5 with t_x; try apply H7 with t_x; trivial.
   - (* FTSwit *) apply FTSwit with t;
     apply H0 with t_x || apply H2 with t_x || apply H4 with t_x; trivial.
-  Admitted. (*Qed.*)
+Qed.
 
 Lemma lem_subst_ftyp : 
   forall (g g':fenv) (e : expr) (t : ftype) (x:vname) (v_x:expr) (t_x:ftype),
@@ -292,11 +333,54 @@ Proof. apply ( HasFtype_ind
     assumption || reflexivity.
   - (* FTIf *) apply FTIf; 
     apply H0 with k_a || apply H2 with k_a || apply H4 with k_a; trivial.
-  - (* FTNil *) shelve. (*apply FTNil with k; apply lem_subst_tv_wfft with k_a; trivial.*)
-  - (* FTCons *) shelve. (*apply FTCons; apply H0 with k_a || apply H2 with k_a; trivial.*)
+  - (* FTNil *) simpl. rewrite <- lem_erase_tsubFTV;
+    try apply FTNil with k;
+    try apply lemma_tsubFTV_isMono; try apply lemma_tsubFTV_noExists;
+    try rewrite concatF_fesubFV_vbindsF;
+    try rewrite concatF_fesubFV_tvbindsF;
+    pose proof (lem_tvbinds_consT_concatF g g' a k_a); destruct H5;
+    apply (subset_trans _ _ _ H2) in H18;
+    pose proof (lem_vbinds_consT_concatF  g g' a k_a); destruct H19;
+    apply (subset_trans _ _ _ H1) in H20;
+    assert (Subset (vbindsF g) (union (vbindsF g) (vbindsF g'))) 
+      by apply subset_union_intro_r;
+    assert (Subset (tvbindsF g) (union (tvbindsF g) (tvbindsF g'))) 
+      by apply subset_union_intro_r;
+    pose proof (lem_vbinds_concatF g g');
+    pose proof (lem_tvbinds_concatF g g');
+    apply (subset_trans3 _ _ _ _ H14 H21) in H23;
+    apply (subset_trans3 _ _ _ _ H15 H22) in H24;
+    try apply free_tsubFTV_bounded;
+    try apply freeTV_tsubFTV_bounded;
+    try apply lem_islc_at_subFTV;
+    try rewrite lem_erase_tsubFTV;
+    try apply lem_subst_tv_wfft with k_a; trivial.
+  - (* FTCons *) simpl. rewrite <- lem_erase_tsubFTV;
+    try apply FTCons;
+    try apply lemma_tsubFTV_isMono; try apply lemma_tsubFTV_noExists;
+    try rewrite concatF_fesubFV_vbindsF;
+    try rewrite concatF_fesubFV_tvbindsF;
+    pose proof (lem_tvbinds_consT_concatF g g' a k_a); destruct H8;
+    apply (subset_trans _ _ _ H2) in H21;
+    pose proof (lem_vbinds_consT_concatF  g g' a k_a); destruct H22;
+    apply (subset_trans _ _ _ H1) in H23;
+    assert (Subset (vbindsF g) (union (vbindsF g) (vbindsF g'))) 
+      by apply subset_union_intro_r;
+    assert (Subset (tvbindsF g) (union (tvbindsF g) (tvbindsF g'))) 
+      by apply subset_union_intro_r;
+    pose proof (lem_vbinds_concatF g g');
+    pose proof (lem_tvbinds_concatF g g');
+    apply (subset_trans3 _ _ _ _ H17 H24) in H26;
+    apply (subset_trans3 _ _ _ _ H18 H25) in H27;
+    try apply free_tsubFTV_bounded;
+    try apply freeTV_tsubFTV_bounded;
+    try apply lem_islc_at_subFTV;
+    try rewrite lem_erase_tsubFTV;
+    try apply lem_subst_tv_wfft with k_a; 
+    try apply H5 with k_a; try apply H7 with k_a; trivial.
   - (* FTSwit *) apply FTSwit with (ftsubFV a (erase t_a) t); 
     apply H0 with k_a || apply H2 with k_a || apply H4 with k_a; trivial.
-Admitted. (*Qed.   *)
+Qed. 
     
 Lemma lem_subst_tv_ftyp : 
     forall (g g': fenv) (e : expr) (t : ftype) (a:vname) (t_a:type) (k_a:kind),

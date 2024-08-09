@@ -327,12 +327,15 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
     simpl; exists (Ic 0); split;
     try reflexivity; unfold tsubBTV; unfold tsubBV;
     simpl; rewrite lem_push_empty; try apply noex;
-    try apply lem_wftype_islct in p_emp_t as Hlct. 
-    shelve. (*
-    (*try apply lem_wftype_islct in p_emp_t as Hlct. *)
+    (*try apply lem_typ_islc in p_v as Hlc; try apply WFEEmpty; 
+    unfold isLC in Hlc; simpl in Hlc;*)
+    try apply lem_wftype_islct in p_emp_t as Hlct; 
     pose proof lem_subBV_at_lc_at as [_ [H _]].
     rewrite H with t 1 (Nil t0) 0 0; 
     pose proof lem_open_at_lc_at as [_ [H1 _]]; intuition.
+    inversion p_v'; apply lem_invert_nil in p_v as Hnil;
+    try apply WFEEmpty; try apply WFList with Star; trivial;
+    destruct Hnil as [_ [p_t0 _]].
 
     apply TSub 
         with (TRefn TInt (PCons (App (App (Prim Eq) (Ic 0)) (BV 0)) 
@@ -340,18 +343,19 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
     ; try apply TSub with (self (TRefn TInt PEmpty) (Ic 0) Base) Base
     ; try apply SBase with empty; intros; unfold unbindP; simpl
     ; try ( apply IEvals; rewrite delTZ; apply lem_step_evals; 
-            apply EApp1; apply EApp1; apply EPrimT; trivial ) 
-    ; try ( rewrite H1 with t  0 0 y;
-            try rewrite H1 with t0 0 0 y; try apply Hlct;
+            apply EApp1; apply EApp1; apply EPrimT; trivial )  
+    ; try ( rewrite H1 with t  0 0 y; try apply Hlct;
+            try rewrite H1 with t0 0 0 y; try apply H8;
             apply IEvals2; apply lem_step_evals;
             apply EApp1; apply EApp2; try rewrite <- del; 
-            subst c; try apply EPrimM; constructor ) .
+            subst c; try apply EPrimM; constructor )  
     ; try apply TIC
     ; try apply WFRefn with empty
     ; try apply WFBase
     ; intros; unfold unbindP; simpl
     ; try apply PFTCons ; try apply PFTEmp
-    ; try rewrite H1 with t 0 0 y
+    ; try rewrite H1 with t  0 0 y
+    ; try rewrite H1 with t0 0 0 y
     ; try apply FTApp with (FTBasic TInt)
     ; try apply FTApp with (FTBasic TInt)
     ; try apply FTApp with (FTList (erase t))
@@ -359,8 +363,9 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
             = ftsubBV (erase t) (FTFunc (FTList (FTBasic (BTV 0))) 
                                         (FTBasic TInt)))
         as Henv by reflexivity
-    ; try rewrite Henv ; try apply FTAppT with Star
-    ; try apply FTPrm ; try apply FTNil with Star
+    ; try rewrite Henv ; try apply FTAppT with Star 
+    ; try apply FTPrm 
+    ; try (rewrite <- H2; apply FTNil with Star)
     ; try apply FTVar ; try apply FTIC
     ; try apply lem_weaken_wfft_top
     ; assert (erase_env Empty = FEmpty)
@@ -370,8 +375,8 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
     ; simpl in Hfv ; simpl in Hftv
     ; try apply subset_trans with empty
     ; try apply subset_empty_l
-    ; try discriminate; simpl; auto. *)
-  - (* v = Cons *) shelve. (*
+    ; try discriminate; simpl; auto.
+  - (* v = Cons *) 
     apply lem_invert_tlist in p_v as p_v2;
     try apply WFList with Star; try apply WFEEmpty; trivial;
     try destruct p_v2 as [qs [_ p_v2]].
@@ -413,21 +418,21 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
     assert (deltaM Length v2 pf = n) as del
         by (pose proof (deltaM_deltaM' Length v2 pf) as D;
             rewrite <- Hn in D; injection D as D; apply D).
-    assert (isCompatM Length (Cons v1 v2)) as pfC
+    assert (isCompatM Length (Cons t0 v1 v2)) as pfC
         by (constructor; apply pf).
-    assert (deltaM Length (Cons v1 v2) pfC = App (Prim Succ) n) as delC
-        by (pose proof (deltaM_deltaM' Length (Cons v1 v2) pfC) as D;
+    assert (deltaM Length (Cons t0 v1 v2) pfC = App (Prim Succ) n) as delC
+        by (pose proof (deltaM_deltaM' Length (Cons t0 v1 v2) pfC) as D;
             simpl in D; rewrite <- Hn in D; injection D as D; apply D).
     pose proof (deltaM_evals Length v2 pf) as [n' ev_n'].
 
     try apply lem_wftype_islct in p_emp_t as Hlct. 
     try apply lem_ftyp_islc in p_v' as Hlc; 
-    unfold isLC in Hlc; simpl in Hlc; destruct Hlc as [Hlc1 Hlc2];
+    unfold isLC in Hlc; simpl in Hlc; destruct Hlc as [Hlc0 [Hlc1 Hlc2]];
     try apply lem_typ_islc in p_n_ty' as Hnlc; try apply WFEEmpty;
     pose proof lem_subBV_at_lc_at as [_ [H' _]].
     pose proof lem_open_at_lc_at as [Hope [Hopt _]].
     rewrite lem_push_empty in p_n_ty'; try apply noex.
-    rewrite H' with t 1 (Cons v1 v2) 0 0;
+    rewrite H' with t 1 (Cons t0 v1 v2) 0 0;
     try rewrite H' with t 1 v2 0 0 in p_n_ty'; auto.
     apply TSub with 
       (TExists
@@ -436,12 +441,13 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
                           (App (AppT (Prim Length) t) v2)) (BV 0)) PEmpty))
         (TRefn TInt 
           (PCons (App (App (Prim Eq) 
-                          (App (AppT (Prim Length) t) (Cons v1 v2))) (BV 0)) PEmpty))
+                          (App (AppT (Prim Length) t) (Cons t0 v1 v2))) (BV 0)) PEmpty))
       ) Star;
     try apply SBind with empty; unfold isLCT; unfold unbindT; 
     simpl; intros;
     try rewrite Hope with v1 1 0 y;
     try rewrite Hope with v2 1 0 y;
+    try rewrite Hopt with t0 1 0 y;
     try rewrite Hopt with t  1 0 y;
     try apply lem_sub_refl with Base;
 
@@ -480,6 +486,8 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
     try rewrite Hope with v2 0 0 y0;
     try rewrite Hopt with t  0 0 y;   try rewrite Hopt with t  1 0 y;
     try rewrite Hopt with t  0 0 y0; 
+    try rewrite Hopt with t0 1 0 y;
+    try rewrite Hopt with t0 0 0 y0; 
     try apply IFaith;
     try assert (Subtype Empty 
               (TRefn TInt (PCons (App (App (Prim Eq) (Ic n')) (BV 0)) PEmpty)) 
@@ -548,13 +556,15 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
     try apply WFRefn with empty; try apply WFBase;
 
     intros; try apply PFTCons; try apply PFTEmp; 
-    fold open_at; fold openT_at;
+    fold open_at; fold openT_at; 
     try rewrite Hope with v1 0 0 y;   try rewrite Hope with v1 1 0 y;
     try rewrite Hope with v1 0 0 y0;
     try rewrite Hope with v2 0 0 y;   try rewrite Hope with v2 1 0 y;
     try rewrite Hope with v2 0 0 y0;
     try rewrite Hopt with t  0 0 y;   try rewrite Hopt with t  1 0 y;
     try rewrite Hopt with t  0 0 y0;
+    try rewrite Hopt with t0 0 0 y;   try rewrite Hopt with t0 1 0 y;   
+    try rewrite Hopt with t0 0 0 y0;
     try apply FTApp with (FTBasic TInt);
     try apply FTApp with (FTBasic TInt);
     try match goal with
@@ -601,9 +611,8 @@ Proof. intros c t v isMeas noex mono p_emp_t Hval;
     try apply subset_trans with empty;    
     try apply subset_empty_l;
     unfold in_env; unfold not; simpl; 
-    intuition; try apply lem_islc_at_weaken with 0 0; auto. *)
-  Admitted. (*
-  Qed.*)
+    intuition; try apply lem_islc_at_weaken with 0 0; auto. 
+Qed.
 
 Lemma lem_invert_prim : forall (g:env) (pc:expr) (t:type),
   Hastype g pc t -> (forall (c : prim) (s_x s' : type),
@@ -865,30 +874,27 @@ Proof.  intros c s v t_x t Hmeas Hval.
 
   assert (Hastype Empty (App (AppT (Prim Length) s) v) (TExists t_x t))
     as p_lenv_ext by (apply TApp; trivial);
-  apply lem_typing_wf in p_lenv_ext as p_emp_ext; 
-  try apply WFEEmpty;
+  apply lem_typing_wf in p_lenv_ext as p_emp_ext; try apply WFEEmpty;
   try
-  (* v = Nil *) (
-    
+  (* v = Nil *) (     
+    apply lem_nil_instantiation_wf in p_v_tx as Hnil; try apply WFEEmpty;
+    destruct Hnil as [p_emp_t0 [mono0 noex0]];
     pose proof (lem_deltaM_ty'c Length s (Nil t0));
     destruct H1 as [n Hn];
     try apply lem_appT_wf with (Prim Length) t_x t;
     try apply WFEEmpty; try apply val_Nil; trivial;
-    unfold tsubBTV; simpl; try rewrite lem_push_empty;
-    try apply TSub
-      with (TList s (PCons (eq (Ic 0) (length s (BV 0))) PEmpty)) Star;
-    try apply TNil with Star; try apply WFList with Star;
-    try apply SList with empty; intros; try apply IFaith;
-    try apply lem_sub_refl with Star; trivial;
+    simpl; try apply TSub with t_x Star; try apply H16;
+    unfold tsubBTV; simpl; try rewrite lem_push_empty; 
+    try apply WFList with Star; trivial;
     destruct Hn as [Hn p_n_int]; simpl in Hn;       
     exists n; split; try apply Hn;
     apply TSub with (tsubBV (Nil t0) (tsubBTV s (ty' Length))) Star;
     try assumption;
     apply SWitn with (Nil t0); try apply val_Nil; try assumption;
     inversion p_emp_ext; try subst t_x0 g1 (* t0*); try inversion H1;
-    set (y:= fresh_varT (union nms (*(union*) nms0 (*nms2)*)) Empty t); 
     pose proof (fresh_varT_not_elem (union nms (*(union*) nms0 (*nms2)*)) Empty t) 
       as Hy;
+    set (y:= fresh_varT (union nms (*(union*) nms0 (*nms2)*)) Empty t) in Hy; 
     destruct Hy as [Hfr [Hftv [Hnms Hemp]]];
     apply not_elem_union_elim in Hnms;   destruct Hnms   as [Hnms Hnms02];
     rewrite lem_tsubFV_unbindT with y (Nil t0) (tsubBTV s (ty' Length));
@@ -945,6 +951,4 @@ Proof.  intros c s v t_x t Hmeas Hval.
     try apply not_elem_union_intro; 
     try apply (lem_free_bound_in_env Empty s Star y);
     try discriminate; unfold bound_inF; simpl; auto.
-
-  shelve. Admitted. (*
-  Qed.*)
+Qed.
