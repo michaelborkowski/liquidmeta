@@ -38,8 +38,8 @@ Proof. intros a t_a. induction ps. all : simpl.
 Lemma lem_openP_at_strengthen : forall (j:index) (y:vname) (ps:preds) (rs:preds),
     openP_at j y (strengthen ps rs) = strengthen (openP_at j y ps) (openP_at j y rs).
 Proof. intros j y. induction ps. all : simpl.
-- (* PEmpty *) reflexivity.
-- (* PCons p ps *) intros rs. rewrite -> IHps. reflexivity. Qed.
+  - (* PEmpty *) reflexivity.
+  - (* PCons p ps *) intros rs. rewrite -> IHps. reflexivity. Qed.
 
 Lemma lem_unbindP_strengthen : forall (y:vname) (ps rs:preds),
     unbindP y (strengthen ps rs) = strengthen (unbindP y ps) (unbindP y rs).
