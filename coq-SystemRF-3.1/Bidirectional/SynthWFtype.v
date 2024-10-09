@@ -2,101 +2,107 @@ Require Import SystemRF.BasicDefinitions.
 Require Import SystemRF.Names.
 Require Import SystemRF.BasicPropsEnvironments.
 Require Import SystemRF.SystemFWellFormedness.
-
+Require Import SystemRF.SystemFTyping.
+Require Import SystemRF.LemmasTransitive. (* importing depth *)
 Require Import Bidirectional.Decidable.
+Require Import Bidirectional.SynthWFFT.
+Require Import Bidirectional.SynthFType.
 
 From Equations Require Import Equations.
 
 Require Import Arith.
 Require Import ZArith.
 
-Fixpoint fdepth (t : ftype) : nat :=
-    match t with
-    | (FTBasic b)    => 0
-    | (FTFunc tx t') => 1 + max (fdepth tx) (fdepth t')
-    | (FTPoly k t')  => 1 + fdepth t'
-    | (FTList t')    => 1 + fdepth t'
+(*** we need a stack env for BV deBruijn's and their ftypes ***)
+
+Inductive deBruijns : Set := 
+    | DVEmpty 
+    | DVBind  (t : type) (d : deBruijns).
+
+Fixpoint bv_bound_in (i : index) (t : type) (d : deBruijns) : Prop :=
+    match d with 
+    | DVEmpty      => False
+    | DVBind t' d' => match i with
+                      | 0     => t = t'
+                      | (S j) => bv_bound_in j t d'
+                      end
+    end.      
+
+Fixpoint lookupD (i : index) (d : deBruijns) : option type :=
+    match d with 
+    | DVEmpty      => None
+    | DVBind t' d' => match i with
+                      | 0     => Some t'
+                      | (S j) => lookupD j d'
+                      end
     end.
 
-Lemma fdepth_openFT_at : forall (j:index) (a:vname) (t:ftype),
-    fdepth (openFT_at j a t) = fdepth t.
-Proof. intros j a t; revert j; induction t; intros;
-  simpl; try destruct b; try destruct (Nat.eqb j i); 
-  reflexivity || f_equal; apply IHt || f_equal;
-  try apply IHt1; try apply IHt2; apply H. Qed.
-
-Lemma fdepth_unbindFT : forall (a:vname) (t:ftype),
-    fdepth (unbindFT a t) = fdepth t.
-Proof. intros; apply fdepth_openFT_at; assumption. Qed.
-
-(*** we need a stack env for BTV deBruijn's and their kinds ***)
-
-Inductive deBruijnTVs : Set := 
-    | DTEmpty 
-    | DTBind  (k : kind) (d : deBruijnTVs).
-
-Fixpoint btv_bound_in (i : index) (k : kind) (d : deBruijnTVs) : Prop :=
-    match i, d with 
-    | _,     DTEmpty         => False
-    | 0,     (DTBind k' d')  => k = k'
-    | (S j), (DTBind k' d')  => btv_bound_in j k d'
-    end.
-
-Fixpoint dtlen (d : deBruijnTVs) : nat :=
+Fixpoint dlen (d : deBruijnsF) : nat :=
     match d with
-    | DTEmpty       => 0
-    | (DTBind k d') => dtlen d' + 1
+    | DFEmpty       => 0
+    | (DFBind t d') => dflen d' + 1
     end.    
 
-Lemma lem_btvboundin_upper_bound : forall (i:index) (k:kind) (d:deBruijnTVs),
-    btv_bound_in i k d -> i < dtlen d.
+Lemma lem_bvboundinF_upper_bound : forall (i:index) (t:ftype) (d:deBruijnsF),
+    bv_bound_inF i t d -> i < dflen d.
 Proof. induction i; intros; destruct d; try contradiction.
   - (* Base *) simpl; auto with *.
   - (* Ind *) simpl. rewrite <- plus_n_Sm; rewrite <- plus_n_O; auto with *.
   Qed.
 
-Fixpoint concatDT (d d'0 : deBruijnTVs) : deBruijnTVs :=
+Fixpoint concatDF (d d'0 : deBruijnsF) : deBruijnsF :=
     match d'0 with
-    | DTEmpty       => d
-    | (DTBind k d') => DTBind k (concatDT d d')
+    | DFEmpty       => d
+    | (DFBind t d') => DFBind t (concatDF d d')
     end.    
 
-Lemma lem_empty_concatDT : forall (d : deBruijnTVs),
-    concatDT DTEmpty d = d.
+Lemma lem_empty_concatDF : forall (d : deBruijnsF),
+    concatDF DFEmpty d = d.
 Proof. induction d; simpl; try rewrite IHd; reflexivity. Qed.    
 
-Lemma lem_btvboundin_append : forall (d : deBruijnTVs) (i:index) (k k':kind),
-    btv_bound_in i k (concatDT (DTBind k' DTEmpty) d) 
-          ->   i < dtlen d /\ btv_bound_in i k d
-            \/ i = dtlen d /\ k = k'.
+Lemma lem_bvboundinF_append : forall (d : deBruijnsF) (i:index) (t t':ftype),
+    bv_bound_inF i t (concatDF (DFBind t' DFEmpty) d) 
+          ->   i < dflen d /\ bv_bound_inF i t d
+            \/ i = dflen d /\ t = t'.
 Proof. induction d; intros.
   - (* Base *) destruct i; simpl in H; right; intuition;
     destruct i; try contradiction.
   - (* Ind *) destruct i; simpl in H. 
-      * (* 0 *) subst k0; simpl; left; auto with *.
+      * (* 0 *) subst t0; simpl; left; auto with *.
       * (* S i *) apply IHd in H; destruct H; [left|right].
           + (* in d *) destruct H; split; simpl; auto with *.
           + (* at end *) simpl; rewrite <- plus_n_Sm; rewrite <- plus_n_O;
             destruct H; split; auto.
   Qed.
 
+
+Fixpoint lookupF (x : vname) (g : fenv) : option ftype :=
+    match g with 
+    | FEmpty          => None
+    | FCons x' t' g'  => if (x =? x') then Some t' else lookupF x g'
+    | FConsT a' k' g' => lookupF x g'
+    end.
+
+
 (*----------------------------------------------------------------------------
   --- | AUTOMATED INFERENCE of SYSTEM F WELL-FORMEDNESS JUDGMENTS
   --------------------------------------------------------------------------*)
 
-Fixpoint isWFFT' (g:fenv) (d:deBruijnTVs) (t:ftype) (k:kind) : Prop :=
+Fixpoint isWFtype' (g:env) (dv:deBruijns) (dtv:deBruijnTVs) (t:type) (k:kind) : Prop :=
     match t with 
-    | (FTBasic b)    => match b with
-                        | TBool    => True
-                        | TInt     => True
-                        | (BTV i)  => btv_bound_in i Base d  \/
-                                        (btv_bound_in i Star d /\ k = Star)
-                        | (FTV a)  => (tv_bound_inF a Base g) \/ 
-                                        (tv_bound_inF a Star g /\ k = Star)
-                        end
-    | (FTFunc t_x t) => k = Star /\ isWFFT' g d t_x Star  /\ isWFFT' g d t Star
-    | (FTPoly k'  t) => k = Star /\ isWFFT' g (DTBind k' d) t Star
-    | (FTList     t) => k = Star /\ isWFFT' g d t   Star
+    | (TRefn b ps)    => checkP' g (DFBind (FTBasic b) (erase_db dv)) dtv ps /\ (
+                          match b with
+                          | TBool    => True
+                          | TInt     => True
+                          | (BTV i)  => btv_bound_in i Base d  \/
+                                          (btv_bound_in i Star d /\ k = Star)
+                          | (FTV a)  => (tv_bound_inF a Base g) \/ 
+                                          (tv_bound_inF a Star g /\ k = Star)
+                          end)
+    | (TFunc t_x t)   => k = Star /\ isWFFT' g d t_x Star  /\ isWFFT' g d t Star
+    | (TExists t_x t) => k = Star /\ isWFFT' g d t_x Star  /\ isWFFT' g d t Star
+    | (TPoly k'  t)   => k = Star /\ isWFFT' g (DTBind k' d) t Star
+    | (TList  t ps)   => k = Star /\ isWFFT' g d t   Star
     end.
 
 Definition isWFFT (g:fenv) (t:ftype) (k:kind) : Prop := isWFFT' g DTEmpty t k.
@@ -128,7 +134,7 @@ Proof. intros g; induction t.
 
 Lemma lem_isWFFT_unbindFT : 
   forall (g:fenv) (t:ftype) (k:kind) (k':kind) (a:vname),
-           isWFFT' g (DTBind k' DTEmpty) t k -> ~ in_envF a g 
+           isWFFT' g (DTBind k' DTEmpty) t k-> ~ in_envF a g 
         -> isWFFT (FConsT a k' g) (unbindFT a t) k.
 Proof. intros; apply lem_isWFFT_openFT_at; simpl; trivial. Qed.
 
@@ -217,12 +223,6 @@ Proof. intros g d t; revert g d; induction t.
     destruct (kind_eq_dec k Star); intuition.
 Qed.
 
-Definition isWFFTb' (g:fenv) (d:deBruijnTVs) (t:ftype) (k:kind) : bool :=
-    match (isWFFT'_dec g d t k) with
-    | left A    => true
-    | right B   => false
-    end.
-
 Lemma isWFFT_dec : forall (g:fenv) (t:ftype) (k:kind),
     { isWFFT g t k } + { ~ isWFFT g t k }.
 Proof. intros; unfold isWFFT; apply isWFFT'_dec. Qed.
@@ -232,8 +232,3 @@ Definition isWFFTb (g:fenv) (t:ftype) (k:kind) : bool :=
     | left A    => true
     | right B   => false
     end.
-
-Lemma lem_isWFFTb_isWFFT' : forall (g:fenv) (d:deBruijnTVs) (t:ftype) (k:kind),
-    isWFFTb' g d t k = true -> isWFFT' g d t k.
-Proof. intros; unfold isWFFTb' in H; destruct (isWFFT'_dec g d t k);
-  apply i || discriminate. Qed.

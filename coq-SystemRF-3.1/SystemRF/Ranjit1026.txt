@@ -1,0 +1,78 @@
+e : = 
+ | Nil
+ | Cons e e
+ | M e eN eC
+
+
+ G |- eC : a -> List a -> t
+ G |- e  : List a
+ G |- eN : t
+ -----------------------------------
+ G |- M e eN eC : t
+
+ M Nil v _ -> v
+ M (C v1 v2) _ v -> (v v1) v2
+
+ cse e of
+    Nil -> e_n
+    Cons x1 x2 -> e_c x1 x2
+
+  ^^ in this format, we don't need the double-open_at call
+     to be able to type e_c
+  ^^ We also don't bother with deBruijn counting here because 
+     x1 and x2 can't appear in e_c and e_c must be locally closed
+
+
+========================
+========================
+
+Thu April 11.
+
+(1) Lists Mechanization
+
+We want to be able to refine Lists
+* need to push through TList t ps 
+* and hardcode a length function
+but this is an issue because Eql and Lql  don't work on Lists
+* may need to change kinds? or just allow them to be refined
+    - selfification talks of equality of length!
+
+* need some kind of path sensitive reasoning for  
+    typing Switch e eN eC -- want to presrever knowledge
+    that length e == 0 or length e = 1 + length tail
+* similar appraoch to TIf might work -- but read sprite!!
+
+* check out my notes or old code re: what I did
+
+(2) "Implementation"
+
+Automatically or manually deriving judgments for list examples?
+Non polymorphic
+Or do more general checker?
+Important for dissertation!
+Bring up again
+
+Thu May 16
+
+"Implementation"
+
+Constructing typing trees manually is dull and not efficient.
+Try to resurrect the bidirectional check/synth thing
+ (1) WFFT synth/check
+ (2) HasFtype synth/check
+ (3) WFtype synth/check
+ (4) Hastype synth/check*
+If I can get up to (4) then it will be a bit more
+complex because it will have to spit out Implies obligations
+  - how can I express 
+    List[\ex t \ex ps \ex qs. Implies t ps qs] 
+    in Coq?
+  - output would be like [Prop] -> Hastype g e t
+  - also consider incomplete solvers like
+      solver (g:env) (ps qs:preds) : option (Implies g ps qs)
+    that might be able to synth a proof using the axioms
+    and/or some denotational heuristics.
+
+=============================================
+
+Thu June 6

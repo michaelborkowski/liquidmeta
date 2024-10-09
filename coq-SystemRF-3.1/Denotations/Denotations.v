@@ -108,6 +108,7 @@ Denotes (TPoly   k   t') v :=
       forall (t_a : type) (pf : isMono t_a),
         noExists t_a ->  WFtype Empty t_a k -> (exists (v' : expr),
           isValue v' /\ EvalsTo (AppT v t_a) v' /\ Denotes (tsubBTV t_a t') v');
+(* Can I simplify this? *)
 Denotes (TList   t   ps) (Nil t0) :=
     HasFtype FEmpty (Nil t0) (erase (TList   t   ps)) /\
       PEvalsTrue (psubBV (Nil t0) ps);

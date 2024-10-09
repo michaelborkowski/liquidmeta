@@ -41,6 +41,11 @@ Definition kind_eq (k k' : kind) : bool :=
   | right _ => false
   end.
 
+Lemma lem_kind_eq : forall (k k': kind),
+    kind_eq k k' = true -> k = k'.
+Proof. intros; unfold kind_eq in H; destruct (kind_eq_dec k k');
+  assumption || discriminate. Qed.  
+
 Lemma prim_eq_dec : forall (p p' : prim),
     { p = p' } + { p <> p' }.
 Proof. intros; destruct p; destruct p';
@@ -160,6 +165,11 @@ Definition ftype_eq (t t' : ftype) : bool :=
   | left _  => true
   | right _ => false
   end.
+
+Lemma lem_ftype_eq : forall (t t':ftype),
+    ftype_eq t t' = true -> t = t'.
+Proof. intros; unfold ftype_eq in H; destruct (ftype_eq_dec t t');
+  assumption || discriminate. Qed.  
 
 Lemma noExists_dec : forall (t:type),
     { noExists t } + { ~ noExists t }.
